@@ -1,4 +1,5 @@
 import Sidebar from "@/components/Sidebar";
+import Header from "@/components/Header";
 
 export default function PanelLayout({
   children,
@@ -8,7 +9,10 @@ export default function PanelLayout({
   return (
     <div className="flex flex-1">
       <Sidebar />
-      <div className="flex-1 p-8">{children}</div>
+      <div className="flex flex-1 flex-col">
+        <Header />
+        <main className="flex-1 overflow-y-auto p-8">{children}</main>
+      </div>
     </div>
   );
 }
