@@ -11,7 +11,7 @@ export default function PanelLayout({
       <Sidebar />
       <div className="flex flex-1 flex-col">
         <Header />
-        <main className="flex-1 overflow-y-auto p-8">{children}</main>
+        <main className="relative flex-1 overflow-y-auto p-8">{children}</main>
       </div>
     </div>
   );

@@ -1,19 +1,21 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Playfair_Display } from "next/font/google";
+import { Nunito, Fraunces } from "next/font/google";
 import "./globals.css";
 
-const body = Plus_Jakarta_Sans({
+const body = Nunito({
   variable: "--font-body",
   subsets: ["latin"],
+  weight: ["400", "600", "700"],
 });
 
-const heading = Playfair_Display({
+const heading = Fraunces({
   variable: "--font-heading",
   subsets: ["latin"],
+  weight: ["600", "700", "900"],
 });
 
 export const metadata: Metadata = {
-  title: "Fundación Dejando Huellas Felices",
+  title: "SANA — Fundación Dejando Huellas Felices",
   description: "Plataforma de gestión de la fundación",
 };
 
