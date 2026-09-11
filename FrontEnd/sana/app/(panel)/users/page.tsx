@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Search, UserPlus } from "lucide-react";
 import PageDecor from "@/components/ui/PageDecor";
 import UserRow from "@/components/users/UserRow";
@@ -92,10 +93,13 @@ export default function UsersPage() {
             />
           </div>
 
-          <button className="ml-auto flex cursor-pointer items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-dark">
+                    <Link
+            href="/users/new"
+            className="ml-auto flex cursor-pointer items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-dark"
+          >
             <UserPlus size={16} />
-            Invitar usuario
-          </button>
+            Crear usuario
+          </Link>
         </div>
 
         <div className="mt-6 rounded-2xl border border-border bg-surface">

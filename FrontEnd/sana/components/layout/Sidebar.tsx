@@ -20,7 +20,7 @@ const navItems = [
   { label: "Recepción", href: "/reception", icon: ClipboardList, enabled: false },
   { label: "Reportes", href: "/reports", icon: BarChart3, enabled: false },
   { label: "Contenido", href: "/content", icon: FileText, enabled: false },
-  { label: "Solicitudes", href: "/access-requests", icon: ClipboardList, enabled: true },
+  { label: "Solicitudes", href: "/access-requests", icon: ClipboardList, enabled: false },
   { label: "Usuarios", href: "/users", icon: UserCog, enabled: true },
 ];
 
@@ -62,8 +62,8 @@ export default function Sidebar() {
               href={href}
               className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm transition ${
                 pathname === href
-  ? "bg-accent font-semibold text-white"
-  : "text-text-muted hover:bg-primary-soft"
+                ? "bg-accent font-semibold text-white"
+                : "text-text-muted hover:bg-primary-soft"
               }`}
             >
               <Icon size={20} />
