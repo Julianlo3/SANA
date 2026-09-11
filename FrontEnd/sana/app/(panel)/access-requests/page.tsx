@@ -3,9 +3,25 @@
 import { useState } from "react";
 import { Mail, BadgeCheck, SlidersHorizontal } from "lucide-react";
 import { mockAccessRequests, type AccessRequest } from "@/lib/mocks/access-requests";
+import RequestActionDialog, {
+  type RequestAction,
+} from "@/components/access-requests/RequestActionDialog";
 export default function AccessRequestsPage() {
-  const [requests] = useState<AccessRequest[]>(mockAccessRequests);
+    const [requests, setRequests] = useState<AccessRequest[]>(mockAccessRequests);
+  const [dialog, setDialog] = useState<{
+    action: RequestAction;
+    request: AccessRequest;
+  } | null>(null);
 
+  function handleConfirm(
+    action: RequestAction,
+    request: AccessRequest,
+    value?: string,
+  ) {
+    setRequests((current) => current.filter((item) => item.id !== request.id));
+    console.log(action, request.fullName, value);
+    setDialog(null);
+  }
   return (
     <div className="mx-auto max-w-5xl">
       <div className="flex items-start justify-between gap-6">
@@ -66,16 +82,30 @@ export default function AccessRequestsPage() {
             </div>
 
             <div className="flex shrink-0 gap-2">
-              <button className="cursor-pointer rounded-lg border border-border px-4 py-2 text-sm text-text-muted transition hover:border-text-muted hover:text-text">
+                            <button
+                onClick={() => setDialog({ action: "reject", request })}
+                className="cursor-pointer rounded-lg border border-border px-4 py-2 text-sm text-text-muted transition hover:border-text-muted hover:text-text"
+              >
                 Rechazar
               </button>
-              <button className="cursor-pointer rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-background transition hover:brightness-110">
+              <button
+                onClick={() => setDialog({ action: "approve", request })}
+                className="cursor-pointer rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-background transition hover:brightness-110"
+              >
                 Aprobar
               </button>
             </div>
           </article>
         ))}
       </div>
+            {dialog && (
+        <RequestActionDialog
+          action={dialog.action}
+          request={dialog.request}
+          onConfirm={handleConfirm}
+          onClose={() => setDialog(null)}
+        />
+      )}
     </div>
   );
 }
