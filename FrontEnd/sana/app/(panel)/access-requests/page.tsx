@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { Mail, BadgeCheck, SlidersHorizontal } from "lucide-react";
-import { mockAccessRequests, type AccessRequest } from "@/lib/mock-data";
-
+import { mockAccessRequests, type AccessRequest } from "@/lib/mocks/access-requests";
 export default function AccessRequestsPage() {
   const [requests] = useState<AccessRequest[]>(mockAccessRequests);
 
