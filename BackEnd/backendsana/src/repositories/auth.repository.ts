@@ -1,0 +1,111 @@
+import { Injectable } from '@nestjs/common';
+import { DataSource } from 'typeorm';
+
+/**
+ * Represents an authorization record for a user.
+ */
+export interface AuthorizationRecord {
+  personId: number;
+  email: string;
+  state: string;
+  userId: number | null;
+  providerId: string | null;
+  roles: string[];
+}
+
+/**
+ * Repository for handling authentication-related database operations.
+ */
+@Injectable()
+export class AuthRepository {
+  constructor(private readonly dataSource: DataSource) {}
+
+  /**
+   * Finds an authorization record by the user's email.
+   * @param email The email to search for.
+   * @returns A promise resolving to the authorization record or null if not found.
+   */
+  async findByEmail(email: string): Promise<AuthorizationRecord | null> {
+    const rows = await this.dataSource.query(
+      `SELECT p.per_id AS "personId", p.per_email AS email, p.per_state AS state, u.use_id AS "userId", u.user_provider_id AS "providerId", COALESCE(array_agg(r.rol_description) FILTER (WHERE r.rol_description IS NOT NULL), '{}') AS roles FROM person p LEFT JOIN users u ON u.use_id=p.per_id LEFT JOIN person_rol pr ON pr.per_id=p.per_id LEFT JOIN rol r ON r.rol_id=pr.rol_id WHERE lower(p.per_email)=lower($1) GROUP BY p.per_id,u.use_id`,
+      [email],
+    );
+    return rows[0] ?? null;
+  }
+
+  /**
+   * Finds an authorization record by the user's ID.
+   * @param userId The user ID to search for.
+   * @returns A promise resolving to the authorization record or null if not found.
+   */
+  async findByUserId(userId: number): Promise<AuthorizationRecord | null> {
+    const rows = await this.dataSource.query(
+      `SELECT p.per_id AS "personId", p.per_email AS email, p.per_state AS state, u.use_id AS "userId", u.user_provider_id AS "providerId", COALESCE(array_agg(r.rol_description) FILTER (WHERE r.rol_description IS NOT NULL), '{}') AS roles FROM person p JOIN users u ON u.use_id=p.per_id LEFT JOIN person_rol pr ON pr.per_id=p.per_id LEFT JOIN rol r ON r.rol_id=pr.rol_id WHERE u.use_id=$1 GROUP BY p.per_id,u.use_id`,
+      [userId],
+    );
+    return rows[0] ?? null;
+  }
+
+  /**
+   * Finds an authorization record by the user's provider ID.
+   * @param providerId The provider ID to search for.
+   * @param providerName The provider name (default: 'google').
+   * @returns A promise resolving to the authorization record or null if not found.
+   */
+  async findByProviderId(
+    providerId: string,
+    providerName = 'google',
+  ): Promise<AuthorizationRecord | null> {
+    const rows = await this.dataSource.query(
+      `SELECT p.per_id AS "personId", p.per_email AS email, p.per_state AS state, u.use_id AS "userId", u.user_provider_id AS "providerId", COALESCE(array_agg(r.rol_description) FILTER (WHERE r.rol_description IS NOT NULL), '{}') AS roles FROM person p JOIN users u ON u.use_id=p.per_id LEFT JOIN person_rol pr ON pr.per_id=p.per_id LEFT JOIN rol r ON r.rol_id=pr.rol_id WHERE u.user_provider_id=$1 AND u.user_provider_name=$2 GROUP BY p.per_id,u.use_id`,
+      [providerId, providerName],
+    );
+    return rows[0] ?? null;
+  }
+
+  /**
+   * Updates a person's email address.
+   * @param personId The ID of the person to update.
+   * @param email The new email address.
+   */
+  async updateEmail(personId: number, email: string): Promise<void> {
+    await this.dataSource.query(
+      'UPDATE person SET per_email=$1, per_update_date=now() WHERE per_id=$2',
+      [email, personId],
+    );
+  }
+
+  /**
+   * Claims a user with a Google ID.
+   * @param personId The ID of the person to claim.
+   * @param googleId The Google ID to associate with the user.
+   */
+  async claim(personId: number, googleId: string): Promise<void> {
+    await this.dataSource.query(
+      'INSERT INTO users (use_id,user_provider_id,user_provider_name) VALUES ($1,$2,$3)',
+      [personId, googleId, 'google'],
+    );
+  }
+  
+  /**
+   * Creates a pending user account.
+   * @param email The email of the pending user.
+   * @param name The name of the pending user.
+   */
+  async createPending(email: string, name: string): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      const persons = await manager.query(
+        'INSERT INTO person (per_name,per_email,per_state) VALUES ($1,$2,$3) RETURNING per_id',
+        [name, email, 'pendiente'],
+      );
+      const personId = persons[0].per_id;
+      await manager.query(
+        `INSERT INTO person_rol (per_id,rol_id,pr_assigned_at) SELECT $1,rol_id,now() FROM rol WHERE rol_description='pendiente'`,
+        [personId],
+      );
+      await manager.query('INSERT INTO access_requests (per_id) VALUES ($1)', [
+        personId,
+      ]);
+    });
+  }
+}
