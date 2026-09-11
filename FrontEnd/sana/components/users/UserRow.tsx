@@ -1,6 +1,7 @@
 "use client";
 
 import { MoreVertical } from "lucide-react";
+import UserActionsMenu, { type UserAction } from "./UserActionsMenu";
 import type { User, UserStatus } from "@/lib/mocks/users";
 
 const statusStyles: Record<UserStatus, string> = {
@@ -17,10 +18,19 @@ const statusLabels: Record<UserStatus, string> = {
 
 type Props = {
   user: User;
-  onAction: (user: User) => void;
+  menuOpen: boolean;
+  onToggleMenu: () => void;
+  onCloseMenu: () => void;
+  onAction: (action: UserAction, user: User) => void;
 };
 
-export default function UserRow({ user, onAction }: Props) {
+export default function UserRow({
+  user,
+  menuOpen,
+  onToggleMenu,
+  onCloseMenu,
+  onAction,
+}: Props) {
   const initials = user.fullName
     .split(" ")
     .slice(0, 2)
@@ -56,14 +66,23 @@ export default function UserRow({ user, onAction }: Props) {
 
       <td className="px-3 py-4 text-sm text-text-subtle">{user.lastLoginAt}</td>
 
-      <td className="py-4 pl-3 pr-5 text-right">
+      <td className="relative py-4 pl-3 pr-5 text-right">
         <button
-          onClick={() => onAction(user)}
+          onClick={onToggleMenu}
           aria-label={`Acciones para ${user.fullName}`}
+          aria-expanded={menuOpen}
           className="cursor-pointer rounded-lg p-2 text-text-subtle transition hover:bg-surface-raised hover:text-text"
         >
           <MoreVertical size={18} />
         </button>
+
+        {menuOpen && (
+          <UserActionsMenu
+            user={user}
+            onClose={onCloseMenu}
+            onSelect={(action) => onAction(action, user)}
+          />
+        )}
       </td>
     </tr>
   );

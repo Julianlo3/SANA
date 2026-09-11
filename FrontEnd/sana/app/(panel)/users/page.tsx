@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { Search, UserPlus } from "lucide-react";
 import UserRow from "@/components/users/UserRow";
+import type { UserAction } from "@/components/users/UserActionsMenu";
 import { mockUsers, type User } from "@/lib/mocks/users";
 
 export default function UsersPage() {
   const [users] = useState<User[]>(mockUsers);
   const [query, setQuery] = useState("");
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
 
   const filtered = users.filter((user) => {
     const text = `${user.fullName} ${user.email}`.toLowerCase();
@@ -16,8 +18,9 @@ export default function UsersPage() {
 
   const activeCount = users.filter((u) => u.status === "active").length;
 
-  function handleAction(user: User) {
-    console.log("Acciones para", user.fullName);
+  function handleAction(action: UserAction, user: User) {
+    setOpenMenuId(null);
+    console.log(action, user.fullName);
   }
 
   return (
@@ -60,7 +63,7 @@ export default function UsersPage() {
         </button>
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-2xl bg-surface">
+      <div className="mt-6 rounded-2xl bg-surface">
         <table className="w-full">
           <thead>
             <tr className="border-b border-border/40 text-left text-xs uppercase tracking-wider text-text-subtle">
@@ -74,7 +77,16 @@ export default function UsersPage() {
           </thead>
           <tbody>
             {filtered.map((user) => (
-              <UserRow key={user.id} user={user} onAction={handleAction} />
+              <UserRow
+                key={user.id}
+                user={user}
+                menuOpen={openMenuId === user.id}
+                onToggleMenu={() =>
+                  setOpenMenuId(openMenuId === user.id ? null : user.id)
+                }
+                onCloseMenu={() => setOpenMenuId(null)}
+                onAction={handleAction}
+              />
             ))}
           </tbody>
         </table>
