@@ -540,7 +540,7 @@ ON DELETE NO ACTION ON UPDATE NO ACTION;
 COMMENT ON CONSTRAINT "RD_Relationship_fk" ON public.requester_dependent IS E'Identificador proveniente de relacion (parentesco)';
 -- ddl-end --
 
-------------------------- MIGRATION
+------------------------- MIGRATION 11/09/2026 -------------------------
 
 ALTER TABLE public.person
     ALTER COLUMN per_identity_document DROP NOT NULL,
@@ -587,3 +587,9 @@ CREATE INDEX IF NOT EXISTS "Person_email_idx"
 
 CREATE INDEX IF NOT EXISTS "Auth_Session_user_idx"
     ON public.auth_sessions (use_id);
+
+ALTER TABLE public.users
+    ADD COLUMN IF NOT EXISTS user_refresh_token varchar(255);
+
+COMMENT ON COLUMN public.users.user_refresh_token
+    IS E'El hash bcrypt de nuestro JWT refresh token';
