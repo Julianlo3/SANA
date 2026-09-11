@@ -2,12 +2,16 @@
 
 import { useState } from "react";
 import { Mail, BadgeCheck, SlidersHorizontal } from "lucide-react";
-import { mockAccessRequests, type AccessRequest } from "@/lib/mocks/access-requests";
+import {
+  mockAccessRequests,
+  type AccessRequest,
+} from "@/lib/mocks/access-requests";
 import RequestActionDialog, {
   type RequestAction,
 } from "@/components/access-requests/RequestActionDialog";
+
 export default function AccessRequestsPage() {
-    const [requests, setRequests] = useState<AccessRequest[]>(mockAccessRequests);
+  const [requests, setRequests] = useState<AccessRequest[]>(mockAccessRequests);
   const [dialog, setDialog] = useState<{
     action: RequestAction;
     request: AccessRequest;
@@ -22,6 +26,7 @@ export default function AccessRequestsPage() {
     console.log(action, request.fullName, value);
     setDialog(null);
   }
+
   return (
     <div className="mx-auto max-w-5xl">
       <div className="flex items-start justify-between gap-6">
@@ -82,7 +87,7 @@ export default function AccessRequestsPage() {
             </div>
 
             <div className="flex shrink-0 gap-2">
-                            <button
+              <button
                 onClick={() => setDialog({ action: "reject", request })}
                 className="cursor-pointer rounded-lg border border-border px-4 py-2 text-sm text-text-muted transition hover:border-text-muted hover:text-text"
               >
@@ -98,7 +103,19 @@ export default function AccessRequestsPage() {
           </article>
         ))}
       </div>
-            {dialog && (
+
+      {requests.length === 0 && (
+        <div className="mt-8 rounded-2xl bg-surface px-6 py-16 text-center">
+          <p className="font-display text-xl text-text">
+            No hay solicitudes pendientes
+          </p>
+          <p className="mt-2 text-sm text-text-subtle">
+            Las nuevas solicitudes de acceso aparecerán aquí para su revisión.
+          </p>
+        </div>
+      )}
+
+      {dialog && (
         <RequestActionDialog
           action={dialog.action}
           request={dialog.request}
