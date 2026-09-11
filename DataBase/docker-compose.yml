@@ -1,0 +1,33 @@
+# docker-compose.yml
+# Proyecto: DB_SANA (PostgreSQL dockerizado)
+# Uso: docker compose up -d
+
+services:
+  db_sana:
+    image: postgres:${POSTGRES_VERSION:-18-alpine}
+    container_name: ${CONTAINER_NAME:-db_sana}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-DB_SANA}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en tu archivo .env}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - db_sana_data:/var/lib/postgresql
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d \"$${POSTGRES_DB:-DB_SANA}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - db_sana_net
+
+networks:
+  db_sana_net:
+    name: ${NETWORK_NAME:-db_sana_net}
+
+volumes:
+  db_sana_data:
+    name: ${VOLUME_NAME:-db_sana_data}
