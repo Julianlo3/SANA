@@ -13,46 +13,45 @@ import {
   LogOut,
 } from "lucide-react";
 
-const enlaces = [
-  { nombre: "Pacientes", href: "/pacientes", icono: Users, activo: false },
-  { nombre: "Citas", href: "/citas", icono: Calendar, activo: false },
-  { nombre: "Expedientes", href: "/expedientes", icono: FolderOpen, activo: false },
-  { nombre: "Recepción", href: "/recepcion", icono: ClipboardList, activo: false },
-  { nombre: "Reportes", href: "/reportes", icono: BarChart3, activo: false },
-  { nombre: "Contenido", href: "/contenido", icono: FileText, activo: false },
-  { nombre: "Usuarios", href: "/usuarios", icono: UserCog, activo: true },
+const navItems = [
+  { label: "Pacientes", href: "/patients", icon: Users, enabled: false },
+  { label: "Citas", href: "/appointments", icon: Calendar, enabled: false },
+  { label: "Expedientes", href: "/records", icon: FolderOpen, enabled: false },
+  { label: "Recepción", href: "/reception", icon: ClipboardList, enabled: false },
+  { label: "Reportes", href: "/reports", icon: BarChart3, enabled: false },
+  { label: "Contenido", href: "/content", icon: FileText, enabled: false },
+  { label: "Solicitudes", href: "/access-requests", icon: ClipboardList, enabled: true },
+  { label: "Usuarios", href: "/users", icon: UserCog, enabled: true },
 ];
 
 export default function Sidebar() {
-  const ruta = usePathname();
+  const pathname = usePathname();
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col bg-aside p-4">
+    <aside className="flex w-64 shrink-0 flex-col bg-sidebar p-4">
       <div className="flex items-center gap-3 px-2 py-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primario">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
           <span className="font-display text-lg font-bold text-white">S</span>
         </div>
         <div className="leading-tight">
-          <p className="font-semibold text-texto">SANA</p>
-          <p className="text-[10px] tracking-widest text-texto-tenue">
+          <p className="font-semibold text-text">SANA</p>
+          <p className="text-[10px] tracking-widest text-text-subtle">
             DEJANDO HUELLAS
           </p>
         </div>
       </div>
 
       <nav className="mt-6 flex flex-col gap-1">
-        {enlaces.map(({ nombre, href, icono: Icono, activo }) => {
-          const seleccionado = ruta === href;
-
-          if (!activo) {
+        {navItems.map(({ label, href, icon: Icon, enabled }) => {
+          if (!enabled) {
             return (
               <span
                 key={href}
                 title="Disponible en un próximo sprint"
-                className="flex cursor-not-allowed items-center gap-3 rounded-xl px-4 py-3 text-texto-tenue/40"
+                className="flex cursor-not-allowed items-center gap-3 rounded-xl px-4 py-3 text-text-subtle/40"
               >
-                <Icono size={20} />
-                <span className="text-sm">{nombre}</span>
+                <Icon size={20} />
+                <span className="text-sm">{label}</span>
               </span>
             );
           }
@@ -62,27 +61,27 @@ export default function Sidebar() {
               key={href}
               href={href}
               className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm transition ${
-                seleccionado
-                  ? "bg-primario-oscuro font-medium text-white"
-                  : "text-texto-suave hover:bg-superficie"
+                pathname === href
+                  ? "bg-primary-dark font-medium text-white"
+                  : "text-text-muted hover:bg-surface"
               }`}
             >
-              <Icono size={20} />
-              {nombre}
+              <Icon size={20} />
+              {label}
             </Link>
           );
         })}
       </nav>
 
-      <div className="mt-auto flex items-center gap-3 rounded-xl bg-superficie p-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-lavanda text-sm font-semibold text-fondo">
+      <div className="mt-auto flex items-center gap-3 rounded-xl bg-surface p-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-sm font-semibold text-background">
           AS
         </div>
         <div className="flex-1 leading-tight">
-          <p className="text-sm font-semibold text-texto">Alejandro Silva</p>
-          <p className="text-xs text-texto-tenue">Administrador</p>
+          <p className="text-sm font-semibold text-text">Alejandro Silva</p>
+          <p className="text-xs text-text-subtle">Administrador</p>
         </div>
-        <button className="cursor-pointer text-texto-tenue hover:text-texto">
+        <button className="cursor-pointer text-text-subtle hover:text-text">
           <LogOut size={18} />
         </button>
       </div>
