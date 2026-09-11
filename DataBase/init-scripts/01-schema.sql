@@ -18,7 +18,7 @@ CREATE TABLE public.person (
 	per_identity_document integer NOT NULL,
 	per_email varchar(100) NOT NULL,
 	per_contact_number integer NOT NULL,
-	per_state varchar(15) NOT NULL DEFAULT activo,
+	per_state varchar(15) NOT NULL DEFAULT 'activo',
 	per_update_date timestamptz,
 	CONSTRAINT "Person_pk" PRIMARY KEY (per_id),
 	CONSTRAINT "Person_idocument_uq" UNIQUE (per_identity_document),
