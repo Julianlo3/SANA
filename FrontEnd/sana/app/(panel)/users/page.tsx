@@ -3,24 +3,53 @@
 import { useState } from "react";
 import { Search, UserPlus } from "lucide-react";
 import UserRow from "@/components/users/UserRow";
+import UserActionDialog from "@/components/users/UserActionDialog";
 import type { UserAction } from "@/components/users/UserActionsMenu";
 import { mockUsers, type User } from "@/lib/mocks/users";
 
 export default function UsersPage() {
-  const [users] = useState<User[]>(mockUsers);
+  const [users, setUsers] = useState<User[]>(mockUsers);
   const [query, setQuery] = useState("");
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [dialog, setDialog] = useState<{
+    action: UserAction;
+    user: User;
+  } | null>(null);
 
   const filtered = users.filter((user) => {
     const text = `${user.fullName} ${user.email}`.toLowerCase();
     return text.includes(query.toLowerCase());
   });
 
-  const activeCount = users.filter((u) => u.status === "active").length;
+  const activeCount = users.filter((user) => user.status === "active").length;
 
   function handleAction(action: UserAction, user: User) {
     setOpenMenuId(null);
-    console.log(action, user.fullName);
+
+    if (action === "edit") {
+      console.log("Editar", user.fullName);
+      return;
+    }
+
+    setDialog({ action, user });
+  }
+
+    function handleConfirm(action: UserAction, user: User, reason?: string) {
+    const newStatus =
+      action === "block"
+        ? "blocked"
+        : action === "deactivate"
+          ? "inactive"
+          : "active";
+
+    setUsers((current) =>
+      current.map((item) =>
+        item.id === user.id ? { ...item, status: newStatus } : item,
+      ),
+    );
+
+    console.log("Confirmado:", action, user.fullName, reason);
+    setDialog(null);
   }
 
   return (
@@ -101,6 +130,15 @@ export default function UsersPage() {
       <p className="mt-4 text-xs text-text-subtle">
         Mostrando {filtered.length} de {users.length} usuarios
       </p>
+
+      {dialog && (
+        <UserActionDialog
+          action={dialog.action}
+          user={dialog.user}
+          onConfirm={handleConfirm}
+          onClose={() => setDialog(null)}
+        />
+      )}
     </div>
   );
 }
