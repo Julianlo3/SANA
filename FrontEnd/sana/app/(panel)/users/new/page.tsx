@@ -6,14 +6,13 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Info } from "lucide-react";
 import PageDecor from "@/components/ui/PageDecor";
 import Button from "@/components/ui/Button";
-import { ROLES } from "@/lib/mocks/users";
+import { ROLE_CATALOG } from "@/lib/mocks/users";
 
 type FormFields = {
   fullName: string;
   identityDocument: string;
   email: string;
   phone: string;
-  roleId: string;
 };
 
 const emptyForm: FormFields = {
@@ -21,17 +20,27 @@ const emptyForm: FormFields = {
   identityDocument: "",
   email: "",
   phone: "",
-  roleId: "",
 };
 
 export default function NewUserPage() {
   const router = useRouter();
   const [form, setForm] = useState<FormFields>(emptyForm);
+  const [roleIds, setRoleIds] = useState<number[]>([]);
   const [errors, setErrors] = useState<Partial<FormFields>>({});
+  const [rolesError, setRolesError] = useState<string>();
 
   function update(field: keyof FormFields, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: undefined }));
+  }
+
+  function toggleRole(id: number) {
+    setRolesError(undefined);
+    setRoleIds((current) =>
+      current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id],
+    );
   }
 
   function validate(): boolean {
@@ -62,18 +71,17 @@ export default function NewUserPage() {
       found.phone = "Debe contener entre 7 y 10 dígitos.";
     }
 
-    if (!form.roleId) {
-      found.roleId = "Debe asignar un rol.";
-    }
+    const missingRoles = roleIds.length === 0;
+    setRolesError(missingRoles ? "Debe asignar al menos un rol." : undefined);
 
     setErrors(found);
-    return Object.keys(found).length === 0;
+    return Object.keys(found).length === 0 && !missingRoles;
   }
 
   function handleSubmit() {
     if (!validate()) return;
 
-    console.log("Crear usuario:", form);
+    console.log("Crear usuario:", { ...form, roleIds });
     router.push("/users");
   }
 
@@ -95,7 +103,7 @@ export default function NewUserPage() {
         </h1>
         <p className="mt-2 text-sm text-text-muted">
           Registra una cuenta para el personal autorizado de la fundación y
-          asígnale su rol.
+          asígnale sus roles.
         </p>
 
         <div className="mt-8 rounded-2xl border border-border bg-surface p-6">
@@ -112,7 +120,7 @@ export default function NewUserPage() {
             value={form.identityDocument}
             error={errors.identityDocument}
             onChange={(value) => update("identityDocument", value)}
-            placeholder="Numero de documento sin puntos ni guiones"
+            placeholder="Número de documento sin puntos ni guiones"
           />
 
           <Field
@@ -121,7 +129,7 @@ export default function NewUserPage() {
             value={form.email}
             error={errors.email}
             onChange={(value) => update("email", value)}
-            placeholder="Correo@gmail.com"
+            placeholder="correo@gmail.com"
           />
 
           <Field
@@ -129,33 +137,48 @@ export default function NewUserPage() {
             value={form.phone}
             error={errors.phone}
             onChange={(value) => update("phone", value)}
-            placeholder="Numero de contacto sin espacios ni guiones"
+            placeholder="Número de contacto sin espacios ni guiones"
           />
 
-          <label className="mt-5 block">
-            <span className="text-sm font-semibold text-text">
-              Rol en la plataforma <span className="text-danger">*</span>
-            </span>
-            <select
-              value={form.roleId}
-              onChange={(event) => update("roleId", event.target.value)}
-              className={`mt-2 w-full cursor-pointer rounded-xl border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40 ${
-                errors.roleId ? "border-danger" : "border-border"
-              }`}
-            >
-              <option value="">Seleccionar rol...</option>
-              {ROLES.map((role) => (
-                <option key={role.id} value={role.id}>
-                  {role.name}
-                </option>
-              ))}
-            </select>
-            {errors.roleId && (
-              <span className="mt-1.5 block text-xs text-danger">
-                {errors.roleId}
+          <fieldset className="mt-6">
+            <legend className="text-sm font-semibold text-text">
+              Roles en la plataforma <span className="text-danger">*</span>
+            </legend>
+            <p className="mt-1 text-xs text-text-subtle">
+              Una persona puede tener más de un rol a la vez.
+            </p>
+
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {ROLE_CATALOG.map((role) => {
+                const checked = roleIds.includes(role.id);
+
+                return (
+                  <label
+                    key={role.id}
+                    className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm transition ${
+                      checked
+                        ? "border-primary bg-primary-soft text-text"
+                        : "border-border text-text-muted hover:border-primary/40"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleRole(role.id)}
+                      className="h-4 w-4 cursor-pointer accent-primary"
+                    />
+                    {role.name}
+                  </label>
+                );
+              })}
+            </div>
+
+            {rolesError && (
+              <span className="mt-2 block text-xs text-danger">
+                {rolesError}
               </span>
             )}
-          </label>
+          </fieldset>
 
           <div className="mt-6 flex gap-3 rounded-xl bg-primary-soft p-4 text-xs text-text-muted">
             <Info size={16} className="mt-0.5 shrink-0 text-primary" />
