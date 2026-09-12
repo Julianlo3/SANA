@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Search, UserPlus } from "lucide-react";
 import PageDecor from "@/components/ui/PageDecor";
 import UserRow from "@/components/users/UserRow";
@@ -10,6 +11,7 @@ import type { UserAction } from "@/components/users/UserActionsMenu";
 import { mockUsers, type User } from "@/lib/mocks/users";
 
 export default function UsersPage() {
+  const router = useRouter();
   const [users, setUsers] = useState<User[]>(mockUsers);
   const [query, setQuery] = useState("");
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
@@ -29,7 +31,7 @@ export default function UsersPage() {
     setOpenMenuId(null);
 
     if (action === "edit") {
-      console.log("Editar", user.fullName);
+      router.push(`/users/${user.id}/edit`);
       return;
     }
 
@@ -93,7 +95,7 @@ export default function UsersPage() {
             />
           </div>
 
-                    <Link
+          <Link
             href="/users/new"
             className="ml-auto flex cursor-pointer items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-dark"
           >
@@ -108,7 +110,7 @@ export default function UsersPage() {
               <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-text-subtle">
                 <th className="py-3 pl-5 pr-3 font-medium">Usuario</th>
                 <th className="px-3 py-3 font-medium">Correo</th>
-                <th className="px-3 py-3 font-medium">Rol</th>
+                <th className="px-3 py-3 font-medium">Roles</th>
                 <th className="px-3 py-3 font-medium">Estado</th>
                 <th className="px-3 py-3 font-medium">Última conexión</th>
                 <th className="py-3 pl-3 pr-5" />
