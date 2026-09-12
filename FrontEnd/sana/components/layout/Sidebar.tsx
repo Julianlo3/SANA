@@ -20,7 +20,6 @@ const navItems = [
   { label: "Recepción", href: "/reception", icon: ClipboardList, enabled: false },
   { label: "Reportes", href: "/reports", icon: BarChart3, enabled: false },
   { label: "Contenido", href: "/content", icon: FileText, enabled: false },
-  { label: "Solicitudes", href: "/access-requests", icon: ClipboardList, enabled: false },
   { label: "Usuarios", href: "/users", icon: UserCog, enabled: true },
 ];
 
