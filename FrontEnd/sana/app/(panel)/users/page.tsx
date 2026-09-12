@@ -61,9 +61,9 @@ export default function UsersPage() {
       <PageDecor variant="users" />
 
       <div className="relative z-10 mx-auto max-w-6xl">
-        <div className="flex items-start justify-between gap-6">
+        <div className="flex flex-col items-start justify-between gap-6 sm:flex-row">
           <div>
-            <h1 className="font-display text-5xl font-bold tracking-tight text-primary-dark">
+            <h1 className="font-display text-3xl font-bold tracking-tight text-primary-dark sm:text-5xl">
               Gestión de Usuarios
             </h1>
             <p className="mt-2 max-w-xl text-sm text-text-muted">
@@ -80,7 +80,7 @@ export default function UsersPage() {
           </div>
         </div>
 
-        <div className="mt-8 flex items-center gap-3">
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative max-w-sm flex-1">
             <Search
               size={16}
@@ -107,7 +107,7 @@ export default function UsersPage() {
         <div className="mt-6 rounded-2xl border border-border bg-surface">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-text-subtle">
+                          <tr className="hidden border-b border-border text-left text-xs uppercase tracking-wider text-text-subtle lg:table-row">
                 <th className="py-3 pl-5 pr-3 font-medium">Usuario</th>
                 <th className="px-3 py-3 font-medium">Correo</th>
                 <th className="px-3 py-3 font-medium">Roles</th>

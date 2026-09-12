@@ -4,7 +4,12 @@ import { useEffect, useRef } from "react";
 import { Pencil, Ban, UserMinus, UserCheck, Trash2 } from "lucide-react";
 import type { User } from "@/lib/mocks/users";
 
-export type UserAction = "edit" | "block" | "deactivate" | "reactivate" | "delete";
+export type UserAction =
+  | "edit"
+  | "block"
+  | "deactivate"
+  | "reactivate"
+  | "delete";
 
 type Props = {
   user: User;
@@ -26,11 +31,11 @@ export default function UserActionsMenu({ user, onSelect, onClose }: Props) {
       if (event.key === "Escape") onClose();
     }
 
-    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("click", handleClickOutside);
     document.addEventListener("keydown", handleEscape);
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("click", handleClickOutside);
       document.removeEventListener("keydown", handleEscape);
     };
   }, [onClose]);
@@ -42,12 +47,12 @@ export default function UserActionsMenu({ user, onSelect, onClose }: Props) {
     <div
       ref={menuRef}
       role="menu"
-      className="absolute right-0 top-full z-20 mt-1 w-52 overflow-hidden rounded-xl border border-border/60 bg-surface-raised py-1 shadow-xl"
+      className="absolute right-0 top-full z-30 mt-1 w-52 overflow-hidden rounded-xl border border-border bg-surface py-1 text-left shadow-lg"
     >
       <button
         role="menuitem"
         onClick={() => onSelect("edit")}
-        className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm text-text-muted transition hover:bg-surface hover:text-text"
+        className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm text-text-muted transition hover:bg-surface-muted hover:text-text"
       >
         <Pencil size={15} />
         Editar perfil
@@ -57,7 +62,7 @@ export default function UserActionsMenu({ user, onSelect, onClose }: Props) {
         <button
           role="menuitem"
           onClick={() => onSelect("reactivate")}
-          className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm text-accent transition hover:bg-surface"
+          className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-primary-soft"
         >
           <UserCheck size={15} />
           Reactivar acceso
@@ -67,7 +72,7 @@ export default function UserActionsMenu({ user, onSelect, onClose }: Props) {
           <button
             role="menuitem"
             onClick={() => onSelect("block")}
-            className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm text-text-muted transition hover:bg-surface hover:text-text"
+            className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm text-text-muted transition hover:bg-surface-muted hover:text-text"
           >
             <Ban size={15} />
             Bloquear usuario
@@ -76,7 +81,7 @@ export default function UserActionsMenu({ user, onSelect, onClose }: Props) {
           <button
             role="menuitem"
             onClick={() => onSelect("deactivate")}
-            className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm text-text-muted transition hover:bg-surface hover:text-text"
+            className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm text-text-muted transition hover:bg-surface-muted hover:text-text"
           >
             <UserMinus size={15} />
             Desactivar cuenta
@@ -84,12 +89,12 @@ export default function UserActionsMenu({ user, onSelect, onClose }: Props) {
         </>
       )}
 
-      <div className="my-1 h-px bg-border/50" />
+      <div className="my-1 h-px bg-border" />
 
       <button
         role="menuitem"
         onClick={() => onSelect("delete")}
-        className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm text-red-400 transition hover:bg-red-500/10"
+        className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm text-danger transition hover:bg-danger-soft"
       >
         <Trash2 size={15} />
         Eliminar usuario

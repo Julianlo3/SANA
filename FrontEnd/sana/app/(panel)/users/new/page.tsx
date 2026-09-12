@@ -98,7 +98,7 @@ export default function NewUserPage() {
           Volver a usuarios
         </Link>
 
-        <h1 className="mt-4 font-display text-5xl font-bold tracking-tight text-primary-dark">
+        <h1 className="mt-6 font-display text-4xl font-bold tracking-tight text-primary-dark sm:text-5xl">
           Crear Usuario
         </h1>
         <p className="mt-2 text-sm text-text-muted">
