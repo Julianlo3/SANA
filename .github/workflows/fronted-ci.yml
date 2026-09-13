@@ -1,0 +1,45 @@
+name: Frontend CI
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "FrontEnd/sana/**"
+      - ".github/workflows/frontend-ci.yml"
+
+  push:
+    branches:
+      - main
+    paths:
+      - "FrontEnd/sana/**"
+      - ".github/workflows/frontend-ci.yml"
+
+jobs:
+  frontend:
+    name: Validate Frontend
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: FrontEnd/sana
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: FrontEnd/sana/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Check TypeScript
+        run: npx tsc --noEmit
