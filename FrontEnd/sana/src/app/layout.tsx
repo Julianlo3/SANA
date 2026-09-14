@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Nunito, Fraunces } from "next/font/google";
-import "./globals.css";
+import "@/styles/globals.css";
 
 const body = Nunito({
   variable: "--font-body",

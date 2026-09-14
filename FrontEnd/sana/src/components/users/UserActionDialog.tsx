@@ -152,8 +152,13 @@ export default function UserActionDialog({
       >
         <p>
           Al reactivar, <strong className="text-text">{user.fullName}</strong>{" "}
-          recuperará el acceso inmediato al sistema conservando su rol de{" "}
-          <strong className="text-text">{user.role}</strong>.
+          recuperará el acceso inmediato al sistema conservando sus roles:{" "}
+          <strong className="text-text">
+            {user.roles.length > 0
+              ? user.roles.map((role) => role.name).join(", ")
+              : "ninguno asignado"}
+          </strong>
+          .
         </p>
       </Modal>
     );
