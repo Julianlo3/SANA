@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { appConfig, validateEnvironment } from './config/app.config.js';
 import { AuthModule } from './modules/auth.module.js';
+import { UsersModule } from './users/users.module.js';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { AuthModule } from './modules/auth.module.js';
     }),
     TypeOrmModule.forRootAsync({ useFactory: appConfig }),
     AuthModule,
+    UsersModule,
   ],
 })
 export class AppModule {}
