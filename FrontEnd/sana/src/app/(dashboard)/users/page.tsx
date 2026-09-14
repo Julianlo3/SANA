@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Search, UserPlus } from "lucide-react";
 import PageDecor from "@/components/ui/page-decor";
-import UserRow from "@/components/users/user-row";
-import UserActionDialog from "@/components/users/user-action-dialog";
-import type { UserAction } from "@/components/users/user-actions-menu";
+import UserRow from "@/features/users/components/user-row";
+import UserActionDialog from "@/features/users/components/user-action-dialog";
+import type { UserAction } from "@/features/users/components/user-actions-menu";
 import { mockUsers, type User } from "@/lib/mocks/users-mock";
 
 export default function UsersPage() {
