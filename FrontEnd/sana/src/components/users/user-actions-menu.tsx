@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { Pencil, Ban, UserMinus, UserCheck, Trash2 } from "lucide-react";
-import type { User } from "@/lib/mocks/users";
+import type { User } from "@/lib/mocks/users-mock";
 
 export type UserAction =
   | "edit"

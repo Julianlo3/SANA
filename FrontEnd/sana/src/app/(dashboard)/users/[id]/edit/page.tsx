@@ -3,9 +3,9 @@
 import { use, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import PageDecor from "@/components/ui/PageDecor";
-import Button from "@/components/ui/Button";
-import { mockUsers, ROLE_CATALOG } from "@/lib/mocks/users";
+import PageDecor from "@/components/ui/page-decor";
+import Button from "@/components/ui/button";
+import { mockUsers, ROLE_CATALOG } from "@/lib/mocks/users-mock";
 import { ArrowLeft, Info, Lock, Check } from "lucide-react";
 
 type Props = {

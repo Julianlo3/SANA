@@ -1,8 +1,8 @@
 "use client";
 
 import { MoreVertical } from "lucide-react";
-import UserActionsMenu, { type UserAction } from "./UserActionsMenu";
-import type { User, UserStatus } from "@/lib/mocks/users";
+import UserActionsMenu, { type UserAction } from "./user-actions-menu";
+import type { User, UserStatus } from "@/lib/mocks/users-mock";
 
 const statusStyles: Record<UserStatus, string> = {
   active: "bg-success-soft text-success",

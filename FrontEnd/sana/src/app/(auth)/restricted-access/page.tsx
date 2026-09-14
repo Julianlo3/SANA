@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Lock, Mail } from "lucide-react";
-import StatusCard from "@/components/auth/StatusCard";
+import StatusCard from "@/features/auth/components/status-card";
 
 export default function RestrictedAccessPage() {
   return (

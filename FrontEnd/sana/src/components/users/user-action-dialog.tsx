@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { Ban, UserMinus, UserCheck, AlertTriangle } from "lucide-react";
-import Modal from "@/components/ui/Modal";
-import Button from "@/components/ui/Button";
-import type { User } from "@/lib/mocks/users";
-import type { UserAction } from "./UserActionsMenu";
+import Modal from "@/components/ui/modal";
+import Button from "@/components/ui/button";
+import type { User } from "@/lib/mocks/users-mock";
+import type { UserAction } from "./user-actions-menu";
 
 type Props = {
   action: UserAction;

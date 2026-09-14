@@ -1,4 +1,4 @@
-import PageDecor from "@/components/ui/PageDecor";
+import PageDecor from "@/components/ui/page-decor";
 
 type Tone = "info" | "danger";
 

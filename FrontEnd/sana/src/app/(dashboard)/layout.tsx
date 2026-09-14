@@ -1,5 +1,5 @@
-import Sidebar from "@/components/layout/Sidebar";
-import Header from "@/components/layout/Header";
+import Sidebar from "@/components/navigation/sidebar";
+import Header from "@/components/navigation/panel-header";
 
 export default function PanelLayout({
   children,

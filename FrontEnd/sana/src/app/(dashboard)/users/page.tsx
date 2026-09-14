@@ -4,11 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Search, UserPlus } from "lucide-react";
-import PageDecor from "@/components/ui/PageDecor";
-import UserRow from "@/components/users/UserRow";
-import UserActionDialog from "@/components/users/UserActionDialog";
-import type { UserAction } from "@/components/users/UserActionsMenu";
-import { mockUsers, type User } from "@/lib/mocks/users";
+import PageDecor from "@/components/ui/page-decor";
+import UserRow from "@/components/users/user-row";
+import UserActionDialog from "@/components/users/user-action-dialog";
+import type { UserAction } from "@/components/users/user-actions-menu";
+import { mockUsers, type User } from "@/lib/mocks/users-mock";
 
 export default function UsersPage() {
   const router = useRouter();

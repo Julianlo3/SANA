@@ -4,9 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Info } from "lucide-react";
-import PageDecor from "@/components/ui/PageDecor";
-import Button from "@/components/ui/Button";
-import { ROLE_CATALOG } from "@/lib/mocks/users";
+import PageDecor from "@/components/ui/page-decor";
+import Button from "@/components/ui/button";
+import { ROLE_CATALOG } from "@/lib/mocks/users-mock";
 
 type FormFields = {
   fullName: string;
