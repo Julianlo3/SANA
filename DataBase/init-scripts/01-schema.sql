@@ -594,6 +594,21 @@ ALTER TABLE public.users
 COMMENT ON COLUMN public.users.user_refresh_token
     IS E'El hash bcrypt de nuestro JWT refresh token';
 
+------------------------- MIGRATION 14/09/2026 -------------------------
+-- HU-1.3: un usuario puede tener varios roles a la vez, cada uno activable
+-- o desactivable por separado sin perder la asignacion (lo que ya construyo
+-- el frontend en feat/auth-states). person_rol solo tenia per_id+rol_id.
+ALTER TABLE public.person_rol
+    ADD COLUMN IF NOT EXISTS pr_active boolean NOT NULL DEFAULT true;
+
+COMMENT ON COLUMN public.person_rol.pr_active
+    IS E'Indica si el rol asignado esta activo (se puede desactivar sin quitarlo)';
+
+-- per_contact_number en integer se desborda con cualquier celular colombiano
+-- real (3xxxxxxxxx > 2147483647, el maximo de int4). Se amplia a bigint;
+-- es un ensanchamiento seguro, no hay perdida de datos.
+ALTER TABLE public.person
+    ALTER COLUMN per_contact_number TYPE bigint;
 ---- Modifications 14/09/2026 ----
 
 COMMENT ON COLUMN public.users.user_last_login_at
