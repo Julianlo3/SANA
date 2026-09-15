@@ -60,7 +60,7 @@ export class RolesGuard implements CanActivate {
         this.securityLogService
           .logRoleMismatch({
             userId: user.userId,
-            sessionId: user.sessionId ?? null,
+            sessionId: null,
             email: user.email,
             userRoles: user.roles ?? [],
             requiredRoles,
