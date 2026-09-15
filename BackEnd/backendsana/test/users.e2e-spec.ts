@@ -4,28 +4,36 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module.js';
+import { Auth0IdentityService } from '../src/services/auth0-identity.service.js';
 
 /**
  * Pruebas de HU-1.2 (creacion directa) y HU-1.3 (editar/bloquear/desactivar/
  * eliminar/reactivar) contra el Postgres real de DataBase/docker-compose.yml.
- * No usan mocks: siembran datos, llaman a los endpoints reales via HTTP y
+ * No usan mocks de BD: siembran datos, llaman a los endpoints reales via HTTP y
  * verifican el estado final en la base de datos.
+ *
+ * Autenticación: el Auth0IdentityService se sustituye por un stub que devuelve
+ * directamente el perfil del administrador sin necesidad de un token JWT real.
+ * El JwtAuthGuard extrae cualquier Bearer token y lo pasa al stub, que ignora
+ * el valor y retorna el perfil configurado.
  */
 describe('UsersController (e2e, real Postgres)', () => {
   let app: INestApplication;
   let dataSource: DataSource;
-  let jwt: JwtService;
-  let accessSecret: string;
   let origin: string;
   const createdPersonIds: number[] = [];
   let adminPersonId: number;
-  let adminToken: string;
+
+  /** Token opaco que el stub de Auth0IdentityService aceptará como válido. */
+  const ADMIN_BEARER = 'stub-admin-bearer-token';
+
+  /** Provider ID del administrador de prueba (formato Auth0). */
+  let adminProviderId: string;
 
   const unique = () => `${Date.now()}${Math.floor(Math.random() * 1000)}`;
   const uniqueIdentityDocument = () => unique().slice(-9);
@@ -48,38 +56,49 @@ describe('UsersController (e2e, real Postgres)', () => {
     );
     if (options.withAccount) {
       await dataSource.query(
-        `INSERT INTO users (use_id, user_provider_id, user_provider_name) VALUES ($1, $2, 'google')`,
-        [personId, `provider-${unique()}`],
+        `INSERT INTO users (use_id, user_provider_id, user_provider_name) VALUES ($1, $2, 'auth0')`,
+        [personId, `auth0|provider-${unique()}`],
       );
     }
     createdPersonIds.push(personId);
     return personId;
   }
 
-  async function signAccessToken(personId: number): Promise<string> {
+  /**
+   * Crea una sesión activa en auth_sessions para el usuario dado.
+   * Necesario para el test de bloqueo que verifica la revocación de sesiones.
+   */
+  async function seedSession(userId: number): Promise<string> {
     const sessionId = randomUUID();
     await dataSource.query(
       `INSERT INTO auth_sessions (auth_session_id, use_id, auth_session_refresh_token_hash, auth_session_expires_at, auth_session_last_activity_at)
        VALUES ($1, $2, 'hash', now() + interval '1 day', now())`,
-      [sessionId, personId],
+      [sessionId, userId],
     );
-    return jwt.signAsync(
-      {
-        sub: personId,
-        personId,
-        email: `admin-${personId}@gmail.com`,
-        roles: ['administrador'],
-        sessionId,
-        tokenType: 'access',
-      },
-      { secret: accessSecret, expiresIn: '15m' },
-    );
+    return sessionId;
   }
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(Auth0IdentityService)
+      .useFactory({
+        factory: () => ({
+          /**
+           * Stub de verifyAccessToken: ignora el token recibido y devuelve el
+           * perfil del administrador configurado en el beforeAll.
+           * Esto evita llamadas reales a Auth0 JWKS durante los tests E2E.
+           */
+          verifyAccessToken: async (_token: string) => ({
+            subject: adminProviderId,
+            email: `admin-${adminPersonId}@gmail.com`,
+            name: 'Admin Test',
+            isEmailVerified: true,
+          }),
+        }),
+      })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api/v1');
@@ -96,9 +115,7 @@ describe('UsersController (e2e, real Postgres)', () => {
     await app.init();
 
     dataSource = app.get(DataSource);
-    jwt = app.get(JwtService);
     const config = app.get(ConfigService);
-    accessSecret = config.getOrThrow<string>('JWT_ACCESS_SECRET');
     origin = config.getOrThrow<string>('CORS_ORIGIN').split(',')[0];
 
     adminPersonId = await seedPerson({
@@ -106,7 +123,13 @@ describe('UsersController (e2e, real Postgres)', () => {
       roleDescription: 'administrador',
       withAccount: true,
     });
-    adminToken = await signAccessToken(adminPersonId);
+
+    // Recuperamos el provider_id real sembrado para que el stub lo devuelva.
+    const [row] = await dataSource.query(
+      'SELECT user_provider_id FROM users WHERE use_id = $1',
+      [adminPersonId],
+    );
+    adminProviderId = row.user_provider_id;
   });
 
   afterAll(async () => {
@@ -133,8 +156,9 @@ describe('UsersController (e2e, real Postgres)', () => {
     await app.close();
   });
 
+  /** Adjunta el Origin permitido y el Bearer stub al request. */
   function authed(req: request.Test) {
-    return req.set('Origin', origin).set('Authorization', `Bearer ${adminToken}`);
+    return req.set('Origin', origin).set('Authorization', `Bearer ${ADMIN_BEARER}`);
   }
 
   describe('auth boundary', () => {
@@ -146,17 +170,38 @@ describe('UsersController (e2e, real Postgres)', () => {
     });
 
     it('rejects an authenticated actor without the administrator role', async () => {
+      // Creamos un secretario con su propio provider_id
       const secretaryId = await seedPerson({
         email: `secretary-${unique()}@gmail.com`,
         roleDescription: 'secretario',
         withAccount: true,
       });
-      const token = await signAccessToken(secretaryId);
-      await request(app.getHttpServer())
-        .get('/api/v1/users')
-        .set('Origin', origin)
-        .set('Authorization', `Bearer ${token}`)
-        .expect(403);
+      const [secretaryRow] = await dataSource.query(
+        'SELECT user_provider_id FROM users WHERE use_id = $1',
+        [secretaryId],
+      );
+
+      // Sobreescribimos el stub temporalmente para este request
+      const secretaryApp = app.get(Auth0IdentityService) as {
+        verifyAccessToken: (token: string) => Promise<unknown>;
+      };
+      const original = secretaryApp.verifyAccessToken.bind(secretaryApp);
+      secretaryApp.verifyAccessToken = async () => ({
+        subject: secretaryRow.user_provider_id,
+        email: `secretary-${secretaryId}@gmail.com`,
+        name: 'Secretary Test',
+        isEmailVerified: true,
+      });
+
+      try {
+        await request(app.getHttpServer())
+          .get('/api/v1/users')
+          .set('Origin', origin)
+          .set('Authorization', 'Bearer secretary-stub-token')
+          .expect(403);
+      } finally {
+        secretaryApp.verifyAccessToken = original;
+      }
     });
   });
 
@@ -312,7 +357,7 @@ describe('UsersController (e2e, real Postgres)', () => {
         roleDescription: 'secretario',
         withAccount: true,
       });
-      await signAccessToken(id); // crea una sesion activa de esta persona
+      await seedSession(id); // crea una sesion activa para verificar la revocación
 
       const response = await authed(
         request(app.getHttpServer()).patch(`/api/v1/users/${id}/status`),

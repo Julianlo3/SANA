@@ -33,24 +33,12 @@ export function validateEnvironment(environment: Record<string, unknown>) {
     DATABASE_PASSWORD: Joi.string().required(),
     DATABASE_NAME: Joi.string().required(),
     DATABASE_SSL: Joi.boolean().default(false),
-    GOOGLE_CLIENT_ID: Joi.string().required(),
-    JWT_ACCESS_SECRET: Joi.string().min(32).required(),
-    JWT_REFRESH_SECRET: Joi.string().min(32).required(),
-    AUTH_TOKEN_PEPPER: Joi.string().min(32).required(),
+    AUTH0_DOMAIN: Joi.string().hostname().required(),
+    AUTH0_AUDIENCE: Joi.string().uri().required(),
+    AUTH0_CLAIM_NAMESPACE: Joi.string().uri().required(),
     TRUST_PROXY_HOPS: Joi.number().integer().min(0).default(0),
-    JWT_ISSUER: Joi.string().default('sana-api'),
-    JWT_AUDIENCE: Joi.string().default('sana-client'),
-    JWT_ACCESS_TTL: Joi.string().default('15m'),
-    JWT_REFRESH_TTL: Joi.string().default('7d'),
-    SESSION_IDLE_TTL_MINUTES: Joi.number().integer().positive().default(30),
-    COOKIE_SECURE: Joi.boolean().default(false),
-    COOKIE_SAME_SITE: Joi.string()
-      .valid('lax', 'strict', 'none')
-      .default('lax'),
   }).unknown(true);
   const { error, value } = schema.validate(environment, { abortEarly: false });
   if (error) throw new Error(`Environment validation error: ${error.message}`);
-  if (value.COOKIE_SAME_SITE === 'none' && !value.COOKIE_SECURE)
-    throw new Error('COOKIE_SECURE must be true when COOKIE_SAME_SITE is none');
   return value;
 }

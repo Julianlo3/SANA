@@ -8,10 +8,10 @@ const environment = {
   DATABASE_USERNAME: process.env.DATABASE_USERNAME ?? 'postgres',
   DATABASE_PASSWORD: process.env.DATABASE_PASSWORD ?? 'password',
   DATABASE_NAME: process.env.DATABASE_NAME ?? 'sana',
-  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ?? 'test-client-id',
-  JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET ?? 'a'.repeat(32),
-  JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET ?? 'b'.repeat(32),
-  AUTH_TOKEN_PEPPER: process.env.AUTH_TOKEN_PEPPER ?? 'c'.repeat(32),
+  AUTH0_DOMAIN: process.env.AUTH0_DOMAIN ?? 'tenant.us.auth0.com',
+  AUTH0_AUDIENCE: process.env.AUTH0_AUDIENCE ?? 'https://api.sana.example.com',
+  AUTH0_CLAIM_NAMESPACE:
+    process.env.AUTH0_CLAIM_NAMESPACE ?? 'https://sana.app',
 };
 
 describe('validateEnvironment', () => {
@@ -20,29 +20,23 @@ describe('validateEnvironment', () => {
     expect(validateEnvironment(environment)).toMatchObject({
       PORT: 3000,
       DATABASE_SSL: false,
-      COOKIE_SECURE: false,
-      COOKIE_SAME_SITE: 'lax',
-      JWT_ACCESS_TTL: '15m',
-      JWT_ISSUER: 'sana-api',
-      JWT_AUDIENCE: 'sana-client',
+      AUTH0_DOMAIN: 'tenant.us.auth0.com',
     });
   });
 
-  // Impide enviar cookies cross-site sin el atributo Secure.
-  it('rejects SameSite=None without secure cookies', () => {
+  it('requires the Auth0 domain', () => {
     expect(() =>
       validateEnvironment({
         ...environment,
-        COOKIE_SAME_SITE: 'none',
-        COOKIE_SECURE: false,
+        AUTH0_DOMAIN: undefined,
       }),
-    ).toThrow('COOKIE_SECURE must be true');
+    ).toThrow('Environment validation error');
   });
 
-  // Falla antes de iniciar la app si falta un secreto JWT válido.
+  // Falla antes de iniciar la app si falta la audiencia de Auth0.
   it('reports invalid required configuration', () => {
     expect(() =>
-      validateEnvironment({ ...environment, JWT_ACCESS_SECRET: 'short' }),
+      validateEnvironment({ ...environment, AUTH0_AUDIENCE: undefined }),
     ).toThrow('Environment validation error');
   });
 });
