@@ -61,7 +61,7 @@ export default function Modal({
           <button
             onClick={onClose}
             aria-label="Cerrar"
-            className="cursor-pointer rounded-lg p-1 text-text-subtle transition hover:bg-surface-raised hover:text-text"
+            className="cursor-pointer rounded-lg p-1 text-text-subtle transition hover:bg-surface-muted hover:text-text"
           >
             <X size={18} />
           </button>
@@ -72,7 +72,7 @@ export default function Modal({
         </div>
 
         {footer && (
-          <div className="flex justify-end gap-3 border-t border-border/40 bg-surface-raised/40 px-6 py-4">
+          <div className="flex justify-end gap-3 border-t border-border/40 bg-surface-muted/60 px-6 py-4">
             {footer}
           </div>
         )}
