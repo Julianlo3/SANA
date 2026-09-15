@@ -1,12 +1,9 @@
-/** Envoltura estándar de las respuestas del backend. */
-export type ApiCollection<T> = {
-  data: T[];
-  total?: number;
-};
-
-export type ApiItem<T> = {
-  data: T;
-};
+/**
+ * El backend responde con objetos y arreglos planos, sin envoltura { data }.
+ * Se dejan estos alias para que quede explícito en las firmas.
+ */
+export type ApiCollection<T> = T[];
+export type ApiItem<T> = T;
 
 /** Error normalizado que consumen las pantallas. */
 export class ApiError extends Error {

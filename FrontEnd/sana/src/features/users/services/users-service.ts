@@ -16,6 +16,9 @@ import type {
  * Mientras USE_MOCKS esté activo responde con datos de prueba, así el frontend
  * avanza sin depender del backend. Al apagar la bandera, las mismas funciones
  * pegan contra la API real sin cambiar una sola pantalla.
+ *
+ * Nota: el backend todavía no expone /users, así que estos endpoints están
+ * escritos contra el contrato acordado pero aún no se han probado.
  */
 
 const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS !== "false";
@@ -30,11 +33,7 @@ function delay<T>(value: T): Promise<T> {
 export async function getUsers(signal?: AbortSignal): Promise<User[]> {
   if (USE_MOCKS) return delay(USERS_MOCK);
 
-  const response = await httpClient.get<ApiCollection<User>>(
-    ENDPOINTS.users,
-    signal,
-  );
-  return response.data;
+  return httpClient.get<ApiCollection<User>>(ENDPOINTS.users, signal);
 }
 
 export async function getUserById(
@@ -45,11 +44,7 @@ export async function getUserById(
     return delay(USERS_MOCK.find((user) => user.id === id) ?? null);
   }
 
-  const response = await httpClient.get<ApiItem<User>>(
-    ENDPOINTS.user(id),
-    signal,
-  );
-  return response.data;
+ return httpClient.get<ApiItem<User>>(ENDPOINTS.user(id), signal);
 }
 
 export async function createUser(payload: CreateUserPayload): Promise<User> {
@@ -63,11 +58,7 @@ export async function createUser(payload: CreateUserPayload): Promise<User> {
     });
   }
 
-  const response = await httpClient.post<ApiItem<User>>(
-    ENDPOINTS.users,
-    payload,
-  );
-  return response.data;
+ return httpClient.post<ApiItem<User>>(ENDPOINTS.users, payload);
 }
 
 export async function updateUser(
