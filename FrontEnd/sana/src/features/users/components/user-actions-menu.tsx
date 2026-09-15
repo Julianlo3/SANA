@@ -1,30 +1,34 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Pencil, Ban, UserMinus, UserCheck, Trash2 } from "lucide-react";
-import type { User } from "@/lib/mocks/users-mock";
-
-export type UserAction =
-  | "edit"
-  | "block"
-  | "deactivate"
-  | "reactivate"
-  | "delete";
+import { Ban, Pencil, Trash2, UserCheck, UserMinus } from "lucide-react";
+import type { User, UserAction } from "../types/user-types";
 
 type Props = {
   user: User;
   onSelect: (action: UserAction) => void;
   onClose: () => void;
+  /**
+   * Abre el menú hacia arriba. Se usa en las últimas filas para que el panel
+   * no se salga del área visible ni tape el pie del listado.
+   */
+  openUpwards?: boolean;
 };
 
-export default function UserActionsMenu({ user, onSelect, onClose }: Props) {
+const ITEM_CLASS =
+  "flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm transition";
+
+export default function UserActionsMenu({
+  user,
+  onSelect,
+  onClose,
+  openUpwards = false,
+}: Props) {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (!menuRef.current?.contains(event.target as Node)) {
-        onClose();
-      }
+      if (!menuRef.current?.contains(event.target as Node)) onClose();
     }
 
     function handleEscape(event: KeyboardEvent) {
@@ -40,31 +44,33 @@ export default function UserActionsMenu({ user, onSelect, onClose }: Props) {
     };
   }, [onClose]);
 
-  const isBlocked = user.status === "blocked";
-  const isInactive = user.status === "inactive";
+  const canReactivate = user.status !== "active";
 
   return (
     <div
       ref={menuRef}
       role="menu"
-      className="absolute right-0 top-full z-30 mt-1 w-52 overflow-hidden rounded-xl border border-border bg-surface py-1 text-left shadow-lg"
+      aria-label={`Acciones para ${user.fullName}`}
+      className={`absolute right-0 z-50 w-56 overflow-hidden rounded-xl border border-border bg-surface py-1 text-left shadow-lg ${
+        openUpwards ? "bottom-full mb-1" : "top-full mt-1"
+      }`}
     >
       <button
         role="menuitem"
         onClick={() => onSelect("edit")}
-        className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm text-text-muted transition hover:bg-surface-muted hover:text-text"
+        className={`${ITEM_CLASS} text-text-muted hover:bg-surface-muted hover:text-text`}
       >
-        <Pencil size={15} />
-        Editar perfil
+        <Pencil size={15} aria-hidden />
+        Editar información
       </button>
 
-      {isBlocked || isInactive ? (
+      {canReactivate ? (
         <button
           role="menuitem"
           onClick={() => onSelect("reactivate")}
-          className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-primary-soft"
+          className={`${ITEM_CLASS} font-semibold text-primary hover:bg-primary-soft`}
         >
-          <UserCheck size={15} />
+          <UserCheck size={15} aria-hidden />
           Reactivar acceso
         </button>
       ) : (
@@ -72,31 +78,31 @@ export default function UserActionsMenu({ user, onSelect, onClose }: Props) {
           <button
             role="menuitem"
             onClick={() => onSelect("block")}
-            className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm text-text-muted transition hover:bg-surface-muted hover:text-text"
+            className={`${ITEM_CLASS} text-text-muted hover:bg-surface-muted hover:text-text`}
           >
-            <Ban size={15} />
-            Bloquear usuario
+            <Ban size={15} aria-hidden />
+            Bloquear acceso
           </button>
 
           <button
             role="menuitem"
             onClick={() => onSelect("deactivate")}
-            className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm text-text-muted transition hover:bg-surface-muted hover:text-text"
+            className={`${ITEM_CLASS} text-text-muted hover:bg-surface-muted hover:text-text`}
           >
-            <UserMinus size={15} />
+            <UserMinus size={15} aria-hidden />
             Desactivar cuenta
           </button>
         </>
       )}
 
-      <div className="my-1 h-px bg-border" />
+      <div className="my-1 h-px bg-border" role="separator" />
 
       <button
         role="menuitem"
         onClick={() => onSelect("delete")}
-        className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm text-danger transition hover:bg-danger-soft"
+        className={`${ITEM_CLASS} text-danger hover:bg-danger-soft`}
       >
-        <Trash2 size={15} />
+        <Trash2 size={15} aria-hidden />
         Eliminar usuario
       </button>
     </div>

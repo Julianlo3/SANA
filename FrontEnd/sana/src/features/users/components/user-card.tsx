@@ -11,14 +11,13 @@ import type { User, UserAction } from "../types/user-types";
 type Props = {
   user: User;
   isMenuOpen: boolean;
-  /** Abre el menú hacia arriba cuando la fila está al final de la tabla. */
   openMenuUpwards: boolean;
   onToggleMenu: () => void;
   onCloseMenu: () => void;
   onAction: (action: UserAction, user: User) => void;
 };
 
-export default function UserRow({
+export default function UserCard({
   user,
   isMenuOpen,
   openMenuUpwards,
@@ -27,34 +26,31 @@ export default function UserRow({
   onAction,
 }: Props) {
   return (
-    <tr className="border-b border-border last:border-0">
-      <td className="py-4 pl-5 pr-3">
-        <div className="flex items-center gap-3">
-          <span
-            aria-hidden
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-white"
-          >
-            {getInitials(user.fullName)}
-          </span>
-          <span className="font-medium text-text">{user.fullName}</span>
+    <li className="flex items-start gap-3 border-b border-border p-4 last:border-0">
+      <span
+        aria-hidden
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-white"
+      >
+        {getInitials(user.fullName)}
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold text-text">{user.fullName}</p>
+        <p className="truncate text-xs text-text-muted">{user.email}</p>
+
+        <div className="mt-3">
+          <RoleTags roles={user.roles} />
         </div>
-      </td>
 
-      <td className="px-3 py-4 text-sm text-text-muted">{user.email}</td>
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <UserStatusBadge status={user.status} />
+          <span className="text-xs text-text-subtle">
+            {formatRelativeDate(user.lastLoginAt)}
+          </span>
+        </div>
+      </div>
 
-      <td className="px-3 py-4">
-        <RoleTags roles={user.roles} />
-      </td>
-
-      <td className="px-3 py-4">
-        <UserStatusBadge status={user.status} />
-      </td>
-
-      <td className="px-3 py-4 text-sm text-text-subtle">
-        {formatRelativeDate(user.lastLoginAt)}
-      </td>
-
-      <td className="relative py-4 pl-3 pr-5 text-right">
+      <div className="relative shrink-0">
         <button
           onClick={onToggleMenu}
           aria-label={`Acciones para ${user.fullName}`}
@@ -73,7 +69,7 @@ export default function UserRow({
             onSelect={(action) => onAction(action, user)}
           />
         )}
-      </td>
-    </tr>
+      </div>
+    </li>
   );
 }
