@@ -1,28 +1,79 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import type { Request } from 'express';
 import type { AuthenticatedUser } from '../interfaces/auth.interface.js';
+import { SECTION_KEY } from '../middlewares/section.decorator.js';
+import { SecurityLogService } from '../services/security-log.service.js';
+
 export const ROLES_KEY = 'roles';
+
 /**
- * Guard that checks if the authenticated user has the required roles to access a route.
+ * Guard that verifies if the authenticated user possesses the required role(s) to access a route or section.
+ * When an unauthorized access attempt by a logged-in user is detected, it logs the incident to `security_access_log`.
  */
 @Injectable()
 export class RolesGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {}
+  constructor(
+    private readonly reflector: Reflector,
+    private readonly securityLogService: SecurityLogService,
+  ) { }
 
   /**
-   * Checks if the authenticated user has the required roles to access a route.
+   * Evaluates if the current request is authorized based on role metadata.
    * @param context The execution context.
-   * @returns A boolean indicating if the user has the required roles.
+   * @returns A boolean indicating whether access is granted.
    */
   canActivate(context: ExecutionContext): boolean {
-    const roles = this.reflector.getAllAndOverride<string[]>(ROLES_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-    if (!roles) return true;
-    const user = context
+    const requiredRoles = this.reflector.getAllAndOverride<string[]>(
+      ROLES_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+
+    if (!requiredRoles || requiredRoles.length === 0) {
+      return true;
+    }
+
+    const request = context
       .switchToHttp()
-      .getRequest<{ user: AuthenticatedUser }>().user;
-    return roles.some((role) => user.roles.includes(role));
+      .getRequest<Request & { user?: AuthenticatedUser }>();
+    const user = request.user;
+
+    const hasRole = Boolean(
+      user && requiredRoles.some((role) => user.roles.includes(role)),
+    );
+
+    if (!hasRole) {
+      if (user?.userId) {
+        const explicitSection = this.reflector.getAllAndOverride<string>(
+          SECTION_KEY,
+          [context.getHandler(), context.getClass()],
+        );
+        const section =
+          explicitSection ??
+          `${request.method} ${request.originalUrl || request.url || 'Unknown'}`;
+
+        this.securityLogService
+          .logRoleMismatch({
+            userId: user.userId,
+            sessionId: user.sessionId ?? null,
+            email: user.email,
+            userRoles: user.roles ?? [],
+            requiredRoles,
+            section,
+          })
+          .catch((err) => {
+            console.error('Failed to log unauthorized role access:', err);
+          });
+      }
+
+      throw new ForbiddenException('Forbidden resource: insufficient permissions');
+    }
+
+    return true;
   }
 }

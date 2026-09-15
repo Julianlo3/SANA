@@ -5,8 +5,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import bcrypt from 'bcrypt';
-import { randomUUID } from 'crypto';
+import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'crypto';
 import { DataSource, EntityManager } from 'typeorm';
 import type {
   AuthenticatedUser,
@@ -17,6 +16,7 @@ import type {
 import { AccountState } from '../models/account-state.enum.js';
 import { UserRole } from '../models/user-role.enum.js';
 import { AuthRepository } from '../repositories/auth.repository.js';
+import { SecurityLogService } from './security-log.service.js';
 
 const ALLOWED_ROLES = new Set([
   UserRole.Administrator,
@@ -26,7 +26,7 @@ const ALLOWED_ROLES = new Set([
 ]);
 
 /**
- * Service for handling authentication-related logic.
+ * Service for handling authentication and session lifecycle logic.
  */
 @Injectable()
 export class AuthService {
@@ -35,6 +35,7 @@ export class AuthService {
     private readonly dataSource: DataSource,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly securityLogService: SecurityLogService,
   ) { }
 
   /**
@@ -84,56 +85,181 @@ export class AuthService {
         'Google account does not match the claimed account',
       );
 
-    if (record.state !== AccountState.Active)
+    if (record.state !== AccountState.Active) {
+      this.securityLogService
+        .logUnauthorizedAccess({
+          userId: record.userId,
+          section: 'OAuth Sign-In',
+          message: `User ${record.email} with state '${record.state}' attempted to sign in.`,
+        })
+        .catch((err) => console.error('Failed to log security incident:', err));
       throw new ForbiddenException('Account is not active');
-    if (!record.roles.some((role) => ALLOWED_ROLES.has(role as UserRole)))
-      throw new ForbiddenException('Account role is not authorized');
+    }
 
+    if (!record.roles.some((role) => ALLOWED_ROLES.has(role as UserRole))) {
+      this.securityLogService
+        .logUnauthorizedAccess({
+          userId: record.userId,
+          section: 'OAuth Sign-In',
+          message: `User ${record.email} without authorized roles [${record.roles.join(', ') || 'None'}] attempted to sign in.`,
+        })
+        .catch((err) => console.error('Failed to log security incident:', err));
+      throw new ForbiddenException('Account role is not authorized');
+    }
+
+    await this.repository.updateLastLogin(record.userId);
     return this.createSession(record);
   }
 
   /**
-   * Refreshes an authentication token.
-   * @param refreshToken The refresh token to use.
+   * Refreshes an authentication token using Refresh Token Rotation (RTR)
+   * with automatic reuse detection.
+   * @param refreshToken The composite refresh token (`${sessionId}.${secret}`).
    * @returns A promise resolving to the new token pair.
    */
   async refresh(refreshToken: string): Promise<TokenPair> {
-    const payload = await this.verify(refreshToken, 'refresh');
+    const dotIndex = refreshToken.indexOf('.');
+    if (dotIndex === -1)
+      throw new UnauthorizedException('Invalid refresh token format');
+
+    const sessionId = refreshToken.substring(0, dotIndex);
+    const tokenSecret = refreshToken.substring(dotIndex + 1);
+    if (!sessionId || !tokenSecret)
+      throw new UnauthorizedException('Invalid refresh token');
+
+    const incomingHash = this.hashToken(tokenSecret);
+
     return this.dataSource.transaction(async (manager) => {
-      const session = await this.getSession(payload.sessionId, manager, true);
-      if (
-        !session ||
-        !(await bcrypt.compare(
-          refreshToken,
-          String(session.auth_session_refresh_token_hash),
-        ))
-      )
-        throw new UnauthorizedException('Invalid refresh token');
-      const record = await this.ensureActive(payload.sub);
-      await manager.query(
-        'UPDATE auth_sessions SET auth_session_revoked_at=now() WHERE auth_session_id=$1',
-        [payload.sessionId],
+      const rows = await manager.query(
+        `SELECT auth_session_id, use_id, auth_session_refresh_token_hash,
+                auth_session_previous_token_hash, auth_session_expires_at,
+                auth_session_revoked_at, auth_session_last_activity_at
+           FROM auth_sessions
+          WHERE auth_session_id = $1
+            FOR UPDATE`,
+        [sessionId],
       );
-      const tokens = await this.createSession(record, manager);
-      console.log('Auth session = refreshed');
-      return tokens;
+
+      const session = rows[0];
+      if (!session) throw new UnauthorizedException('Invalid refresh token');
+
+      if (session.auth_session_revoked_at !== null)
+        throw new UnauthorizedException('Session has been revoked');
+
+      const now = new Date();
+      if (new Date(session.auth_session_expires_at) <= now) {
+        await manager.query(
+          `UPDATE auth_sessions
+              SET auth_session_revoked_at = now(),
+                  auth_session_revoked_reason = 'expired'
+            WHERE auth_session_id = $1`,
+          [sessionId],
+        );
+        throw new UnauthorizedException('Session expired');
+      }
+
+      const idleLimitMinutes = this.configService.getOrThrow<number>(
+        'SESSION_IDLE_TTL_MINUTES',
+      );
+      const lastActivity = new Date(session.auth_session_last_activity_at);
+      if (now.getTime() - lastActivity.getTime() > idleLimitMinutes * 60 * 1000) {
+        await manager.query(
+          `UPDATE auth_sessions
+              SET auth_session_revoked_at = now(),
+                  auth_session_revoked_reason = 'expired'
+            WHERE auth_session_id = $1`,
+          [sessionId],
+        );
+        throw new UnauthorizedException('Session idle timeout');
+      }
+
+      if (
+        this.compareHashes(
+          incomingHash,
+          session.auth_session_refresh_token_hash,
+        )
+      ) {
+        const record = await this.ensureActive(session.use_id, sessionId);
+        const newSecret = randomBytes(32).toString('base64url');
+        const newHash = this.hashToken(newSecret);
+
+        await manager.query(
+          `UPDATE auth_sessions
+              SET auth_session_previous_token_hash = auth_session_refresh_token_hash,
+                  auth_session_refresh_token_hash = $1,
+                  auth_session_last_activity_at = now()
+            WHERE auth_session_id = $2`,
+          [newHash, sessionId],
+        );
+
+        const accessToken = await this.generateAccessToken({
+          sub: record.userId as number,
+          personId: record.personId,
+          email: record.email,
+          roles: record.roles,
+          sessionId,
+          tokenType: 'access',
+        });
+
+        console.log('Auth session = rotated');
+        return {
+          accessToken,
+          refreshToken: `${sessionId}.${newSecret}`,
+        };
+      }
+
+      if (
+        session.auth_session_previous_token_hash &&
+        this.compareHashes(
+          incomingHash,
+          session.auth_session_previous_token_hash,
+        )
+      ) {
+        await manager.query(
+          `UPDATE auth_sessions
+              SET auth_session_revoked_at = now(),
+                  auth_session_revoked_reason = 'reuse_detected'
+            WHERE auth_session_id = $1`,
+          [sessionId],
+        );
+
+        this.securityLogService
+          .logUnauthorizedAccess({
+            userId: session.use_id,
+            sessionId,
+            section: 'auth/refresh',
+            message: 'Refresh token reuse detected. Session revoked.',
+          })
+          .catch((err) => {
+            console.error('Failed to log token reuse incident:', err);
+          });
+
+        console.warn(
+          `Auth session = revoked (reuse detected) for session ${sessionId}`,
+        );
+        throw new UnauthorizedException('Refresh token reuse detected');
+      }
+
+      throw new UnauthorizedException('Invalid refresh token');
     });
   }
 
-  /** 
+  /**
    * Authenticates a user based on their access token.
    * @param accessToken The access token to use.
    * @returns A promise resolving to the authenticated user information.
    */
   async authenticate(accessToken: string): Promise<AuthenticatedUser> {
-    const payload = await this.verify(accessToken, 'access');
-    if (!(await this.getSession(payload.sessionId)))
-      throw new UnauthorizedException('Session expired');
-    const record = await this.ensureActive(payload.sub);
+    const payload = await this.verifyAccessToken(accessToken);
+    const session = await this.getActiveSession(payload.sessionId);
+    if (!session) throw new UnauthorizedException('Session expired or revoked');
+
+    const record = await this.ensureActive(payload.sub, payload.sessionId);
     await this.dataSource.query(
       'UPDATE auth_sessions SET auth_session_last_activity_at=now() WHERE auth_session_id=$1',
       [payload.sessionId],
     );
+
     return {
       userId: payload.sub,
       personId: record.personId,
@@ -149,14 +275,44 @@ export class AuthService {
    */
   async logout(sessionId: string): Promise<void> {
     await this.dataSource.query(
-      'UPDATE auth_sessions SET auth_session_revoked_at=now() WHERE auth_session_id=$1 AND auth_session_revoked_at IS NULL',
+      `UPDATE auth_sessions
+          SET auth_session_revoked_at = now(),
+              auth_session_revoked_reason = 'logout'
+        WHERE auth_session_id = $1
+          AND auth_session_revoked_at IS NULL`,
       [sessionId],
     );
-    console.log('Auth session = revoked');
+    console.log('Auth session = revoked (logout)');
   }
 
   /**
-   * Creates a new authentication session.
+   * Hashes a raw token secret using HMAC-SHA256 with the server pepper.
+   * @param secret The plain token secret.
+   * @returns The hex-encoded HMAC hash.
+   */
+  private hashToken(secret: string): string {
+    const pepper =
+      this.configService.get<string>('AUTH_TOKEN_PEPPER') ??
+      this.configService.getOrThrow<string>('JWT_REFRESH_SECRET');
+    return createHmac('sha256', pepper).update(secret).digest('hex');
+  }
+
+  /**
+   * Performs constant-time comparison of two hex hashes to prevent timing attacks.
+   * @param a Hex hash string A.
+   * @param b Hex hash string B.
+   * @returns True if hashes are identical.
+   */
+  private compareHashes(a?: string | null, b?: string | null): boolean {
+    if (!a || !b) return false;
+    const bufA = Buffer.from(a, 'hex');
+    const bufB = Buffer.from(b, 'hex');
+    if (bufA.length !== bufB.length) return false;
+    return timingSafeEqual(bufA, bufB);
+  }
+
+  /**
+   * Creates a new authentication session with an opaque refresh token.
    * @param record The user record for which to create a session.
    * @param manager The entity manager to use.
    * @returns A promise resolving to the token pair.
@@ -172,79 +328,95 @@ export class AuthService {
   ): Promise<TokenPair> {
     const sessionId = randomUUID();
     const refreshTtl = this.configService.getOrThrow<string>('JWT_REFRESH_TTL');
-    const payload: JwtPayload = {
+    const secret = randomBytes(32).toString('base64url');
+    const tokenHash = this.hashToken(secret);
+    const expiresAt = new Date(
+      Date.now() + this.durationMilliseconds(refreshTtl),
+    );
+
+    await manager.query(
+      `INSERT INTO auth_sessions (
+         auth_session_id,
+         use_id,
+         auth_session_refresh_token_hash,
+         auth_session_previous_token_hash,
+         auth_session_expires_at,
+         auth_session_last_activity_at
+       ) VALUES ($1, $2, $3, NULL, $4, now())`,
+      [sessionId, record.userId, tokenHash, expiresAt],
+    );
+
+    const accessToken = await this.generateAccessToken({
       sub: record.userId as number,
       personId: record.personId,
       email: record.email,
       roles: record.roles,
       sessionId,
-      tokenType: 'refresh',
-    };
-    const refreshToken = await this.jwtService.signAsync(payload, {
-      secret: this.configService.getOrThrow('JWT_REFRESH_SECRET'),
-      expiresIn: refreshTtl as never,
+      tokenType: 'access',
     });
-    await manager.query(
-      'INSERT INTO auth_sessions (auth_session_id,use_id,auth_session_refresh_token_hash,auth_session_expires_at) VALUES ($1,$2,$3,$4)',
-      [
-        sessionId,
-        record.userId,
-        await bcrypt.hash(refreshToken, 12),
-        new Date(Date.now() + this.durationMilliseconds(refreshTtl)),
-      ],
-    );
-    const accessToken = await this.jwtService.signAsync(
-      { ...payload, tokenType: 'access' },
-      {
-        secret: this.configService.getOrThrow('JWT_ACCESS_SECRET'),
-        expiresIn: this.configService.getOrThrow<string>(
-          'JWT_ACCESS_TTL',
-        ) as never,
-      },
-    );
+
     console.log('Auth session = created');
-    return { accessToken, refreshToken };
+    return {
+      accessToken,
+      refreshToken: `${sessionId}.${secret}`,
+    };
   }
 
   /**
-   * Verifies a JWT token and returns its payload.
-   * @param token The token to verify.
-   * @param tokenType The type of the token to verify.
-   * @returns A promise resolving to the verified payload.
+   * Generates a signed JWT access token with strict standard claims.
+   * @param payload The payload to include in the access token.
+   * @returns A promise resolving to the signed access token string.
    */
-  private async verify(
-    token: string,
-    tokenType: JwtPayload['tokenType'],
-  ): Promise<JwtPayload> {
+  private async generateAccessToken(payload: JwtPayload): Promise<string> {
+    return this.jwtService.signAsync(payload, {
+      secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
+      expiresIn: this.configService.getOrThrow<string>(
+        'JWT_ACCESS_TTL',
+      ) as never,
+      issuer: this.configService.getOrThrow<string>('JWT_ISSUER'),
+      audience: this.configService.getOrThrow<string>('JWT_AUDIENCE'),
+      algorithm: 'HS256',
+    });
+  }
+
+  /**
+   * Verifies an access token JWT with strict standard claim validation.
+   * @param token The JWT access token.
+   * @returns The verified JWT payload.
+   */
+  private async verifyAccessToken(token: string): Promise<JwtPayload> {
     try {
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
-        secret: this.configService.getOrThrow(
-          tokenType === 'access' ? 'JWT_ACCESS_SECRET' : 'JWT_REFRESH_SECRET',
-        ),
+        secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
+        issuer: this.configService.getOrThrow<string>('JWT_ISSUER'),
+        audience: this.configService.getOrThrow<string>('JWT_AUDIENCE'),
+        algorithms: ['HS256'],
       });
-      if (payload.tokenType !== tokenType) throw new Error();
+      if (payload.tokenType !== 'access') throw new Error();
       return payload;
     } catch {
-      throw new UnauthorizedException('Invalid token');
+      throw new UnauthorizedException('Invalid or expired access token');
     }
   }
 
   /**
-   * Retrieves an authentication session by its ID.
-   * @param sessionId The ID of the session to retrieve.
-   * @param manager The entity manager to use.
-   * @param shouldLock Whether to lock the session row for update.
-   * @returns A promise resolving to the session record or null if not found.
+   * Retrieves an active authentication session by ID.
+   * @param sessionId The ID of the session.
+   * @returns The active session row or null.
    */
-  private async getSession(
+  private async getActiveSession(
     sessionId: string,
-    manager: EntityManager = this.dataSource.manager,
-    shouldLock = false,
   ): Promise<Record<string, unknown> | null> {
-    const lockClause = shouldLock ? ' FOR UPDATE' : '';
-    const rows = await manager.query(
-      `SELECT * FROM auth_sessions WHERE auth_session_id=$1 AND auth_session_revoked_at IS NULL AND auth_session_expires_at>now() AND auth_session_last_activity_at + ($2 * interval '1 minute') > now()${lockClause}`,
-      [sessionId, this.configService.getOrThrow('SESSION_IDLE_TTL_MINUTES')],
+    const idleLimitMinutes = this.configService.getOrThrow<number>(
+      'SESSION_IDLE_TTL_MINUTES',
+    );
+    const rows = await this.dataSource.query(
+      `SELECT * FROM auth_sessions
+        WHERE auth_session_id = $1
+          AND auth_session_revoked_at IS NULL
+          AND auth_session_expires_at > now()
+          AND auth_session_last_activity_at + ($2 * interval '1 minute') > now()`,
+      [sessionId, idleLimitMinutes],
     );
     return rows[0] ?? null;
   }
@@ -252,16 +424,35 @@ export class AuthService {
   /**
    * Ensures that a user is active and has allowed roles.
    * @param userId The ID of the user to check.
-   * @returns A promise resolving to the user record if they are active and have allowed roles.
+   * @param sessionId Optional active session ID for security logging.
+   * @returns A promise resolving to the user record if active and authorized.
    */
-  private async ensureActive(userId: number) {
+  private async ensureActive(userId: number, sessionId?: string | null) {
     const record = await this.repository.findByUserId(userId);
-    if (
-      !record ||
-      record.state !== AccountState.Active ||
-      !record.roles.some((role) => ALLOWED_ROLES.has(role as UserRole))
-    )
-      throw new ForbiddenException('Account is not authorized');
+    if (!record || record.state !== AccountState.Active) {
+      this.securityLogService
+        .logUnauthorizedAccess({
+          userId,
+          sessionId,
+          section: 'Session Authorization',
+          message: `Inactive user account ${record?.email ?? userId} attempted operation.`,
+        })
+        .catch((err) => console.error('Failed to log security incident:', err));
+      throw new ForbiddenException('Account is not active');
+    }
+
+    if (!record.roles.some((role) => ALLOWED_ROLES.has(role as UserRole))) {
+      this.securityLogService
+        .logUnauthorizedAccess({
+          userId,
+          sessionId,
+          section: 'Session Authorization',
+          message: `User ${record.email} without authorized roles [${record.roles.join(', ') || 'None'}] attempted operation.`,
+        })
+        .catch((err) => console.error('Failed to log security incident:', err));
+      throw new ForbiddenException('Account role is not authorized');
+    }
+
     return record;
   }
 
