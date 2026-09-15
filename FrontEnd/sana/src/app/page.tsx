@@ -14,7 +14,7 @@ const programs = [
     icon: HeartHandshake,
     title: "Acompañamiento psicológico",
     description:
-      "Texto pendiente: descripción del acompañamiento que ofrece la fundación.",
+      "Texto pendiente: descripción del acompañamiento que ofrece la fundación huellitas.",
   },
   {
     icon: ShieldCheck,
