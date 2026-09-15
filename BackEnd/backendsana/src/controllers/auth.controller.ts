@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  HttpException,
   HttpCode,
   HttpStatus,
   Post,
@@ -16,14 +17,19 @@ import type { Request, Response } from 'express';
 import { GoogleSignInDto } from '../dto/google-sign-in.dto.js';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard.js';
 import { OriginGuard } from '../guards/origin.guard.js';
+import { RateLimitGuard } from '../guards/rate-limit.guard.js';
 import type { AuthenticatedUser } from '../interfaces/auth.interface.js';
+import { RateLimit } from '../middlewares/rate-limit.decorator.js';
+import { Section } from '../middlewares/section.decorator.js';
 import { AuthService } from '../services/auth.service.js';
 import { GoogleIdentityService } from '../services/google-identity.service.js';
 
 /**
- * Controller for handling authentication-related endpoints.
+ * Controller for handling authentication-related endpoints with rate limiting and secure session handling.
  */
 @Controller('auth')
+@Section('Authentication Service')
+@UseGuards(OriginGuard, RateLimitGuard)
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
@@ -37,7 +43,7 @@ export class AuthController {
    * @returns The created nonce.
    */
   @Post('nonces')
-  @UseGuards(OriginGuard)
+  @RateLimit({ limit: 10, windowSeconds: 60 })
   createGoogleNonce(@Res({ passthrough: true }) response: Response) {
     const nonce = randomUUID();
     response.cookie(
@@ -50,14 +56,14 @@ export class AuthController {
   }
 
   /**
-   * Handles Google sign-in requests.
+   * Handles Google sign-in requests with anti-bruteforce throttling.
    * @param dto The Google sign-in DTO.
    * @param request The request object.
    * @param response The response object.
    * @returns The authentication tokens.
    */
   @Post('sessions')
-  @UseGuards(OriginGuard)
+  @RateLimit({ limit: 5, windowSeconds: 60 })
   async googleSignIn(
     @Body() dto: GoogleSignInDto,
     @Req() request: Request & { cookies?: Record<string, string> },
@@ -75,15 +81,15 @@ export class AuthController {
     this.setRefreshCookie(response, tokens.refreshToken);
     return { accessToken: tokens.accessToken };
   }
-  
+
   /**
-   * Refreshes the access token.
+  * Refreshes the access token and clears the cookie only for authentication failures.
    * @param request The request object.
    * @param response The response object.
    * @returns The new authentication tokens.
    */
   @Post('access-tokens')
-  @UseGuards(OriginGuard)
+  @RateLimit({ limit: 10, windowSeconds: 60 })
   async refresh(
     @Req() request: Request & { cookies?: Record<string, string> },
     @Res({ passthrough: true }) response: Response,
@@ -91,9 +97,16 @@ export class AuthController {
     const refreshToken = request.cookies?.[this.refreshCookieName()];
     if (!refreshToken)
       throw new UnauthorizedException('Refresh token is required');
-    const tokens = await this.authService.refresh(refreshToken);
-    this.setRefreshCookie(response, tokens.refreshToken);
-    return { accessToken: tokens.accessToken };
+
+    try {
+      const tokens = await this.authService.refresh(refreshToken);
+      this.setRefreshCookie(response, tokens.refreshToken);
+      return { accessToken: tokens.accessToken };
+    } catch (error) {
+      if (this.isAuthenticationFailure(error))
+        response.clearCookie(this.refreshCookieName(), this.cookieOptions());
+      throw error;
+    }
   }
 
   /**
@@ -103,7 +116,7 @@ export class AuthController {
    */
   @Delete('sessions/current')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @UseGuards(OriginGuard, JwtAuthGuard)
+  @UseGuards(JwtAuthGuard)
   async logout(
     @Req() request: Request & { user: AuthenticatedUser },
     @Res({ passthrough: true }) response: Response,
@@ -162,13 +175,23 @@ export class AuthController {
    */
   private googleNonceCookieName(): string {
     return this.configService.getOrThrow<boolean>('COOKIE_SECURE')
-      ? '__Host-sana-google-nonce'
-      : 'sana-google-nonce';
+      ? '__Host-sana-g-nonce'
+      : 'sana-g-nonce';
+  }
+
+  private isAuthenticationFailure(error: unknown): boolean {
+    return (
+      error instanceof UnauthorizedException ||
+      (error instanceof HttpException &&
+        [HttpStatus.UNAUTHORIZED, HttpStatus.FORBIDDEN].includes(
+          error.getStatus(),
+        ))
+    );
   }
 
   /**
    * Converts a duration string to milliseconds.
-   * @param value The duration string.
+   * @param value The duration string to convert.
    * @returns The duration in milliseconds.
    */
   private durationMilliseconds(value: string): number {

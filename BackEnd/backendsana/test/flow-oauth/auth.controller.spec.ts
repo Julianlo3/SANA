@@ -31,7 +31,7 @@ describe('AuthController', () => {
 
     expect(result.nonce).toMatch(/^[0-9a-f-]{36}$/);
     expect(response.cookie).toHaveBeenCalledWith(
-      'sana-google-nonce',
+      'sana-g-nonce',
       result.nonce,
       expect.objectContaining({ httpOnly: true, maxAge: 300000 }),
     );
@@ -42,7 +42,7 @@ describe('AuthController', () => {
     await expect(
       setup().googleSignIn(
         { idToken: 'token', nonce: 'wrong' },
-        { cookies: { 'sana-google-nonce': 'expected' } } as never,
+        { cookies: { 'sana-g-nonce': 'expected' } } as never,
         response as never,
       ),
     ).rejects.toBeInstanceOf(UnauthorizedException);
@@ -60,12 +60,12 @@ describe('AuthController', () => {
     await expect(
       setup().googleSignIn(
         { idToken: 'token', nonce: 'expected' },
-        { cookies: { 'sana-google-nonce': 'expected' } } as never,
+        { cookies: { 'sana-g-nonce': 'expected' } } as never,
         response as never,
       ),
     ).resolves.toEqual({ accessToken: 'access' });
     expect(response.clearCookie).toHaveBeenCalledWith(
-      'sana-google-nonce',
+      'sana-g-nonce',
       expect.any(Object),
     );
     expect(response.cookie).toHaveBeenCalledWith(
@@ -96,6 +96,22 @@ describe('AuthController', () => {
       'sana-refresh',
       'new-refresh',
       expect.any(Object),
+    );
+  });
+
+  it('clears the refresh cookie when token rotation rejects an invalid token', async () => {
+    const response = { cookie: vi.fn(), clearCookie: vi.fn() };
+    auth.refresh.mockRejectedValue(new UnauthorizedException());
+
+    await expect(
+      setup().refresh(
+        { cookies: { 'sana-refresh': 'reused-token' } } as never,
+        response as never,
+      ),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(response.clearCookie).toHaveBeenCalledWith(
+      'sana-refresh',
+      expect.objectContaining({ httpOnly: true, path: '/' }),
     );
   });
 });

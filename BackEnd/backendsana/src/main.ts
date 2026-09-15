@@ -7,6 +7,10 @@ import { AppModule } from './app.module.js';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('api/v1');
+  app.getHttpAdapter().getInstance().set(
+    'trust proxy',
+    Number(process.env.TRUST_PROXY_HOPS ?? 0),
+  );
   app.use(helmet());
   app.use(cookieParser());
   app.enableCors({
