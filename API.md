@@ -25,28 +25,21 @@ frontend consume, con su formato de entrada y salida.
 ## Tipos de datos
 
 ```ts
-type AccessRequest = {
+type UserRoleAssignment = {
   id: number;
-  fullName: string;
-  email: string;
-  emailVerified: boolean;
-  requestedAt: string;              // ISO 8601
-  status: "pending" | "approved" | "rejected";
+  name: string;                     // "administrador", "psicologo", ...
+  active: boolean;                  // se puede desactivar sin quitar el rol
 };
 
 type User = {
   id: number;
   fullName: string;
+  identityDocument: string | null;
   email: string;
   phone: string | null;
-  role: Role | null;
+  roles: UserRoleAssignment[];      // un usuario puede tener varios roles a la vez
   status: "active" | "inactive" | "blocked";
   lastLoginAt: string | null;       // ISO 8601
-};
-
-type Role = {
-  id: number;
-  name: string;                     // "administrador", "psicologo", ...
 };
 ```
 
@@ -54,69 +47,46 @@ type Role = {
 
 ## Endpoints
 
-### Solicitudes de acceso — HU-1.2
+### Crear usuario — HU-1.2
 
-#### `GET /access-requests`
+*(Actualizado 14/09: el equipo descartó la bandeja de solicitudes con
+aprobar/rechazar que describía esta sección. El Administrador crea la cuenta
+directamente, con nombre, documento, correo de Google y rol — sin solicitud
+pendiente ni notificación de aprobación.)*
 
-Lista las solicitudes de acceso. Alimenta la bandeja de solicitudes.
+#### `POST /users`
 
-Parámetros de consulta opcionales:
-
-| Parámetro | Valores | Por defecto |
-|---|---|---|
-| `status` | `pending`, `approved`, `rejected` | `pending` |
-
-Respuesta `200`:
+Cuerpo:
 
 ```json
 {
-  "data": [
-    {
-      "id": 142,
-      "fullName": "Laura Martínez Gómez",
-      "email": "laura.martinez@ejemplo.com",
-      "emailVerified": true,
-      "requestedAt": "2026-09-08T15:45:00Z",
-      "status": "pending"
-    }
-  ],
-  "total": 3
+  "fullName": "Elena Navarro",
+  "identityDocument": "1061234567",
+  "email": "elena.navarro@gmail.com",
+  "phone": "3001234567",
+  "roleId": 5
 }
 ```
 
-#### `POST /access-requests/:id/approve`
+- `email` debe ser una cuenta de Google (`@gmail.com` o `@googlemail.com`),
+  porque el acceso es por OAuth.
+- `roleId` debe ser uno de los roles asignables a cuentas del sistema
+  (administrador, secretario, psicologo, marketing).
 
-Aprueba una solicitud y asigna el rol. Debe activar la cuenta y notificar al
-usuario por correo (HU-1.2, escenario 1).
-
-Cuerpo:
-
-```json
-{ "roleId": 5 }
-```
-
-Respuesta `200`: el `User` creado.
+Respuesta `201`: el `User` creado, con `status: "active"`.
 
 Errores esperados:
 
-| Código | Cuándo | Qué muestra el frontend |
-|---|---|---|
-| `400` | Falta `roleId` o no es un rol asignable | Mensaje de validación en el modal |
-| `404` | La solicitud no existe | Aviso y recarga de la lista |
-| `409` | La solicitud ya fue procesada por otro administrador | Aviso y recarga de la lista |
+| Código | Cuándo |
+|---|---|
+| `400` | `roleId` no es un rol asignable |
+| `409` | El correo ya pertenece a una cuenta que ya inició sesión alguna vez |
+| `422` | Falta un campo obligatorio o no cumple el formato (correo que no es de Google, documento/telefono con formato invalido, etc.) |
 
-#### `POST /access-requests/:id/reject`
-
-Rechaza una solicitud. El motivo es opcional y se guarda para auditoría
-(máximo 200 caracteres).
-
-Cuerpo:
-
-```json
-{ "reason": "No pertenece al equipo de la fundación" }
-```
-
-Respuesta `200`: `{ "ok": true }`
+Si alguien ya habia intentado iniciar sesion con ese correo antes de ser
+creado (queda registrado como persona en estado `pendiente`), crear el
+usuario con ese mismo correo lo promueve a activo en vez de fallar por
+correo duplicado.
 
 ---
 
@@ -133,35 +103,44 @@ Parámetros de consulta opcionales:
 | `status` | `active`, `inactive`, `blocked` |
 | `search` | texto libre, busca por nombre o correo |
 
-Respuesta `200`: misma forma que `/access-requests`, con objetos `User`.
+Respuesta `200`: arreglo de objetos `User` (no incluye personas en estado
+`pendiente`: esas no son cuentas administradas por este modulo todavia).
 
 #### `PATCH /users/:id`
 
-Edita los datos básicos. Solo se envían los campos que cambian.
+Edita los datos básicos y, opcionalmente, los roles asignados. Todos los
+campos son opcionales; se envían solo los que cambian. El correo **no** es
+editable aquí: es la cuenta de Google con la que la persona inicia sesión.
 
 ```json
-{ "fullName": "Elena Navarro", "phone": "3001234567" }
+{
+  "fullName": "Elena Navarro",
+  "identityDocument": "1061234567",
+  "phone": "3001234567",
+  "roles": [
+    { "roleId": 5, "active": true },
+    { "roleId": 2, "active": false }
+  ]
+}
 ```
 
-Error `409` si el correo ya está registrado en otra cuenta.
+*(Actualizado 14/09: un usuario puede tener **varios roles a la vez**, cada
+uno activable/desactivable por separado sin quitarlo — reemplaza el "un solo
+rol activo, PATCH /users/:id/role" de una version anterior de este documento,
+para que coincida con lo que ya maqueto Liseth en `feat/auth-states`. Si se
+envia `roles`, reemplaza el conjunto completo — debe quedar al menos uno.)*
 
 #### `PATCH /users/:id/status`
 
-Bloquea, desactiva o reactiva la cuenta. Al bloquear o desactivar deben
-cerrarse las sesiones activas del usuario.
+Bloquea, desactiva o reactiva la cuenta. Al bloquear deben cerrarse las
+sesiones activas del usuario.
 
 ```json
 { "status": "blocked", "reason": "Licencia temporal" }
 ```
 
-#### `PATCH /users/:id/role`
-
-Reemplaza el rol del usuario. Un usuario mantiene **un solo rol activo**:
-asignar uno nuevo revoca el anterior (HU-1.2, escenario 4).
-
-```json
-{ "roleId": 2 }
-```
+`reason` se acepta pero todavia no se persiste (no hay columna/tabla de
+bitacora para guardarlo).
 
 #### `DELETE /users/:id`
 
@@ -184,7 +163,12 @@ Error `409` con el detalle de por qué no se puede:
 
 #### `GET /roles`
 
-Alimenta el selector de rol del modal de aprobación.
+*(No implementado todavia — el formulario de creación y la edición de roles
+hoy usan una lista fija en el frontend. Falta este endpoint para que dejen de
+depender de esa lista fija.)*
+
+Alimenta el selector de rol del formulario de creación y el checklist de
+roles de la edición de usuario.
 
 Debe devolver **solo los roles asignables a cuentas del sistema**:
 administrador, secretario, psicólogo y marketing. El rol `consultante` no
@@ -220,21 +204,31 @@ manejarlas en un solo lugar del frontend:
 
 ## Pendiente de definir
 
-1. **Autenticación con Google.** ¿El flujo OAuth vive en Next.js (Auth.js) o en
-   NestJS (Passport)? De esto depende cómo se autentican todas las peticiones
-   de arriba: cookie de sesión o `Authorization: Bearer <token>`.
+1. ~~**Autenticación con Google.**~~ Resuelto: el backend (NestJS) verifica el
+   `idToken` de Google directamente con `google-auth-library`, sin Passport.
+   El frontend debe usar Google Identity Services (JS), mandar el `idToken` a
+   `POST /auth/sessions` y despues autenticar cada peticion con
+   `Authorization: Bearer <accessToken>`. Sigue pendiente que el frontend de
+   login se conecte a esto (hoy es un mockup sin `fetch`) — eso es de
+   Braian/Liseth, no de este documento.
 
-2. **Estado `pending` en la base de datos.** `person.per_state` solo acepta
-   `activo`, `inactivo` y `bloqueado`. Falta el estado pendiente y una tabla
-   para las solicitudes de acceso; sin eso HU-1.2 no se puede implementar.
+2. ~~**Estado `pending` en la base de datos.**~~ Resuelto (migracion del
+   11/09): `person.per_state` ya acepta `pendiente`, y existe la tabla
+   `access_requests`.
 
-3. **Un rol por usuario.** `person_rol` tiene la llave primaria en
-   `(per_id, rol_id)`, lo que permite varios roles por persona. HU-1.2
-   escenario 4 exige uno solo activo.
+3. ~~**Un rol por usuario.**~~ Resuelto distinto a como decia esta seccion: el
+   14/09 el equipo decidio permitir **varios roles por persona** en vez de
+   uno solo (ver `PATCH /users/:id` arriba). `person_rol` gano una columna
+   `pr_active` para poder desactivar un rol sin quitarlo.
 
-4. **Última conexión y bitácora.** `GET /users` devuelve `lastLoginAt`, pero
-   no existe ese campo. Tampoco hay tabla de bitácora, que HU-1.1 escenario 5
-   necesita para registrar los intentos de acceso denegados.
+4. **Última conexión y bitácora.** La columna `user_last_login_at` ya existe
+   (migracion del 11/09) y `GET /users` ya la expone, pero nadie la escribe
+   todavia — eso es parte del login de Braian, no de este modulo. La bitacora
+   de intentos de acceso denegados por rol (HU-1.1 escenario 5) sigue sin
+   existir: ni tabla ni logging en `RolesGuard`.
 
-5. **Paginación.** Definir si `GET /users` la necesita y con qué parámetros
-   (`page` y `pageSize`, o `limit` y `offset`).
+5. **Paginación.** Sigue sin definir si `GET /users` la necesita y con qué
+   parámetros (`page` y `pageSize`, o `limit` y `offset`). Hoy devuelve todo
+   sin paginar.
+
+6. **`GET /roles`.** Sigue sin implementar (ver nota en Catálogos arriba).
