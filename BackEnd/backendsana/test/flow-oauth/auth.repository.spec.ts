@@ -34,15 +34,15 @@ describe('AuthRepository', () => {
     );
   });
 
-  it('queries a provider with the Google provider name by default', async () => {
+  it('queries a provider with the Auth0 provider name by default', async () => {
     const { repository, dataSource } = setup();
     dataSource.query.mockResolvedValue([]);
 
-    await repository.findByProviderId('google-subject');
+    await repository.findByProviderId('auth0-subject');
 
     expect(dataSource.query).toHaveBeenCalledWith(
       expect.stringContaining('u.user_provider_name=$2'),
-      ['google-subject', 'google'],
+      ['auth0-subject', 'auth0'],
     );
   });
 
@@ -51,7 +51,7 @@ describe('AuthRepository', () => {
     dataSource.query.mockResolvedValue([]);
 
     await repository.updateEmail(4, 'new@example.com');
-    await repository.claim(4, 'google-subject');
+    await repository.claim(4, 'auth0-subject');
 
     expect(dataSource.query).toHaveBeenNthCalledWith(
       1,
@@ -61,7 +61,7 @@ describe('AuthRepository', () => {
     expect(dataSource.query).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining('INSERT INTO users'),
-      [4, 'google-subject', 'google'],
+      [4, 'auth0-subject', 'auth0'],
     );
   });
 
@@ -93,6 +93,6 @@ describe('AuthRepository', () => {
   });
 });
 // Los valores del usuario se pasan como parámetros SQL, no se interpolan en la consulta.
-// El repositorio asume Google cuando el servicio no indica otro proveedor.
-// Vincular la cuenta conserva el id de persona y añade el identificador de Google.
+// El repositorio asume 'auth0' cuando el servicio no indica otro proveedor.
+// Vincular la cuenta conserva el id de persona y añade el identificador del proveedor Auth0.
 // Las tres inserciones comparten la misma transacción para evitar solicitudes a medias.

@@ -77,15 +77,16 @@ describe('RolesGuard', () => {
   });
 
   it('only permits a user that has one required role', () => {
-    const guard = new RolesGuard({
-      getAllAndOverride: () => ['administrador', 'psicologo'],
-    } as never, { logRoleMismatch: vi.fn() } as never);
+    const guard = new RolesGuard(
+      {
+        getAllAndOverride: () => ['administrador', 'psicologo'],
+      } as never, { logRoleMismatch: vi.fn() } as never);
     expect(
       guard.canActivate(context({ user: { roles: ['psicologo'] } }) as never),
     ).toBe(true);
-    expect(
+    expect(() =>
       guard.canActivate(context({ user: { roles: ['consultante'] } }) as never),
-    ).toBe(false);
+    ).toThrow(ForbiddenException);
   });
 });
 // Normaliza espacios en CORS_ORIGIN antes de comparar el Origin recibido.
