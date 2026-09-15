@@ -11,6 +11,7 @@ const environment = {
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ?? 'test-client-id',
   JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET ?? 'a'.repeat(32),
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET ?? 'b'.repeat(32),
+  AUTH_TOKEN_PEPPER: process.env.AUTH_TOKEN_PEPPER ?? 'c'.repeat(32),
 };
 
 describe('validateEnvironment', () => {
@@ -22,6 +23,8 @@ describe('validateEnvironment', () => {
       COOKIE_SECURE: false,
       COOKIE_SAME_SITE: 'lax',
       JWT_ACCESS_TTL: '15m',
+      JWT_ISSUER: 'sana-api',
+      JWT_AUDIENCE: 'sana-client',
     });
   });
 
