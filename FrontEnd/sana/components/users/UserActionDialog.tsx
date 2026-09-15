@@ -42,6 +42,11 @@ export default function UserActionDialog({
   onClose,
 }: Props) {
   const [reason, setReason] = useState("");
+  const activeRoleNames =
+    user.roles
+      .filter((role) => role.active)
+      .map((role) => role.name)
+      .join(", ") || "sin roles activos";
 
   if (action === "block") {
     return (
@@ -152,8 +157,8 @@ export default function UserActionDialog({
       >
         <p>
           Al reactivar, <strong className="text-text">{user.fullName}</strong>{" "}
-          recuperará el acceso inmediato al sistema conservando su rol de{" "}
-          <strong className="text-text">{user.role}</strong>.
+          recuperará el acceso inmediato al sistema conservando sus roles de{" "}
+          <strong className="text-text">{activeRoleNames}</strong>.
         </p>
       </Modal>
     );

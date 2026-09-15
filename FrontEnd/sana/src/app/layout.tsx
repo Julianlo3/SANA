@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { Nunito, Fraunces } from "next/font/google";
 import "@/styles/globals.css";
 
@@ -19,7 +20,7 @@ export const metadata: Metadata = {
   description: "Plataforma de gestión de la fundación",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="es"
