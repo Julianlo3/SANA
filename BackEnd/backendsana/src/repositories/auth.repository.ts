@@ -108,4 +108,16 @@ export class AuthRepository {
       ]);
     });
   }
+
+  /**
+   * Updates the last login timestamp for a user.
+   * @param userId The ID of the user.
+   */
+  async updateLastLogin(userId: number): Promise<void> {
+    await this.dataSource.query(
+      'UPDATE users SET user_last_login_at=now() WHERE use_id=$1',
+      [userId],
+    );
+  }
 }
+

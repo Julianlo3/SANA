@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { JwtAuthGuard } from '../../src/guards/jwt-auth.guard.js';
 import { OriginGuard } from '../../src/guards/origin.guard.js';
 import { RolesGuard } from '../../src/guards/roles.guard.js';
+import { RateLimitGuard } from '../../src/guards/rate-limit.guard.js';
 
 function context(request: Record<string, unknown>) {
   // Simula solo la parte del ExecutionContext que los guards consumen.
@@ -64,20 +65,41 @@ describe('RolesGuard', () => {
   it('allows routes without role metadata', () => {
     const guard = new RolesGuard({
       getAllAndOverride: () => undefined,
-    } as never);
+    } as never, { logRoleMismatch: vi.fn() } as never);
     expect(guard.canActivate(context({}) as never)).toBe(true);
   });
 
   it('only permits a user that has one required role', () => {
     const guard = new RolesGuard({
       getAllAndOverride: () => ['administrador', 'psicologo'],
-    } as never);
+    } as never, { logRoleMismatch: vi.fn().mockResolvedValue(undefined) } as never);
     expect(
       guard.canActivate(context({ user: { roles: ['psicologo'] } }) as never),
     ).toBe(true);
-    expect(
+    expect(() =>
       guard.canActivate(context({ user: { roles: ['consultante'] } }) as never),
-    ).toBe(false);
+    ).toThrow(ForbiddenException);
+  });
+});
+
+describe('RateLimitGuard', () => {
+  it('limits repeated requests per endpoint and client IP', () => {
+    const reflector = { getAllAndOverride: () => ({ limit: 2, windowSeconds: 60 }) };
+    const guard = new RateLimitGuard(reflector as never);
+    const response = { setHeader: vi.fn() };
+    const limitedContext = {
+      ...context({ ip: '203.0.113.10' }),
+      getHandler: () => ({ name: 'signIn' }),
+      getClass: () => ({ name: 'AuthController' }),
+      switchToHttp: () => ({ getRequest: () => ({ ip: '203.0.113.10', socket: {} }), getResponse: () => response }),
+    };
+
+    expect(guard.canActivate(limitedContext as never)).toBe(true);
+    expect(guard.canActivate(limitedContext as never)).toBe(true);
+    expect(() => guard.canActivate(limitedContext as never)).toThrow(
+      'Too many requests',
+    );
+    expect(response.setHeader).toHaveBeenCalledWith('Retry-After', expect.any(String));
   });
 });
 // Normaliza espacios en CORS_ORIGIN antes de comparar el Origin recibido.

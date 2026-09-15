@@ -1,4 +1,5 @@
 import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import { createHmac } from 'crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { AccountState } from '../../src/models/account-state.enum.js';
 import { AuthService } from '../../src/services/auth.service.js';
@@ -31,6 +32,7 @@ function setup() {
     claim: vi.fn(),
     updateEmail: vi.fn(),
     findByUserId: vi.fn(),
+    updateLastLogin: vi.fn(),
   };
   const dataSource = {
     query: vi.fn(),
@@ -38,7 +40,11 @@ function setup() {
     transaction: vi.fn(),
   };
   const jwt = { signAsync: vi.fn(), verifyAsync: vi.fn() };
+  const securityLog = { logUnauthorizedAccess: vi.fn().mockResolvedValue(undefined) };
   const config = {
+    get: vi.fn((key: string) =>
+      key === 'AUTH_TOKEN_PEPPER' ? 'p'.repeat(32) : undefined,
+    ),
     getOrThrow: vi.fn(
       (key: string) =>
         ({
@@ -48,6 +54,8 @@ function setup() {
             process.env.JWT_REFRESH_SECRET ?? 'test-refresh-secret',
           JWT_ACCESS_SECRET:
             process.env.JWT_ACCESS_SECRET ?? 'test-access-secret',
+          JWT_ISSUER: 'sana-api',
+          JWT_AUDIENCE: 'sana-client',
           SESSION_IDLE_TTL_MINUTES: Number(
             process.env.SESSION_IDLE_TTL_MINUTES ?? 30,
           ),
@@ -60,12 +68,17 @@ function setup() {
       dataSource as never,
       jwt as never,
       config as never,
+      securityLog as never,
     ),
     repository,
     dataSource,
     jwt,
+    securityLog,
   };
 }
+
+const tokenHash = (secret: string) =>
+  createHmac('sha256', 'p'.repeat(32)).update(secret).digest('hex');
 
 describe('AuthService.signIn', () => {
   it('rejects an unverified Google email before querying data', async () => {
@@ -122,20 +135,19 @@ describe('AuthService.signIn', () => {
     repository.findByProviderId.mockResolvedValue(
       record({ email: 'old@example.com' }),
     );
-    jwt.signAsync
-      .mockResolvedValueOnce('refresh')
-      .mockResolvedValueOnce('access');
+    jwt.signAsync.mockResolvedValue('access');
     dataSource.manager.query.mockResolvedValue([]);
 
-    await expect(service.signIn(profile)).resolves.toEqual({
+    await expect(service.signIn(profile)).resolves.toMatchObject({
       accessToken: 'access',
-      refreshToken: 'refresh',
+      refreshToken: expect.stringMatching(/^[0-9a-f-]{36}\..+$/),
     });
     expect(repository.updateEmail).toHaveBeenCalledWith(10, 'user@example.com');
     expect(dataSource.manager.query).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO auth_sessions'),
       expect.any(Array),
     );
+    expect(repository.updateLastLogin).toHaveBeenCalledWith(10);
   });
 });
 
@@ -155,9 +167,72 @@ describe('AuthService.authenticate', () => {
       sessionId: 'session',
       sub: 10,
     });
-    dataSource.manager.query.mockResolvedValue([]);
+    dataSource.query.mockResolvedValue([]);
     await expect(service.authenticate('token')).rejects.toThrow(
-      'Session expired',
+      'Session expired or revoked',
+    );
+  });
+});
+
+describe('AuthService.refresh', () => {
+  it('rotates a valid opaque refresh token without signing a refresh JWT', async () => {
+    const { service, repository, dataSource, jwt } = setup();
+    const manager = { query: vi.fn() };
+    const sessionId = 'session-id';
+    const secret = 'current-secret';
+    dataSource.transaction.mockImplementation(async (callback) => callback(manager));
+    manager.query.mockResolvedValueOnce([
+      {
+        auth_session_id: sessionId,
+        use_id: 10,
+        auth_session_refresh_token_hash: tokenHash(secret),
+        auth_session_previous_token_hash: null,
+        auth_session_expires_at: new Date(Date.now() + 60000),
+        auth_session_revoked_at: null,
+        auth_session_last_activity_at: new Date(),
+      },
+    ]);
+    repository.findByUserId.mockResolvedValue(record());
+    jwt.signAsync.mockResolvedValue('new-access');
+
+    await expect(service.refresh(`${sessionId}.${secret}`)).resolves.toMatchObject({
+      accessToken: 'new-access',
+      refreshToken: expect.stringMatching(new RegExp(`^${sessionId}\\.`)),
+    });
+    expect(manager.query).toHaveBeenLastCalledWith(
+      expect.stringContaining('auth_session_previous_token_hash'),
+      [expect.any(String), sessionId],
+    );
+    expect(jwt.signAsync).toHaveBeenCalledOnce();
+  });
+
+  it('revokes the session and logs an incident when a rotated token is reused', async () => {
+    const { service, dataSource, securityLog } = setup();
+    const manager = { query: vi.fn() };
+    const sessionId = 'session-id';
+    const reusedSecret = 'old-secret';
+    dataSource.transaction.mockImplementation(async (callback) => callback(manager));
+    manager.query.mockResolvedValueOnce([
+      {
+        auth_session_id: sessionId,
+        use_id: 10,
+        auth_session_refresh_token_hash: tokenHash('new-secret'),
+        auth_session_previous_token_hash: tokenHash(reusedSecret),
+        auth_session_expires_at: new Date(Date.now() + 60000),
+        auth_session_revoked_at: null,
+        auth_session_last_activity_at: new Date(),
+      },
+    ]);
+
+    await expect(service.refresh(`${sessionId}.${reusedSecret}`)).rejects.toThrow(
+      'Refresh token reuse detected',
+    );
+    expect(manager.query).toHaveBeenLastCalledWith(
+      expect.stringContaining("auth_session_revoked_reason = 'reuse_detected'"),
+      [sessionId],
+    );
+    expect(securityLog.logUnauthorizedAccess).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId, section: 'auth/refresh' }),
     );
   });
 });
