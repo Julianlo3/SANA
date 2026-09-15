@@ -1,13 +1,13 @@
 import Link from "next/link";
-import { PawPrint, Star, Cloud, Wave } from "@/components/ui/Shapes";
+import { PawPrint, Star, Cloud, Wave } from "@/components/ui/shapes";
 import {
   HeartHandshake,
   ShieldCheck,
   Users,
   CalendarCheck,
 } from "lucide-react";
-import PublicHeader from "@/components/layout/PublicHeader";
-import PublicFooter from "@/components/layout/PublicFooter";
+import PublicHeader from "@/components/navigation/public-header";
+import PublicFooter from "@/components/navigation/public-footer";
 
 const programs = [
   {
