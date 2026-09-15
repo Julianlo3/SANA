@@ -38,21 +38,29 @@ describe('OriginGuard', () => {
 
 describe('JwtAuthGuard', () => {
   it('extracts a bearer token and attaches its authenticated user', async () => {
-    const authenticate = vi.fn().mockResolvedValue({ userId: 1 });
-    const guard = new JwtAuthGuard({ authenticate } as never);
+    const verifyAccessToken = vi.fn().mockResolvedValue({ subject: 'auth0|1' });
+    const authenticateAuth0 = vi.fn().mockResolvedValue({ userId: 1 });
+    const guard = new JwtAuthGuard(
+      { authenticateAuth0 } as never,
+      { verifyAccessToken } as never,
+    );
     const request = { headers: { authorization: 'Bearer access-token' } };
 
     await expect(guard.canActivate(context(request) as never)).resolves.toBe(
       true,
     );
-    expect(authenticate).toHaveBeenCalledWith('access-token');
+    expect(verifyAccessToken).toHaveBeenCalledWith('access-token');
+    expect(authenticateAuth0).toHaveBeenCalledWith({ subject: 'auth0|1' });
     expect(request).toMatchObject({ user: { userId: 1 } });
   });
 
   it.each(['Basic abc', undefined])(
     'rejects a missing or non-bearer authorization header',
     async (authorization) => {
-      const guard = new JwtAuthGuard({ authenticate: vi.fn() } as never);
+      const guard = new JwtAuthGuard(
+        { authenticateAuth0: vi.fn() } as never,
+        { verifyAccessToken: vi.fn() } as never,
+      );
       await expect(
         guard.canActivate(context({ headers: { authorization } }) as never),
       ).rejects.toBeInstanceOf(UnauthorizedException);
@@ -64,14 +72,14 @@ describe('RolesGuard', () => {
   it('allows routes without role metadata', () => {
     const guard = new RolesGuard({
       getAllAndOverride: () => undefined,
-    } as never);
+    } as never, { logRoleMismatch: vi.fn() } as never);
     expect(guard.canActivate(context({}) as never)).toBe(true);
   });
 
   it('only permits a user that has one required role', () => {
     const guard = new RolesGuard({
       getAllAndOverride: () => ['administrador', 'psicologo'],
-    } as never);
+    } as never, { logRoleMismatch: vi.fn() } as never);
     expect(
       guard.canActivate(context({ user: { roles: ['psicologo'] } }) as never),
     ).toBe(true);
