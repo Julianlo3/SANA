@@ -13,6 +13,17 @@ const ALLOWED_ROLES = new Set([
   UserRole.Marketing,
 ]);
 
+/**
+ * Extracts the provider name from an Auth0 subject string.
+ * @param subject  The Auth0 subject string.
+ * @returns The provider name extracted from the subject.
+ */
+function extractProviderName(subject: string): string {
+  const [strategy] = subject.split('|');
+  return strategy;
+}
+
+
 /** 
  * Applies SANA account state and role authorization to an Auth0 identity. 
 */
@@ -30,7 +41,9 @@ export class AuthService {
    */
   async authorizeAuth0(profile: Auth0Profile): Promise<AuthenticatedUser> {
     const email = profile.email.trim().toLowerCase();
-    let record = await this.repository.findByProviderId(profile.subject, 'auth0');
+    const providerName = extractProviderName(profile.subject);
+
+    let record = await this.repository.findByProviderId(profile.subject);
 
     if (!record) {
       record = await this.repository.findByEmail(email);
@@ -39,16 +52,27 @@ export class AuthService {
         throw new ForbiddenException('Access request is pending');
       }
 
+      if (!profile.isEmailVerified) {
+        if (record.userId) {
+          this.logDenied(
+            record.userId,
+            email,
+            'unverified email attempted to claim/link an existing account',
+          );
+        }
+        throw new ForbiddenException('Email must be verified with the identity provider');
+      }
+
       if (!record.userId) {
         try {
-          await this.repository.claim(record.personId, profile.subject, 'auth0');
+          await this.repository.claim(record.personId, profile.subject, providerName, true);
         } catch (error) {
           if ((error as { code?: string }).code !== '23505') throw error;
         }
-        record = await this.repository.findByProviderId(profile.subject, 'auth0');
-      } else if (record.providerName !== 'auth0') {
-        await this.repository.linkProvider(record.userId, profile.subject, 'auth0');
-        record = await this.repository.findByProviderId(profile.subject, 'auth0');
+        record = await this.repository.findByProviderId(profile.subject);
+      } else if (record.providerId !== profile.subject) {
+        await this.repository.linkProvider(record.userId, profile.subject, providerName, true);
+        record = await this.repository.findByProviderId(profile.subject);
       }
     }
 
@@ -80,6 +104,8 @@ export class AuthService {
     };
   }
 
+  
+
   async authenticateAuth0(profile: Auth0Profile): Promise<AuthenticatedUser> {
     return this.authorizeAuth0(profile);
   }
@@ -93,4 +119,5 @@ export class AuthService {
       })
       .catch(() => undefined);
   }
+ 
 }

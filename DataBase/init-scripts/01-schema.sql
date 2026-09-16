@@ -779,3 +779,46 @@ COMMENT ON FUNCTION public.fn_cleanup_old_security_logs(integer)
     IS E'Purga registros de auditoria de seguridad que superan el periodo de retencion en dias (por defecto 180 dias) para cumplir con minimizacion de datos';
 
 
+------------------------- MIGRATION: 15/09/2026 -------------------------
+
+DO $$
+DECLARE
+  fk_name text;
+BEGIN
+  SELECT conname INTO fk_name
+  FROM pg_constraint
+  WHERE conrelid = 'public.security_access_log'::regclass
+    AND confrelid = 'public.auth_sessions'::regclass
+    AND contype = 'f';
+
+  IF fk_name IS NOT NULL THEN
+    EXECUTE format('ALTER TABLE public.security_access_log DROP CONSTRAINT %I', fk_name);
+  END IF;
+END $$;
+
+ALTER TABLE public.security_access_log
+    DROP COLUMN IF EXISTS auth_session_id;
+
+DROP FUNCTION IF EXISTS public.fn_cleanup_expired_sessions;
+
+DROP TABLE IF EXISTS public.auth_sessions;
+
+------------------------- MIGRATION: fixes person/users -------------------------
+
+ALTER TABLE public.person
+    DROP CONSTRAINT IF EXISTS "Person_email_uq";
+
+DROP INDEX IF EXISTS "Person_email_idx";
+
+CREATE UNIQUE INDEX "Person_email_uq" ON public.person (lower(per_email));
+
+COMMENT ON INDEX public."Person_email_uq"
+    IS E'Unicidad y busqueda case-insensitive del correo; evita duplicar persona por diferencias de mayusculas entre proveedores OAuth';
+ALTER TABLE public.users
+    DROP CONSTRAINT IF EXISTS "User_provider_uq";
+
+ALTER TABLE public.users
+    ADD CONSTRAINT "User_provider_uq" UNIQUE (user_provider_id);
+
+ALTER TABLE public.users
+    ADD COLUMN IF NOT EXISTS user_email_verified boolean NOT NULL DEFAULT false;

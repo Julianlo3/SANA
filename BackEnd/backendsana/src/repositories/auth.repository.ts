@@ -28,7 +28,7 @@ export class AuthRepository {
    */
   async findByEmail(email: string): Promise<AuthorizationRecord | null> {
     const rows = await this.dataSource.query(
-      `SELECT p.per_id AS "personId", p.per_email AS email, p.per_state AS state, u.use_id AS "userId", u.user_provider_id AS "providerId", u.user_provider_name AS "providerName", COALESCE(array_agg(r.rol_description) FILTER (WHERE r.rol_description IS NOT NULL), '{}') AS roles FROM person p LEFT JOIN users u ON u.use_id=p.per_id LEFT JOIN person_rol pr ON pr.per_id=p.per_id LEFT JOIN rol r ON r.rol_id=pr.rol_id WHERE lower(p.per_email)=lower($1) GROUP BY p.per_id,u.use_id`,
+      `SELECT p.per_id AS "personId", p.per_email AS email, p.per_state AS state, u.use_id AS "userId", u.user_provider_id AS "providerId", u.user_provider_name AS "providerName", COALESCE(array_agg(r.rol_description) FILTER (WHERE r.rol_description IS NOT NULL), '{}') AS roles FROM person p LEFT JOIN users u ON u.use_id=p.per_id LEFT JOIN person_rol pr ON pr.per_id=p.per_id AND pr.pr_active=true LEFT JOIN rol r ON r.rol_id=pr.rol_id WHERE lower(p.per_email)=lower($1) GROUP BY p.per_id,u.use_id`,
       [email],
     );
     return rows[0] ?? null;
@@ -41,7 +41,7 @@ export class AuthRepository {
    */
   async findByUserId(userId: number): Promise<AuthorizationRecord | null> {
     const rows = await this.dataSource.query(
-      `SELECT p.per_id AS "personId", p.per_email AS email, p.per_state AS state, u.use_id AS "userId", u.user_provider_id AS "providerId", u.user_provider_name AS "providerName", COALESCE(array_agg(r.rol_description) FILTER (WHERE r.rol_description IS NOT NULL), '{}') AS roles FROM person p JOIN users u ON u.use_id=p.per_id LEFT JOIN person_rol pr ON pr.per_id=p.per_id LEFT JOIN rol r ON r.rol_id=pr.rol_id WHERE u.use_id=$1 GROUP BY p.per_id,u.use_id`,
+      `SELECT p.per_id AS "personId", p.per_email AS email, p.per_state AS state, u.use_id AS "userId", u.user_provider_id AS "providerId", u.user_provider_name AS "providerName", COALESCE(array_agg(r.rol_description) FILTER (WHERE r.rol_description IS NOT NULL), '{}') AS roles FROM person p JOIN users u ON u.use_id=p.per_id LEFT JOIN person_rol pr ON pr.per_id=p.per_id AND pr.pr_active=true LEFT JOIN rol r ON r.rol_id=pr.rol_id WHERE u.use_id=$1 GROUP BY p.per_id,u.use_id`,
       [userId],
     );
     return rows[0] ?? null;
@@ -53,13 +53,10 @@ export class AuthRepository {
   * @param providerName The provider name (default: 'auth0').
    * @returns A promise resolving to the authorization record or null if not found.
    */
-  async findByProviderId(
-    providerId: string,
-    providerName = 'auth0',
-  ): Promise<AuthorizationRecord | null> {
+  async findByProviderId(providerId: string): Promise<AuthorizationRecord | null> {
     const rows = await this.dataSource.query(
-      `SELECT p.per_id AS "personId", p.per_email AS email, p.per_state AS state, u.use_id AS "userId", u.user_provider_id AS "providerId", u.user_provider_name AS "providerName", COALESCE(array_agg(r.rol_description) FILTER (WHERE r.rol_description IS NOT NULL), '{}') AS roles FROM person p JOIN users u ON u.use_id=p.per_id LEFT JOIN person_rol pr ON pr.per_id=p.per_id LEFT JOIN rol r ON r.rol_id=pr.rol_id WHERE u.user_provider_id=$1 AND u.user_provider_name=$2 GROUP BY p.per_id,u.use_id`,
-      [providerId, providerName],
+      `SELECT p.per_id AS "personId", p.per_email AS email, p.per_state AS state, u.use_id AS "userId", u.user_provider_id AS "providerId", u.user_provider_name AS "providerName", COALESCE(array_agg(r.rol_description) FILTER (WHERE r.rol_description IS NOT NULL), '{}') AS roles FROM person p JOIN users u ON u.use_id=p.per_id LEFT JOIN person_rol pr ON pr.per_id=p.per_id AND pr.pr_active=true LEFT JOIN rol r ON r.rol_id=pr.rol_id WHERE u.user_provider_id=$1 GROUP BY p.per_id,u.use_id`,
+      [providerId],
     );
     return rows[0] ?? null;
   }
@@ -77,27 +74,32 @@ export class AuthRepository {
   }
 
   /**
-  * Claims a person with an Auth0 subject.
-  * @param personId The ID of the person to claim.
-  * @param providerId The Auth0 subject to associate with the user.
+   * Claims a user account for a person.
+   * @param personId The ID of the person to claim.
+   * @param providerId The provider ID to associate with the user.
+   * @param providerName The provider name.
+   * @param emailVerified Whether the user's email is verified.
    */
-  async claim(personId: number, providerId: string, providerName = 'auth0'): Promise<void> {
-    await this.dataSource.query(
-      'INSERT INTO users (use_id,user_provider_id,user_provider_name) VALUES ($1,$2,$3)',
-      [personId, providerId, providerName],
-    );
-  }
+  async claim(personId: number,providerId: string,providerName: string,emailVerified: boolean,): Promise<void> {
+  await this.dataSource.query(
+    'INSERT INTO users (use_id,user_provider_id,user_provider_name,user_email_verified) VALUES ($1,$2,$3,$4)',
+    [personId, providerId, providerName, emailVerified],
+  );
+}
 
-  async linkProvider(
-    userId: number,
-    providerId: string,
-    providerName = 'auth0',
-  ): Promise<void> {
-    await this.dataSource.query(
-      'UPDATE users SET user_provider_id=$1, user_provider_name=$2 WHERE use_id=$3',
-      [providerId, providerName, userId],
-    );
-  }
+  /**
+   * Links a provider to an existing user account.
+   * @param userId The ID of the user to link the provider to.
+   * @param providerId The provider ID to link.
+   * @param providerName The provider name.
+   * @param emailVerified Whether the user's email is verified.
+   */
+  async linkProvider(userId: number, providerId: string,providerName: string,emailVerified: boolean,): Promise<void> {
+  await this.dataSource.query(
+    'UPDATE users SET user_provider_id=$1, user_provider_name=$2, user_email_verified=$3 WHERE use_id=$4',
+    [providerId, providerName, emailVerified, userId],
+  );
+}
   
   /**
    * Creates a pending user account.

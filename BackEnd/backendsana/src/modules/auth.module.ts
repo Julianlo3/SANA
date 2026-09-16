@@ -26,6 +26,7 @@ import { SecurityLogService } from '../services/security-log.service.js';
   ],
   exports: [
     AuthService,
+    Auth0IdentityService,
     SecurityLogService,
     JwtAuthGuard,
     OriginGuard,
