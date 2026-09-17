@@ -1,11 +1,14 @@
 import Sidebar from "@/components/navigation/sidebar";
 import Header from "@/components/navigation/panel-header";
+import { requireAdministrator } from "@/lib/auth-guard";
 
-export default function PanelLayout({
+export default async function PanelLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  await requireAdministrator();
+
   return (
     <div className="flex flex-1">
       <Sidebar />
