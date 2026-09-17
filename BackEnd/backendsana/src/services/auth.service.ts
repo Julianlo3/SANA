@@ -54,7 +54,10 @@ export class AuthService {
         throw new ForbiddenException('Email must be verified with the identity provider');
       }
 
-      if (!record.roles.some((role) => ALLOWED_ROLES.has(role as UserRole))) {
+      if (
+        record.roles.length > 0 &&
+        !record.roles.some((role) => ALLOWED_ROLES.has(role as UserRole))
+      ) {
         if (record.userId) {
           this.logDenied(record.userId, email, 'no authorized role (pre-claim check)');
         }
@@ -87,7 +90,10 @@ export class AuthService {
       throw new ForbiddenException('Account is not active');
     }
 
-    if (!record.roles.some((role) => ALLOWED_ROLES.has(role as UserRole))) {
+    if (
+      record.roles.length > 0 &&
+      !record.roles.some((role) => ALLOWED_ROLES.has(role as UserRole))
+    ) {
       this.logDenied(record.userId, record.email, 'no authorized role');
       throw new ForbiddenException('Account role is not authorized');
     }

@@ -54,6 +54,16 @@ describe('AuthService.authorizeAuth0', () => {
     expect(repository.updateLastLogin).toHaveBeenCalledWith(10);
   });
 
+  it('returns an active local user without assigned roles', async () => {
+    const { service } = setup({ roles: [] });
+
+    await expect(service.authorizeAuth0(profile)).resolves.toMatchObject({
+      userId: 10,
+      roles: [],
+      state: AccountState.Active,
+    });
+  });
+
   it('rejects an Auth0 identity with an unknown email', async () => {
     const { service, repository } = setup();
     repository.findByProviderId.mockResolvedValue(null);
