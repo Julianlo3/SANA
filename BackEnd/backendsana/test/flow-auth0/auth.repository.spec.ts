@@ -34,15 +34,15 @@ describe('AuthRepository', () => {
     );
   });
 
-  it('queries a provider with the Auth0 provider name by default', async () => {
+  it('queries an Auth0 provider identity by provider ID', async () => {
     const { repository, dataSource } = setup();
     dataSource.query.mockResolvedValue([]);
 
     await repository.findByProviderId('auth0-subject');
 
     expect(dataSource.query).toHaveBeenCalledWith(
-      expect.stringContaining('u.user_provider_name=$2'),
-      ['auth0-subject', 'auth0'],
+      expect.stringContaining('u.user_provider_id=$1'),
+      ['auth0-subject'],
     );
   });
 
@@ -51,7 +51,7 @@ describe('AuthRepository', () => {
     dataSource.query.mockResolvedValue([]);
 
     await repository.updateEmail(4, 'new@example.com');
-    await repository.claim(4, 'auth0-subject');
+    await repository.claim(4, 'auth0-subject', 'auth0', true);
 
     expect(dataSource.query).toHaveBeenNthCalledWith(
       1,
@@ -61,7 +61,7 @@ describe('AuthRepository', () => {
     expect(dataSource.query).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining('INSERT INTO users'),
-      [4, 'auth0-subject', 'auth0'],
+      [4, 'auth0-subject', 'auth0', true],
     );
   });
 
