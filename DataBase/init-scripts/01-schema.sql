@@ -779,7 +779,9 @@ COMMENT ON FUNCTION public.fn_cleanup_old_security_logs(integer)
     IS E'Purga registros de auditoria de seguridad que superan el periodo de retencion en dias (por defecto 180 dias) para cumplir con minimizacion de datos';
 
 
-------------------------- MIGRATION: 15/09/2026 -------------------------
+-------------------------------------------------------------------
+-- MIGRACIÓN: 
+-------------------------------------------------------------------
 
 DO $$
 DECLARE
@@ -803,7 +805,7 @@ DROP FUNCTION IF EXISTS public.fn_cleanup_expired_sessions;
 
 DROP TABLE IF EXISTS public.auth_sessions;
 
-------------------------- MIGRATION: fixes person/users -------------------------
+DROP TABLE IF EXISTS public.access_requests;
 
 ALTER TABLE public.person
     DROP CONSTRAINT IF EXISTS "Person_email_uq";
@@ -814,11 +816,19 @@ CREATE UNIQUE INDEX "Person_email_uq" ON public.person (lower(per_email));
 
 COMMENT ON INDEX public."Person_email_uq"
     IS E'Unicidad y busqueda case-insensitive del correo; evita duplicar persona por diferencias de mayusculas entre proveedores OAuth';
+
+ALTER TABLE public.person
+    ADD COLUMN IF NOT EXISTS per_created_by integer REFERENCES public.users(use_id),
+    ADD COLUMN IF NOT EXISTS per_created_at timestamptz NOT NULL DEFAULT now();
+
 ALTER TABLE public.users
     DROP CONSTRAINT IF EXISTS "User_provider_uq";
 
 ALTER TABLE public.users
     ADD CONSTRAINT "User_provider_uq" UNIQUE (user_provider_id);
+
+COMMENT ON CONSTRAINT "User_provider_uq" ON public.users
+    IS E'Garantiza unicidad global del sub entregado por Auth0; ya no depende de provider_name, que se conserva solo con fines informativos/filtrado';
 
 ALTER TABLE public.users
     ADD COLUMN IF NOT EXISTS user_email_verified boolean NOT NULL DEFAULT false;

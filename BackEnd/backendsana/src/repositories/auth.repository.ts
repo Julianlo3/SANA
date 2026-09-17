@@ -80,12 +80,12 @@ export class AuthRepository {
    * @param providerName The provider name.
    * @param emailVerified Whether the user's email is verified.
    */
-  async claim(personId: number,providerId: string,providerName: string,emailVerified: boolean,): Promise<void> {
-  await this.dataSource.query(
-    'INSERT INTO users (use_id,user_provider_id,user_provider_name,user_email_verified) VALUES ($1,$2,$3,$4)',
-    [personId, providerId, providerName, emailVerified],
-  );
-}
+  async claim(personId: number,  providerId: string,providerName: string,emailVerified: boolean,): Promise<void> {
+    await this.dataSource.query(
+      'INSERT INTO users (use_id,user_provider_id,user_provider_name,user_email_verified) VALUES ($1,$2,$3,$4)',
+      [personId, providerId, providerName, emailVerified],
+    );
+  }
 
   /**
    * Links a provider to an existing user account.
@@ -94,12 +94,12 @@ export class AuthRepository {
    * @param providerName The provider name.
    * @param emailVerified Whether the user's email is verified.
    */
-  async linkProvider(userId: number, providerId: string,providerName: string,emailVerified: boolean,): Promise<void> {
-  await this.dataSource.query(
-    'UPDATE users SET user_provider_id=$1, user_provider_name=$2, user_email_verified=$3 WHERE use_id=$4',
-    [providerId, providerName, emailVerified, userId],
-  );
-}
+  async linkProvider(userId: number,providerId: string,providerName: string,emailVerified: boolean,): Promise<void> {
+    await this.dataSource.query(
+      'UPDATE users SET user_provider_id=$1, user_provider_name=$2, user_email_verified=$3 WHERE use_id=$4',
+      [providerId, providerName, emailVerified, userId],
+    );
+  }
   
   /**
    * Creates a pending user account.

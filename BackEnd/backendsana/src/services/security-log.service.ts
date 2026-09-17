@@ -58,7 +58,7 @@ export class SecurityLogService {
     const message = `User ${maskedEmail} [Roles: ${userRoles.join(', ') || 'None'}] denied access to section requiring [${requiredRoles.join(', ')}].`;
 
     await this.logUnauthorizedAccess({ userId, section, message });
-}
+  }
 
   /**
    * Masks an email address for privacy / GDPR data minimization (e.g. j***@example.com).

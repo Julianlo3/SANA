@@ -65,8 +65,8 @@ export class RolesGuard implements CanActivate {
             requiredRoles,
             section,
           })
-        .catch((err) => {
-          console.error('Failed to log unauthorized role access:', err);
+          .catch((err) => {
+            console.error('Failed to log unauthorized role access:', err);
         });
 
       }
