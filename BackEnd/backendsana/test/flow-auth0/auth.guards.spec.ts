@@ -83,8 +83,8 @@ describe('RolesGuard', () => {
     expect(
       guard.canActivate(context({ user: { roles: ['psicologo'] } }) as never),
     ).toBe(true);
-    expect(
+    expect(() =>
       guard.canActivate(context({ user: { roles: ['consultante'] } }) as never),
-    ).toBe(false);
+    ).toThrow(ForbiddenException);
   });
 });

@@ -49,22 +49,20 @@ describe('AuthService.authorizeAuth0', () => {
       email: profile.email,
       roles: ['psicologo'],
       auth0Subject: profile.subject,
+      state: AccountState.Active,
     });
     expect(repository.updateLastLogin).toHaveBeenCalledWith(10);
   });
 
-  it('creates a pending request when the Auth0 email is unknown', async () => {
+  it('rejects an Auth0 identity with an unknown email', async () => {
     const { service, repository } = setup();
     repository.findByProviderId.mockResolvedValue(null);
     repository.findByEmail.mockResolvedValue(null);
 
     await expect(service.authorizeAuth0(profile)).rejects.toThrow(
-      'Access request is pending',
+      'Account not found. Contact an administrator.',
     );
-    expect(repository.createPending).toHaveBeenCalledWith(
-      profile.email,
-      profile.name,
-    );
+    expect(repository.createPending).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -115,7 +113,12 @@ describe('AuthService.authorizeAuth0', () => {
       userId: 10,
       auth0Subject: profile.subject,
     });
-    expect(repository.claim).toHaveBeenCalledWith(10, profile.subject, 'auth0');
+    expect(repository.claim).toHaveBeenCalledWith(
+      10,
+      profile.subject,
+      'auth0',
+      true,
+    );
   });
 
   it('links a new Auth0 provider to an existing account with a different provider', async () => {
@@ -148,6 +151,11 @@ describe('AuthService.authorizeAuth0', () => {
       userId: 10,
       auth0Subject: profile.subject,
     });
-    expect(repository.linkProvider).toHaveBeenCalledWith(10, profile.subject, 'auth0');
+    expect(repository.linkProvider).toHaveBeenCalledWith(
+      10,
+      profile.subject,
+      'auth0',
+      true,
+    );
   });
 });
