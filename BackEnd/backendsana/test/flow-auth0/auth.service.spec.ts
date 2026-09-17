@@ -80,7 +80,7 @@ describe('AuthService.authorizeAuth0', () => {
   it('calls updateEmail when the Auth0 email differs from the stored email', async () => {
     const { service, repository } = setup({ email: 'OLD@EXAMPLE.COM' });
     // findByProviderId retorna el record con email obsoleto; tras updateEmail el servicio
-    // usa el email normalizado del token OAuth.
+    // usa el email normalizado del token Auth0.
     await expect(service.authorizeAuth0(profile)).resolves.toMatchObject({
       email: profile.email,
     });
