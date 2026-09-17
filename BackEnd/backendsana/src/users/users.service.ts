@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, QueryFailedError, Repository } from 'typeorm';
+import { SecurityLogService } from '../services/security-log.service.js';
 import { AssignedRoleDto } from './dto/assigned-role.dto.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import {
@@ -56,9 +57,13 @@ export class UsersService {
     @InjectRepository(Schedule)
     private readonly scheduleRepository: Repository<Schedule>,
     private readonly dataSource: DataSource,
+    private readonly securityLogService: SecurityLogService,
   ) {}
 
-  async create(dto: CreateUserDto): Promise<UserResponse> {
+  async create(
+    dto: CreateUserDto,
+    createdByUserId: number,
+  ): Promise<UserResponse> {
     const email = dto.email.trim().toLowerCase();
     const role = await this.findAssignableRoleOrFail(dto.roleId);
 
@@ -85,6 +90,10 @@ export class UsersService {
         existing.perContactNumber = dto.phone;
         existing.perState = 'activo';
         existing.perUpdateDate = new Date();
+        // Promocion de pendiente: atribuye al admin que completa el alta.
+        if (existing.perCreatedBy == null) {
+          existing.perCreatedBy = createdByUserId;
+        }
         await manager.save(existing);
         await this.replaceRoles(manager, existing.perId, [
           { roleId: role.rolId, active: true },
@@ -99,6 +108,8 @@ export class UsersService {
           perEmail: email,
           perContactNumber: dto.phone,
           perState: 'activo',
+          perCreatedBy: createdByUserId,
+          perCreatedAt: new Date(),
         }),
       );
       await this.replaceRoles(manager, created.perId, [
@@ -130,7 +141,9 @@ export class UsersService {
 
     const persons = await query.orderBy('person.per_name', 'ASC').getMany();
     return Promise.all(
-      persons.map((person) => this.toResponse(this.dataSource.manager, person.perId, person)),
+      persons.map((person) =>
+        this.toResponse(this.dataSource.manager, person.perId, person),
+      ),
     );
   }
 
@@ -158,18 +171,22 @@ export class UsersService {
   async updateStatus(
     id: number,
     dto: UpdateUserStatusDto,
+    actorUserId: number,
   ): Promise<UserResponse> {
     const person = await this.findByIdOrFail(id);
     person.perState = STATUS_TO_STATE[dto.status];
     person.perUpdateDate = new Date();
     await this.personRepository.save(person);
 
-    if (dto.status === 'blocked') {
-      await this.revokeActiveSessions(id);
-    }
+    // Auth0 posee las sesiones; el estado `bloqueado` se aplica en authorizeAuth0.
+    // Persistimos motivo/actor en security_access_log para auditoria.
+    await this.securityLogService.logAccountStatusChange({
+      actorUserId,
+      targetPersonId: id,
+      status: dto.status,
+      reason: dto.reason,
+    });
 
-    // `dto.reason` se acepta por compatibilidad con el contrato de la API,
-    // pero todavia no hay una columna/tabla de bitacora donde persistirlo.
     return this.toResponse(this.dataSource.manager, id);
   }
 
@@ -270,38 +287,34 @@ export class UsersService {
     }
   }
 
-  private async revokeActiveSessions(personId: number): Promise<void> {
-    await this.dataSource.query(
-      'UPDATE auth_sessions SET auth_session_revoked_at = now() WHERE use_id = $1 AND auth_session_revoked_at IS NULL',
-      [personId],
-    );
-  }
-
   private async findAssociatedRecords(
     personId: number,
   ): Promise<Record<string, number | boolean>> {
-    const [appointments, schedule, dependents, hasAccount] = await Promise.all([
-      this.appointmentRepository
-        .createQueryBuilder('appointment')
-        .where('appointment.req_id = :id', { id: personId })
-        .orWhere('appointment.app_patient_person_id = :id', { id: personId })
-        .orWhere('appointment.psy_id = :id', { id: personId })
-        .orWhere('appointment.sec_id = :id', { id: personId })
-        .getCount(),
-      this.scheduleRepository.count({
-        where: { psychologistUserId: personId },
-      }),
-      this.requesterDependentRepository.count({
-        where: { requesterPersonId: personId },
-      }),
-      this.userAccountRepository.exists({ where: { useId: personId } }),
-    ]);
+    const [appointments, schedule, dependents, hasAccount, createdPersons] =
+      await Promise.all([
+        this.appointmentRepository
+          .createQueryBuilder('appointment')
+          .where('appointment.req_id = :id', { id: personId })
+          .orWhere('appointment.app_patient_person_id = :id', { id: personId })
+          .orWhere('appointment.psy_id = :id', { id: personId })
+          .orWhere('appointment.sec_id = :id', { id: personId })
+          .getCount(),
+        this.scheduleRepository.count({
+          where: { psychologistUserId: personId },
+        }),
+        this.requesterDependentRepository.count({
+          where: { requesterPersonId: personId },
+        }),
+        this.userAccountRepository.exists({ where: { useId: personId } }),
+        this.personRepository.count({ where: { perCreatedBy: personId } }),
+      ]);
 
     const associated: Record<string, number | boolean> = {};
     if (appointments > 0) associated.appointments = appointments;
     if (schedule > 0) associated.schedule = schedule;
     if (dependents > 0) associated.dependents = dependents;
     if (hasAccount) associated.account = true;
+    if (createdPersons > 0) associated.createdPersons = createdPersons;
     return associated;
   }
 
@@ -316,7 +329,11 @@ export class UsersService {
         .createQueryBuilder(PersonRol, 'pr')
         .innerJoin(Rol, 'rol', 'rol.rol_id = pr.rol_id')
         .where('pr.per_id = :personId', { personId })
-        .select(['pr.rolId AS "rolId"', 'pr.active AS "active"', 'rol.rolDescription AS "name"'])
+        .select([
+          'pr.rolId AS "rolId"',
+          'pr.active AS "active"',
+          'rol.rolDescription AS "name"',
+        ])
         .getRawMany<{ rolId: number; active: boolean; name: string }>(),
       manager.findOneBy(UserAccount, { useId: personId }),
     ]);
@@ -336,6 +353,9 @@ export class UsersService {
       roles: userRoles,
       status: STATE_TO_STATUS[person.perState],
       lastLoginAt: account?.lastLoginAt?.toISOString() ?? null,
+      emailVerified: account ? account.emailVerified : null,
+      createdAt: person.perCreatedAt.toISOString(),
+      createdBy: person.perCreatedBy,
     };
   }
 }

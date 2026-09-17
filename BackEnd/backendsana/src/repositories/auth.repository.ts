@@ -103,8 +103,9 @@ export class AuthRepository {
   
   /**
    * Creates a pending user account.
-   * @param email The email of the pending user.
-   * @param name The name of the pending user.
+   * @param email The email of the user.
+   * @param name The name of the user.
+   * @returns A promise resolving to void.
    */
   async createPending(email: string, name: string): Promise<void> {
     await this.dataSource.transaction(async (manager) => {
@@ -114,12 +115,9 @@ export class AuthRepository {
       );
       const personId = persons[0].per_id;
       await manager.query(
-        `INSERT INTO person_rol (per_id,rol_id,pr_assigned_at) SELECT $1,rol_id,now() FROM rol WHERE rol_description='pendiente'`,
+        `INSERT INTO person_rol (per_id,rol_id,pr_assigned_at,pr_active) SELECT $1,rol_id,now(),true FROM rol WHERE rol_description='pendiente'`,
         [personId],
       );
-      await manager.query('INSERT INTO access_requests (per_id) VALUES ($1)', [
-        personId,
-      ]);
     });
   }
 

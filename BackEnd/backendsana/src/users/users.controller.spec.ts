@@ -10,12 +10,16 @@ describe('UsersController', () => {
     remove: vi.fn(),
   };
 
+  const adminRequest = {
+    user: { userId: 42, personId: 42, email: 'admin@example.com', roles: ['administrador'], auth0Subject: 'auth0|1', state: 'activo' },
+  };
+
   function setup() {
     vi.clearAllMocks();
     return new UsersController(service as never);
   }
 
-  it('delegates creation to the service', async () => {
+  it('delegates creation to the service with the authenticated admin id', async () => {
     const controller = setup();
     const dto = {
       fullName: 'Ana',
@@ -26,8 +30,10 @@ describe('UsersController', () => {
     };
     service.create.mockResolvedValue({ id: 1 });
 
-    await expect(controller.create(dto as never)).resolves.toEqual({ id: 1 });
-    expect(service.create).toHaveBeenCalledWith(dto);
+    await expect(controller.create(adminRequest as never, dto as never)).resolves.toEqual({
+      id: 1,
+    });
+    expect(service.create).toHaveBeenCalledWith(dto, 42);
   });
 
   it('forwards status and search filters when listing users', async () => {
@@ -50,8 +56,10 @@ describe('UsersController', () => {
     await controller.update(7, { fullName: 'New name' } as never);
     expect(service.update).toHaveBeenCalledWith(7, { fullName: 'New name' });
 
-    await controller.updateStatus(7, { status: 'blocked' } as never);
-    expect(service.updateStatus).toHaveBeenCalledWith(7, { status: 'blocked' });
+    await controller.updateStatus(adminRequest as never, 7, {
+      status: 'blocked',
+    } as never);
+    expect(service.updateStatus).toHaveBeenCalledWith(7, { status: 'blocked' }, 42);
 
     await controller.remove(7);
     expect(service.remove).toHaveBeenCalledWith(7);

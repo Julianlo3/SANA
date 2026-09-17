@@ -8,24 +8,22 @@ export interface SecurityAccessLogEntry {
 }
 
 /**
- * Service dedicated to recording security access and unauthorized attempt logs.
+ * Service dedicated to recording security access and account-management audit logs.
  */
 @Injectable()
 export class SecurityLogService {
   private readonly logger = new Logger(SecurityLogService.name);
 
-  constructor(private readonly dataSource: DataSource) { }
+  constructor(private readonly dataSource: DataSource) {}
 
   /**
-   * Records an unauthorized access attempt in the security_access_log table.
-   * Performs an asynchronous, non-blocking insert to guarantee that logging
-   * failures never disrupt standard HTTP error responses.
-   * @param entry The security log entry containing user, session, section, and message.
+   * Records a security-relevant event in `security_access_log`.
+   * Failures are swallowed so logging never breaks the HTTP response.
    */
-  async logUnauthorizedAccess(entry: SecurityAccessLogEntry): Promise<void> {
+  async logSecurityEvent(entry: SecurityAccessLogEntry): Promise<void> {
     const { userId, section, message } = entry;
     const cleanSection = (section || 'Unknown Section').substring(0, 100);
-    const cleanMessage = (message || 'Unauthorized access attempt').substring(0, 255);
+    const cleanMessage = (message || 'Security event').substring(0, 255);
 
     try {
       await this.dataSource.query(
@@ -41,10 +39,14 @@ export class SecurityLogService {
     }
   }
 
+  /** @deprecated Prefer {@link logSecurityEvent}; kept for call-site clarity. */
+  async logUnauthorizedAccess(entry: SecurityAccessLogEntry): Promise<void> {
+    await this.logSecurityEvent(entry);
+  }
+
   /**
    * Helper method to log role mismatch attempts when a logged-in user tries to access a restricted section.
    * Applies email masking for privacy and data minimization.
-   * @param params The role mismatch details.
    */
   async logRoleMismatch(params: {
     userId: number;
@@ -57,18 +59,37 @@ export class SecurityLogService {
     const maskedEmail = this.maskEmail(email);
     const message = `User ${maskedEmail} [Roles: ${userRoles.join(', ') || 'None'}] denied access to section requiring [${requiredRoles.join(', ')}].`;
 
-    await this.logUnauthorizedAccess({ userId, section, message });
+    await this.logSecurityEvent({ userId, section, message });
+  }
+
+  /**
+   * Persists an admin-driven account status change (block / deactivate / reactivate)
+   * for security auditing. Auth0 owns browser sessions; local `auth_sessions` no longer exist.
+   */
+  async logAccountStatusChange(params: {
+    actorUserId: number;
+    targetPersonId: number;
+    status: string;
+    reason?: string;
+  }): Promise<void> {
+    const { actorUserId, targetPersonId, status, reason } = params;
+    const reasonSuffix = reason?.trim() ? `: ${reason.trim()}` : '';
+    await this.logSecurityEvent({
+      userId: actorUserId,
+      section: 'User Management',
+      message: `Admin changed person ${targetPersonId} status to '${status}'${reasonSuffix}`,
+    });
   }
 
   /**
    * Masks an email address for privacy / GDPR data minimization (e.g. j***@example.com).
-   * @param email The plain email address.
-   * @returns The masked email.
    */
   private maskEmail(email: string): string {
     if (!email || !email.includes('@')) return 'anonymous';
     const [name, domain] = email.split('@');
-    const maskedName = name.length > 2 ? `${name[0]}***${name[name.length - 1]}` : `${name[0]}***`;
+    const maskedName =
+      name.length > 2 ? `${name[0]}***${name[name.length - 1]}` : `${name[0]}***`;
     return `${maskedName}@${domain}`;
   }
 }
+

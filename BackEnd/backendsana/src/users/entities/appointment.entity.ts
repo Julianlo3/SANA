@@ -21,4 +21,7 @@ export class Appointment {
 
   @Column({ name: 'app_patient_person_id', type: 'integer', nullable: true })
   patientPersonId!: number | null;
+
+  @Column({ name: 'app_patient_dependent_id', type: 'integer', nullable: true })
+  patientDependentId!: number | null;
 }

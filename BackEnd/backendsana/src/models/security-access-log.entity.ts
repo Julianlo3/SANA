@@ -1,45 +1,34 @@
-import {
-  Column,
-  Entity,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 /**
- * Represents a security access log entry for unauthorized access attempts.
+ * Table `security_access_log`: records security-relevant events.
  */
 @Entity({ name: 'security_access_log' })
 export class SecurityAccessLog {
   @PrimaryGeneratedColumn({ name: 'security_access_log_id' })
-  id: number;
+  id!: number;
 
   @Column({ name: 'use_id' })
-  userId: number;
-
-  @Column({
-    name: 'auth_session_id',
-    type: 'uuid',
-    nullable: true,
-  })
-  sessionId: string | null;
+  userId!: number;
 
   @Column({
     name: 'security_access_log_section',
     type: 'varchar',
     length: 100,
   })
-  section: string;
+  section!: string;
 
   @Column({
     name: 'security_access_log_message',
     type: 'varchar',
     length: 255,
   })
-  message: string;
+  message!: string;
 
   @Column({
     name: 'security_access_log_created_at',
     type: 'timestamptz',
     default: () => 'CURRENT_TIMESTAMP',
   })
-  createdAt: Date;
+  createdAt!: Date;
 }
