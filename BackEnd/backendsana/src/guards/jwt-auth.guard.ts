@@ -28,15 +28,6 @@ export class JwtAuthGuard implements CanActivate {
       .switchToHttp()
       .getRequest<Request & { user?: unknown }>();
     const token = request.headers.authorization?.match(/^Bearer (.+)$/i)?.[1];
-      console.log('TOKEN:', {
-      exists: !!token,
-      parts: token?.split('.').length,
-      start: token?.substring(0, 20),
-    });
-    console.log('\n=============================================');
-    console.log('🎯 [Auth Guard] Token recibido en el backend:');
-    console.log(token || '❌ No se recibió ningún token');
-    console.log('=============================================\n');
 
     if (!token) throw new UnauthorizedException('Access token is required');
     const profile = await this.auth0IdentityService.verifyAccessToken(token);
