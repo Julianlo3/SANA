@@ -3,7 +3,6 @@ import { DataSource } from 'typeorm';
 
 export interface SecurityAccessLogEntry {
   userId: number;
-  sessionId?: string | null;
   section: string;
   message: string;
 }
@@ -24,25 +23,21 @@ export class SecurityLogService {
    * @param entry The security log entry containing user, session, section, and message.
    */
   async logUnauthorizedAccess(entry: SecurityAccessLogEntry): Promise<void> {
-    const { userId, sessionId = null, section, message } = entry;
+    const { userId, section, message } = entry;
     const cleanSection = (section || 'Unknown Section').substring(0, 100);
     const cleanMessage = (message || 'Unauthorized access attempt').substring(0, 255);
 
     try {
       await this.dataSource.query(
-        `INSERT INTO security_access_log
-           (use_id, auth_session_id, security_access_log_section, security_access_log_message)
-         VALUES ($1, $2, $3, $4)`,
-        [userId, sessionId, cleanSection, cleanMessage],
+        `INSERT INTO security_access_log (use_id, security_access_log_section, security_access_log_message)
+         VALUES ($1, $2, $3)`,
+        [userId, cleanSection, cleanMessage],
       );
       this.logger.warn(
-        `Security incident recorded [User ID: ${userId}, Session: ${sessionId ?? 'N/A'}, Section: '${cleanSection}']: ${cleanMessage}`,
+        `Security incident recorded [User ID: ${userId}, Section: '${cleanSection}']: ${cleanMessage}`,
       );
     } catch (error) {
-      this.logger.error(
-        `Failed to record security access log for user ${userId}:`,
-        error,
-      );
+      this.logger.error(`Failed to record security access log for user ${userId}:`, error);
     }
   }
 
@@ -53,22 +48,16 @@ export class SecurityLogService {
    */
   async logRoleMismatch(params: {
     userId: number;
-    sessionId?: string | null;
     email: string;
     userRoles: string[];
     requiredRoles: string[];
     section: string;
   }): Promise<void> {
-    const { userId, sessionId, email, userRoles, requiredRoles, section } = params;
+    const { userId, email, userRoles, requiredRoles, section } = params;
     const maskedEmail = this.maskEmail(email);
     const message = `User ${maskedEmail} [Roles: ${userRoles.join(', ') || 'None'}] denied access to section requiring [${requiredRoles.join(', ')}].`;
 
-    await this.logUnauthorizedAccess({
-      userId,
-      sessionId,
-      section,
-      message,
-    });
+    await this.logUnauthorizedAccess({ userId, section, message });
   }
 
   /**

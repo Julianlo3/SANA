@@ -7,4 +7,5 @@ export interface AuthenticatedUser {
   email: string;
   roles: string[];
   auth0Subject: string;
+  state: string;
 }
