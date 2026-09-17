@@ -60,7 +60,6 @@ export class RolesGuard implements CanActivate {
         this.securityLogService
           .logRoleMismatch({
             userId: user.userId,
-            sessionId: null,
             email: user.email,
             userRoles: user.roles ?? [],
             requiredRoles,
@@ -68,7 +67,8 @@ export class RolesGuard implements CanActivate {
           })
           .catch((err) => {
             console.error('Failed to log unauthorized role access:', err);
-          });
+        });
+
       }
 
       throw new ForbiddenException('Forbidden resource: insufficient permissions');

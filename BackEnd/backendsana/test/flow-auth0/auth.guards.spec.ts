@@ -76,20 +76,15 @@ describe('RolesGuard', () => {
     expect(guard.canActivate(context({}) as never)).toBe(true);
   });
 
-  it('only permits a user that has one required role', () => {
-    const guard = new RolesGuard(
-      {
-        getAllAndOverride: () => ['administrador', 'psicologo'],
-      } as never, { logRoleMismatch: vi.fn() } as never);
+    it('only permits a user that has one required role', () => {
+    const guard = new RolesGuard({
+      getAllAndOverride: () => ['administrador', 'psicologo'],
+    } as never, { logRoleMismatch: vi.fn() } as never);
     expect(
       guard.canActivate(context({ user: { roles: ['psicologo'] } }) as never),
     ).toBe(true);
-    expect(() =>
+    expect(
       guard.canActivate(context({ user: { roles: ['consultante'] } }) as never),
-    ).toThrow(ForbiddenException);
+    ).toBe(false);
   });
 });
-// Normaliza espacios en CORS_ORIGIN antes de comparar el Origin recibido.
-// Copia el usuario validado a request.user para los controladores posteriores.
-// Las rutas públicas no declaran metadatos de roles.
-// Basta que el usuario posea uno de los roles exigidos por la ruta.
