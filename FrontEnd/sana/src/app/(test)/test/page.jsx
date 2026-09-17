@@ -1,6 +1,6 @@
 import HealthCheck from '@/components/test/healthCheck';
-//import Auth0Login from '@/components/test/Auth0Login';
-//import SessionTest from '@/components/test/SessionTest';
+import Auth0Token from '@/components/test/auth0Token';
+import Auth0BackendTest from '@/components/test/auth0BackendTest';
 //import ProtectedApi from '@/components/test/ProtectedApi';
 
 export default function TestPage() {
@@ -28,6 +28,8 @@ export default function TestPage() {
         <div className="space-y-5">
 
           <HealthCheck />
+          <Auth0Token />
+          <Auth0BackendTest />
 
         </div>
       </div>

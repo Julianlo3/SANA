@@ -5,7 +5,6 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
-import { randomUUID } from 'crypto';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module.js';
@@ -18,9 +17,9 @@ import { Auth0IdentityService } from '../src/services/auth0-identity.service.js'
  * verifican el estado final en la base de datos.
  *
  * Autenticación: el Auth0IdentityService se sustituye por un stub que devuelve
- * directamente el perfil del administrador sin necesidad de un token JWT real.
- * El JwtAuthGuard extrae cualquier Bearer token y lo pasa al stub, que ignora
- * el valor y retorna el perfil configurado.
+ * directamente el perfil del administrador sin necesidad de un token Auth0 real.
+ * El JwtAuthGuard extrae el Bearer token y lo pasa al stub de Auth0, que retorna
+ * el perfil configurado para cada escenario.
  */
 describe('UsersController (e2e, real Postgres)', () => {
   let app: INestApplication;
@@ -62,20 +61,6 @@ describe('UsersController (e2e, real Postgres)', () => {
     }
     createdPersonIds.push(personId);
     return personId;
-  }
-
-  /**
-   * Crea una sesión activa en auth_sessions para el usuario dado.
-   * Necesario para el test de bloqueo que verifica la revocación de sesiones.
-   */
-  async function seedSession(userId: number): Promise<string> {
-    const sessionId = randomUUID();
-    await dataSource.query(
-      `INSERT INTO auth_sessions (auth_session_id, use_id, auth_session_refresh_token_hash, auth_session_expires_at, auth_session_last_activity_at)
-       VALUES ($1, $2, 'hash', now() + interval '1 day', now())`,
-      [sessionId, userId],
-    );
-    return sessionId;
   }
 
   beforeAll(async () => {
@@ -133,10 +118,6 @@ describe('UsersController (e2e, real Postgres)', () => {
   });
 
   afterAll(async () => {
-    await dataSource.query(
-      'DELETE FROM auth_sessions WHERE use_id = ANY($1)',
-      [createdPersonIds],
-    );
     await dataSource.query(
       'DELETE FROM appointments WHERE req_id = ANY($1) OR app_patient_person_id = ANY($1) OR psy_id = ANY($1) OR sec_id = ANY($1)',
       [createdPersonIds],
@@ -351,13 +332,12 @@ describe('UsersController (e2e, real Postgres)', () => {
   });
 
   describe('PATCH /users/:id/status (HU-1.3, bloquear/desactivar/reactivar)', () => {
-    it('blocks a user and revokes their active sessions', async () => {
+    it('blocks a user and rejects their Auth0 identity', async () => {
       const id = await seedPerson({
         email: `block-user-${unique()}@gmail.com`,
         roleDescription: 'secretario',
         withAccount: true,
       });
-      await seedSession(id); // crea una sesion activa para verificar la revocación
 
       const response = await authed(
         request(app.getHttpServer()).patch(`/api/v1/users/${id}/status`),
@@ -367,11 +347,30 @@ describe('UsersController (e2e, real Postgres)', () => {
 
       expect(response.body.status).toBe('blocked');
 
-      const sessions = await dataSource.query(
-        'SELECT auth_session_revoked_at FROM auth_sessions WHERE use_id = $1',
+      const [blockedUser] = await dataSource.query(
+        'SELECT user_provider_id, per_email FROM users JOIN person ON use_id = per_id WHERE use_id = $1',
         [id],
       );
-      expect(sessions.every((s: { auth_session_revoked_at: Date | null }) => s.auth_session_revoked_at !== null)).toBe(true);
+      const auth0 = app.get(Auth0IdentityService) as {
+        verifyAccessToken: (token: string) => Promise<unknown>;
+      };
+      const original = auth0.verifyAccessToken.bind(auth0);
+      auth0.verifyAccessToken = async () => ({
+        subject: blockedUser.user_provider_id,
+        email: blockedUser.per_email,
+        name: 'Blocked User',
+        isEmailVerified: true,
+      });
+
+      try {
+        await request(app.getHttpServer())
+          .get('/api/v1/users')
+          .set('Origin', origin)
+          .set('Authorization', 'Bearer blocked-user-stub-token')
+          .expect(403);
+      } finally {
+        auth0.verifyAccessToken = original;
+      }
     });
 
     it('reactivates a user keeping its previous role', async () => {

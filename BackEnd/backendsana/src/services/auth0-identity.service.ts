@@ -61,8 +61,14 @@ export class Auth0IdentityService {
       const name = typeof nameClaim === 'string' ? nameClaim : email;
       const emailVerified = emailVerifiedClaim === true;
 
-      if (!payload.sub || !email || emailVerified !== true)
+      if (!payload.sub || !email || emailVerified !== true) {
+        console.error('❌ [Auth0IdentityService] Token lacks required claims:', {
+          sub: payload.sub,
+          email,
+          emailVerified
+        });
         throw new UnauthorizedException('Auth0 token lacks required claims');
+      }
 
       return {
         subject: payload.sub,
@@ -71,6 +77,7 @@ export class Auth0IdentityService {
         isEmailVerified: true,
       };
     } catch (error) {
+      console.error('❌ [Auth0IdentityService] verification failed:', error);
       if (error instanceof UnauthorizedException) throw error;
       throw new UnauthorizedException('Invalid Auth0 access token');
     }
