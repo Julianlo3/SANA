@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import type { AuthenticatedUser } from '../interfaces/auth.interface.js';
 import { AccountState } from '../models/account-state.enum.js';
 import { UserRole } from '../models/user-role.enum.js';
@@ -13,42 +13,64 @@ const ALLOWED_ROLES = new Set([
   UserRole.Marketing,
 ]);
 
-/** 
- * Applies SANA account state and role authorization to an Auth0 identity. 
-*/
+/**
+ * Applies SANA account state and role authorization to an Auth0 identity.
+ */
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly repository: AuthRepository,
     private readonly securityLogService: SecurityLogService,
   ) {}
 
   /**
-   * Authorizes an Auth0 profile and returns the corresponding SANA user.
-   * @param profile The Auth0 profile to authorize.
-   * @returns The authorized SANA user.
+   * Authorizes an Auth0 profile by checking account state and roles, and returns the corresponding authenticated user.
+   * @param profile the Auth0 profile to authorize.
+   * @returns the authenticated user corresponding to the authorized Auth0 profile.
    */
   async authorizeAuth0(profile: Auth0Profile): Promise<AuthenticatedUser> {
     const email = profile.email.trim().toLowerCase();
-    let record = await this.repository.findByProviderId(profile.subject, 'auth0');
+    const providerName = this.extractProviderName(profile.subject);
+
+    let record = await this.repository.findByProviderId(profile.subject);
 
     if (!record) {
       record = await this.repository.findByEmail(email);
       if (!record) {
-        await this.repository.createPending(email, profile.name);
-        throw new ForbiddenException('Access request is pending');
+        this.logger.warn(`Auth0 login attempt with unknown email: ${email}`);
+        throw new ForbiddenException('Account not found. Contact an administrator.');
+      }
+
+      if (!profile.isEmailVerified) {
+        if (record.userId) {
+          this.logDenied(
+            record.userId,
+            email,
+            'unverified email attempted to claim/link an existing account',
+          );
+        }
+        throw new ForbiddenException('Email must be verified with the identity provider');
+      }
+
+      if (!record.roles.some((role) => ALLOWED_ROLES.has(role as UserRole))) {
+        if (record.userId) {
+          this.logDenied(record.userId, email, 'no authorized role (pre-claim check)');
+        }
+        throw new ForbiddenException('Account role is not authorized');
       }
 
       if (!record.userId) {
         try {
-          await this.repository.claim(record.personId, profile.subject, 'auth0');
+          await this.repository.claim(record.personId, profile.subject, providerName, true);
         } catch (error) {
           if ((error as { code?: string }).code !== '23505') throw error;
         }
-        record = await this.repository.findByProviderId(profile.subject, 'auth0');
-      } else if (record.providerName !== 'auth0') {
-        await this.repository.linkProvider(record.userId, profile.subject, 'auth0');
-        record = await this.repository.findByProviderId(profile.subject, 'auth0');
+        record = await this.repository.findByProviderId(profile.subject);
+      } else if (record.providerId !== profile.subject) {
+        await this.repository.linkProvider(record.userId, profile.subject, providerName, true);
+        record = await this.repository.findByProviderId(profile.subject);
       }
     }
 
@@ -77,13 +99,23 @@ export class AuthService {
       email: record.email,
       roles: record.roles,
       auth0Subject: profile.subject,
+      state: record.state,
     };
   }
 
+  /**
+   * Authenticates an Auth0 profile and returns the corresponding authenticated user.
+   */
   async authenticateAuth0(profile: Auth0Profile): Promise<AuthenticatedUser> {
     return this.authorizeAuth0(profile);
   }
 
+  /**
+   * Logs a denied access attempt.
+   * @param userId  user ID of the user attempting access
+   * @param email email of the user attempting access
+   * @param reason the reason for the denial
+   */
   private logDenied(userId: number, email: string, reason: string): void {
     this.securityLogService
       .logUnauthorizedAccess({
@@ -92,5 +124,13 @@ export class AuthService {
         message: `Auth0 user ${email} denied: ${reason}.`,
       })
       .catch(() => undefined);
+  }
+
+  /**
+   * Extracts the provider name from an Auth0 subject string.
+   */
+  private extractProviderName(subject: string): string {
+    const [strategy] = subject.split('|');
+    return strategy;
   }
 }
