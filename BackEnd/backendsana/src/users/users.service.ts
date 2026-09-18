@@ -17,6 +17,7 @@ import { UpdateUserDto } from './dto/update-user.dto.js';
 import { Appointment } from './entities/appointment.entity.js';
 import { Person, PersonState } from './entities/person.entity.js';
 import { PersonRol } from './entities/person-rol.entity.js';
+import { Psychologist } from './entities/psychologist.entity.js';
 import { RequesterDependent } from './entities/requester-dependent.entity.js';
 import { Rol } from './entities/rol.entity.js';
 import { Schedule } from './entities/schedule.entity.js';
@@ -46,6 +47,8 @@ export class UsersService {
     private readonly personRepository: Repository<Person>,
     @InjectRepository(PersonRol)
     private readonly personRolRepository: Repository<PersonRol>,
+    @InjectRepository(Psychologist)
+    private readonly psychologistRepository: Repository<Psychologist>,
     @InjectRepository(Rol)
     private readonly rolRepository: Repository<Rol>,
     @InjectRepository(UserAccount)
@@ -98,6 +101,7 @@ export class UsersService {
         await this.replaceRoles(manager, existing.perId, [
           { roleId: role.rolId, active: true },
         ]);
+        await this.saveProfessionalData(manager, existing.perId, dto.professionalData);
         return this.toResponse(manager, existing.perId);
       }
 
@@ -115,6 +119,7 @@ export class UsersService {
       await this.replaceRoles(manager, created.perId, [
         { roleId: role.rolId, active: true },
       ]);
+      await this.saveProfessionalData(manager, created.perId, dto.professionalData);
       return this.toResponse(manager, created.perId);
     });
   }
@@ -147,6 +152,11 @@ export class UsersService {
     );
   }
 
+  async findOne(id: number): Promise<UserResponse> {
+    await this.findByIdOrFail(id);
+    return this.toResponse(this.dataSource.manager, id);
+  }
+
   async update(id: number, dto: UpdateUserDto): Promise<UserResponse> {
     await this.findByIdOrFail(id);
 
@@ -163,6 +173,7 @@ export class UsersService {
         await this.validateAssignableRoles(dto.roles);
         await this.replaceRoles(manager, id, dto.roles);
       }
+      await this.saveProfessionalData(manager, id, dto.professionalData);
 
       return this.toResponse(manager, id);
     });
@@ -318,13 +329,29 @@ export class UsersService {
     return associated;
   }
 
+  private async saveProfessionalData(
+    manager: EntityManager,
+    personId: number,
+    data?: { licenseNumber: string; speciality: string },
+  ): Promise<void> {
+    if (!data) return;
+
+    await manager.save(
+      manager.create(Psychologist, {
+        id: personId,
+        licenseNumber: Number(data.licenseNumber),
+        speciality: data.speciality,
+      }),
+    );
+  }
+
   private async toResponse(
     manager: EntityManager,
     personId: number,
     preloaded?: Person,
   ): Promise<UserResponse> {
     const person = preloaded ?? (await this.findByIdOrFail(personId, manager));
-    const [roles, account] = await Promise.all([
+    const [roles, account, professionalData] = await Promise.all([
       manager
         .createQueryBuilder(PersonRol, 'pr')
         .innerJoin(Rol, 'rol', 'rol.rol_id = pr.rol_id')
@@ -336,6 +363,7 @@ export class UsersService {
         ])
         .getRawMany<{ rolId: number; active: boolean; name: string }>(),
       manager.findOneBy(UserAccount, { useId: personId }),
+      manager.findOneBy(Psychologist, { id: personId }),
     ]);
 
     const userRoles: UserRoleResponse[] = roles.map((role) => ({
@@ -356,6 +384,12 @@ export class UsersService {
       emailVerified: account ? account.emailVerified : null,
       createdAt: person.perCreatedAt.toISOString(),
       createdBy: person.perCreatedBy,
+      professionalData: professionalData
+        ? {
+            licenseNumber: professionalData.licenseNumber.toString(),
+            speciality: professionalData.speciality,
+          }
+        : undefined,
     };
   }
 }
