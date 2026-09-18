@@ -1,5 +1,14 @@
 import { Type } from 'class-transformer';
-import { IsEmail, IsInt, IsPositive, Matches, MaxLength } from 'class-validator';
+import { IsEmail, IsInt, IsOptional, IsPositive, IsString, Matches, MaxLength, ValidateNested } from 'class-validator';
+
+export class ProfessionalDataDto {
+  @Matches(/^\d{1,20}$/)
+  licenseNumber!: string;
+
+  @IsString()
+  @MaxLength(45)
+  speciality!: string;
+}
 
 const IDENTITY_DOCUMENT_PATTERN = /^\d{6,12}$/;
 const PHONE_PATTERN = /^\d{7,10}$/;
@@ -30,4 +39,9 @@ export class CreateUserDto {
   @IsInt()
   @IsPositive()
   roleId!: number;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ProfessionalDataDto)
+  professionalData?: ProfessionalDataDto;
 }
