@@ -16,4 +16,8 @@ export interface UserResponse {
   emailVerified: boolean | null;
   createdAt: string;
   createdBy: number | null;
+  professionalData?: {
+    licenseNumber: string;
+    speciality: string;
+  };
 }

@@ -5,6 +5,7 @@ import { ROLE_CATALOG } from "@/config/roles";
 type Props = {
   selectedRoleIds: number[];
   onToggleRole: (roleId: number) => void;
+  allowMultiple?: boolean;
   error?: string;
   disabled?: boolean;
   /** Roles asignados pero apagados. Solo se usa en la edición. */
@@ -15,6 +16,7 @@ type Props = {
 export default function RoleSelector({
   selectedRoleIds,
   onToggleRole,
+  allowMultiple = true,
   error,
   disabled = false,
   inactiveRoleIds,
@@ -31,7 +33,9 @@ export default function RoleSelector({
         </span>
       </legend>
       <p className="mt-1 text-xs text-text-subtle">
-        Una persona puede tener varios roles a la vez.
+        {allowMultiple
+          ? "Una persona puede tener varios roles a la vez."
+          : "Selecciona el rol inicial de la persona."}
         {showsActivation &&
           " Puedes apagar un rol sin quitárselo, por ejemplo mientras está de vacaciones."}
       </p>
@@ -52,7 +56,7 @@ export default function RoleSelector({
             >
               <input
                 id={`role-${role.id}`}
-                type="checkbox"
+                type={allowMultiple ? "checkbox" : "radio"}
                 checked={isAssigned}
                 onChange={() => onToggleRole(role.id)}
                 className="h-4 w-4 shrink-0 cursor-pointer accent-primary disabled:cursor-not-allowed"

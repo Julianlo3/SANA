@@ -39,9 +39,7 @@ export function useUserCreateForm() {
       const current = values.roleIds;
       setValue(
         "roleIds",
-        current.includes(roleId)
-          ? current.filter((id) => id !== roleId)
-          : [...current, roleId],
+        current.includes(roleId) ? [] : [roleId],
       );
     },
     [values.roleIds, setValue],

@@ -99,6 +99,7 @@ export default function UserCreatePage() {
 
           <RoleSelector
             selectedRoleIds={values.roleIds}
+            allowMultiple={false}
             onToggleRole={toggleRole}
             error={errors.roleIds}
           />

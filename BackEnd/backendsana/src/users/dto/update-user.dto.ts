@@ -7,6 +7,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { AssignedRoleDto } from './assigned-role.dto.js';
+import { ProfessionalDataDto } from './create-user.dto.js';
 
 const IDENTITY_DOCUMENT_PATTERN = /^\d{6,12}$/;
 const PHONE_PATTERN = /^\d{7,10}$/;
@@ -37,4 +38,9 @@ export class UpdateUserDto {
   @ValidateNested({ each: true })
   @Type(() => AssignedRoleDto)
   roles?: AssignedRoleDto[];
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ProfessionalDataDto)
+  professionalData?: ProfessionalDataDto;
 }
