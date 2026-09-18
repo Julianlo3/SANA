@@ -1,8 +1,9 @@
 /** Estados de public.person.per_state. */
-export type UserStatus = "active" | "inactive" | "blocked";
+export type UserStatus = "active" | "inactive" | "blocked" | "pending";
 
 export type AssignedRole = {
   id: number;
+  name?: string;
   /** Si el rol está habilitado en este momento para la persona. */
   isActive: boolean;
 };

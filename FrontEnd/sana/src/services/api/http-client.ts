@@ -6,7 +6,7 @@ type RequestOptions = {
   signal?: AbortSignal;
 };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+const API_URL = "/api/backend";
 
 /** Mensajes por código HTTP, en lenguaje de usuario. */
 const STATUS_MESSAGES: Record<number, string> = {
