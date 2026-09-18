@@ -13,4 +13,7 @@ export interface UserResponse {
   roles: UserRoleResponse[];
   status: 'active' | 'inactive' | 'blocked' | 'pending';
   lastLoginAt: string | null;
+  emailVerified: boolean | null;
+  createdAt: string;
+  createdBy: number | null;
 }

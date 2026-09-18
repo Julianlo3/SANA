@@ -207,14 +207,18 @@ describe('UsersController (e2e, real Postgres)', () => {
         phone,
         status: 'active',
         roles: [{ id: 5, name: 'psicologo', active: true }],
+        createdBy: adminPersonId,
+        emailVerified: null,
       });
+      expect(response.body.createdAt).toEqual(expect.any(String));
       createdPersonIds.push(response.body.id);
 
       const rows = await dataSource.query(
-        'SELECT per_contact_number FROM person WHERE per_id = $1',
+        'SELECT per_contact_number, per_created_by FROM person WHERE per_id = $1',
         [response.body.id],
       );
       expect(rows[0].per_contact_number).toBe(phone);
+      expect(rows[0].per_created_by).toBe(adminPersonId);
     });
 
     it('rejects a role that is not assignable to system accounts', async () => {
@@ -346,6 +350,18 @@ describe('UsersController (e2e, real Postgres)', () => {
         .expect(200);
 
       expect(response.body.status).toBe('blocked');
+
+      const logs = await dataSource.query(
+        `SELECT security_access_log_section, security_access_log_message
+         FROM security_access_log
+         WHERE use_id = $1
+         ORDER BY security_access_log_id DESC
+         LIMIT 1`,
+        [adminPersonId],
+      );
+      expect(logs[0]?.security_access_log_section).toBe('User Management');
+      expect(logs[0]?.security_access_log_message).toContain(`person ${id}`);
+      expect(logs[0]?.security_access_log_message).toContain('Licencia temporal');
 
       const [blockedUser] = await dataSource.query(
         'SELECT user_provider_id, per_email FROM users JOIN person ON use_id = per_id WHERE use_id = $1',

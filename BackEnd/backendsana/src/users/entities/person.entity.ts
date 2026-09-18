@@ -24,4 +24,14 @@ export class Person {
 
   @Column({ name: 'per_update_date', type: 'timestamptz', nullable: true })
   perUpdateDate!: Date | null;
+
+  @Column({ name: 'per_created_by', type: 'integer', nullable: true })
+  perCreatedBy!: number | null;
+
+  @Column({
+    name: 'per_created_at',
+    type: 'timestamptz',
+    default: () => 'now()',
+  })
+  perCreatedAt!: Date;
 }

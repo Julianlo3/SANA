@@ -11,4 +11,7 @@ export class RequesterDependent {
 
   @Column({ name: 'rel_id', type: 'integer', nullable: true })
   relationshipId!: number | null;
+
+  @Column({ name: 'rd_assigned_at', type: 'timestamptz' })
+  assignedAt!: Date;
 }

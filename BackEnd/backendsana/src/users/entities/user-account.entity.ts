@@ -14,4 +14,7 @@ export class UserAccount {
 
   @Column({ name: 'user_last_login_at', type: 'timestamptz', nullable: true })
   lastLoginAt!: Date | null;
+
+  @Column({ name: 'user_email_verified', type: 'boolean', default: false })
+  emailVerified!: boolean;
 }
