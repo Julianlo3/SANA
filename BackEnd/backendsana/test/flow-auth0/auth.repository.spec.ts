@@ -65,7 +65,7 @@ describe('AuthRepository', () => {
     );
   });
 
-  it('creates the pending person, role and access request in one transaction', async () => {
+  it('creates the pending person and role in one transaction', async () => {
     const { repository, dataSource, manager } = setup();
     manager.query.mockResolvedValueOnce([{ per_id: 9 }]).mockResolvedValue([]);
     dataSource.transaction.mockImplementation(async (callback) =>
@@ -85,14 +85,10 @@ describe('AuthRepository', () => {
       expect.stringContaining('INSERT INTO person_rol'),
       [9],
     );
-    expect(manager.query).toHaveBeenNthCalledWith(
-      3,
-      expect.stringContaining('INSERT INTO access_requests'),
-      [9],
-    );
+    expect(manager.query).toHaveBeenCalledTimes(2);
   });
 });
 // Los valores del usuario se pasan como parámetros SQL, no se interpolan en la consulta.
 // El repositorio asume 'auth0' cuando el servicio no indica otro proveedor.
 // Vincular la cuenta conserva el id de persona y añade el identificador del proveedor Auth0.
-// Las tres inserciones comparten la misma transacción para evitar solicitudes a medias.
+// Las inserciones comparten la misma transacción para evitar solicitudes a medias.
