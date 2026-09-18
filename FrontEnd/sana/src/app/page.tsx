@@ -62,7 +62,7 @@ export default function HomePage() {
                   type="button"
                   className="flex cursor-pointer items-center gap-2 rounded-full bg-primary px-7 py-3.5 font-bold text-white transition hover:bg-primary-dark"
                 >
-                  <CalendarCheck size={18} />
+                  <CalendarCheck size={18} aria-hidden />
                   {hero.primaryAction}
                 </button>
 
@@ -119,10 +119,16 @@ export default function HomePage() {
         </section>
 
         {/* PROGRAMAS */}
-        <Wave aria-hidden className="w-full rotate-180 text-sidebar" />
+        <section
+          id="programs"
+          className="relative overflow-hidden bg-sidebar py-24"
+        >
+          <Wave
+            aria-hidden
+            className="absolute inset-x-0 -top-px w-full rotate-180 text-background"
+          />
 
-        <section id="programs" className="bg-sidebar py-20">
-          <div className="mx-auto max-w-6xl px-6">
+          <div className="relative mx-auto max-w-6xl px-6">
             <h2 className="text-center font-display text-4xl font-extrabold text-primary-dark">
               {programs.title}
             </h2>
@@ -156,9 +162,12 @@ export default function HomePage() {
               })}
             </div>
           </div>
-        </section>
 
-        <Wave aria-hidden className="w-full text-sidebar" />
+          <Wave
+            aria-hidden
+            className="absolute inset-x-0 -bottom-px w-full text-background"
+          />
+        </section>
 
         {/* NOTICIAS */}
         <section id="news" className="mx-auto max-w-6xl px-6 py-20">
