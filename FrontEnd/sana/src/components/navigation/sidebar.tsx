@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -53,13 +54,18 @@ export default function Sidebar() {
         }`}
       >
         <div className="flex items-center gap-3 px-2 py-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
-            <span className="font-display text-lg font-bold text-white">S</span>
-          </div>
+          <Image
+            src="/brand/isotipo.png"
+            alt=""
+            width={44}
+            height={44}
+            className="h-10 w-10 object-contain"
+          />
+
           <div className="leading-tight">
-            <p className="font-semibold text-text">SANA</p>
+            <p className="font-semibold text-text">Fundación</p>
             <p className="text-[10px] tracking-widest text-text-subtle">
-              DEJANDO HUELLAS
+              DEJANDO HUELLAS FELICES
             </p>
           </div>
 
@@ -94,7 +100,7 @@ export default function Sidebar() {
                 onClick={() => setOpen(false)}
                 className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm transition ${
                   pathname.startsWith(href)
-                    ? "bg-accent font-semibold text-white"
+                    ? "bg-primary font-semibold text-white"
                     : "text-text-muted hover:bg-primary-soft"
                 }`}
               >
@@ -106,7 +112,7 @@ export default function Sidebar() {
         </nav>
 
         <div className="mt-auto flex items-center gap-3 rounded-xl bg-surface p-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-sm font-semibold text-white">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white">
             AS
           </div>
           <div className="flex-1 leading-tight">

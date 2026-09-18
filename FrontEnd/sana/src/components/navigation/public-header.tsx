@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 const navLinks = [
   { label: "Quiénes somos", href: "#about" },
@@ -9,20 +10,19 @@ const navLinks = [
 
 export default function PublicHeader() {
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-border bg-background">
       <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-4">
         
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
-            <span className="font-display text-lg font-bold text-white">
-              S
-            </span>
-          </div>
-
-          <span className="font-display text-lg font-bold leading-tight text-primary-dark">
-            Dejando Huellas
-          </span>
+                <Link href="/" className="flex items-center">
+          <Image
+              src="/brand/logo-horizontal.png"
+              alt="Fundación Dejando Huellas Felices"
+              width={400}
+              height={100}
+              priority
+              className="h-14 w-auto"
+            />
         </Link>
 
         {/* Navegación */}
