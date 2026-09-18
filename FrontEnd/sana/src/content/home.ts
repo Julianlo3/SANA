@@ -11,7 +11,8 @@
 export const HOME_CONTENT = {
   hero: {
     eyebrow: "Fundación sin ánimo de lucro",
-    title: "Únete a quienes ayudan a transformar la vida de las niñas y los niños",
+    title:
+      "Únete a quienes ayudan a transformar la vida de las niñas y los niños",
     description:
       "Texto pendiente: frase de presentación de la fundación, su propósito y a quiénes acompaña.",
     primaryAction: "Solicitar una cita",
@@ -22,9 +23,22 @@ export const HOME_CONTENT = {
     },
   },
 
+  about: {
+    title: "Quiénes somos",
+    paragraphs: [
+      "Texto pendiente: historia de la fundación, año de creación, población que atiende y alcance de su trabajo.",
+      "Texto pendiente: misión y valores de la organización.",
+    ],
+    image: {
+      src: "/images/manos-unidas.jpg",
+      alt: "Manos de varias personas unidas en el centro",
+    },
+  },
+
   programs: {
     title: "Nuestros programas",
-    description: "Texto pendiente: introducción a los servicios de la fundación.",
+    description:
+      "Texto pendiente: introducción a los servicios de la fundación.",
     items: [
       {
         title: "Acompañamiento psicológico",
@@ -39,16 +53,19 @@ export const HOME_CONTENT = {
       {
         title: "Apoyo a familias",
         description:
-          "Texto pendiente: descripción del acompañamiento a familias.",
+          "Texto pendiente: descripción del acompañamiento a familias y cuidadores.",
       },
     ],
   },
 
   news: {
     title: "Últimas noticias",
-    emptyLabel: "Imagen pendiente",
-    dateLabel: "Fecha pendiente",
-    itemTitle: "Título de noticia pendiente",
+    imagePlaceholder: "Imagen pendiente",
+    items: [
+      { date: "Fecha pendiente", title: "Título de noticia pendiente" },
+      { date: "Fecha pendiente", title: "Título de noticia pendiente" },
+      { date: "Fecha pendiente", title: "Título de noticia pendiente" },
+    ],
   },
 
   donation: {
@@ -58,7 +75,7 @@ export const HOME_CONTENT = {
     action: "Quiero donar",
     image: {
       src: "/images/ninos-arbol.jpg",
-      alt: "Niñas y niños jugando en un árbol",
+      alt: "Niñas y niños jugando entre las ramas de un árbol",
     },
   },
 } as const;
