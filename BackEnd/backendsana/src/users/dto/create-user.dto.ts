@@ -3,7 +3,7 @@ import { IsEmail, IsInt, IsPositive, Matches, MaxLength } from 'class-validator'
 
 const IDENTITY_DOCUMENT_PATTERN = /^\d{6,12}$/;
 const PHONE_PATTERN = /^\d{7,10}$/;
-const GOOGLE_EMAIL_PATTERN = /@(gmail\.com|googlemail\.com)$/i;
+const ALLOWED_EMAIL_PATTERN = /@(gmail\.com|googlemail\.com|hotmail\.com|unicauca\.edu\.co)$/i;
 
 export class CreateUserDto {
   @MaxLength(100)
@@ -16,8 +16,8 @@ export class CreateUserDto {
 
   @IsEmail()
   @MaxLength(100)
-  @Matches(GOOGLE_EMAIL_PATTERN, {
-    message: 'email must be a Google account (gmail.com or googlemail.com)',
+  @Matches(ALLOWED_EMAIL_PATTERN, {
+    message: 'email must be a Gmail, Hotmail or Unicauca account',
   })
   email!: string;
 
