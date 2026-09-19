@@ -8,4 +8,8 @@ export const ENDPOINTS = {
   user: (id: number) => `/users/${id}`,
   userStatus: (id: number) => `/users/${id}/status`,
   roles: "/roles",
+    // Solicitudes de consulta (épica 2)
+  consultationRequests: "/consultation-requests",
+  consultationRequest: (id: number) => `/consultation-requests/${id}`,
+  residenceZones: "/residence-zones",
 } as const;
