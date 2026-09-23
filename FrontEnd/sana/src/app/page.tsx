@@ -58,13 +58,13 @@ export default function HomePage() {
               </p>
 
               <div className="mt-9 flex flex-wrap gap-4">
-                <button
-                  type="button"
+                                <Link
+                  href="/solicitar-cita"
                   className="flex cursor-pointer items-center gap-2 rounded-full bg-primary px-7 py-3.5 font-bold text-white transition hover:bg-primary-dark"
                 >
                   <CalendarCheck size={18} aria-hidden />
                   {hero.primaryAction}
-                </button>
+                </Link>
 
                 <Link
                   href="#about"
