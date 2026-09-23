@@ -11,6 +11,7 @@ import TextField from "@/components/forms/text-field";
 import Button from "@/components/ui/button";
 import { REQUEST_CONTENT } from "@/content/consultation-request";
 import { keepDigits } from "@/lib/format/text";
+import AvailableSlotsList from "../components/available-slots-list";
 import {
   COLOMBIA_DEPARTMENTS,
   DEFAULT_DEPARTMENT,
@@ -51,19 +52,23 @@ const GENDER_OPTIONS: { value: Gender; label: string }[] = [
 export default function GuardianRequestPage() {
   const [step, setStep] = useState<1 | 2>(1);
 
-  const {
-    values,
-    errors,
-    isSaving,
-    submitError,
-    setValue,
-    setFieldTouched,
-    setRelationship,
-    setMinorGender,
-    toggleGuardianDataPolicy,
-    toggleMinorDataPolicy,
-    send,
-  } = useConsultationRequestForm("guardian");
+const {
+  values,
+  errors,
+  isSaving,
+  submitError,
+  slots,
+  areSlotsLoading,
+  selectedSlotId,
+  setSelectedSlotId,
+  setValue,
+  setFieldTouched,
+  setRelationship,
+  setMinorGender,
+  toggleGuardianDataPolicy,
+  toggleMinorDataPolicy,
+  send,
+} = useConsultationRequestForm("guardian");
 
   function goToStep2() {
     const step1Errors = [
@@ -399,7 +404,24 @@ export default function GuardianRequestPage() {
                   />
                 </label>
               </fieldset>
+                            <fieldset className="space-y-3">
+                <legend className="text-sm font-semibold text-text">
+                  Horario de atención
+                </legend>
+                <p className="text-xs text-text-subtle">
+                  Elige el horario que más le convenga al menor. Si ninguno
+                  sirve, la solicitud queda registrada igual.
+                </p>
 
+                <AvailableSlotsList
+                  slots={slots}
+                  isLoading={areSlotsLoading}
+                  selectedSlotId={selectedSlotId}
+                  onSelect={setSelectedSlotId}
+                />
+              </fieldset>
+
+              
               <div className="space-y-3">
                 <DataPolicyConsent
                   checked={values.hasAcceptedGuardianDataPolicy}

@@ -10,6 +10,7 @@ import TextField from "@/components/forms/text-field";
 import Button from "@/components/ui/button";
 import { REQUEST_CONTENT } from "@/content/consultation-request";
 import { keepDigits } from "@/lib/format/text";
+import AvailableSlotsList from "../components/available-slots-list";
 import {
   COLOMBIA_DEPARTMENTS,
   DEFAULT_DEPARTMENT,
@@ -39,18 +40,22 @@ const GENDER_OPTIONS: { value: Gender; label: string }[] = [
 /** HU-2.2: formulario de quien solicita la atención para sí mismo. */
 export default function SelfRequestPage() {
   const {
-    values,
-    errors,
-    isSaving,
-    submitError,
-    isValid,
-    setValue,
-    setFieldTouched,
-    setDocumentType,
-    setGender,
-    toggleDataPolicy,
-    send,
-  } = useConsultationRequestForm("self");
+  values,
+  errors,
+  isSaving,
+  submitError,
+  isValid,
+  slots,
+  areSlotsLoading,
+  selectedSlotId,
+  setSelectedSlotId,
+  setValue,
+  setFieldTouched,
+  setDocumentType,
+  setGender,
+  toggleDataPolicy,
+  send,
+} = useConsultationRequestForm("self");
 
   return (
     <div className="flex min-h-full flex-col">
@@ -286,7 +291,22 @@ export default function SelfRequestPage() {
               onChange={toggleDataPolicy}
               error={errors.hasAcceptedDataPolicy}
             />
+                         <fieldset className="space-y-3">
+              <legend className="text-sm font-semibold text-text">
+                Horario de atención
+              </legend>
+              <p className="text-xs text-text-subtle">
+                Elige el horario que más te convenga. Si ninguno te sirve, tu
+                solicitud queda registrada igual.
+              </p>
 
+              <AvailableSlotsList
+                slots={slots}
+                isLoading={areSlotsLoading}
+                selectedSlotId={selectedSlotId}
+                onSelect={setSelectedSlotId}
+              />
+            </fieldset>
             {submitError && (
               <InlineMessage tone="error">{submitError}</InlineMessage>
             )}

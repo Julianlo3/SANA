@@ -1,13 +1,17 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DATA_POLICY } from "@/config/data-policy";
 import { useForm } from "@/hooks/use-form";
 import { ApiError } from "@/types/api-types";
-import { submitConsultationRequest } from "../services/consultation-requests-service";
+import {
+  getAvailableSlots,
+  submitConsultationRequest,
+} from "../services/consultation-requests-service";
 import type {
   AdultDocumentType,
+  AvailableSlot,
   ConsultationRequestPayload,
   Gender,
   GuardianRelationship,
@@ -62,7 +66,28 @@ export function useConsultationRequestForm(requesterType: RequesterType) {
   const [isSaving, setIsSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  const [slots, setSlots] = useState<AvailableSlot[]>([]);
+  const [areSlotsLoading, setAreSlotsLoading] = useState(true);
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+
   const { values, setValue, submit } = form;
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    getAvailableSlots()
+      .then((result) => {
+        if (!controller.signal.aborted) setSlots(result);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setSlots([]);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setAreSlotsLoading(false);
+      });
+
+    return () => controller.abort();
+  }, []);
 
   const setRelationship = useCallback(
     (relationship: GuardianRelationship | "") => {
@@ -113,7 +138,6 @@ export function useConsultationRequestForm(requesterType: RequesterType) {
     [setValue],
   );
 
-  /** Arma la ubicación solo si la persona diligenció el municipio. */
   function buildResidence(
     department: string,
     municipality: string,
@@ -122,7 +146,6 @@ export function useConsultationRequestForm(requesterType: RequesterType) {
     return { department, municipality: municipality.trim() };
   }
 
-  /** Arma el cuerpo que espera el backend según el tipo de solicitante. */
   const buildPayload = useCallback(
     (submitted: RequestFormValues): ConsultationRequestPayload => {
       const residence = buildResidence(
@@ -134,8 +157,7 @@ export function useConsultationRequestForm(requesterType: RequesterType) {
         residence,
         consultationReason: submitted.consultationReason.trim(),
         dataPolicyVersion: DATA_POLICY.version,
-        // La selección de horario se agrega cuando construyamos esa pantalla.
-        selectedSlotId: null,
+        selectedSlotId,
       };
 
       if (requesterType === "guardian") {
@@ -173,7 +195,7 @@ export function useConsultationRequestForm(requesterType: RequesterType) {
         ...shared,
       };
     },
-    [requesterType],
+    [requesterType, selectedSlotId],
   );
 
   const send = useCallback(async () => {
@@ -212,6 +234,10 @@ export function useConsultationRequestForm(requesterType: RequesterType) {
     toggleMinorDataPolicy,
     isSaving,
     submitError,
+    slots,
+    areSlotsLoading,
+    selectedSlotId,
+    setSelectedSlotId,
     send,
   };
 }
