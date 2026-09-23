@@ -1,25 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { REQUEST_CONTENT } from "@/content/consultation-request";
+import { DATA_POLICY } from "@/config/data-policy";
 
 type Props = {
   checked: boolean;
   onChange: (checked: boolean) => void;
   error?: string;
+  label?: string;
 };
 
-/**
- * Autorización de tratamiento de datos (HU-2.2.6).
- * Sin marcarla no se puede enviar la solicitud.
- */
 export default function DataPolicyConsent({
   checked,
   onChange,
   error,
+  label = DATA_POLICY.consentLabel,
 }: Props) {
-  const { dataPolicy } = REQUEST_CONTENT;
-
   return (
     <div>
       <label
@@ -36,16 +32,16 @@ export default function DataPolicyConsent({
         />
 
         <span className="text-xs leading-relaxed text-text-muted">
-          {dataPolicy.label}{" "}
+          {label}{" "}
           <span className="text-danger" aria-hidden>
             *
           </span>
           <Link
-            href={dataPolicy.url}
+            href={DATA_POLICY.url}
             target="_blank"
             className="mt-1 block font-semibold text-primary hover:underline"
           >
-            {dataPolicy.linkLabel}
+            {DATA_POLICY.linkLabel}
           </Link>
         </span>
       </label>

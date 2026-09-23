@@ -10,11 +10,31 @@ import TextField from "@/components/forms/text-field";
 import Button from "@/components/ui/button";
 import { REQUEST_CONTENT } from "@/content/consultation-request";
 import { keepDigits } from "@/lib/format/text";
+import {
+  COLOMBIA_DEPARTMENTS,
+  DEFAULT_DEPARTMENT,
+  NO_ZONE_REPORTED_LABEL,
+} from "@/config/residence-zones";
 import DataPolicyConsent from "../components/data-policy-consent";
-import ResidenceZoneSelect from "../components/residence-zone-select";
 import { useConsultationRequestForm } from "../hooks/use-consultation-request-form";
+import type {
+  AdultDocumentType,
+  Gender,
+} from "../types/consultation-request-types";
 
 const { selfForm } = REQUEST_CONTENT;
+
+const DOCUMENT_TYPES: { value: AdultDocumentType; label: string }[] = [
+  { value: "cc", label: "Cédula de ciudadanía" },
+  { value: "ce", label: "Cédula de extranjería" },
+];
+
+const GENDER_OPTIONS: { value: Gender; label: string }[] = [
+  { value: "female", label: "Femenino" },
+  { value: "male", label: "Masculino" },
+  { value: "other", label: "Otro" },
+  { value: "preferNotToSay", label: "Prefiero no decir" },
+];
 
 /** HU-2.2: formulario de quien solicita la atención para sí mismo. */
 export default function SelfRequestPage() {
@@ -23,16 +43,15 @@ export default function SelfRequestPage() {
     errors,
     isSaving,
     submitError,
-    receipt,
+    isValid,
     setValue,
     setFieldTouched,
+    setDocumentType,
+    setGender,
     toggleDataPolicy,
     send,
   } = useConsultationRequestForm("self");
 
-   if (receipt) {
-    return null; // El hook padre redirige a la confirmación; ver nota abajo.
-  }
   return (
     <div className="flex min-h-full flex-col">
       <PublicHeader />
@@ -77,7 +96,39 @@ export default function SelfRequestPage() {
                 onBlur={() => setFieldTouched("fullName")}
               />
 
-              <div className="grid gap-5 sm:grid-cols-2">
+              <div className="grid gap-5 sm:grid-cols-[160px_1fr]">
+                <label className="block">
+                  <span className="text-sm font-semibold text-text">
+                    Tipo
+                    <span className="text-danger" aria-hidden>
+                      {" "}
+                      *
+                    </span>
+                  </span>
+                  <select
+                    value={values.documentType}
+                    onChange={(event) =>
+                      setDocumentType(
+                        event.target.value as AdultDocumentType | "",
+                      )
+                    }
+                    onBlur={() => setFieldTouched("documentType")}
+                    className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  >
+                    <option value="">Selecciona</option>
+                    {DOCUMENT_TYPES.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.documentType && (
+                    <span role="alert" className="mt-1.5 block text-xs text-danger">
+                      {errors.documentType}
+                    </span>
+                  )}
+                </label>
+
                 <TextField
                   label={selfForm.fields.identityDocument}
                   required
@@ -90,17 +141,51 @@ export default function SelfRequestPage() {
                   }
                   onBlur={() => setFieldTouched("identityDocument")}
                 />
+              </div>
 
-                <TextField
-                  label={selfForm.fields.birthDate}
-                  required
-                  type="text"
-                  value={values.birthDate}
-                  error={errors.birthDate}
-                  placeholder="AAAA-MM-DD"
-                  onChange={(value) => setValue("birthDate", value)}
-                  onBlur={() => setFieldTouched("birthDate")}
-                />
+              <div className="grid gap-5 sm:grid-cols-2">
+                <label className="block">
+                  <span className="text-sm font-semibold text-text">
+                    {selfForm.fields.birthDate}
+                    <span className="text-danger" aria-hidden>
+                      {" "}
+                      *
+                    </span>
+                  </span>
+                  <input
+                    type="date"
+                    value={values.birthDate}
+                    max={new Date().toISOString().split("T")[0]}
+                    onChange={(event) => setValue("birthDate", event.target.value)}
+                    onBlur={() => setFieldTouched("birthDate")}
+                    className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                  {errors.birthDate && (
+                    <span role="alert" className="mt-1.5 block text-xs text-danger">
+                      {errors.birthDate}
+                    </span>
+                  )}
+                </label>
+
+                <label className="block">
+                  <span className="text-sm font-medium text-text">
+                    Género (opcional)
+                  </span>
+                  <select
+                    value={values.gender}
+                    onChange={(event) =>
+                      setGender(event.target.value as Gender | "")
+                    }
+                    className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  >
+                    <option value="">Prefiero no indicarlo</option>
+                    {GENDER_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
             </fieldset>
 
@@ -134,11 +219,44 @@ export default function SelfRequestPage() {
                 />
               </div>
 
-              <ResidenceZoneSelect
-                label={selfForm.fields.residenceZone}
-                value={values.residenceZoneId}
-                onChange={(value) => setValue("residenceZoneId", value)}
-              />
+              <div className="grid gap-5 sm:grid-cols-2">
+                <label className="block">
+                  <span className="text-sm font-medium text-text">
+                    {selfForm.fields.residenceZone} (opcional)
+                  </span>
+                  <select
+                    value={values.department}
+                    onChange={(event) => setValue("department", event.target.value)}
+                    className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  >
+                    <option value="">{NO_ZONE_REPORTED_LABEL}</option>
+                    {COLOMBIA_DEPARTMENTS.map((department) => (
+                      <option
+                        key={department}
+                        value={department}
+                        selected={department === DEFAULT_DEPARTMENT}
+                      >
+                        {department}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="mt-1.5 block text-xs text-text-subtle">
+                    El departamento donde vives actualmente. Si prefieres no
+                    indicarlo, deja “{NO_ZONE_REPORTED_LABEL}”.
+                  </span>
+                </label>
+
+                {values.department && (
+                  <TextField
+                    label="Municipio"
+                    value={values.municipality}
+                    error={errors.municipality}
+                    placeholder="Ej. Neiva"
+                    onChange={(value) => setValue("municipality", value)}
+                    onBlur={() => setFieldTouched("municipality")}
+                  />
+                )}
+              </div>
             </fieldset>
 
             <fieldset className="space-y-2">
@@ -182,7 +300,10 @@ export default function SelfRequestPage() {
               {selfForm.cancel}
             </Link>
 
-            <Button onClick={send} disabled={isSaving}>
+            <Button
+              onClick={send}
+              disabled={isSaving || !values.hasAcceptedDataPolicy || !isValid}
+            >
               {isSaving ? "Enviando…" : selfForm.submit}
             </Button>
           </div>

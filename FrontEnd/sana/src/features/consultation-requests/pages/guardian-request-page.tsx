@@ -11,8 +11,12 @@ import TextField from "@/components/forms/text-field";
 import Button from "@/components/ui/button";
 import { REQUEST_CONTENT } from "@/content/consultation-request";
 import { keepDigits } from "@/lib/format/text";
+import {
+  COLOMBIA_DEPARTMENTS,
+  DEFAULT_DEPARTMENT,
+  NO_ZONE_REPORTED_LABEL,
+} from "@/config/residence-zones";
 import DataPolicyConsent from "../components/data-policy-consent";
-import ResidenceZoneSelect from "../components/residence-zone-select";
 import { useConsultationRequestForm } from "../hooks/use-consultation-request-form";
 import {
   validateFullName,
@@ -21,8 +25,9 @@ import {
   validateEmail,
   validatePhone,
   validateMinorBirthDate,
+  validateMinorIdentityDocument,
 } from "../validation/consultation-request-validation";
-import type { GuardianRelationship } from "../types/consultation-request-types";
+import type { Gender, GuardianRelationship } from "../types/consultation-request-types";
 
 const { guardianForm } = REQUEST_CONTENT;
 
@@ -36,11 +41,13 @@ const RELATIONSHIP_OPTIONS: { value: GuardianRelationship; label: string }[] = [
   { value: "other", label: "Otro" },
 ];
 
-/**
- * HU-2.2: formulario del tutor legal, en dos pasos.
- * Paso 1: identificación del tutor y del menor.
- * Paso 2: zona de residencia, motivo y autorización de datos.
- */
+const GENDER_OPTIONS: { value: Gender; label: string }[] = [
+  { value: "female", label: "Femenino" },
+  { value: "male", label: "Masculino" },
+  { value: "other", label: "Otro" },
+  { value: "preferNotToSay", label: "Prefiero no decir" },
+];
+
 export default function GuardianRequestPage() {
   const [step, setStep] = useState<1 | 2>(1);
 
@@ -52,11 +59,12 @@ export default function GuardianRequestPage() {
     setValue,
     setFieldTouched,
     setRelationship,
-    toggleDataPolicy,
+    setMinorGender,
+    toggleGuardianDataPolicy,
+    toggleMinorDataPolicy,
     send,
   } = useConsultationRequestForm("guardian");
 
-  /** Valida solo los campos del paso 1 antes de avanzar. */
   function goToStep2() {
     const step1Errors = [
       validateFullName(values.fullName),
@@ -66,6 +74,7 @@ export default function GuardianRequestPage() {
       validatePhone(values.phone),
       validateFullName(values.minorFullName),
       validateMinorBirthDate(values.minorBirthDate),
+      validateMinorIdentityDocument(values.minorIdentityDocument),
     ];
 
     setFieldTouched("fullName");
@@ -75,11 +84,15 @@ export default function GuardianRequestPage() {
     setFieldTouched("phone");
     setFieldTouched("minorFullName");
     setFieldTouched("minorBirthDate");
+    setFieldTouched("minorIdentityDocument");
 
     if (step1Errors.every((error) => !error)) {
       setStep(2);
     }
   }
+
+  const canSubmit =
+    values.hasAcceptedGuardianDataPolicy && values.hasAcceptedMinorDataPolicy;
 
   return (
     <div className="flex min-h-full flex-col">
@@ -97,7 +110,6 @@ export default function GuardianRequestPage() {
             Volver
           </Link>
 
-          {/* Indicador de paso */}
           <div className="mt-6 flex items-center gap-3">
             {guardianForm.steps.map((label, index) => {
               const stepNumber = (index + 1) as 1 | 2;
@@ -244,15 +256,78 @@ export default function GuardianRequestPage() {
                     onBlur={() => setFieldTouched("minorFullName")}
                   />
 
-                  <TextField
-                    label={guardianForm.fields.minorBirthDate}
-                    required
-                    placeholder="AAAA-MM-DD"
-                    value={values.minorBirthDate}
-                    error={errors.minorBirthDate}
-                    onChange={(value) => setValue("minorBirthDate", value)}
-                    onBlur={() => setFieldTouched("minorBirthDate")}
-                  />
+                  <label className="block">
+                    <span className="text-sm font-semibold text-text">
+                      {guardianForm.fields.minorBirthDate}
+                      <span className="text-danger" aria-hidden>
+                        {" "}
+                        *
+                      </span>
+                    </span>
+                    <input
+                      type="date"
+                      value={values.minorBirthDate}
+                      max={new Date().toISOString().split("T")[0]}
+                      onChange={(event) =>
+                        setValue("minorBirthDate", event.target.value)
+                      }
+                      onBlur={() => setFieldTouched("minorBirthDate")}
+                      className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    {errors.minorBirthDate && (
+                      <span role="alert" className="mt-1.5 block text-xs text-danger">
+                        {errors.minorBirthDate}
+                      </span>
+                    )}
+                  </label>
+                </div>
+
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="text-sm font-medium text-text">
+                      Género del menor (opcional)
+                    </span>
+                    <select
+                      value={values.minorGender}
+                      onChange={(event) =>
+                        setMinorGender(event.target.value as Gender | "")
+                      }
+                      className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    >
+                      <option value="">Prefiero no indicarlo</option>
+                      {GENDER_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <div>
+                    <span className="flex items-center gap-2 text-sm font-medium text-text">
+                      Tarjeta de identidad (opcional)
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={values.minorIdentityDocument}
+                      onChange={(event) =>
+                        setValue(
+                          "minorIdentityDocument",
+                          keepDigits(event.target.value),
+                        )
+                      }
+                      onBlur={() => setFieldTouched("minorIdentityDocument")}
+                      maxLength={10}
+                      placeholder="Si aún no tiene, déjalo en blanco"
+                      className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text placeholder:text-text-subtle focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    {errors.minorIdentityDocument && (
+                      <span role="alert" className="mt-1.5 block text-xs text-danger">
+                        {errors.minorIdentityDocument}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </fieldset>
 
@@ -268,11 +343,45 @@ export default function GuardianRequestPage() {
                   {guardianForm.sections.detail}
                 </legend>
 
-                <ResidenceZoneSelect
-                  label={guardianForm.fields.residenceZone}
-                  value={values.residenceZoneId}
-                  onChange={(value) => setValue("residenceZoneId", value)}
-                />
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="text-sm font-medium text-text">
+                      {guardianForm.fields.residenceZone} (opcional)
+                    </span>
+                    <select
+                      value={values.department}
+                      onChange={(event) =>
+                        setValue("department", event.target.value)
+                      }
+                      className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    >
+                      <option value="">{NO_ZONE_REPORTED_LABEL}</option>
+                      {COLOMBIA_DEPARTMENTS.map((department) => (
+                        <option
+                          key={department}
+                          value={department}
+                          selected={department === DEFAULT_DEPARTMENT}
+                        >
+                          {department}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="mt-1.5 block text-xs text-text-subtle">
+                      El departamento donde vive el menor.
+                    </span>
+                  </label>
+
+                  {values.department && (
+                    <TextField
+                      label="Municipio"
+                      value={values.municipality}
+                      error={errors.municipality}
+                      placeholder="Ej. Neiva"
+                      onChange={(value) => setValue("municipality", value)}
+                      onBlur={() => setFieldTouched("municipality")}
+                    />
+                  )}
+                </div>
 
                 <label className="block">
                   <span className="text-sm font-medium text-text">
@@ -291,11 +400,21 @@ export default function GuardianRequestPage() {
                 </label>
               </fieldset>
 
-              <DataPolicyConsent
-                checked={values.hasAcceptedDataPolicy}
-                onChange={toggleDataPolicy}
-                error={errors.hasAcceptedDataPolicy}
-              />
+              <div className="space-y-3">
+                <DataPolicyConsent
+                  checked={values.hasAcceptedGuardianDataPolicy}
+                  onChange={toggleGuardianDataPolicy}
+                  error={errors.hasAcceptedGuardianDataPolicy}
+                  label="Autorizo el tratamiento de mis datos personales como tutor/acudiente conforme a la Política de Privacidad de la Fundación Dejando Huellas Felices."
+                />
+
+                <DataPolicyConsent
+                  checked={values.hasAcceptedMinorDataPolicy}
+                  onChange={toggleMinorDataPolicy}
+                  error={errors.hasAcceptedMinorDataPolicy}
+                  label="Autorizo el tratamiento de los datos personales del menor a mi cargo conforme a la Política de Privacidad de la Fundación Dejando Huellas Felices."
+                />
+              </div>
 
               {submitError && (
                 <InlineMessage tone="error">{submitError}</InlineMessage>
@@ -311,7 +430,7 @@ export default function GuardianRequestPage() {
                 <Button variant="secondary" onClick={() => setStep(1)}>
                   {guardianForm.previousStep}
                 </Button>
-                <Button onClick={send} disabled={isSaving}>
+                <Button onClick={send} disabled={isSaving || !canSubmit}>
                   {isSaving ? "Enviando…" : guardianForm.submit}
                 </Button>
               </>

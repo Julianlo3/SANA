@@ -12,4 +12,5 @@ export const ENDPOINTS = {
   consultationRequests: "/consultation-requests",
   consultationRequest: (id: number) => `/consultation-requests/${id}`,
   residenceZones: "/residence-zones",
+   availableSlots: "/consultation-requests/available-slots",
 } as const;
