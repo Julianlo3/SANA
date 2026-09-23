@@ -13,7 +13,6 @@ import { keepDigits } from "@/lib/format/text";
 import AvailableSlotsList from "../components/available-slots-list";
 import {
   COLOMBIA_DEPARTMENTS,
-  DEFAULT_DEPARTMENT,
   NO_ZONE_REPORTED_LABEL,
 } from "@/config/residence-zones";
 import DataPolicyConsent from "../components/data-policy-consent";
@@ -236,11 +235,7 @@ export default function SelfRequestPage() {
                   >
                     <option value="">{NO_ZONE_REPORTED_LABEL}</option>
                     {COLOMBIA_DEPARTMENTS.map((department) => (
-                      <option
-                        key={department}
-                        value={department}
-                        selected={department === DEFAULT_DEPARTMENT}
-                      >
+                      <option key={department} value={department}>
                         {department}
                       </option>
                     ))}
