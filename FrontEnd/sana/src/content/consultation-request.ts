@@ -87,10 +87,14 @@ export const REQUEST_CONTENT = {
     url: DATA_POLICY.url,
   },
 
-  success: {
+      success: {
     title: "Solicitud enviada con éxito",
     description:
       "Registramos tu solicitud correctamente. Una asistente administrativa se pondrá en contacto contigo para confirmar tu cita.",
+    confirmedTitle: "¡Tu cita quedó confirmada!",
+    confirmedDescriptionPrefix: "Te esperamos el",
+    confirmedDescriptionSuffix:
+      ". Te enviamos los detalles por correo y WhatsApp.",
     referenceLabel: "Número de radicado",
     referenceHint: "Guarda este número para futuras referencias.",
     backHome: "Volver al inicio",

@@ -207,11 +207,21 @@ export function useConsultationRequestForm(requesterType: RequesterType) {
 
     try {
       const result = await submitConsultationRequest(buildPayload(submitted));
-      router.push(
-        `/solicitar-cita/confirmacion?radicado=${encodeURIComponent(
-          result.referenceNumber,
-        )}&asignada=${result.appointmentConfirmed}`,
-      );
+            const chosenSlot = selectedSlotId
+        ? slots.find((slot) => slot.id === selectedSlotId)
+        : undefined;
+
+      const params = new URLSearchParams({
+        radicado: result.referenceNumber,
+        asignada: String(result.appointmentConfirmed),
+      });
+
+      if (chosenSlot) {
+        params.set("horario", chosenSlot.startsAt);
+        params.set("psicologo", chosenSlot.psychologistName);
+      }
+
+      router.push(`/solicitar-cita/confirmacion?${params.toString()}`);
     } catch (error: unknown) {
       setSubmitError(
         error instanceof ApiError
@@ -221,8 +231,8 @@ export function useConsultationRequestForm(requesterType: RequesterType) {
     } finally {
       setIsSaving(false);
     }
-  }, [submit, buildPayload, router]);
 
+    }, [submit, buildPayload, router, slots, selectedSlotId]);
   return {
     ...form,
     setRelationship,

@@ -10,10 +10,36 @@ import { REQUEST_CONTENT } from "@/content/consultation-request";
 
 const { success } = REQUEST_CONTENT;
 
-/** Pantalla de éxito tras enviar la solicitud (HU-2.2.2). */
+const APPOINTMENT_DATE_FORMAT = new Intl.DateTimeFormat("es-CO", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+});
+
+const APPOINTMENT_TIME_FORMAT = new Intl.DateTimeFormat("es-CO", {
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+/** Pantalla de éxito tras enviar la solicitud (HU-2.2.2, 2.2.10 y 2.2.11). */
 export default function RequestConfirmationPage() {
   const searchParams = useSearchParams();
   const referenceNumber = searchParams.get("radicado");
+  const isConfirmed = searchParams.get("asignada") === "true";
+  const scheduledAt = searchParams.get("horario");
+  const psychologistName = searchParams.get("psicologo");
+
+  const title = isConfirmed ? success.confirmedTitle : success.title;
+
+    let description: string = success.description;
+  if (isConfirmed && scheduledAt) {
+    const date = new Date(scheduledAt);
+    const formattedDate = `${APPOINTMENT_DATE_FORMAT.format(date)} a las ${APPOINTMENT_TIME_FORMAT.format(date)}`;
+
+    description = `${success.confirmedDescriptionPrefix} ${formattedDate}${
+      psychologistName ? `, con ${psychologistName}` : ""
+    }${success.confirmedDescriptionSuffix}`;
+  }
 
   return (
     <div className="flex min-h-full flex-col">
@@ -28,11 +54,11 @@ export default function RequestConfirmationPage() {
           </span>
 
           <h1 className="mt-6 font-display text-3xl font-extrabold text-primary-dark">
-            {success.title}
+            {title}
           </h1>
 
           <p className="mt-4 leading-relaxed text-text-muted">
-            {success.description}
+            {description}
           </p>
 
           {referenceNumber && (
