@@ -15,6 +15,9 @@ on:
       - "BackEnd/backendsana/**"
       - ".github/workflows/backend-ci.yml"
 
+permissions:
+  contents: read
+
 jobs:
   backend:
     name: Validate Backend
@@ -36,16 +39,24 @@ jobs:
           cache-dependency-path: BackEnd/backendsana/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
+      # Análisis estático de código
       - name: Run ESLint
         run: npm run lint
 
+      # Verificación de tipos TypeScript
       - name: Check TypeScript
         run: npx tsc --noEmit
 
+      # Pruebas automatizadas
       - name: Run tests
         run: npm test
 
+      # Auditoría de dependencias
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
+      # Verifica que la aplicación pueda compilarse correctamente
       - name: Build NestJS
         run: npm run build
