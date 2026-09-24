@@ -10,7 +10,6 @@ import TextField from "@/components/forms/text-field";
 import Button from "@/components/ui/button";
 import { REQUEST_CONTENT } from "@/content/consultation-request";
 import { keepDigits } from "@/lib/format/text";
-import AvailableSlotsList from "../components/available-slots-list";
 import {
   COLOMBIA_DEPARTMENTS,
   NO_ZONE_REPORTED_LABEL,
@@ -44,10 +43,8 @@ export default function SelfRequestPage() {
     isSaving,
     submitError,
     isValid,
-    slots,
-    areSlotsLoading,
-    selectedSlotId,
-    setSelectedSlotId,
+    preferredDate,
+    setPreferredDate,
     setValue,
     setFieldTouched,
     setDocumentType,
@@ -289,6 +286,25 @@ export default function SelfRequestPage() {
                   className="mt-2 w-full resize-none rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text placeholder:text-text-subtle focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
               </label>
+
+              <label className="block">
+                <span className="text-sm font-medium text-text">
+                  Fecha preferida para la cita (opcional)
+                </span>
+                <input
+                  type="date"
+                  value={preferredDate ?? ""}
+                  min={new Date().toISOString().split("T")[0]}
+                  onChange={(event) =>
+                    setPreferredDate(event.target.value || null)
+                  }
+                  className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+                <span className="mt-1.5 block text-xs text-text-subtle">
+                  Es solo una referencia para la asistente al asignar tu cita,
+                  no reserva un horario.
+                </span>
+              </label>
             </fieldset>
 
             <DataPolicyConsent
@@ -296,23 +312,6 @@ export default function SelfRequestPage() {
               onChange={toggleDataPolicy}
               error={errors.hasAcceptedDataPolicy}
             />
-
-            <fieldset className="space-y-3">
-              <legend className="text-sm font-semibold text-text">
-                Horario de atención
-              </legend>
-              <p className="text-xs text-text-subtle">
-                Elige el horario que más te convenga. Si ninguno te sirve, tu
-                solicitud queda registrada igual.
-              </p>
-
-              <AvailableSlotsList
-                slots={slots}
-                isLoading={areSlotsLoading}
-                selectedSlotId={selectedSlotId}
-                onSelect={setSelectedSlotId}
-              />
-            </fieldset>
 
             {submitError && (
               <InlineMessage tone="error">{submitError}</InlineMessage>

@@ -3,6 +3,13 @@
  *
  * Este archivo es también el contrato que el frontend espera del backend.
  * Cualquier cambio hay que acordarlo antes de implementar.
+ *
+ * Decisión de equipo: no se muestran al público los horarios reales de los
+ * psicólogos (por temas legales/de seguridad). El consultante solo indica
+ * una fecha preferida como referencia; toda solicitud queda "pendiente" y
+ * la asistente es quien la asigna, rechaza o confirma. La notificación por
+ * correo/WhatsApp se envía únicamente cuando la asistente confirma la cita,
+ * nunca al momento de enviar la solicitud.
  */
 
 /** Quién recibirá el acompañamiento (HU-2.2.1). */
@@ -21,8 +28,8 @@ export type GuardianRelationship =
   | "legalGuardian"
   | "other";
 
-/** Género, con opción de no responder. */
-export type Gender = "female" | "male" | "other" | "preferNotToSay";
+/** Género. Obligatorio: no admite quedar sin responder salvo la opción explícita. */
+export type Gender = "male" | "female" | "other" | "preferNotToSay";
 
 /** Tipo de documento del adulto solicitante. */
 export type AdultDocumentType = "cc" | "ce";
@@ -36,17 +43,6 @@ export type ResidenceLocation = {
   municipality: string;
 };
 
-/** Un horario de atención disponible para asignar (HU-2.2.10). */
-export type AvailableSlot = {
-  id: string;
-  psychologistId: number;
-  psychologistName: string;
-  /** ISO 8601. */
-  startsAt: string;
-  /** ISO 8601. */
-  endsAt: string;
-};
-
 /** Datos de quien solicita para sí mismo. */
 export type SelfRequestPayload = {
   requesterType: "self";
@@ -54,7 +50,7 @@ export type SelfRequestPayload = {
   documentType: AdultDocumentType;
   identityDocument: string;
   birthDate: string;
-  gender: Gender | null;
+  gender: Gender;
   email: string;
   phone: string;
   /** Null cuando la persona deja "No reporta" (HU-2.2.5). */
@@ -65,8 +61,11 @@ export type SelfRequestPayload = {
   hasAcceptedDataPolicy: true;
   /** Versión de la política aceptada, como evidencia (HU-2.2.8). */
   dataPolicyVersion: string;
-  /** Presente solo si eligió un horario disponible (HU-2.2.10). */
-  selectedSlotId: string | null;
+  /**
+   * Fecha en la que la persona preferiría la cita, como referencia para la
+   * asistente. Nunca reserva un cupo real: solo orienta la asignación.
+   */
+  preferredDate: string | null;
 };
 
 /** Datos de quien solicita como tutor legal de un menor. */
@@ -82,7 +81,7 @@ export type GuardianRequestPayload = {
   minor: {
     fullName: string;
     birthDate: string;
-    gender: Gender | null;
+    gender: Gender;
     /**
      * Documento de tipo TI. Puede no existir todavía (niños pequeños),
      * por eso queda opcional.
@@ -96,7 +95,7 @@ export type GuardianRequestPayload = {
   /** Autorización, por separado, sobre los datos del menor. */
   hasAcceptedMinorDataPolicy: true;
   dataPolicyVersion: string;
-  selectedSlotId: string | null;
+  preferredDate: string | null;
 };
 
 export type ConsultationRequestPayload =
@@ -104,13 +103,12 @@ export type ConsultationRequestPayload =
   | GuardianRequestPayload;
 
 /**
- * Respuesta de POST /consultation-requests (HU-2.2.2, 2.2.10 y 2.2.11).
- * Si se eligió horario y se creó la cita, status llega en "assigned" y
- * appointmentConfirmed en true. Si no había horario, queda "pending".
+ * Respuesta de POST /consultation-requests (HU-2.2.2).
+ * Toda solicitud queda "pending": la asignación y notificación al
+ * consultante son responsabilidad de la asistente (HU-2.3), no de este envío.
  */
 export type ConsultationRequestReceipt = {
   referenceNumber: string;
   status: RequestStatus;
   submittedAt: string;
-  appointmentConfirmed: boolean;
 };

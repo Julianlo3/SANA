@@ -1,17 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DATA_POLICY } from "@/config/data-policy";
 import { useForm } from "@/hooks/use-form";
 import { ApiError } from "@/types/api-types";
-import {
-  getAvailableSlots,
-  submitConsultationRequest,
-} from "../services/consultation-requests-service";
+import { submitConsultationRequest } from "../services/consultation-requests-service";
 import type {
   AdultDocumentType,
-  AvailableSlot,
   ConsultationRequestPayload,
   Gender,
   GuardianRelationship,
@@ -51,6 +47,10 @@ const EMPTY_FORM: RequestFormValues = {
  * Un solo hook cubre los dos tipos de solicitante porque comparten la mayoría
  * de los campos. Eso permite conservar los datos de contacto al cambiar de
  * tipo, como pide HU-2.2.9.
+ *
+ * Decisión de equipo: no se ofrece reserva de horario real. La persona puede
+ * indicar una fecha preferida, opcional, que la asistente usa como
+ * referencia al asignar la cita desde su bandeja (HU-2.3).
  */
 export function useConsultationRequestForm(requesterType: RequesterType) {
   const router = useRouter();
@@ -65,29 +65,9 @@ export function useConsultationRequestForm(requesterType: RequesterType) {
 
   const [isSaving, setIsSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-
-  const [slots, setSlots] = useState<AvailableSlot[]>([]);
-  const [areSlotsLoading, setAreSlotsLoading] = useState(true);
-  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [preferredDate, setPreferredDate] = useState<string | null>(null);
 
   const { values, setValue, submit } = form;
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    getAvailableSlots()
-      .then((result) => {
-        if (!controller.signal.aborted) setSlots(result);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setSlots([]);
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setAreSlotsLoading(false);
-      });
-
-    return () => controller.abort();
-  }, []);
 
   const setRelationship = useCallback(
     (relationship: GuardianRelationship | "") => {
@@ -157,7 +137,7 @@ export function useConsultationRequestForm(requesterType: RequesterType) {
         residence,
         consultationReason: submitted.consultationReason.trim(),
         dataPolicyVersion: DATA_POLICY.version,
-        selectedSlotId,
+        preferredDate,
       };
 
       if (requesterType === "guardian") {
@@ -173,7 +153,7 @@ export function useConsultationRequestForm(requesterType: RequesterType) {
           minor: {
             fullName: submitted.minorFullName.trim(),
             birthDate: submitted.minorBirthDate,
-            gender: (submitted.minorGender || null) as Gender | null,
+            gender: submitted.minorGender as Gender,
             identityDocument: submitted.minorIdentityDocument.trim() || null,
           },
           hasAcceptedGuardianDataPolicy: true,
@@ -188,14 +168,14 @@ export function useConsultationRequestForm(requesterType: RequesterType) {
         documentType: submitted.documentType as AdultDocumentType,
         identityDocument: submitted.identityDocument.trim(),
         birthDate: submitted.birthDate,
-        gender: (submitted.gender || null) as Gender | null,
+        gender: submitted.gender as Gender,
         email: submitted.email.trim().toLowerCase(),
         phone: submitted.phone.trim(),
         hasAcceptedDataPolicy: true,
         ...shared,
       };
     },
-    [requesterType, selectedSlotId],
+    [requesterType, preferredDate],
   );
 
   const send = useCallback(async () => {
@@ -207,19 +187,10 @@ export function useConsultationRequestForm(requesterType: RequesterType) {
 
     try {
       const result = await submitConsultationRequest(buildPayload(submitted));
-            const chosenSlot = selectedSlotId
-        ? slots.find((slot) => slot.id === selectedSlotId)
-        : undefined;
 
       const params = new URLSearchParams({
         radicado: result.referenceNumber,
-        asignada: String(result.appointmentConfirmed),
       });
-
-      if (chosenSlot) {
-        params.set("horario", chosenSlot.startsAt);
-        params.set("psicologo", chosenSlot.psychologistName);
-      }
 
       router.push(`/solicitar-cita/confirmacion?${params.toString()}`);
     } catch (error: unknown) {
@@ -231,8 +202,8 @@ export function useConsultationRequestForm(requesterType: RequesterType) {
     } finally {
       setIsSaving(false);
     }
+  }, [submit, buildPayload, router]);
 
-    }, [submit, buildPayload, router, slots, selectedSlotId]);
   return {
     ...form,
     setRelationship,
@@ -244,10 +215,8 @@ export function useConsultationRequestForm(requesterType: RequesterType) {
     toggleMinorDataPolicy,
     isSaving,
     submitError,
-    slots,
-    areSlotsLoading,
-    selectedSlotId,
-    setSelectedSlotId,
+    preferredDate,
+    setPreferredDate,
     send,
   };
 }
