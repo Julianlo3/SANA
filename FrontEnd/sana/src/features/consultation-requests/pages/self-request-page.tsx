@@ -30,31 +30,31 @@ const DOCUMENT_TYPES: { value: AdultDocumentType; label: string }[] = [
 ];
 
 const GENDER_OPTIONS: { value: Gender; label: string }[] = [
-  { value: "female", label: "Femenino" },
-  { value: "male", label: "Masculino" },
+  { value: "male", label: "Hombre" },
+  { value: "female", label: "Mujer" },
   { value: "other", label: "Otro" },
-  { value: "preferNotToSay", label: "Prefiero no decir" },
+  { value: "preferNotToSay", label: "No quiero especificar" },
 ];
 
 /** HU-2.2: formulario de quien solicita la atención para sí mismo. */
 export default function SelfRequestPage() {
   const {
-  values,
-  errors,
-  isSaving,
-  submitError,
-  isValid,
-  slots,
-  areSlotsLoading,
-  selectedSlotId,
-  setSelectedSlotId,
-  setValue,
-  setFieldTouched,
-  setDocumentType,
-  setGender,
-  toggleDataPolicy,
-  send,
-} = useConsultationRequestForm("self");
+    values,
+    errors,
+    isSaving,
+    submitError,
+    isValid,
+    slots,
+    areSlotsLoading,
+    selectedSlotId,
+    setSelectedSlotId,
+    setValue,
+    setFieldTouched,
+    setDocumentType,
+    setGender,
+    toggleDataPolicy,
+    send,
+  } = useConsultationRequestForm("self");
 
   return (
     <div className="flex min-h-full flex-col">
@@ -172,23 +172,33 @@ export default function SelfRequestPage() {
                 </label>
 
                 <label className="block">
-                  <span className="text-sm font-medium text-text">
-                    Género (opcional)
+                  <span className="text-sm font-semibold text-text">
+                    Género
+                    <span className="text-danger" aria-hidden>
+                      {" "}
+                      *
+                    </span>
                   </span>
                   <select
                     value={values.gender}
                     onChange={(event) =>
                       setGender(event.target.value as Gender | "")
                     }
+                    onBlur={() => setFieldTouched("gender")}
                     className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
                   >
-                    <option value="">Prefiero no indicarlo</option>
+                    <option value="">Selecciona</option>
                     {GENDER_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>
                     ))}
                   </select>
+                  {errors.gender && (
+                    <span role="alert" className="mt-1.5 block text-xs text-danger">
+                      {errors.gender}
+                    </span>
+                  )}
                 </label>
               </div>
             </fieldset>
@@ -286,7 +296,8 @@ export default function SelfRequestPage() {
               onChange={toggleDataPolicy}
               error={errors.hasAcceptedDataPolicy}
             />
-                         <fieldset className="space-y-3">
+
+            <fieldset className="space-y-3">
               <legend className="text-sm font-semibold text-text">
                 Horario de atención
               </legend>
@@ -302,6 +313,7 @@ export default function SelfRequestPage() {
                 onSelect={setSelectedSlotId}
               />
             </fieldset>
+
             {submitError && (
               <InlineMessage tone="error">{submitError}</InlineMessage>
             )}

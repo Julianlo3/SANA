@@ -14,7 +14,6 @@ import { keepDigits } from "@/lib/format/text";
 import AvailableSlotsList from "../components/available-slots-list";
 import {
   COLOMBIA_DEPARTMENTS,
-  DEFAULT_DEPARTMENT,
   NO_ZONE_REPORTED_LABEL,
 } from "@/config/residence-zones";
 import DataPolicyConsent from "../components/data-policy-consent";
@@ -27,6 +26,7 @@ import {
   validatePhone,
   validateMinorBirthDate,
   validateMinorIdentityDocument,
+  validateGender,
 } from "../validation/consultation-request-validation";
 import type { Gender, GuardianRelationship } from "../types/consultation-request-types";
 
@@ -43,32 +43,32 @@ const RELATIONSHIP_OPTIONS: { value: GuardianRelationship; label: string }[] = [
 ];
 
 const GENDER_OPTIONS: { value: Gender; label: string }[] = [
-  { value: "female", label: "Femenino" },
-  { value: "male", label: "Masculino" },
+  { value: "male", label: "Hombre" },
+  { value: "female", label: "Mujer" },
   { value: "other", label: "Otro" },
-  { value: "preferNotToSay", label: "Prefiero no decir" },
+  { value: "preferNotToSay", label: "No quiero especificar" },
 ];
 
 export default function GuardianRequestPage() {
   const [step, setStep] = useState<1 | 2>(1);
 
-const {
-  values,
-  errors,
-  isSaving,
-  submitError,
-  slots,
-  areSlotsLoading,
-  selectedSlotId,
-  setSelectedSlotId,
-  setValue,
-  setFieldTouched,
-  setRelationship,
-  setMinorGender,
-  toggleGuardianDataPolicy,
-  toggleMinorDataPolicy,
-  send,
-} = useConsultationRequestForm("guardian");
+  const {
+    values,
+    errors,
+    isSaving,
+    submitError,
+    slots,
+    areSlotsLoading,
+    selectedSlotId,
+    setSelectedSlotId,
+    setValue,
+    setFieldTouched,
+    setRelationship,
+    setMinorGender,
+    toggleGuardianDataPolicy,
+    toggleMinorDataPolicy,
+    send,
+  } = useConsultationRequestForm("guardian");
 
   function goToStep2() {
     const step1Errors = [
@@ -80,6 +80,7 @@ const {
       validateFullName(values.minorFullName),
       validateMinorBirthDate(values.minorBirthDate),
       validateMinorIdentityDocument(values.minorIdentityDocument),
+      validateGender(values.minorGender),
     ];
 
     setFieldTouched("fullName");
@@ -90,6 +91,7 @@ const {
     setFieldTouched("minorFullName");
     setFieldTouched("minorBirthDate");
     setFieldTouched("minorIdentityDocument");
+    setFieldTouched("minorGender");
 
     if (step1Errors.every((error) => !error)) {
       setStep(2);
@@ -289,23 +291,33 @@ const {
 
                 <div className="grid gap-5 sm:grid-cols-2">
                   <label className="block">
-                    <span className="text-sm font-medium text-text">
-                      Género del menor (opcional)
+                    <span className="text-sm font-semibold text-text">
+                      Género del menor
+                      <span className="text-danger" aria-hidden>
+                        {" "}
+                        *
+                      </span>
                     </span>
                     <select
                       value={values.minorGender}
                       onChange={(event) =>
                         setMinorGender(event.target.value as Gender | "")
                       }
+                      onBlur={() => setFieldTouched("minorGender")}
                       className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
                     >
-                      <option value="">Prefiero no indicarlo</option>
+                      <option value="">Selecciona</option>
                       {GENDER_OPTIONS.map((option) => (
                         <option key={option.value} value={option.value}>
                           {option.label}
                         </option>
                       ))}
                     </select>
+                    {errors.minorGender && (
+                      <span role="alert" className="mt-1.5 block text-xs text-danger">
+                        {errors.minorGender}
+                      </span>
+                    )}
                   </label>
 
                   <div>
@@ -362,11 +374,7 @@ const {
                     >
                       <option value="">{NO_ZONE_REPORTED_LABEL}</option>
                       {COLOMBIA_DEPARTMENTS.map((department) => (
-                        <option
-                          key={department}
-                          value={department}
-                          selected={department === DEFAULT_DEPARTMENT}
-                        >
+                        <option key={department} value={department}>
                           {department}
                         </option>
                       ))}
@@ -404,7 +412,8 @@ const {
                   />
                 </label>
               </fieldset>
-                            <fieldset className="space-y-3">
+
+              <fieldset className="space-y-3">
                 <legend className="text-sm font-semibold text-text">
                   Horario de atención
                 </legend>
@@ -421,7 +430,6 @@ const {
                 />
               </fieldset>
 
-              
               <div className="space-y-3">
                 <DataPolicyConsent
                   checked={values.hasAcceptedGuardianDataPolicy}
