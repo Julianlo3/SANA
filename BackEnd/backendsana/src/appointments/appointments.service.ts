@@ -384,13 +384,10 @@ export class AppointmentsService {
     appointment: AppointmentRow,
   ): Promise<void> {
     this.logger.log(
-      `[NOTIFICACIÓN] Espacio para envío automático de confirmación para la cita ID: ${appointment.appId}`,
+      `Module:appointments, Function:sendConfirmationNotification, result-start: appId-${appointment.appId}, recipient-${appointment.requesterName}, phone-${appointment.requesterContactNumber}, email-${appointment.requesterEmail}`,
     );
     this.logger.log(
-      `[NOTIFICACIÓN] Destinatario: ${appointment.requesterName}, Teléfono: ${appointment.requesterContactNumber}, Correo: ${appointment.requesterEmail}`,
-    );
-    this.logger.log(
-      `[NOTIFICACIÓN] Fecha confirmada: ${appointment.appDate}, Psicólogo: ${appointment.psychologistName}, Modalidad: ${appointment.appType}`,
+      `Module:appointments, Function:sendConfirmationNotification, result-notification-data: appDate-${appointment.appDate}, psychologist-${appointment.psychologistName}, appType-${appointment.appType}`,
     );
 
     //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
