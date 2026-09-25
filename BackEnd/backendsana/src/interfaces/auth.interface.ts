@@ -8,4 +8,6 @@ export interface AuthenticatedUser {
   roles: string[];
   auth0Subject: string;
   state: string;
+  termsAccepted: boolean;
+  psyTermsAccepted?: boolean | null;
 }

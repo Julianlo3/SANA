@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { CURRENT_POLICY_VERSION } from '../config/policy.config.js';
 
 /**
  * Represents an authorization record for a user.
@@ -12,6 +13,8 @@ export interface AuthorizationRecord {
   providerId: string | null;
   providerName: string | null;
   roles: string[];
+  termsAccepted: boolean;
+  psyTermsAccepted: boolean | null;
 }
 
 /**
@@ -28,7 +31,23 @@ export class AuthRepository {
    */
   async findByEmail(email: string): Promise<AuthorizationRecord | null> {
     const rows = await this.dataSource.query(
-      `SELECT p.per_id AS "personId", p.per_email AS email, p.per_state AS state, u.use_id AS "userId", u.user_provider_id AS "providerId", u.user_provider_name AS "providerName", COALESCE(array_agg(r.rol_description) FILTER (WHERE r.rol_description IS NOT NULL), '{}') AS roles FROM person p LEFT JOIN users u ON u.use_id=p.per_id LEFT JOIN person_rol pr ON pr.per_id=p.per_id AND pr.pr_active=true LEFT JOIN rol r ON r.rol_id=pr.rol_id WHERE lower(p.per_email)=lower($1) GROUP BY p.per_id,u.use_id`,
+      `SELECT
+          p.per_id AS "personId",
+          p.per_email AS email,
+          p.per_state AS state,
+          COALESCE(p.per_termns_accpted, false) AS "termsAccepted",
+          psy.psy_termns_accpted AS "psyTermsAccepted",
+          u.use_id AS "userId",
+          u.user_provider_id AS "providerId",
+          u.user_provider_name AS "providerName",
+          COALESCE(array_agg(r.rol_description) FILTER (WHERE r.rol_description IS NOT NULL), '{}') AS roles
+        FROM person p
+        LEFT JOIN users u ON u.use_id=p.per_id
+        LEFT JOIN person_rol pr ON pr.per_id=p.per_id AND pr.pr_active=true
+        LEFT JOIN rol r ON r.rol_id=pr.rol_id
+        LEFT JOIN psychologist psy ON psy.psy_id=p.per_id
+        WHERE lower(p.per_email)=lower($1)
+        GROUP BY p.per_id, u.use_id, psy.psy_termns_accpted`,
       [email],
     );
     return rows[0] ?? null;
@@ -41,7 +60,23 @@ export class AuthRepository {
    */
   async findByUserId(userId: number): Promise<AuthorizationRecord | null> {
     const rows = await this.dataSource.query(
-      `SELECT p.per_id AS "personId", p.per_email AS email, p.per_state AS state, u.use_id AS "userId", u.user_provider_id AS "providerId", u.user_provider_name AS "providerName", COALESCE(array_agg(r.rol_description) FILTER (WHERE r.rol_description IS NOT NULL), '{}') AS roles FROM person p JOIN users u ON u.use_id=p.per_id LEFT JOIN person_rol pr ON pr.per_id=p.per_id AND pr.pr_active=true LEFT JOIN rol r ON r.rol_id=pr.rol_id WHERE u.use_id=$1 GROUP BY p.per_id,u.use_id`,
+      `SELECT
+          p.per_id AS "personId",
+          p.per_email AS email,
+          p.per_state AS state,
+          COALESCE(p.per_termns_accpted, false) AS "termsAccepted",
+          psy.psy_termns_accpted AS "psyTermsAccepted",
+          u.use_id AS "userId",
+          u.user_provider_id AS "providerId",
+          u.user_provider_name AS "providerName",
+          COALESCE(array_agg(r.rol_description) FILTER (WHERE r.rol_description IS NOT NULL), '{}') AS roles
+        FROM person p
+        JOIN users u ON u.use_id=p.per_id
+        LEFT JOIN person_rol pr ON pr.per_id=p.per_id AND pr.pr_active=true
+        LEFT JOIN rol r ON r.rol_id=pr.rol_id
+        LEFT JOIN psychologist psy ON psy.psy_id=p.per_id
+        WHERE u.use_id=$1
+        GROUP BY p.per_id, u.use_id, psy.psy_termns_accpted`,
       [userId],
     );
     return rows[0] ?? null;
@@ -50,12 +85,28 @@ export class AuthRepository {
   /**
    * Finds an authorization record by the user's provider ID.
    * @param providerId The provider ID to search for.
-  * @param providerName The provider name (default: 'auth0').
+   * @param providerName The provider name (default: 'auth0').
    * @returns A promise resolving to the authorization record or null if not found.
    */
   async findByProviderId(providerId: string): Promise<AuthorizationRecord | null> {
     const rows = await this.dataSource.query(
-      `SELECT p.per_id AS "personId", p.per_email AS email, p.per_state AS state, u.use_id AS "userId", u.user_provider_id AS "providerId", u.user_provider_name AS "providerName", COALESCE(array_agg(r.rol_description) FILTER (WHERE r.rol_description IS NOT NULL), '{}') AS roles FROM person p JOIN users u ON u.use_id=p.per_id LEFT JOIN person_rol pr ON pr.per_id=p.per_id AND pr.pr_active=true LEFT JOIN rol r ON r.rol_id=pr.rol_id WHERE u.user_provider_id=$1 GROUP BY p.per_id,u.use_id`,
+      `SELECT
+          p.per_id AS "personId",
+          p.per_email AS email,
+          p.per_state AS state,
+          COALESCE(p.per_termns_accpted, false) AS "termsAccepted",
+          psy.psy_termns_accpted AS "psyTermsAccepted",
+          u.use_id AS "userId",
+          u.user_provider_id AS "providerId",
+          u.user_provider_name AS "providerName",
+          COALESCE(array_agg(r.rol_description) FILTER (WHERE r.rol_description IS NOT NULL), '{}') AS roles
+        FROM person p
+        JOIN users u ON u.use_id=p.per_id
+        LEFT JOIN person_rol pr ON pr.per_id=p.per_id AND pr.pr_active=true
+        LEFT JOIN rol r ON r.rol_id=pr.rol_id
+        LEFT JOIN psychologist psy ON psy.psy_id=p.per_id
+        WHERE u.user_provider_id=$1
+        GROUP BY p.per_id, u.use_id, psy.psy_termns_accpted`,
       [providerId],
     );
     return rows[0] ?? null;
@@ -129,6 +180,37 @@ export class AuthRepository {
     await this.dataSource.query(
       'UPDATE users SET user_last_login_at=now() WHERE use_id=$1',
       [userId],
+    );
+  }
+
+  /**
+   * Records acceptance of platform terms and conditions by a person.
+   * @param personId The ID of the person.
+   */
+  async acceptTerms(personId: number): Promise<void> {
+    await this.dataSource.query(
+      `UPDATE person
+       SET per_termns_accpted = true,
+           per_policy_accepted_at = now(),
+           per_policy_version = $2,
+           per_update_date = now()
+           WHERE per_id = $1`,
+          [personId, CURRENT_POLICY_VERSION],
+    );
+  }
+
+  /**
+   * Records acceptance of psychologist terms and conditions.
+   * @param psychologistId The ID of the psychologist.
+   */
+  async acceptPsychologistTerms(psychologistId: number): Promise<void> {
+    await this.dataSource.query(
+      `UPDATE psychologist
+       SET psy_termns_accpted = true,
+           psy_policy_accepted_at = now(),
+           psy_policy_version = $2
+           WHERE psy_id = $1`,
+          [psychologistId, CURRENT_POLICY_VERSION],
     );
   }
 }
