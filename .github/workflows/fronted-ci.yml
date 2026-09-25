@@ -15,6 +15,9 @@ on:
       - "FrontEnd/sana/**"
       - ".github/workflows/frontend-ci.yml"
 
+permissions:
+  contents: read
+
 jobs:
   frontend:
     name: Validate Frontend
@@ -36,13 +39,20 @@ jobs:
           cache-dependency-path: FrontEnd/sana/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
+      # Análisis estático
       - name: Run ESLint
         run: npm run lint
 
+      # Verificación de TypeScript
       - name: Check TypeScript
         run: npx tsc --noEmit
 
+      # Auditoría de dependencias
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
+      # Verifica que Next.js pueda compilarse
       - name: Build Next.js
         run: npm run build
