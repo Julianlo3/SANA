@@ -45,7 +45,7 @@ export type RequestFormValues = {
   hasAcceptedMinorDataPolicy: boolean;
 };
 
-export type RequestFormErrors = Partial<
+export type RequestFormErrors = Partial <
   Record<keyof RequestFormValues, string>
 >;
 
@@ -321,6 +321,10 @@ export function validateSelfRequest(
 
 /**
  * Valida el formulario del tutor legal.
+ *
+ * No se valida documentType ni gender del tutor: ese formulario nunca pide
+ * esos dos campos para el tutor mismo (solo el número de documento, sin
+ * tipo, y el género que se pregunta es el del menor: minorGender).
  */
 export function validateGuardianRequest(
   values: RequestFormValues,
@@ -331,13 +335,9 @@ export function validateGuardianRequest(
      */
     fullName: validateFullName(values.fullName),
 
-    documentType: validateDocumentType(values.documentType),
-
     identityDocument: validateIdentityDocument(
       values.identityDocument,
     ),
-
-    gender: validateGender(values.gender),
 
     relationship: validateRelationship(values.relationship),
 

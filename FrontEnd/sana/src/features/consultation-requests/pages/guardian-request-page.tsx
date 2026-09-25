@@ -451,7 +451,7 @@ export default function GuardianRequestPage() {
             </div>
           )}
 
-          <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                    <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             {step === 1 ? (
               <Button onClick={goToStep2}>{guardianForm.nextStep}</Button>
             ) : (
@@ -459,7 +459,14 @@ export default function GuardianRequestPage() {
                 <Button variant="secondary" onClick={() => setStep(1)}>
                   {guardianForm.previousStep}
                 </Button>
-                <Button onClick={send} disabled={isSaving || !canSubmit}>
+                <Button
+                  onClick={() => {
+                    console.log("canSubmit:", canSubmit);
+                    console.log("errors:", errors);
+                    send();
+                  }}
+                  disabled={isSaving || !canSubmit}
+                >
                   {isSaving ? "Enviando…" : guardianForm.submit}
                 </Button>
               </>
