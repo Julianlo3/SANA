@@ -13,6 +13,7 @@ const profile = {
 function setup(recordOverrides: Record<string, unknown> = {}) {
   const record = {
     personId: 10,
+    name: 'Local Person',
     userId: 10,
     providerId: profile.subject,
     providerName: 'auth0',
@@ -46,6 +47,7 @@ describe('AuthService.authorizeAuth0', () => {
     await expect(service.authorizeAuth0(profile)).resolves.toEqual({
       userId: 10,
       personId: 10,
+      name: 'Local Person',
       email: profile.email,
       roles: ['psicologo'],
       auth0Subject: profile.subject,
