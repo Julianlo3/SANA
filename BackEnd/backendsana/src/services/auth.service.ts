@@ -140,6 +140,7 @@ export class AuthService {
     return {
       userId: record.userId,
       personId: record.personId,
+      name: record.name,
       email: record.email,
       roles: record.roles,
       auth0Subject: profile.subject,

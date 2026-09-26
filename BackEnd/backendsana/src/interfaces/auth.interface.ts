@@ -4,6 +4,7 @@
 export interface AuthenticatedUser {
   userId: number;
   personId: number;
+  name: string;
   email: string;
   roles: string[];
   auth0Subject: string;
