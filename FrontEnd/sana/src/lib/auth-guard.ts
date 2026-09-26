@@ -5,6 +5,8 @@ export type CurrentUser = {
   userId: number;
   personId: number;
   email: string;
+  /** Viene de la sesión de Auth0 (session.user.name), no del backend. */
+  fullName: string;
   roles: string[];
   auth0Subject: string;
   state: string;
@@ -21,7 +23,8 @@ const API_URL =
  * 2. Obtiene el access token.
  * 3. Consulta al backend para obtener la información
  *    y los roles reales del usuario.
- * 4. Redirige según el resultado de autorización.
+ * 4. Combina el nombre real (de Auth0) con los datos del backend.
+ * 5. Redirige según el resultado de autorización.
  */
 export async function getCurrentUser(): Promise<CurrentUser> {
   const session = await auth0.getSession();
@@ -70,7 +73,12 @@ export async function getCurrentUser(): Promise<CurrentUser> {
     );
   }
 
-  return (await response.json()) as CurrentUser;
+  const backendUser = (await response.json()) as Omit<CurrentUser, "fullName">;
+
+  return {
+    ...backendUser,
+    fullName: session.user.name ?? backendUser.email,
+  };
 }
 
 /**

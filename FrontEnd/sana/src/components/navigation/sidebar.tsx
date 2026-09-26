@@ -4,6 +4,8 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { getInitials } from "@/lib/format/text";
+import { formatRoleLabels } from "@/config/roles";
 import {
   Users,
   Calendar,
@@ -58,9 +60,10 @@ const navItems: NavItem[] = [
 
 type Props = {
   roles: string[];
+  fullName: string;
 };
 
-export default function Sidebar({ roles }: Props) {
+export default function Sidebar({ roles, fullName }: Props) { 
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -148,13 +151,17 @@ export default function Sidebar({ roles }: Props) {
           })}
         </nav>
 
-        <div className="mt-auto flex items-center gap-3 rounded-xl bg-surface p-3">
+                <div className="mt-auto flex items-center gap-3 rounded-xl bg-surface p-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white">
-            AS
+            {getInitials(fullName)}
           </div>
-          <div className="flex-1 leading-tight">
-            <p className="text-sm font-semibold text-text">Alejandro Silva</p>
-            <p className="text-xs text-text-subtle">Administrador</p>
+          <div className="min-w-0 flex-1 leading-tight">
+            <p className="truncate text-sm font-semibold text-text">
+              {fullName}
+            </p>
+            <p className="truncate text-xs text-text-subtle">
+              {formatRoleLabels(roles)}
+            </p>
           </div>
           <button className="cursor-pointer text-text-subtle hover:text-text">
             <LogOut size={18} />
