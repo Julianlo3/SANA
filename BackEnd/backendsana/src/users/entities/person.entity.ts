@@ -28,6 +28,24 @@ export class Person {
   @Column({ name: 'per_created_by', type: 'integer', nullable: true })
   perCreatedBy!: number | null;
 
+  @Column({ name: 'per_card_type', type: 'varchar', length: 20, nullable: true })
+  perCardType!: string | null;
+
+  @Column({ name: 'per_birthdate', type: 'date', nullable: true })
+  perBirthdate!: string | null;
+
+  @Column({ name: 'per_gender', type: 'char', length: 1, nullable: true })
+  perGender!: string | null;
+
+  @Column({ name: 'per_termns_accpted', type: 'boolean', default: false })
+  perTermsAccepted!: boolean;
+
+  @Column({ name: 'per_policy_accepted_at', type: 'timestamptz', nullable: true })
+  perPolicyAcceptedAt!: Date | null;
+
+  @Column({ name: 'per_policy_version', type: 'varchar', length: 50, nullable: true })
+  perPolicyVersion!: string | null;
+
   @Column({
     name: 'per_created_at',
     type: 'timestamptz',

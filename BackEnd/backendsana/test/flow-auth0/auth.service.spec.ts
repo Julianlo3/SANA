@@ -50,6 +50,8 @@ describe('AuthService.authorizeAuth0', () => {
       roles: ['psicologo'],
       auth0Subject: profile.subject,
       state: AccountState.Active,
+      termsAccepted: false,
+      psyTermsAccepted: null,
     });
     expect(repository.updateLastLogin).toHaveBeenCalledWith(10);
   });

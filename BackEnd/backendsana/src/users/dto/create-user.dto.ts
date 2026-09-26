@@ -1,5 +1,17 @@
 import { Type } from 'class-transformer';
-import { IsEmail, IsInt, IsOptional, IsPositive, IsString, Matches, MaxLength, ValidateNested } from 'class-validator';
+import {
+  IsBoolean,
+  IsDateString,
+  IsEmail,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsPositive,
+  IsString,
+  Matches,
+  MaxLength,
+  ValidateNested,
+} from 'class-validator';
 
 export class ProfessionalDataDto {
   @Matches(/^\d{1,20}$/)
@@ -8,6 +20,10 @@ export class ProfessionalDataDto {
   @IsString()
   @MaxLength(45)
   speciality!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  termsAccepted?: boolean;
 }
 
 const IDENTITY_DOCUMENT_PATTERN = /^\d{6,12}$/;
@@ -17,6 +33,12 @@ const ALLOWED_EMAIL_PATTERN = /@(gmail\.com|googlemail\.com|hotmail\.com|unicauc
 export class CreateUserDto {
   @MaxLength(100)
   fullName!: string;
+
+  @IsOptional()
+  @IsEnum(['CC', 'TI', 'CE'] as const, {
+    message: 'cardType must be CC, TI or CE',
+  })
+  cardType?: 'CC' | 'TI' | 'CE';
 
   @Matches(IDENTITY_DOCUMENT_PATTERN, {
     message: 'identityDocument must contain between 6 and 12 digits',
@@ -34,6 +56,19 @@ export class CreateUserDto {
     message: 'phone must contain between 7 and 10 digits',
   })
   phone!: string;
+
+  @IsOptional()
+  @IsDateString({}, { message: 'birthdate must be a valid date (YYYY-MM-DD)' })
+  birthdate?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1)
+  gender?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  termsAccepted?: boolean;
 
   @Type(() => Number)
   @IsInt()

@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -63,6 +64,8 @@ export class UsersService {
     private readonly securityLogService: SecurityLogService,
   ) {}
 
+  private readonly logger = new Logger(UsersService.name);
+
   async create(
     dto: CreateUserDto,
     createdByUserId: number,
@@ -89,8 +92,12 @@ export class UsersService {
         }
 
         existing.perName = dto.fullName;
+        existing.perCardType = dto.cardType ?? existing.perCardType ?? 'CC';
         existing.perIdentityDocument = Number(dto.identityDocument);
         existing.perContactNumber = dto.phone;
+        if (dto.birthdate !== undefined) existing.perBirthdate = dto.birthdate;
+        if (dto.gender !== undefined) existing.perGender = dto.gender;
+        if (dto.termsAccepted !== undefined) existing.perTermsAccepted = dto.termsAccepted;
         existing.perState = 'activo';
         existing.perUpdateDate = new Date();
         // Promocion de pendiente: atribuye al admin que completa el alta.
@@ -108,9 +115,13 @@ export class UsersService {
       const created = await manager.save(
         manager.create(Person, {
           perName: dto.fullName,
+          perCardType: dto.cardType ?? 'CC',
           perIdentityDocument: Number(dto.identityDocument),
           perEmail: email,
           perContactNumber: dto.phone,
+          perBirthdate: dto.birthdate ?? null,
+          perGender: dto.gender ?? null,
+          perTermsAccepted: dto.termsAccepted ?? false,
           perState: 'activo',
           perCreatedBy: createdByUserId,
           perCreatedAt: new Date(),
@@ -120,6 +131,9 @@ export class UsersService {
         { roleId: role.rolId, active: true },
       ]);
       await this.saveProfessionalData(manager, created.perId, dto.professionalData);
+      this.logger.log(
+        `Module:users, Function:create, result-success: personId-${created.perId}, email-${email}, roleId-${dto.roleId}, createdBy-${createdByUserId}`,
+      );
       return this.toResponse(manager, created.perId);
     });
   }
@@ -163,9 +177,13 @@ export class UsersService {
     return this.dataSource.transaction(async (manager) => {
       const person = await this.findByIdOrFail(id, manager);
       if (dto.fullName !== undefined) person.perName = dto.fullName;
+      if (dto.cardType !== undefined) person.perCardType = dto.cardType;
       if (dto.identityDocument !== undefined)
         person.perIdentityDocument = Number(dto.identityDocument);
       if (dto.phone !== undefined) person.perContactNumber = dto.phone;
+      if (dto.birthdate !== undefined) person.perBirthdate = dto.birthdate;
+      if (dto.gender !== undefined) person.perGender = dto.gender;
+      if (dto.termsAccepted !== undefined) person.perTermsAccepted = dto.termsAccepted;
       person.perUpdateDate = new Date();
       await manager.save(person);
 
@@ -175,6 +193,9 @@ export class UsersService {
       }
       await this.saveProfessionalData(manager, id, dto.professionalData);
 
+      this.logger.log(
+        `Module:users, Function:update, result-success: personId-${id}, fieldsUpdated-[${Object.keys(dto).join(',')}]`,
+      );
       return this.toResponse(manager, id);
     });
   }
@@ -198,6 +219,10 @@ export class UsersService {
       reason: dto.reason,
     });
 
+    this.logger.log(
+      `Module:users, Function:updateStatus, result-success: personId-${id}, newStatus-${dto.status}, actorUserId-${actorUserId}`,
+    );
+
     return this.toResponse(this.dataSource.manager, id);
   }
 
@@ -219,6 +244,9 @@ export class UsersService {
         await manager.delete(PersonRol, { perId: id });
         await manager.delete(Person, { perId: id });
       });
+      this.logger.log(
+        `Module:users, Function:remove, result-success: personId-${id}`,
+      );
     } catch (error) {
       if (isForeignKeyViolation(error)) {
         throw new ConflictException({
@@ -332,17 +360,28 @@ export class UsersService {
   private async saveProfessionalData(
     manager: EntityManager,
     personId: number,
-    data?: { licenseNumber: string; speciality: string },
+    data?: { licenseNumber: string; speciality: string; termsAccepted?: boolean },
   ): Promise<void> {
     if (!data) return;
 
-    await manager.save(
-      manager.create(Psychologist, {
-        id: personId,
-        licenseNumber: Number(data.licenseNumber),
-        speciality: data.speciality,
-      }),
-    );
+    const existing = await manager.findOneBy(Psychologist, { id: personId });
+    if (existing) {
+      existing.licenseNumber = Number(data.licenseNumber);
+      existing.speciality = data.speciality;
+      if (data.termsAccepted !== undefined) {
+        existing.termsAccepted = data.termsAccepted;
+      }
+      await manager.save(existing);
+    } else {
+      await manager.save(
+        manager.create(Psychologist, {
+          id: personId,
+          licenseNumber: Number(data.licenseNumber),
+          speciality: data.speciality,
+          termsAccepted: data.termsAccepted ?? false,
+        }),
+      );
+    }
   }
 
   private async toResponse(
@@ -375,9 +414,13 @@ export class UsersService {
     return {
       id: person.perId,
       fullName: person.perName,
+      cardType: person.perCardType ?? null,
       identityDocument: person.perIdentityDocument?.toString() ?? null,
       email: person.perEmail,
       phone: person.perContactNumber,
+      birthdate: person.perBirthdate ? person.perBirthdate.toString() : null,
+      gender: person.perGender ?? null,
+      termsAccepted: person.perTermsAccepted ?? false,
       roles: userRoles,
       status: STATE_TO_STATUS[person.perState],
       lastLoginAt: account?.lastLoginAt?.toISOString() ?? null,
@@ -388,6 +431,7 @@ export class UsersService {
         ? {
             licenseNumber: professionalData.licenseNumber.toString(),
             speciality: professionalData.speciality,
+            termsAccepted: professionalData.termsAccepted ?? false,
           }
         : undefined,
     };

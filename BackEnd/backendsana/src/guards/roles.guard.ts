@@ -3,6 +3,7 @@ import {
   ExecutionContext,
   ForbiddenException,
   Injectable,
+  Logger,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
@@ -18,6 +19,8 @@ export const ROLES_KEY = 'roles';
  */
 @Injectable()
 export class RolesGuard implements CanActivate {
+  private readonly logger = new Logger(RolesGuard.name);
+
   constructor(
     private readonly reflector: Reflector,
     private readonly securityLogService: SecurityLogService,
@@ -66,7 +69,9 @@ export class RolesGuard implements CanActivate {
             section,
           })
           .catch((err) => {
-            console.error('Failed to log unauthorized role access:', err);
+            this.logger.error(
+              `Module:roles-guard, Function:logRoleMismatch, result-error: reason-log_failed, error-${err instanceof Error ? err.message : String(err)}`,
+            );
         });
 
       }
