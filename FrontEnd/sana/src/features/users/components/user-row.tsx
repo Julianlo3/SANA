@@ -32,7 +32,7 @@ export default function UserRow({
         <div className="flex items-center gap-3">
           <span
             aria-hidden
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-white"
+               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-white"
           >
             {getInitials(user.fullName)}
           </span>
