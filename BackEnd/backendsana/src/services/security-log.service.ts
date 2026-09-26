@@ -32,10 +32,12 @@ export class SecurityLogService {
         [userId, cleanSection, cleanMessage],
       );
       this.logger.warn(
-        `Security incident recorded [User ID: ${userId}, Section: '${cleanSection}']: ${cleanMessage}`,
+        `Module:security-log, Function:logSecurityEvent, result-success: userId-${userId}, section-${cleanSection}, message-${cleanMessage}`,
       );
     } catch (error) {
-      this.logger.error(`Failed to record security access log for user ${userId}:`, error);
+      this.logger.error(
+        `Module:security-log, Function:logSecurityEvent, result-error: reason-log_failed, userId-${userId}, error-${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 

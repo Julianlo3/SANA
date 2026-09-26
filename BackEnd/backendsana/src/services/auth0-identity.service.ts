@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
 
@@ -23,6 +23,7 @@ interface Auth0Claims extends JWTPayload {
  */
 @Injectable()
 export class Auth0IdentityService {
+  private readonly logger = new Logger(Auth0IdentityService.name);
   private readonly jwks: ReturnType<typeof createRemoteJWKSet>;
 
   constructor(private readonly configService: ConfigService) {
@@ -62,11 +63,9 @@ export class Auth0IdentityService {
       const emailVerified = emailVerifiedClaim === true;
 
       if (!payload.sub || !email || emailVerified !== true) {
-        console.error('❌ [Auth0IdentityService] Token lacks required claims:', {
-          sub: payload.sub,
-          email,
-          emailVerified
-        });
+        this.logger.error(
+          `Module:auth0-identity, Function:verifyAccessToken, result-error: reason-token_lacks_required_claims, sub-${payload.sub}, email-${email}, emailVerified-${emailVerified}`,
+        );
         throw new UnauthorizedException('Auth0 token lacks required claims');
       }
 
@@ -77,7 +76,9 @@ export class Auth0IdentityService {
         isEmailVerified: true,
       };
     } catch (error) {
-      console.error('❌ [Auth0IdentityService] verification failed:', error);
+      this.logger.error(
+        `Module:auth0-identity, Function:verifyAccessToken, result-error: reason-verification_failed, error-${error instanceof Error ? error.message : String(error)}`,
+      );
       if (error instanceof UnauthorizedException) throw error;
       throw new UnauthorizedException('Invalid Auth0 access token');
     }

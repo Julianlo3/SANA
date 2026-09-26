@@ -5,6 +5,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { appConfig, validateEnvironment } from './config/app.config.js';
 import { AuthModule } from './modules/auth.module.js';
 import { UsersModule } from './users/users.module.js';
+import { AppointmentsModule } from './appointments/appointments.module.js';
+import { ScheduleModule } from './schedule/schedule.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 
@@ -22,6 +24,8 @@ import { AppService } from './app.service.js';
 
     AuthModule,
     UsersModule,
+    AppointmentsModule,
+    ScheduleModule,
   ],
 
   controllers: [AppController],

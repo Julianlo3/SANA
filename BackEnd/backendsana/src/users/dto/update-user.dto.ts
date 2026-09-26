@@ -1,7 +1,11 @@
 import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
+  IsBoolean,
+  IsDateString,
+  IsEnum,
   IsOptional,
+  IsString,
   Matches,
   MaxLength,
   ValidateNested,
@@ -22,6 +26,12 @@ export class UpdateUserDto {
   fullName?: string;
 
   @IsOptional()
+  @IsEnum(['CC', 'TI', 'CE'] as const, {
+    message: 'cardType must be CC, TI or CE',
+  })
+  cardType?: 'CC' | 'TI' | 'CE';
+
+  @IsOptional()
   @Matches(IDENTITY_DOCUMENT_PATTERN, {
     message: 'identityDocument must contain between 6 and 12 digits',
   })
@@ -32,6 +42,19 @@ export class UpdateUserDto {
     message: 'phone must contain between 7 and 10 digits',
   })
   phone?: string;
+
+  @IsOptional()
+  @IsDateString({}, { message: 'birthdate must be a valid date (YYYY-MM-DD)' })
+  birthdate?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1)
+  gender?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  termsAccepted?: boolean;
 
   @IsOptional()
   @ArrayMinSize(1, { message: 'the user must keep at least one role' })

@@ -7,7 +7,7 @@
 -- ** Database creation must be performed outside a multi lined SQL file. 
 -- ** These commands were put in this file only as a convenience.
 
-SET search_path TO pg_catalog,public;
+-- SET search_path TO pg_catalog,public;
 -- ddl-end --
 
 -- object: public.person | type: TABLE --
@@ -50,7 +50,7 @@ COMMENT ON CONSTRAINT "Person_email_uq" ON public.person IS E'Restriccion que im
 -- ddl-end --
 COMMENT ON CONSTRAINT "Person_state_ck" ON public.person IS E'Un estado solo puede ser activo, inactivo o bloqueado';
 -- ddl-end --
-ALTER TABLE public.person OWNER TO postgres;
+--ALTER TABLE public.person OWNER TO postgres;
 -- ddl-end --
 
 -- object: public.users | type: TABLE --
@@ -78,7 +78,7 @@ COMMENT ON CONSTRAINT "User_pk" ON public.users IS E'Restriccion de identificado
 -- ddl-end --
 COMMENT ON CONSTRAINT "User_provider_uq" ON public.users IS E'Restriccion que impide la repeticion de un id proovedor + nombre';
 -- ddl-end --
-ALTER TABLE public.users OWNER TO postgres;
+--ALTER TABLE public.users OWNER TO postgres;
 -- ddl-end --
 
 -- object: public.psychologist | type: TABLE --
@@ -100,7 +100,7 @@ COMMENT ON COLUMN public.psychologist.psy_speciality IS E'Especialidad profesion
 -- ddl-end --
 COMMENT ON CONSTRAINT "Psychologist_pk" ON public.psychologist IS E'Restriccion de identificador unico de psicologo';
 -- ddl-end --
-ALTER TABLE public.psychologist OWNER TO postgres;
+--ALTER TABLE public.psychologist OWNER TO postgres;
 -- ddl-end --
 
 -- object: public.schedule | type: TABLE --
@@ -134,7 +134,7 @@ COMMENT ON CONSTRAINT "Schedule_pk" ON public.schedule IS E'Restriccion de ident
 -- ddl-end --
 COMMENT ON CONSTRAINT "Schedule_time_ck" ON public.schedule IS E'Restriccion que obliga a que la hora de finalizacion sea posterior a la de inicio';
 -- ddl-end --
-ALTER TABLE public.schedule OWNER TO postgres;
+--ALTER TABLE public.schedule OWNER TO postgres;
 -- ddl-end --
 
 -- object: public.appointments | type: TABLE --
@@ -178,7 +178,7 @@ COMMENT ON CONSTRAINT "Appointments_pk" ON public.appointments IS E'Restriccion 
 -- ddl-end --
 COMMENT ON CONSTRAINT "Appointment_pacient_ck" ON public.appointments IS E'Restriccion que obliga que exista un paciente, sea el consultante o el dependiente';
 -- ddl-end --
-ALTER TABLE public.appointments OWNER TO postgres;
+--ALTER TABLE public.appointments OWNER TO postgres;
 -- ddl-end --
 
 -- object: public.rol | type: TABLE --
@@ -197,7 +197,7 @@ COMMENT ON COLUMN public.rol.rol_description IS E'Descripcion o nombre del rol';
 -- ddl-end --
 COMMENT ON CONSTRAINT "Rol_pk" ON public.rol IS E'Restriccion de identificador unico de rol';
 -- ddl-end --
-ALTER TABLE public.rol OWNER TO postgres;
+--ALTER TABLE public.rol OWNER TO postgres;
 -- ddl-end --
 
 -- object: public.person_rol | type: TABLE --
@@ -219,7 +219,7 @@ COMMENT ON COLUMN public.person_rol.pr_assigned_at IS E'Fecha y hora de la asign
 -- ddl-end --
 COMMENT ON CONSTRAINT "Person_Roles_pk" ON public.person_rol IS E'Restriccion de identificacion unico compuesto con la id de la persona y rol';
 -- ddl-end --
-ALTER TABLE public.person_rol OWNER TO postgres;
+--ALTER TABLE public.person_rol OWNER TO postgres;
 -- ddl-end --
 
 -- object: public.dependents | type: TABLE --
@@ -250,7 +250,7 @@ COMMENT ON CONSTRAINT "Dependents_pk" ON public.dependents IS E'Restriccion de i
 -- ddl-end --
 COMMENT ON CONSTRAINT "Dependent_idocument_uq" ON public.dependents IS E'Restriccion que impide la repeticion de los documentos de identidad';
 -- ddl-end --
-ALTER TABLE public.dependents OWNER TO postgres;
+--ALTER TABLE public.dependents OWNER TO postgres;
 -- ddl-end --
 
 -- object: public.relationship | type: TABLE --
@@ -269,7 +269,7 @@ COMMENT ON COLUMN public.relationship.rel_description IS E'Descripcion o nombre 
 -- ddl-end --
 COMMENT ON CONSTRAINT "Relationship_pk" ON public.relationship IS E'Identificador unico de la relacion';
 -- ddl-end --
-ALTER TABLE public.relationship OWNER TO postgres;
+--ALTER TABLE public.relationship OWNER TO postgres;
 -- ddl-end --
 
 -- object: public.donors | type: TABLE --
@@ -297,7 +297,7 @@ COMMENT ON CONSTRAINT "Donors_pk" ON public.donors IS E'Restriccion de identific
 -- ddl-end --
 COMMENT ON CONSTRAINT "Donor_email_uq" ON public.donors IS E'Restriccion que impide la repeticion del correo de los donantes';
 -- ddl-end --
-ALTER TABLE public.donors OWNER TO postgres;
+--ALTER TABLE public.donors OWNER TO postgres;
 -- ddl-end --
 
 -- object: public.donations | type: TABLE --
@@ -331,7 +331,7 @@ COMMENT ON CONSTRAINT "Donations_pk" ON public.donations IS E'Restriccion de ide
 -- ddl-end --
 COMMENT ON CONSTRAINT "Donation_amount_ck" ON public.donations IS E'Restriccion que obliga a que la cantidad donada sea superior a 0$';
 -- ddl-end --
-ALTER TABLE public.donations OWNER TO postgres;
+--ALTER TABLE public.donations OWNER TO postgres;
 -- ddl-end --
 
 -- object: public.payment_method | type: TABLE --
@@ -353,7 +353,7 @@ COMMENT ON COLUMN public.payment_method.pmet_name IS E'Nombre del servicio usado
 -- ddl-end --
 COMMENT ON CONSTRAINT "Payment_Method_pk" ON public.payment_method IS E'Restriccion de identificador unico del metodo de pago';
 -- ddl-end --
-ALTER TABLE public.payment_method OWNER TO postgres;
+--ALTER TABLE public.payment_method OWNER TO postgres;
 -- ddl-end --
 
 -- object: public.requester_dependent | type: TABLE --
@@ -378,7 +378,7 @@ COMMENT ON COLUMN public.requester_dependent.rd_assigned_at IS E'Fecha y hora en
 -- ddl-end --
 COMMENT ON CONSTRAINT "Requester_Dependent_pk" ON public.requester_dependent IS E'Restriccion Identificador unico que junta el id de un consultante y un dependiente';
 -- ddl-end --
-ALTER TABLE public.requester_dependent OWNER TO postgres;
+--ALTER TABLE public.requester_dependent OWNER TO postgres;
 -- ddl-end --
 
 -- object: "User_Person_fk" | type: CONSTRAINT --
