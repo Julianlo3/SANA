@@ -7,6 +7,7 @@ import { CURRENT_POLICY_VERSION } from '../config/policy.config.js';
  */
 export interface AuthorizationRecord {
   personId: number;
+  name: string;
   email: string;
   state: string;
   userId: number | null;
@@ -33,6 +34,7 @@ export class AuthRepository {
     const rows = await this.dataSource.query(
       `SELECT
           p.per_id AS "personId",
+          p.per_name AS name,
           p.per_email AS email,
           p.per_state AS state,
           COALESCE(p.per_termns_accpted, false) AS "termsAccepted",
@@ -62,6 +64,7 @@ export class AuthRepository {
     const rows = await this.dataSource.query(
       `SELECT
           p.per_id AS "personId",
+          p.per_name AS name,
           p.per_email AS email,
           p.per_state AS state,
           COALESCE(p.per_termns_accpted, false) AS "termsAccepted",
@@ -92,6 +95,7 @@ export class AuthRepository {
     const rows = await this.dataSource.query(
       `SELECT
           p.per_id AS "personId",
+          p.per_name AS name,
           p.per_email AS email,
           p.per_state AS state,
           COALESCE(p.per_termns_accpted, false) AS "termsAccepted",
