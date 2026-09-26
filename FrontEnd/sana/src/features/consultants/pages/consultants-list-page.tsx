@@ -115,14 +115,16 @@ export default function ConsultantsListPage({ viewerRole }: Props) {
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
                   <User size={18} aria-hidden />
                 </span>
-                <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold text-text">
                     {consultant.fullName}
                   </p>
                   <p className="text-xs text-text-subtle">
-                    {consultant.assignedPsychologistName ?? "Sin asignar"}
+                    {viewerRole === "psychologist"
+                      ? `Documento ${consultant.identityDocument}`
+                      : (consultant.assignedPsychologistName ?? "Sin asignar")}
                   </p>
-                </div>
+                </div>|
                 <p className="shrink-0 text-xs text-text-subtle">
                   {consultant.lastAppointmentAt
                     ? formatRelativeDate(consultant.lastAppointmentAt)
