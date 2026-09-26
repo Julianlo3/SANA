@@ -187,9 +187,8 @@ export default function GuardianRequestPage() {
 
                   <label className="block">
                     <span className="text-sm font-semibold text-text">
-                      {guardianForm.fields.relationship}
+                      {guardianForm.fields.relationship}{" "}
                       <span className="text-danger" aria-hidden>
-                        {" "}
                         *
                       </span>
                     </span>
@@ -262,9 +261,8 @@ export default function GuardianRequestPage() {
 
                   <label className="block">
                     <span className="text-sm font-semibold text-text">
-                      {guardianForm.fields.minorBirthDate}
+                      {guardianForm.fields.minorBirthDate}{" "}
                       <span className="text-danger" aria-hidden>
-                        {" "}
                         *
                       </span>
                     </span>
@@ -289,9 +287,8 @@ export default function GuardianRequestPage() {
                 <div className="grid gap-5 sm:grid-cols-2">
                   <label className="block">
                     <span className="text-sm font-semibold text-text">
-                      Género del menor
+                      Género del menor{" "}
                       <span className="text-danger" aria-hidden>
-                        {" "}
                         *
                       </span>
                     </span>
@@ -451,7 +448,7 @@ export default function GuardianRequestPage() {
             </div>
           )}
 
-                    <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             {step === 1 ? (
               <Button onClick={goToStep2}>{guardianForm.nextStep}</Button>
             ) : (
@@ -459,14 +456,7 @@ export default function GuardianRequestPage() {
                 <Button variant="secondary" onClick={() => setStep(1)}>
                   {guardianForm.previousStep}
                 </Button>
-                <Button
-                  onClick={() => {
-                    console.log("canSubmit:", canSubmit);
-                    console.log("errors:", errors);
-                    send();
-                  }}
-                  disabled={isSaving || !canSubmit}
-                >
+                <Button onClick={send} disabled={isSaving || !canSubmit}>
                   {isSaving ? "Enviando…" : guardianForm.submit}
                 </Button>
               </>

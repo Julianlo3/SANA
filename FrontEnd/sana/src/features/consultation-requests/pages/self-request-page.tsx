@@ -100,9 +100,8 @@ export default function SelfRequestPage() {
               <div className="grid gap-5 sm:grid-cols-[160px_1fr]">
                 <label className="block">
                   <span className="text-sm font-semibold text-text">
-                    Tipo
+                    Tipo{" "}
                     <span className="text-danger" aria-hidden>
-                      {" "}
                       *
                     </span>
                   </span>
@@ -147,9 +146,8 @@ export default function SelfRequestPage() {
               <div className="grid gap-5 sm:grid-cols-2">
                 <label className="block">
                   <span className="text-sm font-semibold text-text">
-                    {selfForm.fields.birthDate}
+                    {selfForm.fields.birthDate}{" "}
                     <span className="text-danger" aria-hidden>
-                      {" "}
                       *
                     </span>
                   </span>
@@ -170,9 +168,8 @@ export default function SelfRequestPage() {
 
                 <label className="block">
                   <span className="text-sm font-semibold text-text">
-                    Género
+                    Género{" "}
                     <span className="text-danger" aria-hidden>
-                      {" "}
                       *
                     </span>
                   </span>
