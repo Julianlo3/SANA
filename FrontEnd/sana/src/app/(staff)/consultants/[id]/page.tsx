@@ -1,13 +1,20 @@
 import type { Metadata } from "next";
-import ConsultantFullRecordPage from "@/features/consultants/pages/consultant-full-record-page";
+import { getCurrentUser } from "@/lib/auth-guard";
+import ConsultantsListPage from "@/features/consultants/pages/consultants-list-page";
 
-export const metadata: Metadata = { title: "Ficha del consultante | SANA" };
+export const metadata: Metadata = { title: "Consultantes | SANA" };
 
-export default async function ConsultantDetail({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  return <ConsultantFullRecordPage consultantId={Number(id)} />;
+/**
+ * Decide qué listado mostrar según el rol de quien pregunta (HU-2.4):
+ * el psicólogo ve la lista completa de sus consultantes asignados, con
+ * motivo de consulta incluido; la asistente y el administrador ven la
+ * versión sin datos clínicos.
+ */
+export default async function Consultants() {
+  const user = await getCurrentUser();
+  const viewerRole = user.roles.includes("psicologo")
+    ? "psychologist"
+    : "assistant";
+
+  return <ConsultantsListPage viewerRole={viewerRole} />;
 }

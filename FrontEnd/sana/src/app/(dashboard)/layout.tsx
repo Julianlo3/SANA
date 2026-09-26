@@ -7,11 +7,11 @@ export default async function PanelLayout({
 }: {
   children: React.ReactNode;
 }) {
-  await requireAdministrator();
+  const user = await requireAdministrator();
 
   return (
     <div className="flex flex-1">
-      <Sidebar />
+      <Sidebar roles={user.roles} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Header />
         <main className="relative flex-1 overflow-y-auto p-4 pt-20 sm:p-8 lg:pt-8">

@@ -12,24 +12,61 @@ import {
   BarChart3,
   FileText,
   UserCog,
+  ClipboardCheck,
   LogOut,
   Menu,
   X,
 } from "lucide-react";
 
-const navItems = [
-  { label: "Pacientes", href: "/patients", icon: Users, enabled: false },
+type NavItem = {
+  label: string;
+  href: string;
+  icon: typeof Users;
+  enabled: boolean;
+  /** Si no se indica, el enlace es visible para cualquier rol. */
+  roles?: string[];
+};
+
+const navItems: NavItem[] = [
+  {
+    label: "Consultantes",
+    href: "/consultants",
+    icon: Users,
+    enabled: true,
+    roles: ["secretario", "psicologo", "administrador"],
+  },
   { label: "Citas", href: "/appointments", icon: Calendar, enabled: false },
   { label: "Expedientes", href: "/records", icon: FolderOpen, enabled: false },
   { label: "Recepción", href: "/reception", icon: ClipboardList, enabled: false },
+  {
+    label: "Registrar atención",
+    href: "/care-records/new",
+    icon: ClipboardCheck,
+    enabled: true,
+    roles: ["psicologo"],
+  },
   { label: "Reportes", href: "/reports", icon: BarChart3, enabled: false },
   { label: "Contenido", href: "/content", icon: FileText, enabled: false },
-  { label: "Usuarios", href: "/users", icon: UserCog, enabled: true },
+  {
+    label: "Usuarios",
+    href: "/users",
+    icon: UserCog,
+    enabled: true,
+    roles: ["administrador"],
+  },
 ];
 
-export default function Sidebar() {
+type Props = {
+  roles: string[];
+};
+
+export default function Sidebar({ roles }: Props) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+
+  const visibleItems = navItems.filter(
+    (item) => !item.roles || item.roles.some((role) => roles.includes(role)),
+  );
 
   return (
     <>
@@ -79,7 +116,7 @@ export default function Sidebar() {
         </div>
 
         <nav className="mt-6 flex flex-col gap-1">
-          {navItems.map(({ label, href, icon: Icon, enabled }) => {
+          {visibleItems.map(({ label, href, icon: Icon, enabled }) => {
             if (!enabled) {
               return (
                 <span
