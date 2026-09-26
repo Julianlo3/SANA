@@ -4,8 +4,7 @@ VALUES
     (2, 'marketing'),
     (3, 'consultante'),
     (4, 'administrador'),
-    (5, 'psicologo'),
-    (6, 'pendiente')
+    (5, 'psicologo')
 ON CONFLICT (rol_id) DO UPDATE
 SET rol_description = EXCLUDED.rol_description;
 
