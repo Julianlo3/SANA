@@ -96,12 +96,9 @@ export async function requireAdministrator(): Promise<CurrentUser> {
 /**
  * Exige que el usuario tenga al menos uno de los roles indicados.
  *
- * Permite reutilizar la misma función en pantallas que
- * pueden ser utilizadas por diferentes roles.
- *
  * Ejemplo:
  *
- * requireAnyRole(["asistente", "psicologo"]);
+ * requireAnyRole(["secretario", "psicologo"]);
  */
 export async function requireAnyRole(
   allowedRoles: string[],
