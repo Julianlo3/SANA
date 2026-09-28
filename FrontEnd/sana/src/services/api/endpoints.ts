@@ -22,4 +22,13 @@ export const ENDPOINTS = {
     // Registro de atención (HU-2.5)
   psychologistAppointments: "/appointments/mine",
   careRecords: "/care-records",
+   // Bandeja de la asistente (HU-2.3), contra el backend real (módulo appointments)
+  appointments: "/appointments",
+  appointment: (id: number) => `/appointments/${id}`,
+  appointmentPsychologists: "/appointments/psychologists",
+  appointmentAssign: (id: number) => `/appointments/${id}/assign`,
+  appointmentConfirm: (id: number) => `/appointments/${id}/confirm`,
+  appointmentDiscard: (id: number) => `/appointments/${id}/discard`,
+  appointmentStatus: (id: number) => `/appointments/${id}/status`,
+  scheduleAvailability: "/schedule/availability",
 } as const;

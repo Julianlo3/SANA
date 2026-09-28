@@ -13,6 +13,7 @@ import {
   FileText,
   UserCog,
   ClipboardCheck,
+  Inbox,
   LogOut,
   Menu,
   X,
@@ -43,6 +44,7 @@ const LINKS_BY_ROLE: Record<string, NavLink[]> = {
     },
   ],
   secretario: [
+    { label: "Solicitudes", href: "/solicitudes", icon: Inbox, enabled: true },
     { label: "Consultantes", href: "/consultantes", icon: Users, enabled: true },
   ],
 };
