@@ -6,10 +6,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import type { CreateClinicalNoteDto } from './dto/create-clinical-note.dto.js';
 import type { RegisterAttentionDto } from './dto/register-attention.dto.js';
 import type { ClinicalNoteResponseDto, ClinicalNoteAuditResponseDto } from './dto/clinical-note-response.dto.js';
-import type { ClinicalNoteHistoryDto, ConsultantAttentionHistoryDto } from './dto/clinical-note-history.dto.js';
+import type { ConsultantAttentionHistoryDto } from './dto/clinical-note-history.dto.js';
 import { ClinicalNotesRepository } from './clinical-notes.repository.js';
 import { AppointmentsRepository } from '../appointments/appointments.repository.js';
 

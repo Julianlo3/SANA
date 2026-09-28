@@ -389,11 +389,9 @@ export class AppointmentsService {
    */
   async findByPsychologist(
     psychologistId: number,
-    state?: 'confirmada' | 'realizada' | 'cancelada',
+    state: 'confirmada' | 'realizada' | 'cancelada' = 'confirmada',
   ): Promise<AppointmentRow[]> {
-    // Por defecto, solo devuelve citas aceptadas
-    const filterState = state ?? 'confirmada';
-    return this.repo.findByPsychologist(psychologistId, filterState);
+    return this.repo.findByPsychologist(psychologistId, state);
   }
 
   /**

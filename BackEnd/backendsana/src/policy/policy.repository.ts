@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { CURRENT_POLICY_VERSION } from '../config/policy.config.js';
 
 /**
  * Repository for managing policy acceptance records

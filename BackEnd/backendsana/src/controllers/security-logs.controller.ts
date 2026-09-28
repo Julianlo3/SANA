@@ -30,7 +30,7 @@ export class SecurityLogsController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
-    const userIdNum = userId ? parseInt(userId, 10) : undefined;
+    const userIdNum = userId ? Number.parseInt(userId, 10) : undefined;
     return this.securityLogService.findSecurityLogs(userIdNum, startDate, endDate);
   }
 }

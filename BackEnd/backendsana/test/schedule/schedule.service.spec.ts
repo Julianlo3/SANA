@@ -81,7 +81,7 @@ describe('ScheduleService', () => {
   });
 
   it('rejects an overlapping block', async () => {
-    const { service, repository, policyService } = setup();
+    const { service, repository } = setup();
     repository.hasOverlap.mockResolvedValue(true);
 
     await expect(
@@ -147,7 +147,7 @@ describe('ScheduleService', () => {
   });
 
   it('rejects overlapping recurring rules', async () => {
-    const { service, repository, policyService } = setup();
+    const { service, repository } = setup();
     repository.hasRecurringOverlap.mockResolvedValue(true);
 
     await expect(

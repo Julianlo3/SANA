@@ -69,6 +69,38 @@ export class UsersService {
 
   private readonly logger = new Logger(UsersService.name);
 
+
+  /**
+   * Records the acceptance of terms and conditions for a user.
+   * @param manager The entity manager for database operations.
+   * @param personId The ID of the person for whom to record terms acceptance.
+   * @param termsAccepted Whether the terms have been accepted.
+   * @returns A promise resolving when the operation is complete.
+   */
+  private async recordTermsAcceptance(
+    manager: EntityManager,
+    personId: number,
+    termsAccepted?: boolean,
+  ): Promise<void> {
+    if (!termsAccepted) return;
+
+    const pdId = await manager.query<{ pd_id: number }[]>(
+      `SELECT pd_id
+       FROM policy_documents
+       WHERE pd_type = 'data_treatment'
+       ORDER BY pd_effective_from DESC
+       LIMIT 1`,
+    );
+    if (!pdId[0]?.pd_id) return;
+
+    await manager.query(
+      `INSERT INTO policy_acceptance (per_id, pd_id)
+       VALUES ($1, $2)
+       ON CONFLICT (per_id, pd_id) WHERE dep_id IS NULL AND cn_id IS NULL AND app_id IS NULL DO NOTHING`,
+      [personId, pdId[0].pd_id],
+    );
+  }
+
   /**
    * Creates a new user.
    * @param dto The user data.
@@ -113,24 +145,7 @@ export class UsersService {
           existing.perCreatedBy = createdByUserId;
         }
 
-        // Registro de aceptación de políticas si los términos fueron aceptados
-        if (dto.termsAccepted !== undefined && dto.termsAccepted) {
-          const pdId = await manager.query<{ pd_id: number }[]>(
-            `SELECT pd_id
-             FROM policy_documents
-             WHERE pd_type = 'data_treatment'
-             ORDER BY pd_effective_from DESC
-             LIMIT 1`,
-          );
-          if (pdId[0]?.pd_id) {
-            await manager.query(
-              `INSERT INTO policy_acceptance (per_id, pd_id)
-               VALUES ($1, $2)
-               ON CONFLICT (per_id, pd_id) WHERE dep_id IS NULL AND cn_id IS NULL AND app_id IS NULL DO NOTHING`,
-              [existing.perId, pdId[0].pd_id],
-            );
-          }
-        }
+        await this.recordTermsAcceptance(manager, existing.perId, dto.termsAccepted);
 
         await manager.save(existing);
         await this.replaceRoles(manager, existing.perId, [
@@ -159,24 +174,7 @@ export class UsersService {
       ]);
       await this.saveProfessionalData(manager, created.perId, dto.professionalData);
 
-      // Registro de aceptación de políticas si los términos fueron aceptados
-      if (dto.termsAccepted) {
-        const pdId = await manager.query<{ pd_id: number }[]>(
-          `SELECT pd_id
-           FROM policy_documents
-           WHERE pd_type = 'data_treatment'
-           ORDER BY pd_effective_from DESC
-           LIMIT 1`,
-        );
-        if (pdId[0]?.pd_id) {
-          await manager.query(
-            `INSERT INTO policy_acceptance (per_id, pd_id)
-             VALUES ($1, $2)
-             ON CONFLICT (per_id, pd_id) WHERE dep_id IS NULL AND cn_id IS NULL AND app_id IS NULL DO NOTHING`,
-            [created.perId, pdId[0].pd_id],
-          );
-        }
-      }
+      await this.recordTermsAcceptance(manager, created.perId, dto.termsAccepted);
       this.logger.log(
         `Module:users, Function:create, result-success: personId-${created.perId}, email-${email}, roleId-${dto.roleId}, createdBy-${createdByUserId}`,
       );
