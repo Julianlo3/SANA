@@ -7,6 +7,10 @@ import { AuthModule } from './modules/auth.module.js';
 import { UsersModule } from './users/users.module.js';
 import { AppointmentsModule } from './appointments/appointments.module.js';
 import { ScheduleModule } from './schedule/schedule.module.js';
+import { ConsultantsModule } from './consultants/consultants.module.js';
+import { PolicyModule } from './policy/policy.module.js';
+import { ClinicalNotesModule } from './clinical-notes/clinical-notes.module.js';
+import { SecurityLogsModule } from './modules/security-logs.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 
@@ -26,6 +30,10 @@ import { AppService } from './app.service.js';
     UsersModule,
     AppointmentsModule,
     ScheduleModule,
+    ConsultantsModule,
+    PolicyModule,
+    ClinicalNotesModule,
+    SecurityLogsModule,
   ],
 
   controllers: [AppController],

@@ -113,4 +113,9 @@ export class CreateAppointmentDto {
   @IsString()
   @MaxLength(1000)
   appReason?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  residenceZone?: string;
 }

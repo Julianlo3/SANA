@@ -382,6 +382,29 @@ export class ScheduleRepository {
   }
 
   /**
+   * Checks if a psychologist has general availability registered in the system.
+   * @param psychologistId The ID of the psychologist to check.
+   * @returns A promise resolving to true if the psychologist has availability, false otherwise.
+   */
+  async checkPsychologistAvailability(psychologistId: number): Promise<boolean> {
+    const result = await this.dataSource.query<{ has_availability: boolean }[]>(
+      `SELECT EXISTS (
+         SELECT 1 FROM schedule
+         WHERE psy_id = $1
+         LIMIT 1
+       ) OR EXISTS (
+         SELECT 1 FROM schedule_recurring_blocks
+         WHERE psy_id = $1
+           AND srb_active = true
+           AND (srb_valid_until IS NULL OR srb_valid_until >= CURRENT_DATE)
+         LIMIT 1
+       ) AS has_availability`,
+      [psychologistId],
+    );
+    return result[0]?.has_availability ?? false;
+  }
+
+  /**
    * Confirms an appointment with a schedule slot.
    * @param params The parameters for confirming the appointment.
    * @returns A promise that resolves to the confirmation result.

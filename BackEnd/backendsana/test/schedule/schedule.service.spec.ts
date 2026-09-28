@@ -26,12 +26,15 @@ function setup() {
     deleteRecurringBlock: vi.fn().mockResolvedValue(true),
     findAvailability: vi.fn().mockResolvedValue([]),
   };
-  return { service: new ScheduleService(repository as never), repository };
+  const policyService = {
+    hasPsychologistAcceptedScheduleTerms: vi.fn().mockResolvedValue(true),
+  };
+  return { service: new ScheduleService(repository as never, policyService as never), repository, policyService };
 }
 
 describe('ScheduleService', () => {
   it('lists and creates blocks for the authenticated psychologist', async () => {
-    const { service, repository } = setup();
+    const { service, repository, policyService } = setup();
     const psychologist = user();
 
     await service.findMyBlocks(psychologist as never);
@@ -43,6 +46,7 @@ describe('ScheduleService', () => {
     });
 
     expect(repository.findBlocks).toHaveBeenCalledWith(10);
+    expect(policyService.hasPsychologistAcceptedScheduleTerms).toHaveBeenCalledWith(10);
     expect(repository.createBlock).toHaveBeenCalledWith({
       psychologistId: 10,
       date: '2026-10-15',
@@ -53,15 +57,16 @@ describe('ScheduleService', () => {
   });
 
   it('rejects non-psychologists', async () => {
-    const { service } = setup();
+    const { service, repository } = setup();
 
     await expect(
       service.findMyBlocks(user({ roles: ['secretario'] }) as never),
     ).rejects.toBeInstanceOf(BadRequestException);
+    expect(repository.findBlocks).not.toHaveBeenCalled();
   });
 
   it('rejects an invalid time range', async () => {
-    const { service, repository } = setup();
+    const { service, repository, policyService } = setup();
 
     await expect(
       service.createMyBlock(user() as never, {
@@ -71,6 +76,7 @@ describe('ScheduleService', () => {
         reason: 'Trabajo externo',
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
+    expect(policyService.hasPsychologistAcceptedScheduleTerms).not.toHaveBeenCalled();
     expect(repository.hasOverlap).not.toHaveBeenCalled();
   });
 
@@ -100,7 +106,7 @@ describe('ScheduleService', () => {
   });
 
   it('creates a weekly recurring block', async () => {
-    const { service, repository } = setup();
+    const { service, repository, policyService } = setup();
 
     await service.createMyRecurringBlock(user() as never, {
       dayOfWeek: 2,
@@ -111,6 +117,7 @@ describe('ScheduleService', () => {
       reason: 'Trabajo externo',
     });
 
+    expect(policyService.hasPsychologistAcceptedScheduleTerms).toHaveBeenCalledWith(10);
     expect(repository.createRecurringBlock).toHaveBeenCalledWith({
       psychologistId: 10,
       dayOfWeek: 2,
@@ -123,7 +130,7 @@ describe('ScheduleService', () => {
   });
 
   it('rejects an invalid recurring validity range', async () => {
-    const { service, repository } = setup();
+    const { service, repository, policyService } = setup();
 
     await expect(
       service.createMyRecurringBlock(user() as never, {
@@ -135,6 +142,7 @@ describe('ScheduleService', () => {
         reason: 'Trabajo externo',
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
+    expect(policyService.hasPsychologistAcceptedScheduleTerms).not.toHaveBeenCalled();
     expect(repository.hasRecurringOverlap).not.toHaveBeenCalled();
   });
 

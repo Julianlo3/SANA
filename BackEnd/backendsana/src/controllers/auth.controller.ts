@@ -23,10 +23,12 @@ import { AuthService } from '../services/auth.service.js';
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
 
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
-  /** 
-   * Validates the Auth0 Bearer token and returns the local SANA identity. 
+  /**
+   * Returns the authenticated user's profile information.
+   * @param request The request object containing the authenticated user.
+   * @returns The authenticated user's profile.
    */
   @Get('me')
   @UseGuards(JwtAuthGuard)
@@ -37,8 +39,10 @@ export class AuthController {
     return request.user;
   }
 
-  /** 
-   * Records acceptance of platform terms and conditions by the authenticated user.
+  /**
+   * Registers the acceptance of the terms and conditions by the authenticated user
+   * @param request The request object containing the authenticated user
+   * @returns Message indicating successful acceptance
    */
   @Patch('terms')
   @HttpCode(HttpStatus.OK)
@@ -47,15 +51,18 @@ export class AuthController {
     this.logger.log(
       `Module:auth, Function:acceptTerms, result-start: userId-${request.user.userId}, personId-${request.user.personId}`,
     );
-    await this.authService.acceptTerms(request.user.personId);
+    const ipAddress = request.ip || request.socket.remoteAddress;
+    await this.authService.acceptTerms(request.user.personId, ipAddress);
     return {
       message: 'Términos y condiciones aceptados correctamente',
       termsAccepted: true,
     };
   }
 
-  /** 
-   * Records acceptance of psychologist terms and conditions by an authenticated psychologist.
+  /**
+   * Registers the acceptance of the psychologist terms and conditions by an authenticated psychologist
+   * @param request The request object containing the authenticated psychologist
+   * @returns Message indicating successful acceptance
    */
   @Patch('psychologist-terms')
   @HttpCode(HttpStatus.OK)
@@ -66,15 +73,19 @@ export class AuthController {
     this.logger.log(
       `Module:auth, Function:acceptPsychologistTerms, result-start: userId-${request.user.userId}, personId-${request.user.personId}`,
     );
-    await this.authService.acceptPsychologistTerms(request.user.personId);
+    const ipAddress = request.ip || request.socket.remoteAddress;
+    await this.authService.acceptPsychologistTerms(request.user.personId, ipAddress);
     return {
       message: 'Términos y condiciones de psicólogo aceptados correctamente',
       psyTermsAccepted: true,
     };
   }
 
-  /** 
-   * Auth0 owns the browser session and token revocation. 
+  /**
+   * Logout user
+   * Auth0 owns the browser session and token revocation
+   * @param request The request object containing the authenticated user
+   * @returns void
    */
   @Delete('sessions/current')
   @HttpCode(HttpStatus.NO_CONTENT)

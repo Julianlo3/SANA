@@ -7,6 +7,15 @@ export interface SecurityAccessLogEntry {
   message: string;
 }
 
+export interface SecurityAccessLogRow {
+  securityAccessLogId: number;
+  userId: number;
+  userEmail: string;
+  section: string;
+  message: string;
+  createdAt: string;
+}
+
 /**
  * Service dedicated to recording security access and account-management audit logs.
  */
@@ -14,7 +23,7 @@ export interface SecurityAccessLogEntry {
 export class SecurityLogService {
   private readonly logger = new Logger(SecurityLogService.name);
 
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(private readonly dataSource: DataSource) { }
 
   /**
    * Records a security-relevant event in `security_access_log`.
@@ -92,6 +101,53 @@ export class SecurityLogService {
     const maskedName =
       name.length > 2 ? `${name[0]}***${name[name.length - 1]}` : `${name[0]}***`;
     return `${maskedName}@${domain}`;
+  }
+
+  /**
+   * Finds security access logs with optional filters.
+   * @param userId Optional filter by user ID
+   * @param startDate Optional filter by start date
+   * @param endDate Optional filter by end date
+   * @returns Array of security access log entries
+   */
+  async findSecurityLogs(
+    userId?: number,
+    startDate?: string,
+    endDate?: string,
+  ): Promise<SecurityAccessLogRow[]> {
+    const params: unknown[] = [];
+    let whereClause = 'WHERE 1=1';
+
+    if (userId) {
+      params.push(userId);
+      whereClause += ` AND sal.use_id = $${params.length}`;
+    }
+
+    if (startDate) {
+      params.push(startDate);
+      whereClause += ` AND sal.security_access_log_created_at >= $${params.length}::timestamptz`;
+    }
+
+    if (endDate) {
+      params.push(endDate);
+      whereClause += ` AND sal.security_access_log_created_at <= $${params.length}::timestamptz`;
+    }
+
+    return this.dataSource.query<SecurityAccessLogRow[]>(
+      `SELECT
+          sal.security_access_log_id AS "securityAccessLogId",
+          sal.use_id AS "userId",
+          u.user_provider_id AS "userEmail",
+          sal.security_access_log_section AS "section",
+          sal.security_access_log_message AS "message",
+          sal.security_access_log_created_at AS "createdAt"
+       FROM security_access_log sal
+       JOIN users u ON u.use_id = sal.use_id
+       ${whereClause}
+       ORDER BY sal.security_access_log_created_at DESC
+       LIMIT 1000`,
+      params,
+    );
   }
 }
 

@@ -19,6 +19,7 @@ import type { AuthenticatedUser } from '../interfaces/auth.interface.js';
 import { Roles } from '../middlewares/roles.decorator.js';
 import { UserRole } from '../models/user-role.enum.js';
 import { ScheduleService } from './schedule.service.js';
+import { PolicyService } from '../policy/policy.service.js';
 import { CreateScheduleBlockDto } from './dto/create-schedule-block.dto.js';
 import { CreateRecurringScheduleBlockDto } from './dto/create-recurring-schedule-block.dto.js';
 
@@ -29,7 +30,10 @@ import { CreateRecurringScheduleBlockDto } from './dto/create-recurring-schedule
 @UseGuards(OriginGuard, JwtAuthGuard, RolesGuard)
 @Roles(UserRole.Psychologist)
 export class ScheduleController {
-  constructor(private readonly scheduleService: ScheduleService) {}
+  constructor(
+    private readonly scheduleService: ScheduleService,
+    private readonly policyService: PolicyService,
+  ) {}
 
   /**
    * Finds all schedule blocks for the authenticated psychologist.
@@ -108,5 +112,37 @@ export class ScheduleController {
     @Param('id', ParseIntPipe) id: number,
   ): Promise<void> {
     await this.scheduleService.deleteMyRecurringBlock(request.user, id);
+  }
+
+  /**
+   * Accepts schedule terms for the authenticated psychologist.
+   * @param request The HTTP request object containing the authenticated user.
+   * @returns A promise that resolves when the terms are accepted.
+   */
+  @Post('me/accept-terms')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async acceptScheduleTerms(
+    @Req() request: Request & { user: AuthenticatedUser },
+  ): Promise<void> {
+    const ipAddress = request.ip || request.socket.remoteAddress;
+    await this.policyService.recordPsychologistScheduleTermsAcceptance(
+      request.user.personId,
+      ipAddress,
+    );
+  }
+
+  /**
+   * Checks if the authenticated psychologist has accepted schedule terms.
+   * @param request The HTTP request object containing the authenticated user.
+   * @returns A promise that resolves to the acceptance status.
+   */
+  @Get('me/terms-status')
+  async getTermsStatus(
+    @Req() request: Request & { user: AuthenticatedUser },
+  ): Promise<{ hasAccepted: boolean }> {
+    const hasAccepted = await this.policyService.hasPsychologistAcceptedScheduleTerms(
+      request.user.personId,
+    );
+    return { hasAccepted };
   }
 }
