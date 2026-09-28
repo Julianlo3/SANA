@@ -1,13 +1,15 @@
 import Sidebar from "@/components/navigation/sidebar";
 import Header from "@/components/navigation/panel-header";
-import { requireAdministrator } from "@/lib/auth-guard";
+import { requireAnyRole } from "@/lib/auth-guard";
 
-export default async function PanelLayout({
+const STAFF_ROLES = ["secretario", "psicologo", "administrador"];
+
+export default async function StaffLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const user = await requireAdministrator();
+  const user = await requireAnyRole(STAFF_ROLES);
 
   return (
     <div className="flex flex-1">

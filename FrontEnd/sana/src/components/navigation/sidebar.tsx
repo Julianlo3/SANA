@@ -1,8 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { getInitials } from "@/lib/format/text";
+import { formatRoleLabels } from "@/config/roles";
 import {
   Users,
   Calendar,
@@ -11,24 +14,62 @@ import {
   BarChart3,
   FileText,
   UserCog,
+  ClipboardCheck,
   LogOut,
   Menu,
   X,
 } from "lucide-react";
 
-const navItems = [
-  { label: "Pacientes", href: "/patients", icon: Users, enabled: false },
+type NavItem = {
+  label: string;
+  href: string;
+  icon: typeof Users;
+  enabled: boolean;
+  /** Si no se indica, el enlace es visible para cualquier rol. */
+  roles?: string[];
+};
+
+const navItems: NavItem[] = [
+  {
+    label: "Consultantes",
+    href: "/consultants",
+    icon: Users,
+    enabled: true,
+    roles: ["secretario", "psicologo", "administrador"],
+  },
   { label: "Citas", href: "/appointments", icon: Calendar, enabled: false },
   { label: "Expedientes", href: "/records", icon: FolderOpen, enabled: false },
   { label: "Recepción", href: "/reception", icon: ClipboardList, enabled: false },
+  {
+    label: "Registrar atención",
+    href: "/care-records/new",
+    icon: ClipboardCheck,
+    enabled: true,
+    roles: ["psicologo"],
+  },
   { label: "Reportes", href: "/reports", icon: BarChart3, enabled: false },
   { label: "Contenido", href: "/content", icon: FileText, enabled: false },
-  { label: "Usuarios", href: "/users", icon: UserCog, enabled: true },
+  {
+    label: "Usuarios",
+    href: "/users",
+    icon: UserCog,
+    enabled: true,
+    roles: ["administrador"],
+  },
 ];
 
-export default function Sidebar() {
+type Props = {
+  roles: string[];
+  fullName: string;
+};
+
+export default function Sidebar({ roles, fullName }: Props) { 
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+
+  const visibleItems = navItems.filter(
+    (item) => !item.roles || item.roles.some((role) => roles.includes(role)),
+  );
 
   return (
     <>
@@ -53,13 +94,18 @@ export default function Sidebar() {
         }`}
       >
         <div className="flex items-center gap-3 px-2 py-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
-            <span className="font-display text-lg font-bold text-white">S</span>
-          </div>
+          <Image
+            src="/brand/isotipo.png"
+            alt=""
+            width={44}
+            height={44}
+            className="h-10 w-10 object-contain"
+          />
+
           <div className="leading-tight">
-            <p className="font-semibold text-text">SANA</p>
+            <p className="font-semibold text-text">Fundación</p>
             <p className="text-[10px] tracking-widest text-text-subtle">
-              DEJANDO HUELLAS
+              DEJANDO HUELLAS FELICES
             </p>
           </div>
 
@@ -73,7 +119,7 @@ export default function Sidebar() {
         </div>
 
         <nav className="mt-6 flex flex-col gap-1">
-          {navItems.map(({ label, href, icon: Icon, enabled }) => {
+          {visibleItems.map(({ label, href, icon: Icon, enabled }) => {
             if (!enabled) {
               return (
                 <span
@@ -94,7 +140,7 @@ export default function Sidebar() {
                 onClick={() => setOpen(false)}
                 className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm transition ${
                   pathname.startsWith(href)
-                    ? "bg-accent font-semibold text-white"
+                    ? "bg-primary font-semibold text-white"
                     : "text-text-muted hover:bg-primary-soft"
                 }`}
               >
@@ -105,13 +151,17 @@ export default function Sidebar() {
           })}
         </nav>
 
-        <div className="mt-auto flex items-center gap-3 rounded-xl bg-surface p-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-sm font-semibold text-white">
-            AS
+                <div className="mt-auto flex items-center gap-3 rounded-xl bg-surface p-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white">
+            {getInitials(fullName)}
           </div>
-          <div className="flex-1 leading-tight">
-            <p className="text-sm font-semibold text-text">Alejandro Silva</p>
-            <p className="text-xs text-text-subtle">Administrador</p>
+          <div className="min-w-0 flex-1 leading-tight">
+            <p className="truncate text-sm font-semibold text-text">
+              {fullName}
+            </p>
+            <p className="truncate text-xs text-text-subtle">
+              {formatRoleLabels(roles)}
+            </p>
           </div>
           <button className="cursor-pointer text-text-subtle hover:text-text">
             <LogOut size={18} />

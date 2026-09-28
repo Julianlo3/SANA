@@ -1,31 +1,47 @@
 @import "tailwindcss";
 
+/*
+  Identidad visual de la Fundación Dejando Huellas Felices.
+  Los valores salen del manual de marca: turquesa y rosa como principales,
+  rosa claro y celeste de apoyo, marino para texto y crema como fondo cálido.
+*/
+
 @theme {
-  --color-background: #FFFFFF;
+  /* Superficies */
+  --color-background: #FFFDF8;
   --color-surface: #FFFFFF;
-  --color-sidebar: #EFF6F5;
-  --color-surface-muted: #F6F9F9;
-  --color-border: #E6EDEC;
+  --color-sidebar: #F0F8F9;
+  --color-surface-muted: #F5FAFB;
+  --color-border: #E3EDEF;
 
-  --color-primary: #3F7E7C;
-  --color-primary-dark: #2C6360;
-  --color-primary-soft: #DCEBEA;
+  /* Turquesa: acciones, enlaces y menú activo */
+  --color-primary: #43ACB6;
+  --color-primary-dark: #2E8C96;
+  --color-primary-soft: #E4F4F6;
 
-  --color-accent: #EE9CA2;
-  --color-accent-strong: #C96F76;
-  --color-accent-soft: #FBE4E5;
+  /* Rosa: acentos y elementos que deben destacar */
+  --color-accent: #EB5886;
+  --color-accent-strong: #C93C68;
+  --color-accent-soft: #FDE9F0;
 
-  --color-highlight: #FBEFC9;
+  /* Apoyo */
+  --color-support-blue: #A0D6DF;
+  --color-support-pink: #EF7FA2;
 
-  --color-success: #5AA183;
-  --color-success-soft: #DDF0E6;
-  --color-danger: #C96F76;
-  --color-danger-soft: #FBE3E2;
+  /* Crema */
+  --color-highlight: #FEEFC4;
 
-  --color-text: #1B2A2A;
-  --color-text-muted: #5A6767;
-  --color-text-subtle: #8A9797;
+  /* Estados */
+  --color-success: #2E8C96;
+  --color-success-soft: #E4F4F6;
+  --color-danger: #C93C68;
+  --color-danger-soft: #FDE9F0;
 
-  --font-sans: var(--font-body);
-  --font-display: var(--font-heading);
+  /* Texto: marino en vez de negro puro */
+  --color-text: #134176;
+  --color-text-muted: #4A6A8C;
+  --color-text-subtle: #8296AC;
+
+  --font-sans: var(--font-brand);
+  --font-display: var(--font-brand);
 }

@@ -1,34 +1,29 @@
-  import type { Metadata } from "next";
-  import type { ReactNode } from "react";
-  import { Nunito, Fraunces } from "next/font/google";
-  import "@/styles/globals.css";
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
+import { Montserrat } from "next/font/google";
+import "@/styles/globals.css";
 
-  const body = Nunito({
-    variable: "--font-body",
-    subsets: ["latin"],
-    weight: ["400", "600", "700"],
-  });
+/*
+  Montserrat en toda la aplicación, como indica el manual de marca:
+  ExtraBold (800) para títulos y destacados, Regular (400) para el cuerpo.
+*/
+const montserrat = Montserrat({
+  variable: "--font-brand",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+});
 
-  const heading = Fraunces({
-    variable: "--font-heading",
-    subsets: ["latin"],
-    weight: ["600", "700", "900"],
-  });
+export const metadata: Metadata = {
+  title: "SANA — Fundación Dejando Huellas Felices",
+  description: "Plataforma de gestión de la fundación",
+};
 
-  export const metadata: Metadata = {
-    title: "SANA — Fundación Dejando Huellas Felices",
-    description: "Plataforma de gestión de la fundación",
-  };
-
-  export default function RootLayout({ children }: { children: ReactNode }) {
-    return (
-      <html
-        lang="es"
-        className={`${body.variable} ${heading.variable} h-full antialiased`}
-      >
-        <body className="min-h-full flex flex-col bg-background text-text">
-          {children}
-        </body>
-      </html>
-    );
-  }
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="es" className={`${montserrat.variable} h-full antialiased`}>
+      <body className="min-h-full flex flex-col bg-background text-text">
+        {children}
+      </body>
+    </html>
+  );
+}
