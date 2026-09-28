@@ -235,7 +235,10 @@ export default function SelfRequestPage() {
                   </span>
                   <select
                     value={values.department}
-                    onChange={(event) => setValue("department", event.target.value)}
+                    onChange={(event) => {
+                      setValue("department", event.target.value);
+                      setValue("municipality", "");
+                    }}
                     className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
                   >
                     <option value="">{NO_ZONE_REPORTED_LABEL}</option>
@@ -251,7 +254,7 @@ export default function SelfRequestPage() {
                   </span>
                 </label>
 
-                               {values.department === "Huila" ? (
+                {values.department === "Huila" ? (
                   <label className="block">
                     <span className="text-sm font-medium text-text">
                       Municipio
@@ -283,7 +286,7 @@ export default function SelfRequestPage() {
                       label="Municipio"
                       value={values.municipality}
                       error={errors.municipality}
-                      placeholder="Ej. Neiva"
+                      placeholder="Ej. Bogotá"
                       onChange={(value) => setValue("municipality", value)}
                       onBlur={() => setFieldTouched("municipality")}
                     />
