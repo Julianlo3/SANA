@@ -10,6 +10,7 @@ import TextField from "@/components/forms/text-field";
 import Button from "@/components/ui/button";
 import { REQUEST_CONTENT } from "@/content/consultation-request";
 import { keepDigits } from "@/lib/format/text";
+import { HUILA_MUNICIPALITIES } from "@/config/huila-municipalities";
 import {
   COLOMBIA_DEPARTMENTS,
   NO_ZONE_REPORTED_LABEL,
@@ -250,15 +251,43 @@ export default function SelfRequestPage() {
                   </span>
                 </label>
 
-                {values.department && (
-                  <TextField
-                    label="Municipio"
-                    value={values.municipality}
-                    error={errors.municipality}
-                    placeholder="Ej. Neiva"
-                    onChange={(value) => setValue("municipality", value)}
-                    onBlur={() => setFieldTouched("municipality")}
-                  />
+                               {values.department === "Huila" ? (
+                  <label className="block">
+                    <span className="text-sm font-medium text-text">
+                      Municipio
+                    </span>
+                    <select
+                      value={values.municipality}
+                      onChange={(event) =>
+                        setValue("municipality", event.target.value)
+                      }
+                      onBlur={() => setFieldTouched("municipality")}
+                      className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    >
+                      <option value="">Selecciona</option>
+                      {HUILA_MUNICIPALITIES.map((municipality) => (
+                        <option key={municipality} value={municipality}>
+                          {municipality}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.municipality && (
+                      <span role="alert" className="mt-1.5 block text-xs text-danger">
+                        {errors.municipality}
+                      </span>
+                    )}
+                  </label>
+                ) : (
+                  values.department && (
+                    <TextField
+                      label="Municipio"
+                      value={values.municipality}
+                      error={errors.municipality}
+                      placeholder="Ej. Neiva"
+                      onChange={(value) => setValue("municipality", value)}
+                      onBlur={() => setFieldTouched("municipality")}
+                    />
+                  )
                 )}
               </div>
             </fieldset>
