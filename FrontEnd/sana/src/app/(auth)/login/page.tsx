@@ -25,14 +25,18 @@ export default function LoginPage() {
         </p>
 
         <div className="mt-10 rounded-2xl border border-border bg-surface p-6 shadow-sm">
-          <a href="/auth/login?connection=google-oauth2&returnTo=%2Fusers" className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-xl border border-border bg-surface py-4 font-semibold text-text transition hover:bg-surface-muted">
-                        <Image
+          <a
+            href="/auth/login?connection=google-oauth2&returnTo=%2Fpanel"
+            className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-xl border border-border bg-surface py-4 font-semibold text-text transition hover:bg-surface-muted"
+          >
+            <Image
               src="/icons/google.svg"
               alt=""
               width={20}
               height={20}
               className="h-5 w-5"
             />
+
             Iniciar sesión con Google
           </a>
 
@@ -42,7 +46,9 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <p className="mt-10 text-xs text-text-subtle">Privacidad · Términos</p>
+        <p className="mt-10 text-xs text-text-subtle">
+          Privacidad · Términos
+        </p>
       </div>
     </main>
   );
