@@ -18,22 +18,28 @@ import {
 import DataPolicyConsent from "../components/data-policy-consent";
 import { useConsultationRequestForm } from "../hooks/use-consultation-request-form";
 import type {
-  AdultDocumentType,
+  AppointmentMode,
+  CardType,
   Gender,
 } from "../types/consultation-request-types";
 
 const { selfForm } = REQUEST_CONTENT;
 
-const DOCUMENT_TYPES: { value: AdultDocumentType; label: string }[] = [
-  { value: "cc", label: "Cédula de ciudadanía" },
-  { value: "ce", label: "Cédula de extranjería" },
+const DOCUMENT_TYPES: { value: CardType; label: string }[] = [
+  { value: "CC", label: "Cédula de ciudadanía" },
+  { value: "CE", label: "Cédula de extranjería" },
 ];
 
 const GENDER_OPTIONS: { value: Gender; label: string }[] = [
-  { value: "male", label: "Hombre" },
-  { value: "female", label: "Mujer" },
-  { value: "other", label: "Otro" },
-  { value: "preferNotToSay", label: "No quiero especificar" },
+  { value: "M", label: "Hombre" },
+  { value: "F", label: "Mujer" },
+  { value: "O", label: "Otro" },
+  { value: "P", label: "No quiero especificar" },
+];
+
+const APPOINTMENT_MODE_OPTIONS: { value: AppointmentMode; label: string }[] = [
+  { value: "presencial", label: "Presencial" },
+  { value: "virtual", label: "Virtual" },
 ];
 
 /** HU-2.2: formulario de quien solicita la atención para sí mismo. */
@@ -50,6 +56,7 @@ export default function SelfRequestPage() {
     setFieldTouched,
     setDocumentType,
     setGender,
+    setAppointmentMode,
     toggleDataPolicy,
     send,
   } = useConsultationRequestForm("self");
@@ -109,9 +116,7 @@ export default function SelfRequestPage() {
                   <select
                     value={values.documentType}
                     onChange={(event) =>
-                      setDocumentType(
-                        event.target.value as AdultDocumentType | "",
-                      )
+                      setDocumentType(event.target.value as CardType | "")
                     }
                     onBlur={() => setFieldTouched("documentType")}
                     className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -136,7 +141,7 @@ export default function SelfRequestPage() {
                   inputMode="numeric"
                   value={values.identityDocument}
                   error={errors.identityDocument}
-                  maxLength={10}
+                  maxLength={12}
                   onChange={(value) =>
                     setValue("identityDocument", keepDigits(value))
                   }
@@ -222,7 +227,7 @@ export default function SelfRequestPage() {
                   inputMode="numeric"
                   value={values.phone}
                   error={errors.phone}
-                  maxLength={10}
+                  maxLength={12}
                   onChange={(value) => setValue("phone", keepDigits(value))}
                   onBlur={() => setFieldTouched("phone")}
                 />
@@ -301,6 +306,37 @@ export default function SelfRequestPage() {
               </legend>
 
               <label className="block">
+                <span className="text-sm font-semibold text-text">
+                  Modalidad de la cita{" "}
+                  <span className="text-danger" aria-hidden>
+                    *
+                  </span>
+                </span>
+                <select
+                  value={values.appType}
+                  onChange={(event) =>
+                    setAppointmentMode(
+                      event.target.value as AppointmentMode | "",
+                    )
+                  }
+                  onBlur={() => setFieldTouched("appType")}
+                  className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
+                >
+                  <option value="">Selecciona</option>
+                  {APPOINTMENT_MODE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                {errors.appType && (
+                  <span role="alert" className="mt-1.5 block text-xs text-danger">
+                    {errors.appType}
+                  </span>
+                )}
+              </label>
+
+              <label className="mt-5 block">
                 <span className="text-sm font-medium text-text">
                   {selfForm.fields.consultationReason}
                 </span>
@@ -310,7 +346,7 @@ export default function SelfRequestPage() {
                     setValue("consultationReason", event.target.value)
                   }
                   rows={4}
-                  maxLength={500}
+                  maxLength={1000}
                   placeholder={selfForm.reasonHint}
                   className="mt-2 w-full resize-none rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text placeholder:text-text-subtle focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />

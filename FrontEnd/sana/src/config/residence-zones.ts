@@ -5,6 +5,7 @@
  * El municipio queda como texto libre: un catálogo completo de los más de
  * 1.100 municipios de Colombia no existe todavía en el proyecto: se
  * reemplaza este campo por un selector cuando haya esa fuente de datos.
+ * Huila es la única excepción (ver HUILA_MUNICIPALITIES en huila-municipalities.ts).
  */
 
 export const COLOMBIA_DEPARTMENTS = [
@@ -50,3 +51,13 @@ export const DEFAULT_DEPARTMENT: ColombiaDepartment = "Huila";
 
 /** Texto de la opción cuando la persona prefiere no indicar su zona. */
 export const NO_ZONE_REPORTED_LABEL = "No reporta";
+
+/**
+ * Ubicación de residencia de una persona. Vive aquí, no en un feature
+ * concreto, porque tanto la solicitud de cita como la ficha del
+ * consultante la necesitan.
+ */
+export type ResidenceLocation = {
+  department: ColombiaDepartment | string;
+  municipality: string;
+};

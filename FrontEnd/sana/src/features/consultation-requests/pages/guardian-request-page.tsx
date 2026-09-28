@@ -21,32 +21,45 @@ import { useConsultationRequestForm } from "../hooks/use-consultation-request-fo
 import {
   validateFullName,
   validateIdentityDocument,
+  validateAdultBirthDate,
   validateRelationship,
   validateEmail,
   validatePhone,
+  validateAppointmentMode,
   validateMinorBirthDate,
   validateMinorIdentityDocument,
   validateGender,
 } from "../validation/consultation-request-validation";
-import type { Gender, GuardianRelationship } from "../types/consultation-request-types";
+import type {
+  AppointmentMode,
+  Gender,
+  GuardianRelationshipId,
+} from "../types/consultation-request-types";
 
 const { guardianForm } = REQUEST_CONTENT;
 
-const RELATIONSHIP_OPTIONS: { value: GuardianRelationship; label: string }[] = [
-  { value: "mother", label: "Madre" },
-  { value: "father", label: "Padre" },
-  { value: "grandparent", label: "Abuelo/a" },
-  { value: "sibling", label: "Hermano/a" },
-  { value: "uncleAunt", label: "Tío/a" },
-  { value: "legalGuardian", label: "Tutor legal designado" },
-  { value: "other", label: "Otro" },
+/**
+ * Las 4 opciones reales de la tabla relationship
+ * (DataBase/init-scripts/02-inserts.sql). No hay "hermano/a" ni "otro":
+ * el backend rechaza cualquier id que no esté en esa tabla.
+ */
+const RELATIONSHIP_OPTIONS: { value: GuardianRelationshipId; label: string }[] = [
+  { value: 1, label: "Madre" },
+  { value: 2, label: "Padre" },
+  { value: 3, label: "Tío/a" },
+  { value: 4, label: "Abuelo/a" },
 ];
 
 const GENDER_OPTIONS: { value: Gender; label: string }[] = [
-  { value: "male", label: "Hombre" },
-  { value: "female", label: "Mujer" },
-  { value: "other", label: "Otro" },
-  { value: "preferNotToSay", label: "No quiero especificar" },
+  { value: "M", label: "Hombre" },
+  { value: "F", label: "Mujer" },
+  { value: "O", label: "Otro" },
+  { value: "P", label: "No quiero especificar" },
+];
+
+const APPOINTMENT_MODE_OPTIONS: { value: AppointmentMode; label: string }[] = [
+  { value: "presencial", label: "Presencial" },
+  { value: "virtual", label: "Virtual" },
 ];
 
 export default function GuardianRequestPage() {
@@ -63,18 +76,21 @@ export default function GuardianRequestPage() {
     setFieldTouched,
     setRelationship,
     setMinorGender,
+    setAppointmentMode,
     toggleGuardianDataPolicy,
     toggleMinorDataPolicy,
     send,
-  } = useConsultationRequestForm("guardian");
+  } = useConsultationRequestForm("dependent");
 
   function goToStep2() {
     const step1Errors = [
       validateFullName(values.fullName),
       validateIdentityDocument(values.identityDocument),
+      validateAdultBirthDate(values.birthDate),
       validateRelationship(values.relationship),
       validateEmail(values.email),
       validatePhone(values.phone),
+      validateAppointmentMode(values.appType),
       validateFullName(values.minorFullName),
       validateMinorBirthDate(values.minorBirthDate),
       validateMinorIdentityDocument(values.minorIdentityDocument),
@@ -83,9 +99,11 @@ export default function GuardianRequestPage() {
 
     setFieldTouched("fullName");
     setFieldTouched("identityDocument");
+    setFieldTouched("birthDate");
     setFieldTouched("relationship");
     setFieldTouched("email");
     setFieldTouched("phone");
+    setFieldTouched("appType");
     setFieldTouched("minorFullName");
     setFieldTouched("minorBirthDate");
     setFieldTouched("minorIdentityDocument");
@@ -179,7 +197,7 @@ export default function GuardianRequestPage() {
                     inputMode="numeric"
                     value={values.identityDocument}
                     error={errors.identityDocument}
-                    maxLength={10}
+                    maxLength={12}
                     onChange={(value) =>
                       setValue("identityDocument", keepDigits(value))
                     }
@@ -197,7 +215,11 @@ export default function GuardianRequestPage() {
                       value={values.relationship}
                       onChange={(event) =>
                         setRelationship(
-                          event.target.value as GuardianRelationship | "",
+                          event.target.value === ""
+                            ? ""
+                            : (Number(
+                                event.target.value,
+                              ) as GuardianRelationshipId),
                         )
                       }
                       onBlur={() => setFieldTouched("relationship")}
@@ -219,6 +241,33 @@ export default function GuardianRequestPage() {
                 </div>
 
                 <div className="grid gap-5 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="text-sm font-semibold text-text">
+                      Tu fecha de nacimiento{" "}
+                      <span className="text-danger" aria-hidden>
+                        *
+                      </span>
+                    </span>
+                    <input
+                      type="date"
+                      value={values.birthDate}
+                      max={new Date().toISOString().split("T")[0]}
+                      onChange={(event) =>
+                        setValue("birthDate", event.target.value)
+                      }
+                      onBlur={() => setFieldTouched("birthDate")}
+                      className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <span className="mt-1.5 block text-xs text-text-subtle">
+                      Debes ser mayor de edad para solicitar la cita.
+                    </span>
+                    {errors.birthDate && (
+                      <span role="alert" className="mt-1.5 block text-xs text-danger">
+                        {errors.birthDate}
+                      </span>
+                    )}
+                  </label>
+
                   <TextField
                     label={guardianForm.fields.phone}
                     required
@@ -226,22 +275,22 @@ export default function GuardianRequestPage() {
                     inputMode="numeric"
                     value={values.phone}
                     error={errors.phone}
-                    maxLength={10}
+                    maxLength={12}
                     onChange={(value) => setValue("phone", keepDigits(value))}
                     onBlur={() => setFieldTouched("phone")}
                   />
-
-                  <TextField
-                    label={guardianForm.fields.email}
-                    required
-                    type="email"
-                    inputMode="email"
-                    value={values.email}
-                    error={errors.email}
-                    onChange={(value) => setValue("email", value)}
-                    onBlur={() => setFieldTouched("email")}
-                  />
                 </div>
+
+                <TextField
+                  label={guardianForm.fields.email}
+                  required
+                  type="email"
+                  inputMode="email"
+                  value={values.email}
+                  error={errors.email}
+                  onChange={(value) => setValue("email", value)}
+                  onBlur={() => setFieldTouched("email")}
+                />
               </fieldset>
 
               <fieldset className="space-y-5">
@@ -317,7 +366,13 @@ export default function GuardianRequestPage() {
 
                   <div>
                     <span className="flex items-center gap-2 text-sm font-medium text-text">
-                      Tarjeta de identidad (opcional)
+                      {values.minorBirthDate &&
+                      calculateAge(values.minorBirthDate) >= 7
+                        ? "Tarjeta de identidad"
+                        : "Registro civil de nacimiento (NUIP)"}
+                      <span className="text-danger" aria-hidden>
+                        *
+                      </span>
                     </span>
                     <input
                       type="text"
@@ -330,8 +385,8 @@ export default function GuardianRequestPage() {
                         )
                       }
                       onBlur={() => setFieldTouched("minorIdentityDocument")}
-                      maxLength={10}
-                      placeholder="Si aún no tiene, déjalo en blanco"
+                      maxLength={12}
+                      placeholder="Solo números"
                       className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text placeholder:text-text-subtle focus:outline-none focus:ring-2 focus:ring-primary/40"
                     />
                     {errors.minorIdentityDocument && (
@@ -421,6 +476,37 @@ export default function GuardianRequestPage() {
                 </div>
 
                 <label className="block">
+                  <span className="text-sm font-semibold text-text">
+                    Modalidad de la cita{" "}
+                    <span className="text-danger" aria-hidden>
+                      *
+                    </span>
+                  </span>
+                  <select
+                    value={values.appType}
+                    onChange={(event) =>
+                      setAppointmentMode(
+                        event.target.value as AppointmentMode | "",
+                      )
+                    }
+                    onBlur={() => setFieldTouched("appType")}
+                    className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  >
+                    <option value="">Selecciona</option>
+                    {APPOINTMENT_MODE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.appType && (
+                    <span role="alert" className="mt-1.5 block text-xs text-danger">
+                      {errors.appType}
+                    </span>
+                  )}
+                </label>
+
+                <label className="block">
                   <span className="text-sm font-medium text-text">
                     {guardianForm.fields.consultationReason}
                   </span>
@@ -430,7 +516,7 @@ export default function GuardianRequestPage() {
                       setValue("consultationReason", event.target.value)
                     }
                     rows={4}
-                    maxLength={500}
+                    maxLength={1000}
                     placeholder="Opcional. Esta información nos ayuda a orientar al profesional más adecuado."
                     className="mt-2 w-full resize-none rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text placeholder:text-text-subtle focus:outline-none focus:ring-2 focus:ring-primary/40"
                   />
@@ -498,4 +584,15 @@ export default function GuardianRequestPage() {
       <PublicFooter />
     </div>
   );
+}
+
+function calculateAge(birthDate: string): number {
+  const birth = new Date(birthDate);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age -= 1;
+  }
+  return age;
 }

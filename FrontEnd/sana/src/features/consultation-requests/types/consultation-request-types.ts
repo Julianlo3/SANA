@@ -1,114 +1,86 @@
 /**
- * Tipos del dominio de solicitudes de consulta (HU-2.2 y HU-2.3).
+ * Tipos del formulario público de solicitud de cita (HU-2.2).
  *
- * Este archivo es también el contrato que el frontend espera del backend.
- * Cualquier cambio hay que acordarlo antes de implementar.
+ * Alineados al DTO real del backend (BackEnd/backendsana/src/appointments/dto/create-appointment.dto.ts),
+ * no a un contrato propio. Los nombres de campo, los valores de una letra
+ * para el género, y el resto de restricciones vienen de ahí.
  *
  * Decisión de equipo: no se muestran al público los horarios reales de los
- * psicólogos (por temas legales/de seguridad). El consultante solo indica
- * una fecha preferida como referencia; toda solicitud queda "pendiente" y
- * la asistente es quien la asigna, rechaza o confirma. La notificación por
- * correo/WhatsApp se envía únicamente cuando la asistente confirma la cita,
- * nunca al momento de enviar la solicitud.
+ * psicólogos. El consultante solo indica una fecha ideal como referencia;
+ * toda solicitud queda "pendiente" y la asistente es quien la asigna desde
+ * su bandeja (HU-2.3).
  */
 
-/** Quién recibirá el acompañamiento (HU-2.2.1). */
-export type RequesterType = "self" | "guardian";
+/** Tipo de documento. El backend acepta las tres para cualquier persona. */
+export type CardType = "CC" | "TI" | "CE";
 
-/** Estados de una solicitud en la bandeja (HU-2.3). */
-export type RequestStatus = "pending" | "assigned" | "discarded";
+/** Género en el código de una letra que espera el backend. */
+export type Gender = "F" | "M" | "O" | "P";
 
-/** Parentesco del tutor legal con el menor. */
-export type GuardianRelationship =
-  | "mother"
-  | "father"
-  | "grandparent"
-  | "sibling"
-  | "uncleAunt"
-  | "legalGuardian"
-  | "other";
+/** "self": la persona pide para sí misma. "dependent": un tutor pide para un menor. */
+export type PatientType = "self" | "dependent";
 
-/** Género. Obligatorio: no admite quedar sin responder salvo la opción explícita. */
-export type Gender = "male" | "female" | "other" | "preferNotToSay";
-
-/** Tipo de documento del adulto solicitante. */
-export type AdultDocumentType = "cc" | "ce";
+export type AppointmentMode = "presencial" | "virtual";
 
 /**
- * Ubicación libre: departamento fijo del catálogo oficial, municipio en
- * texto libre (no existe todavía un catálogo nacional de municipios).
+ * Parentesco del tutor con el menor. Los ids salen de DataBase/init-scripts/02-inserts.sql
+ * (tabla relationship): son solo estos cuatro, no hay "hermano/a" ni "otro".
  */
-export type ResidenceLocation = {
-  department: string;
-  municipality: string;
-};
+export type GuardianRelationshipId = 1 | 2 | 3 | 4;
 
-/** Datos de quien solicita para sí mismo. */
 export type SelfRequestPayload = {
-  requesterType: "self";
-  fullName: string;
-  documentType: AdultDocumentType;
-  identityDocument: string;
-  birthDate: string;
-  gender: Gender;
-  email: string;
-  phone: string;
-  /** Null cuando la persona deja "No reporta" (HU-2.2.5). */
-  residence: ResidenceLocation | null;
+  patientType: "self";
+  requesterName: string;
+  requesterCardType: CardType;
+  requesterIdentityDocument: string;
+  requesterContactNumber: string;
+  /** Obligatorio en el formulario aunque el DTO lo tenga opcional: si falta, el backend guarda un correo falso y la confirmación no llegaría a nadie. */
+  requesterEmail: string;
+  requesterBirthdate: string;
+  requesterGender: Gender;
+  requesterTermsAccepted: true;
+  appType: AppointmentMode;
   /** Opcional (HU-2.2.7). */
-  consultationReason: string;
-  /** Obligatorio para poder enviar (HU-2.2.6). */
-  hasAcceptedDataPolicy: true;
-  /** Versión de la política aceptada, como evidencia (HU-2.2.8). */
-  dataPolicyVersion: string;
-  /**
-   * Fecha en la que la persona preferiría la cita, como referencia para la
-   * asistente. Nunca reserva un cupo real: solo orienta la asignación.
-   */
-  preferredDate: string | null;
+  appReason: string;
+  /** Fecha en la que la persona preferiría la cita, con zona horaria. Solo es referencia para la asistente. */
+  appDateIdeal: string | null;
 };
 
-/** Datos de quien solicita como tutor legal de un menor. */
 export type GuardianRequestPayload = {
-  requesterType: "guardian";
-  guardian: {
-    fullName: string;
-    identityDocument: string;
-    relationship: GuardianRelationship;
-    email: string;
-    phone: string;
-  };
-  minor: {
-    fullName: string;
-    birthDate: string;
-    gender: Gender;
-    /**
-     * Documento de tipo TI. Puede no existir todavía (niños pequeños),
-     * por eso queda opcional.
-     */
-    identityDocument: string | null;
-  };
-  residence: ResidenceLocation | null;
-  consultationReason: string;
-  /** Autorización sobre los datos propios del tutor. */
-  hasAcceptedGuardianDataPolicy: true;
-  /** Autorización, por separado, sobre los datos del menor. */
-  hasAcceptedMinorDataPolicy: true;
-  dataPolicyVersion: string;
-  preferredDate: string | null;
+  patientType: "dependent";
+  requesterName: string;
+  requesterCardType: CardType;
+  requesterIdentityDocument: string;
+  requesterContactNumber: string;
+  requesterEmail: string;
+  /** El backend exige que el acudiente sea mayor de edad. */
+  requesterBirthdate: string;
+  requesterGender: Gender;
+  requesterTermsAccepted: true;
+  dependentName: string;
+  /**
+   * Número del registro civil (NUIP) si el menor tiene menos de 7 años,
+   * o de la tarjeta de identidad si tiene 7 o más. El backend lo exige
+   * siempre, sin importar la edad.
+   */
+  dependentIdentityDocument: string;
+  dependentBirthdate: string;
+  dependentGender: Gender;
+  /** Si el menor no tiene contacto propio, se reutiliza el del acudiente. */
+  dependentContactNumber: string;
+  relationshipId: GuardianRelationshipId;
+  dependentTermsAccepted: true;
+  appType: AppointmentMode;
+  appReason: string;
+  appDateIdeal: string | null;
 };
 
 export type ConsultationRequestPayload =
   | SelfRequestPayload
   | GuardianRequestPayload;
 
-/**
- * Respuesta de POST /consultation-requests (HU-2.2.2).
- * Toda solicitud queda "pending": la asignación y notificación al
- * consultante son responsabilidad de la asistente (HU-2.3), no de este envío.
- */
+/** Respuesta de POST /appointments/request. */
 export type ConsultationRequestReceipt = {
-  referenceNumber: string;
-  status: RequestStatus;
-  submittedAt: string;
+  appId: number;
+  message: string;
 };
