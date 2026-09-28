@@ -34,12 +34,14 @@ export function useUserCreateForm() {
 
   const { values, setValue, submit } = form;
 
-  const toggleRole = useCallback(
+    const toggleRole = useCallback(
     (roleId: number) => {
       const current = values.roleIds;
       setValue(
         "roleIds",
-        current.includes(roleId) ? [] : [roleId],
+        current.includes(roleId)
+          ? current.filter((id) => id !== roleId)
+          : [...current, roleId],
       );
     },
     [values.roleIds, setValue],

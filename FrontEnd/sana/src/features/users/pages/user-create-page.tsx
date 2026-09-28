@@ -97,9 +97,9 @@ export default function UserCreatePage() {
             onBlur={() => setFieldTouched("contactNumber")}
           />
 
-          <RoleSelector
+            <RoleSelector
             selectedRoleIds={values.roleIds}
-            allowMultiple={false}
+            allowMultiple={true}
             onToggleRole={toggleRole}
             error={errors.roleIds}
           />
