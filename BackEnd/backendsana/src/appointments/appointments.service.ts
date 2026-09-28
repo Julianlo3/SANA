@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -125,17 +126,18 @@ export class AppointmentsService {
         birthdate: dto.requesterBirthdate,
         gender: dto.requesterGender,
         termsAccepted: dto.requesterTermsAccepted,
+        residenceZone: dto.residenceZone?.trim() ?? null,
       },
       dependent: dto.patientType === 'dependent'
         ? {
-            name: dto.dependentName!,
-            identityDocument: Number(dto.dependentIdentityDocument),
-            birthdate: dto.dependentBirthdate!,
-            gender: dto.dependentGender,
-            contactNumber: dto.dependentContactNumber?.trim() || dto.requesterContactNumber.trim(),
-            termsAccepted: dto.dependentTermsAccepted!,
-            relationshipId: dto.relationshipId!,
-          }
+          name: dto.dependentName!,
+          identityDocument: Number(dto.dependentIdentityDocument),
+          birthdate: dto.dependentBirthdate!,
+          gender: dto.dependentGender,
+          contactNumber: dto.dependentContactNumber?.trim() || dto.requesterContactNumber.trim(),
+          termsAccepted: dto.dependentTermsAccepted!,
+          relationshipId: dto.relationshipId!,
+        }
         : null,
       appType: dto.appType,
       appReason: dto.appReason?.trim() ?? null,
@@ -253,13 +255,32 @@ export class AppointmentsService {
       });
     }
 
-    const assignment = await this.scheduleService.assignAppointmentSlot({
-        appId,
-        secretaryUserId,
-        psychologistId: dto.psyId,
-        appDate: new Date(dto.appDate),
-        duration: dto.appDuration,
+    // Validar disponibilidad general del psicólogo
+    const hasAvailability = await this.scheduleService.checkPsychologistAvailability(dto.psyId);
+    if (!hasAvailability) {
+      throw new BadRequestException({
+        error: 'PSYCHOLOGIST_NO_GENERAL_AVAILABILITY',
+        message: 'El psicólogo no tiene disponibilidad general registrada en el sistema',
       });
+    }
+
+    // Validar doble asignación al mismo psicólogo
+    if (appointment.appState === 'asignada' && appointment.psychologistId === dto.psyId) {
+      throw new BadRequestException({
+        error: 'ALREADY_ASSIGNED_TO_SAME_PSYCHOLOGIST',
+        message: 'La cita ya está asignada a este psicólogo. Use la opción de reasignación para cambiar a otro psicólogo.',
+      });
+    }
+
+    const oldPsyId = appointment.appState === 'asignada' ? appointment.psychologistId : null;
+
+    const assignment = await this.scheduleService.assignAppointmentSlot({
+      appId,
+      secretaryUserId,
+      psychologistId: dto.psyId,
+      appDate: new Date(dto.appDate),
+      duration: dto.appDuration,
+    });
     if (assignment === 'not_assignable') {
       throw new BadRequestException({
         error: 'APPOINTMENT_NOT_ASSIGNABLE',
@@ -272,6 +293,15 @@ export class AppointmentsService {
         message: 'El psicólogo no está disponible en la franja seleccionada',
       });
     }
+
+    // Registrar historial de cambio de asignación
+    await this.repo.recordAssignmentHistory({
+      appId,
+      oldPsyId,
+      newPsyId: dto.psyId,
+      secId: secretaryUserId,
+      reason: dto.reassignmentReason?.trim() ?? null,
+    });
 
     return this.findByIdOrFail(appId);
   }
@@ -303,6 +333,9 @@ export class AppointmentsService {
 
   /**
    * Updates an appointment's status (cancelada / realizada).
+   * @param appId The ID of the appointment to update.
+   * @param dto The DTO containing the status details.
+   * @returns A promise resolving to the updated appointment.
    */
   async updateStatus(
     appId: number,
@@ -348,6 +381,48 @@ export class AppointmentsService {
   }
 
   /**
+   * Finds appointments for a specific psychologist (includes appReason).
+   * Only returns appointments that are accepted (confirmada) and not completed (not realizada).
+   * @param psychologistId The ID of the psychologist.
+   * @param state Optional state filter.
+   * @returns A promise resolving to the list of appointments.
+   */
+  async findByPsychologist(
+    psychologistId: number,
+    state?: 'confirmada' | 'realizada' | 'cancelada',
+  ): Promise<AppointmentRow[]> {
+    // Por defecto, solo devuelve citas aceptadas
+    const filterState = state ?? 'confirmada';
+    return this.repo.findByPsychologist(psychologistId, filterState);
+  }
+
+  /**
+   * Gets details of a single appointment for psychologist (includes appReason).
+   * @param appId The ID of the appointment to find.
+   * @param psychologistId The ID of the psychologist requesting the appointment.
+   * @returns A promise resolving to the appointment details.
+   */
+  async findByIdForPsychologist(
+    appId: number,
+    psychologistId: number,
+  ): Promise<AppointmentRow> {
+    const appointment = await this.repo.findByIdForPsychologist(appId);
+    if (!appointment) {
+      throw new NotFoundException(`No existe una cita con ID ${appId}`);
+    }
+
+    // Verificar que la cita le pertenece a este psicólogo
+    if (appointment.psychologistId !== psychologistId) {
+      throw new ForbiddenException({
+        error: 'NOT_ASSIGNED_PSYCHOLOGIST',
+        message: 'Esta cita no está asignada a usted',
+      });
+    }
+
+    return appointment;
+  }
+
+  /**
    * Lists active psychologists for appointment assignment.
    * @returns A promise resolving to the list of available psychologists.
    */
@@ -364,6 +439,17 @@ export class AppointmentsService {
   }
 
   /**
+   * Finds psychologist history for a specific consultant with streak information.
+   * @param consultantId The ID of the consultant (requester).
+   * @returns A promise resolving to the psychologist history with streak information.
+   */
+  async findConsultantPsychologistHistory(
+    consultantId: number,
+  ): Promise<{ psyId: number; psychologistName: string; totalAppointments: number; currentStreak: number; lastAppointmentDate: string }[]> {
+    return this.repo.findConsultantPsychologistHistory(consultantId);
+  }
+
+  /**
    * Finds an appointment by ID or throws a 404 error.
    * @param appId The ID of the appointment to find.
    * @returns A promise resolving to the appointment details.
@@ -374,6 +460,44 @@ export class AppointmentsService {
       throw new NotFoundException(`No existe una cita con ID ${appId}`);
     }
     return row;
+  }
+
+  /**
+   * Marks an appointment as completed (realizada).
+   * @param appId The ID of the appointment to mark as completed.
+   * @param psychologistUserId The ID of the psychologist marking it as completed.
+   * @returns A promise resolving to the updated appointment.
+   */
+  async markAsCompleted(
+    appId: number,
+    psychologistUserId: number,
+  ): Promise<AppointmentRow> {
+    const appointment = await this.findByIdOrFail(appId);
+
+    // Verificar que la cita le pertenece a este psicólogo
+    if (appointment.psychologistId !== psychologistUserId) {
+      throw new BadRequestException({
+        error: 'NOT_ASSIGNED_PSYCHOLOGIST',
+        message: 'Solo el psicólogo asignado puede marcar la cita como realizada',
+      });
+    }
+
+    // Verificar que la cita está en un estado que se puede marcar como realizada
+    if (appointment.appState !== 'confirmada') {
+      throw new BadRequestException({
+        error: 'APPOINTMENT_NOT_CONFIRMED',
+        message: 'Solo se pueden marcar como realizadas las citas que están confirmadas',
+      });
+    }
+
+    await this.repo.updateState(appId, 'realizada');
+    const updated = await this.findByIdOrFail(appId);
+
+    this.logger.log(
+      `Module:appointments, Function:markAsCompleted, result-success: appId-${appId}, psychologistUserId-${psychologistUserId}`,
+    );
+
+    return updated;
   }
 
   /**

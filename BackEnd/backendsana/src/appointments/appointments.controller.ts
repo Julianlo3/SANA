@@ -89,6 +89,26 @@ export class AppointmentsController {
   }
 
   /**
+   * Protected endpoint: Psychologist marks an appointment as completed (realizada).
+   * Must be defined before the general :id route to avoid conflicts
+   * @param request The HTTP request object.
+   * @param id The ID of the appointment to mark as completed.
+   * @returns A promise resolving to the updated appointment.
+   */
+  @Patch(':id/complete')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Psychologist)
+  markAsCompleted(
+    @Req() request: Request & { user: AuthenticatedUser },
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    this.logger.log(
+      `Module:appointments, Function:markAsCompleted, result-start: appId-${id}, psychologistUserId-${request.user.userId}`,
+    );
+    return this.appointmentsService.markAsCompleted(id, request.user.userId);
+  }
+
+  /**
    * Protected endpoint: Gets single appointment details (including ideal date and reason).
    * @param id The ID of the appointment to find.
    * @returns A promise resolving to the appointment details.
@@ -181,5 +201,52 @@ export class AppointmentsController {
       `Module:appointments, Function:updateStatus, result-start: appId-${id}, newState-${dto.state}`,
     );
     return this.appointmentsService.updateStatus(id, dto);
+  }
+
+  /**
+   * Protected endpoint: Gets psychologist history for a specific consultant.
+   * Shows which psychologists have attended the consultant and their current streak.
+   * @param consultantId The ID of the consultant (requester).
+   * @returns A promise resolving to the psychologist history with streak information.
+   */
+  @Get('consultant/:consultantId/psychologist-history')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Secretary)
+  findConsultantPsychologistHistory(@Param('consultantId', ParseIntPipe) consultantId: number) {
+    return this.appointmentsService.findConsultantPsychologistHistory(consultantId);
+  }
+
+  /**
+   * Protected endpoint: Psychologist gets their assigned appointments.
+   * Only returns accepted (confirmada) appointments by default, unless filtered by state.
+   * @param request The HTTP request object.
+   * @param state Optional state filter (confirmada, realizada, cancelada).
+   * @returns A promise resolving to the list of appointments.
+   */
+  @Get('my-appointments')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Psychologist)
+  findMyAppointments(
+    @Req() request: Request & { user: AuthenticatedUser },
+    @Query('state') state?: 'confirmada' | 'realizada' | 'cancelada',
+  ) {
+    return this.appointmentsService.findByPsychologist(request.user.userId, state);
+  }
+
+  /**
+   * Protected endpoint: Psychologist gets details of a specific appointment (includes appReason).
+   * Only allows access to appointments assigned to the requesting psychologist.
+   * @param request The HTTP request object.
+   * @param id The ID of the appointment to find.
+   * @returns A promise resolving to the appointment details.
+   */
+  @Get('my-appointments/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Psychologist)
+  findMyAppointmentById(
+    @Req() request: Request & { user: AuthenticatedUser },
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.appointmentsService.findByIdForPsychologist(id, request.user.userId);
   }
 }

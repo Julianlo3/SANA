@@ -37,19 +37,13 @@ export class Person {
   @Column({ name: 'per_gender', type: 'char', length: 1, nullable: true })
   perGender!: string | null;
 
-  @Column({ name: 'per_termns_accpted', type: 'boolean', default: false })
-  perTermsAccepted!: boolean;
-
-  @Column({ name: 'per_policy_accepted_at', type: 'timestamptz', nullable: true })
-  perPolicyAcceptedAt!: Date | null;
-
-  @Column({ name: 'per_policy_version', type: 'varchar', length: 50, nullable: true })
-  perPolicyVersion!: string | null;
-
   @Column({
     name: 'per_created_at',
     type: 'timestamptz',
     default: () => 'now()',
   })
   perCreatedAt!: Date;
+
+  @Column({ name: 'per_residence_zone', type: 'varchar', length: 255, nullable: true })
+  perResidenceZone!: string | null;
 }

@@ -24,10 +24,12 @@ function setup() {
     findPsychologists: vi.fn(),
     discard: vi.fn(),
     confirm: vi.fn(),
+    recordAssignmentHistory: vi.fn().mockResolvedValue(undefined),
   };
   const scheduleService = {
     confirmAppointmentSlot: vi.fn().mockResolvedValue(true),
     assignAppointmentSlot: vi.fn().mockResolvedValue('assigned'),
+    checkPsychologistAvailability: vi.fn().mockResolvedValue(true),
   };
   return {
     service: new AppointmentsService(repository as never, scheduleService as never),
@@ -137,6 +139,13 @@ describe('AppointmentsService assignment lifecycle', () => {
       appDate: new Date('2026-10-06T09:00:00.000Z'),
       duration: 60,
     });
+    expect(repository.recordAssignmentHistory).toHaveBeenCalledWith({
+      appId: 42,
+      oldPsyId: null,
+      newPsyId: 8,
+      secId: 3,
+      reason: null,
+    });
   });
 
   it('allows reassignment of an already assigned request', async () => {
@@ -160,6 +169,13 @@ describe('AppointmentsService assignment lifecycle', () => {
       secretaryUserId: 3,
       appDate: new Date('2026-10-06T09:00:00.000Z'),
       duration: 60,
+    });
+    expect(repository.recordAssignmentHistory).toHaveBeenCalledWith({
+      appId: 42,
+      oldPsyId: 8,
+      newPsyId: 9,
+      secId: 3,
+      reason: null,
     });
   });
 

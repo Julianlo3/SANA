@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
-import { CURRENT_POLICY_VERSION } from '../config/policy.config.js';
 
 type QueryExecutor = DataSource | EntityManager;
 
@@ -13,6 +12,7 @@ export interface AppointmentRequesterParams {
   birthdate?: string;
   gender?: string;
   termsAccepted: boolean;
+  residenceZone?: string | null;
 }
 
 export interface AppointmentDependentParams {
@@ -32,6 +32,7 @@ export interface AppointmentRow {
   appDateIdeal: string | null;
   appDuration: number | null;
   appDiscardReason: string | null;
+  appReason: string | null;
   appCreatedAt: string;
   requesterId: number;
   requesterName: string;
@@ -70,7 +71,7 @@ export class AppointmentsRepository {
   constructor(private readonly dataSource: DataSource) { }
 
   /**
-   * finds all appointments with optional state filter
+   * finds all appointments with optional state filter (for secretary - excludes appReason)
    * @param state optional filter by appointment state
    * @returns array of appointments or null
    */
@@ -91,6 +92,7 @@ export class AppointmentsRepository {
           a.app_date_ideal                           AS "appDateIdeal",
           a.app_duration                             AS "appDuration",
           a.app_discard_reason                       AS "appDiscardReason",
+          NULL::text                                 AS "appReason",
           a.app_created_at                           AS "appCreatedAt",
           req.per_id                                 AS "requesterId",
           req.per_name                               AS "requesterName",
@@ -124,7 +126,7 @@ export class AppointmentsRepository {
   }
 
   /**
-   * finds an appointment by id
+   * finds an appointment by id (for secretary - excludes appReason)
    * @param appId appointment id
    * @returns appointment or null
    */
@@ -138,6 +140,7 @@ export class AppointmentsRepository {
           a.app_date_ideal                           AS "appDateIdeal",
           a.app_duration                             AS "appDuration",
           a.app_discard_reason                       AS "appDiscardReason",
+          NULL::text                                 AS "appReason",
           a.app_created_at                           AS "appCreatedAt",
           req.per_id                                 AS "requesterId",
           req.per_name                               AS "requesterName",
@@ -170,6 +173,110 @@ export class AppointmentsRepository {
     return rows[0] ?? null;
   }
 
+  /**
+   * finds an appointment by id for psychologist (includes appReason)
+   * @param appId appointment id
+   * @returns appointment or null
+   */
+  async findByIdForPsychologist(appId: number): Promise<AppointmentRow | null> {
+    const rows = await this.dataSource.query<AppointmentRow[]>(
+      `SELECT
+          a.app_id                                   AS "appId",
+          a.app_state                                AS "appState",
+          a.app_type                                 AS "appType",
+          a.app_date                                 AS "appDate",
+          a.app_date_ideal                           AS "appDateIdeal",
+          a.app_duration                             AS "appDuration",
+          a.app_discard_reason                       AS "appDiscardReason",
+          a.app_reason                               AS "appReason",
+          a.app_created_at                           AS "appCreatedAt",
+          req.per_id                                 AS "requesterId",
+          req.per_name                               AS "requesterName",
+          req.per_card_type                          AS "requesterCardType",
+          req.per_identity_document                  AS "requesterIdentityDocument",
+          req.per_contact_number                     AS "requesterContactNumber",
+          req.per_email                              AS "requesterEmail",
+          CASE
+            WHEN a.app_patient_dependent_id IS NOT NULL THEN 'dependent'
+            ELSE 'self'
+          END                                        AS "patientType",
+          COALESCE(dep.dep_name, req.per_name)       AS "patientName",
+          COALESCE(dep.dep_identity_document::text, req.per_identity_document::text) AS "patientIdentityDocument",
+          COALESCE(dep.dep_birthdate::text, req.per_birthdate::text) AS "patientBirthdate",
+          COALESCE(dep.dep_gender, req.per_gender)   AS "patientGender",
+          a.psy_id                                   AS "psychologistId",
+          psy_per.per_name                           AS "psychologistName",
+          sec_per.per_name                           AS "secretaryName",
+          rel.rel_description                        AS "relationshipDescription"
+        FROM appointments a
+        JOIN person req ON req.per_id = a.req_id
+        LEFT JOIN dependents dep ON dep.dep_id = a.app_patient_dependent_id
+        LEFT JOIN requester_dependent rd ON rd.req_id = a.req_id AND rd.dep_id = a.app_patient_dependent_id
+        LEFT JOIN relationship rel ON rel.rel_id = rd.rel_id
+        LEFT JOIN person psy_per ON psy_per.per_id = a.psy_id
+        LEFT JOIN person sec_per ON sec_per.per_id = a.sec_id
+        WHERE a.app_id = $1`,
+      [appId],
+    );
+    return rows[0] ?? null;
+  }
+
+  /**
+   * finds appointments for a specific psychologist (includes appReason)
+   * @param psychologistId psychologist id
+   * @param state optional filter by appointment state
+   * @returns array of appointments or null
+   */
+  async findByPsychologist(psychologistId: number, state?: string): Promise<AppointmentRow[]> {
+    const params: unknown[] = [psychologistId];
+    let whereClause = `WHERE a.psy_id = $1`;
+    if (state) {
+      params.push(state);
+      whereClause += ` AND a.app_state = $${params.length}`;
+    }
+
+    return this.dataSource.query<AppointmentRow[]>(
+      `SELECT
+          a.app_id                                   AS "appId",
+          a.app_state                                AS "appState",
+          a.app_type                                 AS "appType",
+          a.app_date                                 AS "appDate",
+          a.app_date_ideal                           AS "appDateIdeal",
+          a.app_duration                             AS "appDuration",
+          a.app_discard_reason                       AS "appDiscardReason",
+          a.app_reason                               AS "appReason",
+          a.app_created_at                           AS "appCreatedAt",
+          req.per_id                                 AS "requesterId",
+          req.per_name                               AS "requesterName",
+          req.per_card_type                          AS "requesterCardType",
+          req.per_identity_document                  AS "requesterIdentityDocument",
+          req.per_contact_number                     AS "requesterContactNumber",
+          req.per_email                              AS "requesterEmail",
+          CASE
+            WHEN a.app_patient_dependent_id IS NOT NULL THEN 'dependent'
+            ELSE 'self'
+          END                                        AS "patientType",
+          COALESCE(dep.dep_name, req.per_name)       AS "patientName",
+          COALESCE(dep.dep_identity_document::text, req.per_identity_document::text) AS "patientIdentityDocument",
+          COALESCE(dep.dep_birthdate::text, req.per_birthdate::text) AS "patientBirthdate",
+          COALESCE(dep.dep_gender, req.per_gender)   AS "patientGender",
+          a.psy_id                                   AS "psychologistId",
+          psy_per.per_name                           AS "psychologistName",
+          sec_per.per_name                           AS "secretaryName",
+          rel.rel_description                        AS "relationshipDescription"
+        FROM appointments a
+        JOIN person req ON req.per_id = a.req_id
+        LEFT JOIN dependents dep ON dep.dep_id = a.app_patient_dependent_id
+        LEFT JOIN requester_dependent rd ON rd.req_id = a.req_id AND rd.dep_id = a.app_patient_dependent_id
+        LEFT JOIN relationship rel ON rel.rel_id = rd.rel_id
+        LEFT JOIN person psy_per ON psy_per.per_id = a.psy_id
+        LEFT JOIN person sec_per ON sec_per.per_id = a.sec_id
+        ${whereClause}
+        ORDER BY a.app_date ASC`,
+      params,
+    );
+  }
+
   async createRequest(params: {
     requester: AppointmentRequesterParams;
     dependent: (AppointmentDependentParams & { relationshipId: number }) | null;
@@ -193,7 +300,7 @@ export class AppointmentsRepository {
         );
       }
 
-      return this.create(
+      const appId = await this.create(
         {
           requesterId,
           patientPersonId,
@@ -204,7 +311,80 @@ export class AppointmentsRepository {
         },
         manager,
       );
+
+      // Record policy acceptances
+      await this.recordPolicyAcceptances(
+        appId,
+        requesterId,
+        patientDependentId,
+        params.requester.termsAccepted,
+        params.dependent?.termsAccepted,
+        manager,
+      );
+
+      return appId;
     });
+  }
+
+  /**
+   * Records policy acceptances for the appointment request.
+   * @param appId The appointment ID.
+   * @param requesterId The requester (person) ID.
+   * @param dependentId Optional dependent ID.
+   * @param requesterTermsAccepted Whether the requester accepted terms.
+   * @param dependentTermsAccepted Whether the dependent terms were accepted.
+   * @param executor The query executor.
+   */
+  private async recordPolicyAcceptances(
+    appId: number,
+    requesterId: number,
+    dependentId: number | null,
+    requesterTermsAccepted: boolean,
+    dependentTermsAccepted: boolean | undefined,
+    executor: QueryExecutor,
+  ): Promise<void> {
+    // Get current policy document IDs
+    const dataTreatmentPdId = await this.getCurrentPolicyDocumentId('data_treatment', executor);
+    const dependentConsentPdId = await this.getCurrentPolicyDocumentId('dependent_consent', executor);
+
+    if (requesterTermsAccepted && dataTreatmentPdId) {
+      await executor.query(
+        `INSERT INTO policy_acceptance (per_id, pd_id, app_id)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (app_id, pd_id) WHERE app_id IS NOT NULL DO NOTHING`,
+        [requesterId, dataTreatmentPdId, appId],
+      );
+    }
+
+    if (dependentId && dependentTermsAccepted && dependentConsentPdId) {
+      await executor.query(
+        `INSERT INTO policy_acceptance (per_id, dep_id, pd_id, app_id)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (app_id, pd_id) WHERE app_id IS NOT NULL DO NOTHING`,
+        [requesterId, dependentId, dependentConsentPdId, appId],
+      );
+    }
+  }
+
+  /**
+   * Gets the current policy document ID for a given policy type.
+   * @param policyType The type of policy.
+   * @param executor The query executor.
+   * @returns A promise that resolves to the policy document ID or null if not found.
+   */
+  private async getCurrentPolicyDocumentId(
+    policyType: string,
+    executor: QueryExecutor,
+  ): Promise<number | null> {
+    const rows = await executor.query<{ pd_id: number }[]>(
+      `SELECT pd_id
+       FROM policy_documents
+       WHERE pd_type = $1
+       ORDER BY pd_effective_from DESC
+       LIMIT 1`,
+      [policyType],
+    );
+    return rows[0]?.pd_id ?? null;
   }
 
   /**
@@ -227,25 +407,19 @@ export class AppointmentsRepository {
       personId = existing[0].per_id;
       await executor.query(
         `UPDATE person
-             SET per_termns_accpted = COALESCE(per_termns_accpted, false) OR $1,
-               per_policy_accepted_at = CASE WHEN $1 THEN now() ELSE per_policy_accepted_at END,
-               per_policy_version = CASE WHEN $1 THEN $3 ELSE per_policy_version END,
+             SET per_residence_zone = COALESCE($2, per_residence_zone),
                per_update_date = now()
-               WHERE per_id = $2`,
-            [params.termsAccepted, personId, CURRENT_POLICY_VERSION],
+               WHERE per_id = $1`,
+        [personId, params.residenceZone],
       );
     } else {
       const email = params.email || `doc_${params.identityDocument}@sana.org`;
       const created = await executor.query<{ per_id: number }[]>(
         `INSERT INTO person (
            per_name, per_card_type, per_identity_document, per_contact_number,
-           per_email, per_birthdate, per_gender, per_termns_accpted,
-           per_policy_accepted_at, per_policy_version, per_state
+           per_email, per_birthdate, per_gender, per_state, per_residence_zone
          )
-         VALUES ($1, $2, $3, $4, $5, $6::date, $7, $8,
-                 CASE WHEN $8 THEN now() ELSE NULL END,
-                 CASE WHEN $8 THEN $9 ELSE NULL END,
-                 'activo')
+         VALUES ($1, $2, $3, $4, $5, $6::date, $7, 'activo', $8)
          RETURNING per_id`,
         [
           params.name,
@@ -255,8 +429,7 @@ export class AppointmentsRepository {
           email,
           params.birthdate ?? null,
           params.gender ?? null,
-          params.termsAccepted,
-          CURRENT_POLICY_VERSION,
+          params.residenceZone ?? null,
         ],
       );
       personId = created[0].per_id;
@@ -276,7 +449,7 @@ export class AppointmentsRepository {
   /**
    * insert or update dependent
    * @param params contains name, identityDocument, birthdate, gender, contactNumber, termsAccepted
-   * @returns dep_id or null 
+   * @returns dep_id or null
    */
   async upsertDependent(
     params: AppointmentDependentParams,
@@ -290,26 +463,14 @@ export class AppointmentsRepository {
     const contact = params.contactNumber ? Number(params.contactNumber) : 0;
 
     if (existing[0]) {
-      const depId = existing[0].dep_id;
-      await executor.query(
-        `UPDATE dependents
-             SET dep_termns_accpted = COALESCE(dep_termns_accpted, false) OR $1,
-               dep_policy_accepted_at = CASE WHEN $1 THEN now() ELSE dep_policy_accepted_at END,
-               dep_policy_version = CASE WHEN $1 THEN $2 ELSE dep_policy_version END
-         WHERE dep_id = $3`,
-        [params.termsAccepted, CURRENT_POLICY_VERSION, depId],
-      );
-      return depId;
+      return existing[0].dep_id;
     }
 
     const created = await executor.query<{ dep_id: number }[]>(
       `INSERT INTO dependents (
-         dep_name, dep_identity_document, dep_birthdate, dep_contact_number, dep_gender,
-         dep_termns_accpted, dep_policy_accepted_at, dep_policy_version
+         dep_name, dep_identity_document, dep_birthdate, dep_contact_number, dep_gender
        )
-       VALUES ($1, $2, $3::date, $4, $5, $6,
-               CASE WHEN $6 THEN now() ELSE NULL END,
-               CASE WHEN $6 THEN $7 ELSE NULL END)
+       VALUES ($1, $2, $3::date, $4, $5)
        RETURNING dep_id`,
       [
         params.name,
@@ -317,8 +478,6 @@ export class AppointmentsRepository {
         params.birthdate,
         contact,
         params.gender ?? null,
-        params.termsAccepted,
-        CURRENT_POLICY_VERSION,
       ],
     );
     return created[0].dep_id;
@@ -409,7 +568,7 @@ export class AppointmentsRepository {
   }
 
   /**
-   * update state of an appointment (cancelada / realizada)
+   * update state of an appointment
    * @param appId appointment id
    * @param state new state
    * @returns void
@@ -480,6 +639,68 @@ export class AppointmentsRepository {
         JOIN person per ON per.per_id = p.psy_id
         WHERE per.per_state = 'activo'
         ORDER BY per.per_name`,
+    );
+  }
+
+  /**
+   * Records assignment history when a psychologist is assigned or reassigned
+   * @param params The parameters for recording the assignment history
+   */
+  async recordAssignmentHistory(params: {
+    appId: number;
+    oldPsyId: number | null;
+    newPsyId: number;
+    secId: number;
+    reason: string | null;
+  }): Promise<void> {
+    await this.dataSource.query(
+      `INSERT INTO appointment_assignment_history
+         (app_id, old_psy_id, new_psy_id, sec_id, aah_reason)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [params.appId, params.oldPsyId, params.newPsyId, params.secId, params.reason],
+    );
+  }
+
+  /**
+   * Finds psychologists who have attended a specific consultant with their streak
+   * @param consultantId The ID of the consultant (requester)
+   * @returns Array of psychologists with streak information
+   */
+  async findConsultantPsychologistHistory(
+    consultantId: number,
+  ): Promise<{ psyId: number; psychologistName: string; totalAppointments: number; currentStreak: number; lastAppointmentDate: string }[]> {
+    return this.dataSource.query(
+      `SELECT
+          a.psy_id AS "psyId",
+          per.per_name AS "psychologistName",
+          COUNT(*) AS "totalAppointments",
+          COALESCE(
+            (
+              SELECT COUNT(*)
+              FROM appointments a2
+              WHERE a2.req_id = $1
+                AND a2.psy_id = a.psy_id
+                AND a2.app_state IN ('realizada', 'confirmada')
+                AND a2.app_date <= a.app_date
+                AND NOT EXISTS (
+                  SELECT 1 FROM appointments a3
+                  WHERE a3.req_id = $1
+                    AND a3.psy_id <> a.psy_id
+                    AND a3.app_date > a2.app_date
+                    AND a3.app_date <= a.app_date
+                )
+            ),
+            0
+          ) AS "currentStreak",
+          MAX(a.app_date) AS "lastAppointmentDate"
+        FROM appointments a
+        JOIN person per ON per.per_id = a.psy_id
+        WHERE a.req_id = $1
+          AND a.psy_id IS NOT NULL
+          AND a.app_state IN ('realizada', 'confirmada', 'asignada')
+        GROUP BY a.psy_id, per.per_name
+        ORDER BY "currentStreak" DESC, "totalAppointments" DESC`,
+      [consultantId],
     );
   }
 }
