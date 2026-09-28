@@ -13,7 +13,7 @@ export default function PendingAccountPage() {
             <Mail size={16} />
             Contactar a la fundación
           </a>
-          <Link href="/login" className="rounded-xl border border-border py-3 font-semibold text-text-muted transition hover:border-text-muted hover:text-text">
+          <Link href="/iniciar-sesion" className="rounded-xl border border-border py-3 font-semibold text-text-muted transition hover:border-text-muted hover:text-text">
             Volver al inicio de sesión
           </Link>
         </>

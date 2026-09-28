@@ -31,29 +31,29 @@ type NavLink = {
 /** Qué enlaces ve cada rol dentro de su propio grupo del menú. */
 const LINKS_BY_ROLE: Record<string, NavLink[]> = {
   administrador: [
-    { label: "Usuarios", href: "/users", icon: UserCog, enabled: true },
+    { label: "Usuarios", href: "/usuarios", icon: UserCog, enabled: true },
   ],
   psicologo: [
-    { label: "Consultantes", href: "/consultants", icon: Users, enabled: true },
+    { label: "Consultantes", href: "/consultantes", icon: Users, enabled: true },
     {
       label: "Registrar atención",
-      href: "/care-records/new",
+      href: "/registro-atencion/nuevo",
       icon: ClipboardCheck,
       enabled: true,
     },
   ],
   secretario: [
-    { label: "Consultantes", href: "/consultants", icon: Users, enabled: true },
+    { label: "Consultantes", href: "/consultantes", icon: Users, enabled: true },
   ],
 };
 
 /** Enlaces sin rol propio todavía: se agrupan aparte, visibles siempre. */
 const UPCOMING_LINKS: NavLink[] = [
-  { label: "Citas", href: "/appointments", icon: Calendar, enabled: false },
-  { label: "Expedientes", href: "/records", icon: FolderOpen, enabled: false },
-  { label: "Recepción", href: "/reception", icon: ClipboardList, enabled: false },
-  { label: "Reportes", href: "/reports", icon: BarChart3, enabled: false },
-  { label: "Contenido", href: "/content", icon: FileText, enabled: false },
+  { label: "Citas", href: "/citas", icon: Calendar, enabled: false },
+  { label: "Expedientes", href: "/expedientes", icon: FolderOpen, enabled: false },
+  { label: "Recepción", href: "/recepcion", icon: ClipboardList, enabled: false },
+  { label: "Reportes", href: "/reportes", icon: BarChart3, enabled: false },
+  { label: "Contenido", href: "/contenido", icon: FileText, enabled: false },
 ];
 
 type Props = {

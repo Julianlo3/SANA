@@ -71,7 +71,7 @@ export function useUserCreateForm() {
           : undefined,
       });
 
-      router.push("/users");
+      router.push("/usuarios");
     } catch (error: unknown) {
       setSubmitError(
         error instanceof ApiError
@@ -90,6 +90,6 @@ export function useUserCreateForm() {
     isSaving,
     submitError,
     save,
-    cancel: () => router.push("/users"),
+    cancel: () => router.push("/usuarios"),
   };
 }

@@ -47,7 +47,7 @@ export default function ConsultantSummaryPage({ consultantId }: Props) {
   return (
     <div className="mx-auto max-w-3xl">
       <Link
-        href="/consultants"
+        href="/consultantes"
         className="inline-flex items-center gap-2 text-sm text-text-muted transition hover:text-primary"
       >
         <ArrowLeft size={16} aria-hidden />

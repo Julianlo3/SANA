@@ -37,7 +37,7 @@ export default function PublicHeader() {
 
         <div className="ml-auto flex items-center gap-3 md:ml-0">
           <Link
-            href="/login"
+            href="/iniciar-sesion"
             className="hidden text-sm font-semibold text-text-muted transition hover:text-primary md:block"
           >
             {PUBLIC_NAV.staffAccess}
@@ -78,7 +78,7 @@ export default function PublicHeader() {
 
             <li className="mt-1 border-t border-border pt-1">
               <Link
-                href="/login"
+                href="/iniciar-sesion"
                 onClick={() => setIsOpen(false)}
                 className="block rounded-xl px-3 py-3 text-sm font-semibold text-primary transition hover:bg-primary-soft"
               >

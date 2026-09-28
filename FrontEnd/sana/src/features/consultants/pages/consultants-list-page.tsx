@@ -59,8 +59,8 @@ export default function ConsultantsListPage({ viewerRole }: Props) {
 
   function detailHref(id: number): string {
     return viewerRole === "psychologist"
-      ? `/consultants/${id}`
-      : `/consultants/${id}/summary`;
+      ? `/consultantes/${id}`
+      : `/consultantes/${id}/resumen`;
   }
 
   return (

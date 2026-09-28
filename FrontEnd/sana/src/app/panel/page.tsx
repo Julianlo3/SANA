@@ -8,11 +8,11 @@ import { getCurrentUser } from "@/lib/auth-guard";
 export default async function PanelHome() {
   const user = await getCurrentUser();
 
-  if (user.roles.length === 0) redirect("/pending-account");
-  if (user.roles.includes("administrador")) redirect("/users");
+  if (user.roles.length === 0) redirect("/cuenta-pendiente");
+  if (user.roles.includes("administrador")) redirect("/usuarios");
   if (user.roles.includes("psicologo") || user.roles.includes("secretario")) {
-    redirect("/consultants");
+    redirect("/consultantes");
   }
 
-  redirect("/restricted-access");
+  redirect("/acceso-restringido");
 }
