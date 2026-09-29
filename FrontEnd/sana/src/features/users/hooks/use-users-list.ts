@@ -81,7 +81,7 @@ export function useUsersList() {
       setActionError(null);
 
       if (action === "edit") {
-        router.push(`/users/${user.id}/edit`);
+        router.push(`/usuarios/${user.id}/editar`);
         return;
       }
 

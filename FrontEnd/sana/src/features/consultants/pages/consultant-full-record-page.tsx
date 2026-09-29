@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, FileText, User } from "lucide-react";
+import { ArrowLeft, FileText } from "lucide-react";
 import InlineMessage from "@/components/feedback/inline-message";
 import { formatRelativeDate } from "@/lib/format/date-time";
+import ConsultantHeader from "../components/consultant-header";
+import { useConsultantRecord } from "../hooks/use-consultant-record";
 import { getConsultantForPsychologist } from "../services/consultants-service";
 import type { ConsultantFullRecord } from "../types/consultant-types";
 
@@ -22,39 +23,18 @@ type Props = {
  * refleja lo que el backend permitió o negó.
  */
 export default function ConsultantFullRecordPage({ consultantId }: Props) {
-  const [consultant, setConsultant] = useState<ConsultantFullRecord | null>(
-    null,
+  const { record: consultant, isLoading, loadError } = useConsultantRecord<
+    ConsultantFullRecord
+  >(
+    consultantId,
+    getConsultantForPsychologist,
+    "No tienes permisos para ver esta ficha, o no pudimos cargarla.",
   );
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    getConsultantForPsychologist(consultantId)
-      .then((result) => {
-        if (isMounted) setConsultant(result);
-      })
-      .catch(() => {
-        if (isMounted) {
-          setLoadError(
-            "No tienes permisos para ver esta ficha, o no pudimos cargarla.",
-          );
-        }
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [consultantId]);
 
   return (
     <div className="mx-auto max-w-3xl">
       <Link
-        href="/consultants"
+        href="/consultantes"
         className="inline-flex items-center gap-2 text-sm text-text-muted transition hover:text-primary"
       >
         <ArrowLeft size={16} aria-hidden />
@@ -73,19 +53,10 @@ export default function ConsultantFullRecordPage({ consultantId }: Props) {
 
       {consultant && (
         <div className="mt-6 space-y-6">
-          <div className="flex items-center gap-4">
-            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-soft text-primary">
-              <User size={24} aria-hidden />
-            </span>
-            <div>
-              <h1 className="font-display text-2xl font-bold text-text">
-                {consultant.fullName}
-              </h1>
-              <p className="text-sm text-text-subtle">
-                Documento {consultant.identityDocument}
-              </p>
-            </div>
-          </div>
+          <ConsultantHeader
+            fullName={consultant.fullName}
+            identityDocument={consultant.identityDocument}
+          />
 
           <div className="grid gap-4 rounded-2xl border border-border bg-surface p-6 sm:grid-cols-2">
             <div>

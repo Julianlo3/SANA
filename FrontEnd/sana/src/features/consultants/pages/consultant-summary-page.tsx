@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Lock, User } from "lucide-react";
+import { ArrowLeft, Lock } from "lucide-react";
 import InlineMessage from "@/components/feedback/inline-message";
 import { formatRelativeDate } from "@/lib/format/date-time";
+import ConsultantHeader from "../components/consultant-header";
+import { useConsultantRecord } from "../hooks/use-consultant-record";
 import { getConsultantForAssistant } from "../services/consultants-service";
 import type { ConsultantSummary } from "../types/consultant-types";
 
@@ -19,35 +20,18 @@ type Props = {
  * backend nunca los envía a este endpoint.
  */
 export default function ConsultantSummaryPage({ consultantId }: Props) {
-  const [consultant, setConsultant] = useState<ConsultantSummary | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    getConsultantForAssistant(consultantId)
-      .then((result) => {
-        if (isMounted) setConsultant(result);
-      })
-      .catch(() => {
-        if (isMounted) {
-          setLoadError("No pudimos cargar la ficha. Intenta de nuevo.");
-        }
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [consultantId]);
+  const { record: consultant, isLoading, loadError } = useConsultantRecord<
+    ConsultantSummary
+  >(
+    consultantId,
+    getConsultantForAssistant,
+    "No pudimos cargar la ficha. Intenta de nuevo.",
+  );
 
   return (
     <div className="mx-auto max-w-3xl">
       <Link
-        href="/consultants"
+        href="/consultantes"
         className="inline-flex items-center gap-2 text-sm text-text-muted transition hover:text-primary"
       >
         <ArrowLeft size={16} aria-hidden />
@@ -66,19 +50,10 @@ export default function ConsultantSummaryPage({ consultantId }: Props) {
 
       {consultant && (
         <div className="mt-6 space-y-6">
-          <div className="flex items-center gap-4">
-            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-soft text-primary">
-              <User size={24} aria-hidden />
-            </span>
-            <div>
-              <h1 className="font-display text-2xl font-bold text-text">
-                {consultant.fullName}
-              </h1>
-              <p className="text-sm text-text-subtle">
-                Documento {consultant.identityDocument}
-              </p>
-            </div>
-          </div>
+          <ConsultantHeader
+            fullName={consultant.fullName}
+            identityDocument={consultant.identityDocument}
+          />
 
           <div className="grid gap-4 rounded-2xl border border-border bg-surface p-6 sm:grid-cols-2">
             <div>

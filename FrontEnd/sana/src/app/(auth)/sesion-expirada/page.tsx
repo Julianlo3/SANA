@@ -9,7 +9,7 @@ export default function SessionExpiredPage() {
       title="Sesión expirada"
       actions={
         <Link
-          href="/login"
+          href="/iniciar-sesion"
           className="flex items-center justify-center gap-2 rounded-xl bg-primary py-3 font-semibold text-white transition hover:bg-primary-dark"
         >
           <LogIn size={16} />

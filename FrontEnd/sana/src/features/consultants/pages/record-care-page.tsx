@@ -138,7 +138,7 @@ export default function RecordCarePage() {
         </p>
 
         <div className="mt-8">
-            <Button onClick={() => router.push("/consultants")}>
+            <Button onClick={() => router.push("/consultantes")}>
                 Volver al listado
             </Button>
             </div>
@@ -149,7 +149,7 @@ export default function RecordCarePage() {
   return (
     <div className="mx-auto max-w-xl">
       <Link
-        href="/consultants"
+        href="/consultantes"
         className="inline-flex items-center gap-2 text-sm text-text-muted transition hover:text-primary"
       >
         <ArrowLeft size={16} aria-hidden />
