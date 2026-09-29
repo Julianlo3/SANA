@@ -254,6 +254,6 @@ export function useUserEditForm(userId: number) {
     submitError,
     wasSaved,
     save,
-    cancel: () => router.push("/users"),
+    cancel: () => router.push("/usuarios"),
   };
 }
