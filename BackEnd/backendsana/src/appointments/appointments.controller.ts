@@ -170,6 +170,7 @@ export class AppointmentsController {
 
   /**
    * Protected endpoint: Secretary discards an appointment request.
+   * @param request The HTTP request object.
    * @param id The ID of the appointment to discard.
    * @param dto The DTO containing the discard details.
    * @returns A promise resolving to the discarded appointment.
@@ -178,14 +179,16 @@ export class AppointmentsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Secretary)
   discard(
+    @Req() request: Request & { user: AuthenticatedUser },
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: DiscardAppointmentDto,
   ) {
-    return this.appointmentsService.discardAppointment(id, dto);
+    return this.appointmentsService.discardAppointment(id, dto, request.user.userId);
   }
 
   /**
    * Protected endpoint: Updates appointment status.
+   * @param request The HTTP request object.
    * @param id The ID of the appointment to update.
    * @param dto The DTO containing the new status.
    * @returns A promise resolving to the updated appointment.
@@ -194,13 +197,14 @@ export class AppointmentsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Secretary)
   updateStatus(
+    @Req() request: Request & { user: AuthenticatedUser },
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateAppointmentStatusDto,
   ) {
     this.logger.log(
       `Module:appointments, Function:updateStatus, result-start: appId-${id}, newState-${dto.state}`,
     );
-    return this.appointmentsService.updateStatus(id, dto);
+    return this.appointmentsService.updateStatus(id, dto, request.user.userId);
   }
 
   /**

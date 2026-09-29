@@ -168,6 +168,14 @@ export class AppointmentsService {
   ): Promise<AppointmentRow> {
     const appointment = await this.findByIdOrFail(appId);
 
+    // Validar que el secretario no gestione su propia cita
+    if (appointment.requesterId === secretaryUserId) {
+      throw new BadRequestException({
+        error: 'SECRETARY_CANNOT_MANAGE_OWN_APPOINTMENT',
+        message: 'Un secretario no puede gestionar su propia cita. Solicite que otro secretario gestione esta solicitud.',
+      });
+    }
+
     if (appointment.appState !== 'asignada') {
       throw new BadRequestException({
         error: 'APPOINTMENT_NOT_ASSIGNED',
@@ -245,6 +253,14 @@ export class AppointmentsService {
       });
     }
 
+    // Validar que el secretario no gestione su propia cita
+    if (appointment.requesterId === secretaryUserId) {
+      throw new BadRequestException({
+        error: 'SECRETARY_CANNOT_MANAGE_OWN_APPOINTMENT',
+        message: 'Un secretario no puede gestionar su propia cita. Solicite que otro secretario gestione esta solicitud.',
+      });
+    }
+
     const psychologist = (await this.repo.findPsychologists()).find(
       (option) => option.psyId === dto.psyId,
     );
@@ -261,6 +277,14 @@ export class AppointmentsService {
       throw new BadRequestException({
         error: 'PSYCHOLOGIST_NO_GENERAL_AVAILABILITY',
         message: 'El psicólogo no tiene disponibilidad general registrada en el sistema',
+      });
+    }
+
+    // Validar que el psicólogo no sea asignado a su propia cita
+    if (appointment.requesterId === dto.psyId) {
+      throw new BadRequestException({
+        error: 'PSYCHOLOGIST_CANNOT_ATTEND_OWN_APPOINTMENT',
+        message: 'Un psicólogo no puede ser asignado a su propia cita. Seleccione otro psicólogo.',
       });
     }
 
@@ -310,13 +334,24 @@ export class AppointmentsService {
    * Discards an appointment request.
    * @param appId The ID of the appointment to discard.
    * @param dto The DTO containing the discard details.
+   * @param secretaryUserId The ID of the secretary performing the discard.
    * @returns A promise resolving to the discarded appointment.
    */
   async discardAppointment(
     appId: number,
     dto: DiscardAppointmentDto,
+    secretaryUserId: number,
   ): Promise<AppointmentRow> {
-    await this.findByIdOrFail(appId);
+    const appointment = await this.findByIdOrFail(appId);
+
+    // Validar que el secretario no gestione su propia cita
+    if (appointment.requesterId === secretaryUserId) {
+      throw new BadRequestException({
+        error: 'SECRETARY_CANNOT_MANAGE_OWN_APPOINTMENT',
+        message: 'Un secretario no puede gestionar su propia cita. Solicite que otro secretario gestione esta solicitud.',
+      });
+    }
+
     try {
       await this.repo.discard(appId, dto.reason.trim());
     } catch (error) {
@@ -335,13 +370,23 @@ export class AppointmentsService {
    * Updates an appointment's status (cancelada / realizada).
    * @param appId The ID of the appointment to update.
    * @param dto The DTO containing the status details.
+   * @param secretaryUserId The ID of the secretary performing the update.
    * @returns A promise resolving to the updated appointment.
    */
   async updateStatus(
     appId: number,
     dto: UpdateAppointmentStatusDto,
+    secretaryUserId: number,
   ): Promise<AppointmentRow> {
     const appointment = await this.findByIdOrFail(appId);
+
+    // Validar que el secretario no gestione su propia cita
+    if (appointment.requesterId === secretaryUserId) {
+      throw new BadRequestException({
+        error: 'SECRETARY_CANNOT_MANAGE_OWN_APPOINTMENT',
+        message: 'Un secretario no puede gestionar su propia cita. Solicite que otro secretario gestione esta solicitud.',
+      });
+    }
 
     if (
       appointment.appState === 'cancelada' ||

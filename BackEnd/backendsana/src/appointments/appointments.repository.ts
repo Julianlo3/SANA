@@ -703,4 +703,5 @@ export class AppointmentsRepository {
       [consultantId],
     );
   }
+
 }
