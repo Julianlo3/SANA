@@ -31,6 +31,12 @@ describe('AuthRepository', () => {
     expect(dataSource.query.mock.calls[0][0]).toContain(
       'p.per_name AS name',
     );
+    expect(dataSource.query.mock.calls[0][0]).toContain(
+      "pd.pd_type = 'data_treatment'",
+    );
+    expect(dataSource.query.mock.calls[0][0]).not.toContain(
+      'per_termns_accpted',
+    );
     expect(dataSource.query).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining('WHERE u.use_id=$1'),
@@ -38,6 +44,9 @@ describe('AuthRepository', () => {
     );
     expect(dataSource.query.mock.calls[1][0]).toContain(
       'p.per_name AS name',
+    );
+    expect(dataSource.query.mock.calls[1][0]).not.toContain(
+      'psy_termns_accpted',
     );
   });
 
@@ -53,6 +62,9 @@ describe('AuthRepository', () => {
     );
     expect(dataSource.query.mock.calls[0][0]).toContain(
       'p.per_name AS name',
+    );
+    expect(dataSource.query.mock.calls[0][0]).toContain(
+      "pd.pd_type = 'schedule_terms'",
     );
   });
 
