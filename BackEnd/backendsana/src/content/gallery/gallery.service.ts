@@ -135,6 +135,7 @@ export class GalleryService {
         message: 'Retira la imagen del sitio antes de eliminarla',
       });
     }
+    await this.cloudinaryService.deleteImage(current.imageUrl);
 
     this.logger.log(
       `Module:content, Function:deleteGalleryImage, result-success: userId-${user.userId}, imageId-${id}`,

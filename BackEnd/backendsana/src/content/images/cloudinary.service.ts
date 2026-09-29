@@ -77,9 +77,7 @@ export class CloudinaryService {
     const response = await fetch(
       `https://api.cloudinary.com/v1_1/${config.cloudName}/resources/image/upload/${publicId}`,
       {
-        headers: {
-          Authorization: `Basic ${Buffer.from(`${config.apiKey}:${config.apiSecret}`).toString('base64')}`,
-        },
+        headers: { Authorization: this.basicAuth(config) },
       },
     ).catch(() => null);
 
@@ -99,19 +97,56 @@ export class CloudinaryService {
     if (!isAllowedFormat || resource.bytes > IMAGE_MAX_BYTES) throw this.invalidImage();
   }
 
+  /**
+   * Deletes an image of this project from Cloudinary. Failures are logged and never thrown,
+   * because the record that used the image has already been removed.
+   * @param imageUrl The secure URL of the image.
+   */
+  async deleteImage(imageUrl: string): Promise<void> {
+    let config: CloudinaryConfig;
+    try {
+      config = this.getConfig();
+    } catch {
+      return;
+    }
+
+    const publicId = this.extractPublicId(imageUrl, config);
+    if (!publicId) return;
+
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${config.cloudName}/resources/image/upload?public_ids[]=${encodeURIComponent(publicId)}`,
+      { method: 'DELETE', headers: { Authorization: this.basicAuth(config) } },
+    ).catch(() => null);
+
+    if (!response?.ok) {
+      this.logger.warn(
+        `Module:content, Function:deleteImage, result-error: status-${response?.status ?? 'network'}, publicId-${publicId}`,
+      );
+      return;
+    }
+    this.logger.log(`Module:content, Function:deleteImage, result-success: publicId-${publicId}`);
+  }
+
   private extractPublicId(
     imageUrl: string,
     config: CloudinaryConfig,
-    folder: ImageFolder,
+    folder?: ImageFolder,
   ): string | null {
     const prefix = `https://res.cloudinary.com/${config.cloudName}/image/upload/`;
     if (!imageUrl.startsWith(prefix)) return null;
 
     const path = imageUrl.slice(prefix.length).replace(/^v\d+\//, '');
     const match = /^([A-Za-z0-9_\-/]+)\.(jpg|png|webp)$/.exec(path);
-    if (!match || !match[1].startsWith(`${config.rootFolder}/${folder}/`)) return null;
+    const expectedPrefix = folder
+      ? `${config.rootFolder}/${folder}/`
+      : `${config.rootFolder}/`;
+    if (!match || !match[1].startsWith(expectedPrefix)) return null;
 
     return match[1];
+  }
+
+  private basicAuth(config: CloudinaryConfig): string {
+    return `Basic ${Buffer.from(`${config.apiKey}:${config.apiSecret}`).toString('base64')}`;
   }
 
   private sign(params: Record<string, string | number>, apiSecret: string): string {
