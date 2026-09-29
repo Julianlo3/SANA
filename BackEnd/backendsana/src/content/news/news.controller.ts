@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -107,5 +108,19 @@ export class NewsController {
     @Body() dto: UpdateNewsPinDto,
   ) {
     return this.newsService.setPinned(request.user, id, dto.isPinned);
+  }
+
+  /**
+   * Permanently deletes a retired news item.
+   * @param request The HTTP request object containing the authenticated user.
+   * @param id The ID of the news item.
+   */
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async remove(
+    @Req() request: Request & { user: AuthenticatedUser },
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<void> {
+    await this.newsService.delete(request.user, id);
   }
 }

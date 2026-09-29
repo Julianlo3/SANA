@@ -182,6 +182,25 @@ export class GalleryRepository {
       return this.findById(id, manager);
     });
   }
+
+  /**
+   * Permanently deletes a retired gallery image. Published images cannot be deleted.
+   * @param id The ID of the image.
+   * @param userId The ID of the user deleting it.
+   * @returns A promise that resolves to true if the image was deleted.
+   */
+  async deleteRetired(id: number, userId: number): Promise<boolean> {
+    return this.dataSource.transaction(async (manager) => {
+      const [, affected] = await manager.query<[unknown[], number]>(
+        `DELETE FROM gallery_images WHERE gi_id = $1 AND gi_status = 'retired'`,
+        [id],
+      );
+      if (affected === 0) return false;
+
+      await logContentChange(manager, userId, 'gallery_image', id, 'delete');
+      return true;
+    });
+  }
 }
 
 function toGalleryImageResponse(row: GalleryImageRow): GalleryImageResponse {

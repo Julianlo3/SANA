@@ -153,6 +153,24 @@ export class NewsService {
   }
 
   /**
+   * Permanently deletes a news item. It must be retired first.
+   * @param user The authenticated user deleting it.
+   * @param id The ID of the news item.
+   */
+  async delete(user: AuthenticatedUser, id: number): Promise<void> {
+    const current = await this.repository.findById(id);
+    if (!current) throw new NotFoundException(NOT_FOUND_MESSAGE);
+    if (current.status !== 'retired') throw mustRetireFirst();
+
+    const wasDeleted = await this.repository.deleteRetired(id, user.userId);
+    if (!wasDeleted) throw mustRetireFirst();
+
+    this.logger.log(
+      `Module:content, Function:deleteNews, result-success: userId-${user.userId}, newsId-${id}`,
+    );
+  }
+
+  /**
    * Finds a page of published news for the public site.
    * @param query The page and page size.
    * @returns A promise that resolves to the page of news.
@@ -180,6 +198,13 @@ export class NewsService {
     if (!imageAlt) throw missingImageAlt();
     await this.cloudinaryService.ensureValidImage(imageUrl, 'news');
   }
+}
+
+function mustRetireFirst(): ConflictException {
+  return new ConflictException({
+    error: 'NEWS_NOT_RETIRED',
+    message: 'Retira la noticia del sitio antes de eliminarla',
+  });
 }
 
 function missingImageAlt(): UnprocessableEntityException {

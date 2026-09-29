@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import type { AuthenticatedUser } from '../../interfaces/auth.interface.js';
 import type { PublicationStatus } from '../content.constants.js';
 import { CloudinaryService } from '../images/cloudinary.service.js';
@@ -110,5 +115,29 @@ export class GalleryService {
       `Module:content, Function:setGalleryImageStatus, result-success: userId-${user.userId}, imageId-${id}, status-${status}`,
     );
     return image;
+  }
+
+  /**
+   * Permanently deletes a gallery image. It must be retired first.
+   * @param user The authenticated user deleting it.
+   * @param id The ID of the image.
+   */
+  async delete(user: AuthenticatedUser, id: number): Promise<void> {
+    const current = await this.repository.findById(id);
+    if (!current) throw new NotFoundException(NOT_FOUND_MESSAGE);
+
+    const wasDeleted =
+      current.status === 'retired' &&
+      (await this.repository.deleteRetired(id, user.userId));
+    if (!wasDeleted) {
+      throw new ConflictException({
+        error: 'GALLERY_IMAGE_NOT_RETIRED',
+        message: 'Retira la imagen del sitio antes de eliminarla',
+      });
+    }
+
+    this.logger.log(
+      `Module:content, Function:deleteGalleryImage, result-success: userId-${user.userId}, imageId-${id}`,
+    );
   }
 }

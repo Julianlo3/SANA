@@ -32,3 +32,7 @@ export function updateGalleryImageStatus(
     status,
   });
 }
+
+export function deleteGalleryImage(id: number): Promise<void> {
+  return httpClient.remove<void>(ENDPOINTS.galleryImage(id));
+}

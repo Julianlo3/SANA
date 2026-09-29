@@ -1,15 +1,17 @@
 "use client";
 
 import Image from "next/image";
-import { Archive, Pencil, Plus, RotateCcw } from "lucide-react";
+import { Archive, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import InlineMessage from "@/components/feedback/inline-message";
 import TextField from "@/components/forms/text-field";
 import Button from "@/components/ui/button";
+import Modal from "@/components/ui/modal";
 import PageDecor from "@/components/ui/page-decor";
 import IconButton from "../components/icon-button";
 import ImageUploadField from "../components/image-upload-field";
 import LastEditNote from "../components/last-edit-note";
 import StatusBadge from "../components/status-badge";
+import StatusFilter from "../components/status-filter";
 import {
   GALLERY_CAPTION_MAX_LENGTH,
   IMAGE_ALT_MAX_LENGTH,
@@ -19,6 +21,13 @@ import { useGalleryManagement } from "../hooks/use-gallery-management";
 export default function GalleryManagementPage() {
   const {
     images,
+    counts,
+    filter,
+    setFilter,
+    imageToDelete,
+    requestDelete,
+    cancelDelete,
+    confirmDelete,
     isLoading,
     loadError,
     editor,
@@ -123,6 +132,10 @@ export default function GalleryManagementPage() {
           </div>
         )}
 
+        {!editor && counts.all > 0 && (
+          <StatusFilter value={filter} onChange={setFilter} counts={counts} />
+        )}
+
         {notice && <InlineMessage tone="success">{notice}</InlineMessage>}
         {!editor && actionError && <InlineMessage tone="error">{actionError}</InlineMessage>}
 
@@ -130,6 +143,10 @@ export default function GalleryManagementPage() {
           <p className="py-12 text-center text-sm text-text-subtle">Cargando galería…</p>
         ) : loadError ? (
           <InlineMessage tone="error">{loadError}</InlineMessage>
+        ) : counts.all > 0 && images.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-text-subtle">
+            No hay imágenes en esta vista.
+          </p>
         ) : images.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-text-subtle">
             Todavía no hay imágenes. En el sitio público se muestra
@@ -166,6 +183,15 @@ export default function GalleryManagementPage() {
                       >
                         {image.status === "published" ? <Archive size={16} /> : <RotateCcw size={16} />}
                       </IconButton>
+                      {image.status === "retired" && (
+                        <IconButton
+                          label="Eliminar definitivamente"
+                          onClick={() => requestDelete(image)}
+                          disabled={isBusy || Boolean(editor)}
+                        >
+                          <Trash2 size={16} />
+                        </IconButton>
+                      )}
                     </div>
                   </div>
                   {image.caption && <p className="text-sm text-text-muted">{image.caption}</p>}
@@ -176,6 +202,28 @@ export default function GalleryManagementPage() {
           </ul>
         )}
       </div>
+
+      {imageToDelete && (
+        <Modal
+          title="Eliminar imagen"
+          onClose={cancelDelete}
+          footer={
+            <>
+              <Button variant="secondary" onClick={cancelDelete} disabled={isSaving}>
+                Cancelar
+              </Button>
+              <Button variant="danger" onClick={confirmDelete} disabled={isSaving}>
+                {isSaving ? "Eliminando…" : "Eliminar"}
+              </Button>
+            </>
+          }
+        >
+          <p className="text-sm text-text-muted">
+            La imagen se eliminará definitivamente de la galería y no se podrá
+            recuperar.
+          </p>
+        </Modal>
+      )}
     </>
   );
 }

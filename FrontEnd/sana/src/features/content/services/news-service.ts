@@ -36,3 +36,7 @@ export function updateNewsStatus(
 export function updateNewsPin(id: number, isPinned: boolean): Promise<News> {
   return httpClient.patch<News>(ENDPOINTS.newsPin(id), { isPinned });
 }
+
+export function deleteNews(id: number): Promise<void> {
+  return httpClient.remove<void>(ENDPOINTS.newsItem(id));
+}

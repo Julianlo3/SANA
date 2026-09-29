@@ -246,6 +246,25 @@ export class NewsRepository {
       return this.findById(id, manager);
     });
   }
+
+  /**
+   * Permanently deletes a retired news item. Published news cannot be deleted.
+   * @param id The ID of the news item.
+   * @param userId The ID of the user deleting it.
+   * @returns A promise that resolves to true if the news item was deleted.
+   */
+  async deleteRetired(id: number, userId: number): Promise<boolean> {
+    return this.dataSource.transaction(async (manager) => {
+      const [, affected] = await manager.query<[unknown[], number]>(
+        `DELETE FROM news WHERE nw_id = $1 AND nw_status = 'retired'`,
+        [id],
+      );
+      if (affected === 0) return false;
+
+      await logContentChange(manager, userId, 'news', id, 'delete');
+      return true;
+    });
+  }
 }
 
 function toNewsResponse(row: NewsRow): NewsResponse {

@@ -4,9 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "@/hooks/use-form";
 import { ApiError } from "@/types/api-types";
 import { refreshPublicContent } from "../actions/refresh-public-content";
+import { matchesStatus, type StatusFilterValue } from "../components/status-filter";
 import { PUBLIC_GALLERY_TAG } from "../config/content-access";
 import {
   createGalleryImage,
+  deleteGalleryImage,
   getGalleryImages,
   updateGalleryImage,
   updateGalleryImageStatus,
@@ -43,6 +45,8 @@ export function useGalleryManagement() {
   const [isUploading, setIsUploading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [filter, setFilter] = useState<StatusFilterValue>("published");
+  const [imageToDelete, setImageToDelete] = useState<GalleryImage | null>(null);
 
   const initialValues = useMemo<GalleryFormValues>(
     () =>
@@ -146,6 +150,7 @@ export function useGalleryManagement() {
             caption,
           });
           setImages((current) => [...current, created]);
+          setFilter("published");
           return;
         }
         replaceImage(
@@ -174,17 +179,47 @@ export function useGalleryManagement() {
           );
         },
         isRetiring
-          ? "La imagen se retiró del sitio. Sigue guardada en este listado."
-          : "La imagen volvió a publicarse.",
+          ? "La imagen se retiró del sitio. La encuentras en Retiradas."
+          : "La imagen volvió a publicarse. La encuentras en Publicadas.",
         "No pudimos cambiar el estado de la imagen. Intenta de nuevo.",
       );
     },
     [replaceImage, runWrite],
   );
 
+  const confirmDelete = useCallback(async () => {
+    if (!imageToDelete) return;
+    const target = imageToDelete;
+    const wasDeleted = await runWrite(
+      async () => {
+        await deleteGalleryImage(target.id);
+        setImages((current) => current.filter((item) => item.id !== target.id));
+      },
+      "La imagen fue eliminada definitivamente.",
+      "No pudimos eliminar la imagen. Intenta de nuevo.",
+    );
+    if (wasDeleted) setImageToDelete(null);
+  }, [imageToDelete, runWrite]);
+
+  const counts = useMemo(
+    () => ({
+      published: images.filter((item) => item.status === "published").length,
+      retired: images.filter((item) => item.status === "retired").length,
+      all: images.length,
+    }),
+    [images],
+  );
+
   return {
     ...form,
-    images,
+    images: images.filter((item) => matchesStatus(item.status, filter)),
+    counts,
+    filter,
+    setFilter,
+    imageToDelete,
+    requestDelete: setImageToDelete,
+    cancelDelete: () => setImageToDelete(null),
+    confirmDelete,
     isLoading,
     loadError,
     editor,

@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Pin } from "lucide-react";
 import { formatDate, toExcerpt } from "../format";
 import type { PublicNews } from "../types/content-types";
 
@@ -25,8 +24,7 @@ export default function NewsCard({ news }: { news: PublicNews }) {
         </div>
 
         <div className="p-6">
-          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-accent-strong">
-            {news.isPinned && <Pin size={12} aria-label="Destacada" />}
+          <p className="text-xs font-semibold uppercase tracking-wider text-accent-strong">
             {formatDate(news.publishedAt)}
           </p>
           <h3 className="mt-2 font-semibold text-text group-hover:text-primary">

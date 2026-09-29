@@ -4,9 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "@/hooks/use-form";
 import { ApiError } from "@/types/api-types";
 import { refreshPublicContent } from "../actions/refresh-public-content";
+import { matchesStatus, type StatusFilterValue } from "../components/status-filter";
 import { PUBLIC_NEWS_TAG } from "../config/content-access";
 import {
   createNews,
+  deleteNews,
   getNews,
   updateNews,
   updateNewsPin,
@@ -76,6 +78,8 @@ export function useNewsManagement() {
   const [isUploading, setIsUploading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [filter, setFilter] = useState<StatusFilterValue>("published");
+  const [newsToDelete, setNewsToDelete] = useState<News | null>(null);
 
   const initialValues = useMemo(
     () => (editor?.mode === "edit" ? toFormValues(editor.news) : EMPTY_VALUES),
@@ -166,6 +170,7 @@ export function useNewsManagement() {
         if (editor.mode === "create") {
           const created = await createNews(payload);
           setNews((current) => sortNews([created, ...current]));
+          setFilter("published");
           return;
         }
         const changes: Partial<NewsPayload> = {};
@@ -194,8 +199,8 @@ export function useNewsManagement() {
           replaceNews(await updateNewsStatus(item.id, isRetiring ? "retired" : "published"));
         },
         isRetiring
-          ? "La noticia se retiró del sitio. Sigue guardada en este listado."
-          : "La noticia volvió a publicarse.",
+          ? "La noticia se retiró del sitio. La encuentras en Retiradas."
+          : "La noticia volvió a publicarse. La encuentras en Publicadas.",
         "No pudimos cambiar el estado de la noticia. Intenta de nuevo.",
       );
     },
@@ -224,9 +229,39 @@ export function useNewsManagement() {
     [runWrite],
   );
 
+  const confirmDelete = useCallback(async () => {
+    if (!newsToDelete) return;
+    const target = newsToDelete;
+    const wasDeleted = await runWrite(
+      async () => {
+        await deleteNews(target.id);
+        setNews((current) => current.filter((item) => item.id !== target.id));
+      },
+      "La noticia fue eliminada definitivamente.",
+      "No pudimos eliminar la noticia. Intenta de nuevo.",
+    );
+    if (wasDeleted) setNewsToDelete(null);
+  }, [newsToDelete, runWrite]);
+
+  const counts = useMemo(
+    () => ({
+      published: news.filter((item) => item.status === "published").length,
+      retired: news.filter((item) => item.status === "retired").length,
+      all: news.length,
+    }),
+    [news],
+  );
+
   return {
     ...form,
-    news,
+    news: news.filter((item) => matchesStatus(item.status, filter)),
+    counts,
+    filter,
+    setFilter,
+    newsToDelete,
+    requestDelete: setNewsToDelete,
+    cancelDelete: () => setNewsToDelete(null),
+    confirmDelete,
     isLoading,
     loadError,
     editor,

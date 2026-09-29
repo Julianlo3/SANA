@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -87,5 +88,19 @@ export class GalleryImagesController {
     @Body() dto: UpdatePublicationStatusDto,
   ) {
     return this.galleryService.setStatus(request.user, id, dto.status);
+  }
+
+  /**
+   * Permanently deletes a retired gallery image.
+   * @param request The HTTP request object containing the authenticated user.
+   * @param id The ID of the image.
+   */
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async remove(
+    @Req() request: Request & { user: AuthenticatedUser },
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<void> {
+    await this.galleryService.delete(request.user, id);
   }
 }
