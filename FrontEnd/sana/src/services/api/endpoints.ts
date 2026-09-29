@@ -22,4 +22,8 @@ export const ENDPOINTS = {
     // Registro de atención (HU-2.5)
   psychologistAppointments: "/appointments/mine",
   careRecords: "/care-records",
+  contentItems: "/content-items",
+  contentCards: "/content-cards",
+  contentCard: (id: number) => `/content-cards/${id}`,
+  publicContent: "/public/content",
 } as const;

@@ -9,14 +9,18 @@ import {
 import { PawPrint, Star, Cloud, Wave } from "@/components/ui/shapes";
 import PublicHeader from "@/components/navigation/public-header";
 import PublicFooter from "@/components/navigation/public-footer";
+import PendingContentNotice from "@/components/feedback/pending-content-notice";
 import { HOME_CONTENT } from "@/content/home";
+import { getPublicContent } from "@/features/content/services/public-content-service";
 
-const { hero, about, programs, news, donation } = HOME_CONTENT;
+const { hero, about, programs, services, team, news, donation } = HOME_CONTENT;
 
 /** Iconos de cada programa, en el mismo orden que el contenido. */
 const PROGRAM_ICONS = [HeartHandshake, ShieldCheck, Users];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const content = await getPublicContent();
+
   return (
     <div className="flex min-h-full flex-col">
       <PublicHeader />
@@ -106,15 +110,50 @@ export default function HomePage() {
                 {about.title}
               </h2>
 
-              {about.paragraphs.map((paragraph) => (
-                <p
-                  key={paragraph}
-                  className="mt-5 leading-relaxed text-text-muted"
-                >
-                  {paragraph}
-                </p>
+              {[
+                { title: about.missionTitle, text: content.mission },
+                { title: about.visionTitle, text: content.vision },
+              ].map((block) => (
+                <div key={block.title} className="mt-6">
+                  <h3 className="font-display text-xl font-bold text-text">
+                    {block.title}
+                  </h3>
+                  {block.text ? (
+                    <p className="mt-2 whitespace-pre-line leading-relaxed text-text-muted">
+                      {block.text}
+                    </p>
+                  ) : (
+                    <PendingContentNotice className="mt-3" />
+                  )}
+                </div>
               ))}
             </div>
+          </div>
+
+          <div className="mt-14">
+            <h3 className="font-display text-2xl font-bold text-primary-dark">
+              {about.valuesTitle}
+            </h3>
+
+            {content.values.length > 0 ? (
+              <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {content.values.map((value) => (
+                  <article
+                    key={value.id}
+                    className="rounded-2xl border border-border bg-surface p-5"
+                  >
+                    <h4 className="font-semibold text-text">{value.title}</h4>
+                    {value.description && (
+                      <p className="mt-2 text-sm leading-relaxed text-text-muted">
+                        {value.description}
+                      </p>
+                    )}
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <PendingContentNotice className="mt-4" />
+            )}
           </div>
         </section>
 
@@ -133,17 +172,18 @@ export default function HomePage() {
               {programs.title}
             </h2>
 
-            <p className="mx-auto mt-3 max-w-xl text-center text-text-muted">
-              {programs.description}
-            </p>
+            {content.programs.length === 0 && (
+              <PendingContentNotice className="mx-auto mt-10 max-w-xl justify-center" />
+            )}
 
             <div className="mt-12 grid gap-6 md:grid-cols-3">
-              {programs.items.map((program, index) => {
-                const Icon = PROGRAM_ICONS[index] ?? HeartHandshake;
+              {content.programs.map((program, index) => {
+                const Icon =
+                  PROGRAM_ICONS[index % PROGRAM_ICONS.length] ?? HeartHandshake;
 
                 return (
                   <article
-                    key={program.title}
+                    key={program.id}
                     className="rounded-2xl border border-border bg-surface p-7"
                   >
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-soft text-accent-strong">
@@ -167,6 +207,68 @@ export default function HomePage() {
             aria-hidden
             className="absolute inset-x-0 -bottom-px w-full text-background"
           />
+        </section>
+
+        <section id="services" className="mx-auto max-w-6xl px-6 py-20">
+          <h2 className="font-display text-4xl font-extrabold text-primary-dark">
+            {services.title}
+          </h2>
+
+          {content.services.length > 0 ? (
+            <div className="mt-10 grid gap-6 md:grid-cols-2">
+              {content.services.map((service) => (
+                <article
+                  key={service.id}
+                  className="rounded-2xl border border-border bg-surface p-7"
+                >
+                  <h3 className="font-display text-xl font-bold text-text">
+                    {service.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-relaxed text-text-muted">
+                    {service.description}
+                  </p>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <PendingContentNotice className="mt-8" />
+          )}
+        </section>
+
+        <section id="team" className="bg-sidebar py-20">
+          <div className="mx-auto max-w-6xl px-6">
+            <h2 className="font-display text-4xl font-extrabold text-primary-dark">
+              {team.title}
+            </h2>
+
+            {content.team.length > 0 ? (
+              <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                {content.team.map((member) => (
+                  <article
+                    key={member.id}
+                    className="rounded-2xl border border-border bg-surface p-6 text-center"
+                  >
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary-soft font-display text-xl font-bold text-primary">
+                      {member.title.charAt(0).toUpperCase()}
+                    </div>
+                    <h3 className="mt-4 font-semibold text-text">
+                      {member.title}
+                    </h3>
+                    <p className="mt-1 text-sm text-accent-strong">
+                      {member.subtitle}
+                    </p>
+                    {member.description && (
+                      <p className="mt-3 text-sm leading-relaxed text-text-muted">
+                        {member.description}
+                      </p>
+                    )}
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <PendingContentNotice className="mt-8" />
+            )}
+          </div>
         </section>
 
         {/* NOTICIAS */}

@@ -48,7 +48,13 @@ const navItems: NavItem[] = [
     roles: ["psicologo"],
   },
   { label: "Reportes", href: "/reports", icon: BarChart3, enabled: false },
-  { label: "Contenido", href: "/content", icon: FileText, enabled: false },
+  {
+    label: "Contenido",
+    href: "/content",
+    icon: FileText,
+    enabled: true,
+    roles: ["administrador", "marketing"],
+  },
   {
     label: "Usuarios",
     href: "/users",
