@@ -17,24 +17,54 @@ export interface AuthorizationRecord {
   psyTermsAccepted: boolean | null;
 }
 
-/**
- * SQL expression that is true when person `p` accepted the current version of the given policy type.
- */
-function acceptedCurrentPolicy(policyType: 'data_treatment' | 'schedule_terms'): string {
-  return `EXISTS (
-            SELECT 1
-            FROM policy_acceptance pa
-            WHERE pa.per_id = p.per_id
-              AND pa.dep_id IS NULL
-              AND pa.pd_id = (
-                SELECT pd_id
-                FROM policy_documents
-                WHERE pd_type = '${policyType}'
-                ORDER BY pd_effective_from DESC
-                LIMIT 1
-              )
-          )`;
-}
+const AUTHORIZATION_SELECT = `SELECT
+    p.per_id AS "personId",
+    p.per_name AS name,
+    p.per_email AS email,
+    p.per_state AS state,
+    EXISTS (
+      SELECT 1
+      FROM policy_acceptance pa
+      JOIN policy_documents pd ON pd.pd_id = pa.pd_id
+      WHERE pa.per_id = p.per_id
+        AND pd.pd_type = 'data_treatment'
+        AND pd.pd_id = (
+          SELECT current_pd.pd_id
+          FROM policy_documents current_pd
+          WHERE current_pd.pd_type = 'data_treatment'
+          ORDER BY current_pd.pd_effective_from DESC, current_pd.pd_id DESC
+          LIMIT 1
+        )
+        AND pa.dep_id IS NULL
+        AND pa.cn_id IS NULL
+        AND pa.app_id IS NULL
+    ) AS "termsAccepted",
+    CASE WHEN psy.psy_id IS NULL THEN NULL ELSE EXISTS (
+      SELECT 1
+      FROM policy_acceptance pa
+      JOIN policy_documents pd ON pd.pd_id = pa.pd_id
+      WHERE pa.per_id = p.per_id
+        AND pd.pd_type = 'schedule_terms'
+        AND pd.pd_id = (
+          SELECT current_pd.pd_id
+          FROM policy_documents current_pd
+          WHERE current_pd.pd_type = 'schedule_terms'
+          ORDER BY current_pd.pd_effective_from DESC, current_pd.pd_id DESC
+          LIMIT 1
+        )
+        AND pa.dep_id IS NULL
+        AND pa.cn_id IS NULL
+        AND pa.app_id IS NULL
+    ) END AS "psyTermsAccepted",
+    u.use_id AS "userId",
+    u.user_provider_id AS "providerId",
+    u.user_provider_name AS "providerName",
+    COALESCE(array_agg(r.rol_description) FILTER (WHERE r.rol_description IS NOT NULL), '{}') AS roles
+  FROM person p
+  LEFT JOIN users u ON u.use_id=p.per_id
+  LEFT JOIN person_rol pr ON pr.per_id=p.per_id AND pr.pr_active=true
+  LEFT JOIN rol r ON r.rol_id=pr.rol_id
+  LEFT JOIN psychologist psy ON psy.psy_id=p.per_id`;
 
 /**
  * Repository for handling authentication-related database operations.
@@ -50,23 +80,7 @@ export class AuthRepository {
    */
   async findByEmail(email: string): Promise<AuthorizationRecord | null> {
     const rows = await this.dataSource.query(
-      `SELECT
-          p.per_id AS "personId",
-          p.per_name AS name,
-          p.per_email AS email,
-          p.per_state AS state,
-          ${acceptedCurrentPolicy('data_treatment')} AS "termsAccepted",
-          CASE WHEN psy.psy_id IS NULL THEN NULL
-               ELSE ${acceptedCurrentPolicy('schedule_terms')} END AS "psyTermsAccepted",
-          u.use_id AS "userId",
-          u.user_provider_id AS "providerId",
-          u.user_provider_name AS "providerName",
-          COALESCE(array_agg(r.rol_description) FILTER (WHERE r.rol_description IS NOT NULL), '{}') AS roles
-        FROM person p
-        LEFT JOIN users u ON u.use_id=p.per_id
-        LEFT JOIN person_rol pr ON pr.per_id=p.per_id AND pr.pr_active=true
-        LEFT JOIN rol r ON r.rol_id=pr.rol_id
-        LEFT JOIN psychologist psy ON psy.psy_id=p.per_id
+      `${AUTHORIZATION_SELECT}
         WHERE lower(p.per_email)=lower($1)
         GROUP BY p.per_id, u.use_id, psy.psy_id`,
       [email],
@@ -81,23 +95,7 @@ export class AuthRepository {
    */
   async findByUserId(userId: number): Promise<AuthorizationRecord | null> {
     const rows = await this.dataSource.query(
-      `SELECT
-          p.per_id AS "personId",
-          p.per_name AS name,
-          p.per_email AS email,
-          p.per_state AS state,
-          ${acceptedCurrentPolicy('data_treatment')} AS "termsAccepted",
-          CASE WHEN psy.psy_id IS NULL THEN NULL
-               ELSE ${acceptedCurrentPolicy('schedule_terms')} END AS "psyTermsAccepted",
-          u.use_id AS "userId",
-          u.user_provider_id AS "providerId",
-          u.user_provider_name AS "providerName",
-          COALESCE(array_agg(r.rol_description) FILTER (WHERE r.rol_description IS NOT NULL), '{}') AS roles
-        FROM person p
-        JOIN users u ON u.use_id=p.per_id
-        LEFT JOIN person_rol pr ON pr.per_id=p.per_id AND pr.pr_active=true
-        LEFT JOIN rol r ON r.rol_id=pr.rol_id
-        LEFT JOIN psychologist psy ON psy.psy_id=p.per_id
+      `${AUTHORIZATION_SELECT}
         WHERE u.use_id=$1
         GROUP BY p.per_id, u.use_id, psy.psy_id`,
       [userId],
@@ -113,23 +111,7 @@ export class AuthRepository {
    */
   async findByProviderId(providerId: string): Promise<AuthorizationRecord | null> {
     const rows = await this.dataSource.query(
-      `SELECT
-          p.per_id AS "personId",
-          p.per_name AS name,
-          p.per_email AS email,
-          p.per_state AS state,
-          ${acceptedCurrentPolicy('data_treatment')} AS "termsAccepted",
-          CASE WHEN psy.psy_id IS NULL THEN NULL
-               ELSE ${acceptedCurrentPolicy('schedule_terms')} END AS "psyTermsAccepted",
-          u.use_id AS "userId",
-          u.user_provider_id AS "providerId",
-          u.user_provider_name AS "providerName",
-          COALESCE(array_agg(r.rol_description) FILTER (WHERE r.rol_description IS NOT NULL), '{}') AS roles
-        FROM person p
-        JOIN users u ON u.use_id=p.per_id
-        LEFT JOIN person_rol pr ON pr.per_id=p.per_id AND pr.pr_active=true
-        LEFT JOIN rol r ON r.rol_id=pr.rol_id
-        LEFT JOIN psychologist psy ON psy.psy_id=p.per_id
+      `${AUTHORIZATION_SELECT}
         WHERE u.user_provider_id=$1
         GROUP BY p.per_id, u.use_id, psy.psy_id`,
       [providerId],
