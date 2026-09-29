@@ -33,7 +33,7 @@ export default function BannerCarousel({ banners }: { banners: PublicBanner[] })
     <section
       aria-roledescription="carrusel"
       aria-label="Campañas y convocatorias"
-      className="relative mx-auto max-w-6xl px-6 pt-8"
+      className="relative mx-auto max-w-6xl px-6 pb-20"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onFocus={() => setIsPaused(true)}

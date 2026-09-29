@@ -39,8 +39,6 @@ export default async function HomePage() {
       <PublicHeader />
 
       <main className="flex-1">
-        <BannerCarousel banners={banners} />
-
         {/* HERO */}
         <section className="relative overflow-hidden">
           <div
@@ -105,6 +103,8 @@ export default async function HomePage() {
               />
             </div>
           </div>
+
+          <BannerCarousel banners={banners} />
         </section>
 
         {/* QUIÉNES SOMOS */}
