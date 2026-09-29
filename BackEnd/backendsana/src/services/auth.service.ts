@@ -140,6 +140,7 @@ export class AuthService {
     return {
       userId: record.userId,
       personId: record.personId,
+      name: record.name,
       email: record.email,
       roles: record.roles,
       auth0Subject: profile.subject,
@@ -161,9 +162,10 @@ export class AuthService {
   /**
    * Records acceptance of platform terms and conditions by a person.
    * @param personId The ID of the person.
+   * @param ipAddress Optional IP address of the acceptor.
    */
-  async acceptTerms(personId: number): Promise<void> {
-    await this.repository.acceptTerms(personId);
+  async acceptTerms(personId: number, ipAddress?: string): Promise<void> {
+    await this.repository.acceptTerms(personId, ipAddress);
     this.logger.log(
       `Module:auth, Function:acceptTerms, result-success: personId-${personId}`,
     );
@@ -172,9 +174,10 @@ export class AuthService {
   /**
    * Records acceptance of psychologist terms and conditions.
    * @param psychologistId The ID of the psychologist.
+   * @param ipAddress Optional IP address of the acceptor.
    */
-  async acceptPsychologistTerms(psychologistId: number): Promise<void> {
-    await this.repository.acceptPsychologistTerms(psychologistId);
+  async acceptPsychologistTerms(psychologistId: number, ipAddress?: string): Promise<void> {
+    await this.repository.acceptPsychologistTerms(psychologistId, ipAddress);
     this.logger.log(
       `Module:auth, Function:acceptPsychologistTerms, result-success: psychologistId-${psychologistId}`,
     );

@@ -41,6 +41,9 @@ const STATUS_TO_STATE: Record<UserStatus, PersonState> = {
   blocked: 'bloqueado',
 };
 
+/**
+ * Service for users management.
+ */
 @Injectable()
 export class UsersService {
   constructor(
@@ -62,10 +65,48 @@ export class UsersService {
     private readonly scheduleRepository: Repository<Schedule>,
     private readonly dataSource: DataSource,
     private readonly securityLogService: SecurityLogService,
-  ) {}
+  ) { }
 
   private readonly logger = new Logger(UsersService.name);
 
+
+  /**
+   * Records the acceptance of terms and conditions for a user.
+   * @param manager The entity manager for database operations.
+   * @param personId The ID of the person for whom to record terms acceptance.
+   * @param termsAccepted Whether the terms have been accepted.
+   * @returns A promise resolving when the operation is complete.
+   */
+  private async recordTermsAcceptance(
+    manager: EntityManager,
+    personId: number,
+    termsAccepted?: boolean,
+  ): Promise<void> {
+    if (!termsAccepted) return;
+
+    const pdId = await manager.query<{ pd_id: number }[]>(
+      `SELECT pd_id
+       FROM policy_documents
+       WHERE pd_type = 'data_treatment'
+       ORDER BY pd_effective_from DESC
+       LIMIT 1`,
+    );
+    if (!pdId[0]?.pd_id) return;
+
+    await manager.query(
+      `INSERT INTO policy_acceptance (per_id, pd_id)
+       VALUES ($1, $2)
+       ON CONFLICT (per_id, pd_id) WHERE dep_id IS NULL AND cn_id IS NULL AND app_id IS NULL DO NOTHING`,
+      [personId, pdId[0].pd_id],
+    );
+  }
+
+  /**
+   * Creates a new user.
+   * @param dto The user data.
+   * @param createdByUserId The ID of the user who created the new user.
+   * @returns The created user.
+   */
   async create(
     dto: CreateUserDto,
     createdByUserId: number,
@@ -97,13 +138,15 @@ export class UsersService {
         existing.perContactNumber = dto.phone;
         if (dto.birthdate !== undefined) existing.perBirthdate = dto.birthdate;
         if (dto.gender !== undefined) existing.perGender = dto.gender;
-        if (dto.termsAccepted !== undefined) existing.perTermsAccepted = dto.termsAccepted;
         existing.perState = 'activo';
         existing.perUpdateDate = new Date();
         // Promocion de pendiente: atribuye al admin que completa el alta.
         if (existing.perCreatedBy == null) {
           existing.perCreatedBy = createdByUserId;
         }
+
+        await this.recordTermsAcceptance(manager, existing.perId, dto.termsAccepted);
+
         await manager.save(existing);
         await this.replaceRoles(manager, existing.perId, [
           { roleId: role.rolId, active: true },
@@ -121,7 +164,6 @@ export class UsersService {
           perContactNumber: dto.phone,
           perBirthdate: dto.birthdate ?? null,
           perGender: dto.gender ?? null,
-          perTermsAccepted: dto.termsAccepted ?? false,
           perState: 'activo',
           perCreatedBy: createdByUserId,
           perCreatedAt: new Date(),
@@ -131,6 +173,8 @@ export class UsersService {
         { roleId: role.rolId, active: true },
       ]);
       await this.saveProfessionalData(manager, created.perId, dto.professionalData);
+
+      await this.recordTermsAcceptance(manager, created.perId, dto.termsAccepted);
       this.logger.log(
         `Module:users, Function:create, result-success: personId-${created.perId}, email-${email}, roleId-${dto.roleId}, createdBy-${createdByUserId}`,
       );
@@ -138,6 +182,11 @@ export class UsersService {
     });
   }
 
+  /**
+   * Finds all users.
+   * @param filters The filters to apply to the users.
+   * @returns The list of users.
+   */
   async findAll(filters: {
     status?: UserStatus;
     search?: string;
@@ -166,11 +215,22 @@ export class UsersService {
     );
   }
 
+  /**
+   * Finds a user by ID.
+   * @param id The user ID.
+   * @returns The user.
+   */
   async findOne(id: number): Promise<UserResponse> {
     await this.findByIdOrFail(id);
     return this.toResponse(this.dataSource.manager, id);
   }
 
+  /**
+   * Updates a user.
+   * @param id The user ID.
+   * @param dto The user data.
+   * @returns The updated user.
+   */
   async update(id: number, dto: UpdateUserDto): Promise<UserResponse> {
     await this.findByIdOrFail(id);
 
@@ -183,8 +243,27 @@ export class UsersService {
       if (dto.phone !== undefined) person.perContactNumber = dto.phone;
       if (dto.birthdate !== undefined) person.perBirthdate = dto.birthdate;
       if (dto.gender !== undefined) person.perGender = dto.gender;
-      if (dto.termsAccepted !== undefined) person.perTermsAccepted = dto.termsAccepted;
       person.perUpdateDate = new Date();
+
+      // Registro de aceptación de políticas si los términos fueron aceptados
+      if (dto.termsAccepted !== undefined && dto.termsAccepted) {
+        const pdId = await manager.query<{ pd_id: number }[]>(
+          `SELECT pd_id
+           FROM policy_documents
+           WHERE pd_type = 'data_treatment'
+           ORDER BY pd_effective_from DESC
+           LIMIT 1`,
+        );
+        if (pdId[0]?.pd_id) {
+          await manager.query(
+            `INSERT INTO policy_acceptance (per_id, pd_id)
+             VALUES ($1, $2)
+             ON CONFLICT (per_id, pd_id) WHERE dep_id IS NULL AND cn_id IS NULL AND app_id IS NULL DO NOTHING`,
+            [id, pdId[0].pd_id],
+          );
+        }
+      }
+
       await manager.save(person);
 
       if (dto.roles !== undefined) {
@@ -200,6 +279,13 @@ export class UsersService {
     });
   }
 
+  /**
+   * Updates the status of a user.
+   * @param id The user ID.
+   * @param dto The status data.
+   * @param actorUserId The ID of the user who updated the status.
+   * @returns The updated user.
+   */
   async updateStatus(
     id: number,
     dto: UpdateUserStatusDto,
@@ -226,6 +312,10 @@ export class UsersService {
     return this.toResponse(this.dataSource.manager, id);
   }
 
+  /**
+   * Removes a user.
+   * @param id The user ID.
+   */
   async remove(id: number): Promise<void> {
     await this.findByIdOrFail(id);
 
@@ -260,6 +350,12 @@ export class UsersService {
     }
   }
 
+  /**
+   * Finds a user by ID and throws an error if not found.
+   * @param id The user ID.
+   * @param manager The entity manager.
+   * @returns The user.
+   */
   private async findByIdOrFail(
     id: number,
     manager: EntityManager = this.dataSource.manager,
@@ -271,6 +367,11 @@ export class UsersService {
     return person;
   }
 
+  /**
+   * Finds an assignable role and throws an error if not found.
+   * @param roleId The role ID.
+   * @returns The role.
+   */
   private async findAssignableRoleOrFail(roleId: number): Promise<Rol> {
     const role = await this.rolRepository.findOneBy({ rolId: roleId });
     if (!role || !ASSIGNABLE_ROLES.includes(role.rolDescription as never)) {
@@ -283,12 +384,22 @@ export class UsersService {
     return role;
   }
 
+  /**
+   * Validates the assignable roles.
+   * @param roles The roles to validate.
+   */
   private async validateAssignableRoles(
     roles: AssignedRoleDto[],
   ): Promise<void> {
     await Promise.all(roles.map((role) => this.findAssignableRoleOrFail(role.roleId)));
   }
 
+  /**
+   * Replaces the roles of a user.
+   * @param manager The entity manager.
+   * @param personId The user ID.
+   * @param roles The roles to replace.
+   */
   private async replaceRoles(
     manager: EntityManager,
     personId: number,
@@ -326,6 +437,11 @@ export class UsersService {
     }
   }
 
+  /**
+   * Finds the associated records of a user.
+   * @param personId The user ID.
+   * @returns The associated records.
+   */
   private async findAssociatedRecords(
     personId: number,
   ): Promise<Record<string, number | boolean>> {
@@ -357,6 +473,12 @@ export class UsersService {
     return associated;
   }
 
+  /**
+   * Saves the professional data of a user.
+   * @param manager The entity manager.
+   * @param personId The user ID.
+   * @param data The professional data.
+   */
   private async saveProfessionalData(
     manager: EntityManager,
     personId: number,
@@ -368,9 +490,6 @@ export class UsersService {
     if (existing) {
       existing.licenseNumber = Number(data.licenseNumber);
       existing.speciality = data.speciality;
-      if (data.termsAccepted !== undefined) {
-        existing.termsAccepted = data.termsAccepted;
-      }
       await manager.save(existing);
     } else {
       await manager.save(
@@ -378,19 +497,44 @@ export class UsersService {
           id: personId,
           licenseNumber: Number(data.licenseNumber),
           speciality: data.speciality,
-          termsAccepted: data.termsAccepted ?? false,
         }),
       );
     }
+
+    // Registro de aceptación de políticas si los términos fueron aceptados
+    if (data.termsAccepted !== undefined && data.termsAccepted) {
+      const pdId = await manager.query<{ pd_id: number }[]>(
+        `SELECT pd_id
+         FROM policy_documents
+         WHERE pd_type = 'schedule_terms'
+         ORDER BY pd_effective_from DESC
+         LIMIT 1`,
+      );
+      if (pdId[0]?.pd_id) {
+        await manager.query(
+          `INSERT INTO policy_acceptance (per_id, pd_id)
+           VALUES ($1, $2)
+           ON CONFLICT (per_id, pd_id) WHERE dep_id IS NULL AND cn_id IS NULL AND app_id IS NULL DO NOTHING`,
+          [personId, pdId[0].pd_id],
+        );
+      }
+    }
   }
 
+  /**
+   * Converts a person to a user response.
+   * @param manager The entity manager.
+   * @param personId The user ID.
+   * @param preloaded The preloaded person.
+   * @returns The user response.
+   */
   private async toResponse(
     manager: EntityManager,
     personId: number,
     preloaded?: Person,
   ): Promise<UserResponse> {
     const person = preloaded ?? (await this.findByIdOrFail(personId, manager));
-    const [roles, account, professionalData] = await Promise.all([
+    const [roles, account, professionalData, dataTreatmentAccepted, scheduleTermsAccepted] = await Promise.all([
       manager
         .createQueryBuilder(PersonRol, 'pr')
         .innerJoin(Rol, 'rol', 'rol.rol_id = pr.rol_id')
@@ -403,6 +547,32 @@ export class UsersService {
         .getRawMany<{ rolId: number; active: boolean; name: string }>(),
       manager.findOneBy(UserAccount, { useId: personId }),
       manager.findOneBy(Psychologist, { id: personId }),
+      manager.query<{ exists: boolean }[]>(
+        `SELECT EXISTS (
+           SELECT 1
+           FROM policy_acceptance pa
+           JOIN policy_documents pd ON pa.pd_id = pd.pd_id
+           WHERE pa.per_id = $1
+             AND pd.pd_type = 'data_treatment'
+             AND pa.dep_id IS NULL
+             AND pa.cn_id IS NULL
+             AND pa.app_id IS NULL
+         ) AS exists`,
+        [personId],
+      ),
+      manager.query<{ exists: boolean }[]>(
+        `SELECT EXISTS (
+           SELECT 1
+           FROM policy_acceptance pa
+           JOIN policy_documents pd ON pa.pd_id = pd.pd_id
+           WHERE pa.per_id = $1
+             AND pd.pd_type = 'schedule_terms'
+             AND pa.dep_id IS NULL
+             AND pa.cn_id IS NULL
+             AND pa.app_id IS NULL
+         ) AS exists`,
+        [personId],
+      ),
     ]);
 
     const userRoles: UserRoleResponse[] = roles.map((role) => ({
@@ -420,7 +590,7 @@ export class UsersService {
       phone: person.perContactNumber,
       birthdate: person.perBirthdate ? person.perBirthdate.toString() : null,
       gender: person.perGender ?? null,
-      termsAccepted: person.perTermsAccepted ?? false,
+      termsAccepted: dataTreatmentAccepted[0]?.exists ?? false,
       roles: userRoles,
       status: STATE_TO_STATUS[person.perState],
       lastLoginAt: account?.lastLoginAt?.toISOString() ?? null,
@@ -429,15 +599,20 @@ export class UsersService {
       createdBy: person.perCreatedBy,
       professionalData: professionalData
         ? {
-            licenseNumber: professionalData.licenseNumber.toString(),
-            speciality: professionalData.speciality,
-            termsAccepted: professionalData.termsAccepted ?? false,
-          }
+          licenseNumber: professionalData.licenseNumber.toString(),
+          speciality: professionalData.speciality,
+          termsAccepted: scheduleTermsAccepted[0]?.exists ?? false,
+        }
         : undefined,
     };
   }
 }
 
+/**
+ * Checks if an error is a foreign key violation.
+ * @param error The error to check.
+ * @returns True if the error is a foreign key violation, false otherwise.
+ */
 function isForeignKeyViolation(error: unknown): boolean {
   if (!(error instanceof QueryFailedError)) return false;
   const driverError = error.driverError as { code?: string } | undefined;

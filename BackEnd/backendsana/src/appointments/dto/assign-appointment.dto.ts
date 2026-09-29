@@ -1,4 +1,4 @@
-import { IsDateString, IsInt, IsPositive } from 'class-validator';
+import { IsDateString, IsInt, IsOptional, IsPositive, IsString, MaxLength } from 'class-validator';
 
 /**
  * DTO for assigning a psychologist and provisional time slot to an appointment request.
@@ -14,4 +14,9 @@ export class AssignAppointmentDto {
   @IsInt()
   @IsPositive()
   appDuration!: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  reassignmentReason?: string;
 }

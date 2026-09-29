@@ -15,11 +15,12 @@ describe('AuthRepository', () => {
   it('returns the first authorization record, or null when a search has no rows', async () => {
     const { repository, dataSource } = setup();
     dataSource.query
-      .mockResolvedValueOnce([{ personId: 1 }])
+      .mockResolvedValueOnce([{ personId: 1, name: 'Local Person' }])
       .mockResolvedValueOnce([]);
 
     await expect(repository.findByEmail('user@example.com')).resolves.toEqual({
       personId: 1,
+      name: 'Local Person',
     });
     await expect(repository.findByUserId(1)).resolves.toBeNull();
     expect(dataSource.query).toHaveBeenNthCalledWith(
@@ -27,10 +28,16 @@ describe('AuthRepository', () => {
       expect.stringContaining('lower(p.per_email)'),
       ['user@example.com'],
     );
+    expect(dataSource.query.mock.calls[0][0]).toContain(
+      'p.per_name AS name',
+    );
     expect(dataSource.query).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining('WHERE u.use_id=$1'),
       [1],
+    );
+    expect(dataSource.query.mock.calls[1][0]).toContain(
+      'p.per_name AS name',
     );
   });
 
@@ -43,6 +50,9 @@ describe('AuthRepository', () => {
     expect(dataSource.query).toHaveBeenCalledWith(
       expect.stringContaining('u.user_provider_id=$1'),
       ['auth0-subject'],
+    );
+    expect(dataSource.query.mock.calls[0][0]).toContain(
+      'p.per_name AS name',
     );
   });
 

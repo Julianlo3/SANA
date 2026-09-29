@@ -22,7 +22,9 @@ describe('AppointmentsRepository.createRequest', () => {
       .mockResolvedValueOnce([{ per_id: 7 }])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ app_id: 42 }]);
+      .mockResolvedValueOnce([{ app_id: 42 }])
+      .mockResolvedValueOnce([{ pd_id: 1 }]) // data_treatment policy
+      .mockResolvedValueOnce([{ pd_id: 2 }]); // dependent_consent policy (not used for self)
     dataSource.transaction.mockImplementation(async (callback) => callback(manager));
 
     const repository = new AppointmentsRepository(dataSource as never);
@@ -37,7 +39,7 @@ describe('AppointmentsRepository.createRequest', () => {
     ).resolves.toBe(42);
 
     expect(dataSource.transaction).toHaveBeenCalledOnce();
-    expect(manager.query).toHaveBeenCalledTimes(4);
+    expect(manager.query).toHaveBeenCalledTimes(7);
     expect(manager.query.mock.calls[1][0]).not.toContain('per_name =');
     expect(manager.query.mock.calls[3][0]).toContain("'pendiente'");
   });

@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import type { AuthenticatedUser } from '../interfaces/auth.interface.js';
 import { ScheduleRepository } from './schedule.repository.js';
+import { PolicyService } from '../policy/policy.service.js';
 import type { CreateScheduleBlockDto } from './dto/create-schedule-block.dto.js';
 import type { ScheduleBlockResponse } from './dto/schedule-block-response.dto.js';
 import type { CreateRecurringScheduleBlockDto } from './dto/create-recurring-schedule-block.dto.js';
@@ -18,7 +19,10 @@ import type { ScheduleAvailabilitySlot } from './dto/schedule-availability-respo
  */
 @Injectable()
 export class ScheduleService {
-  constructor(private readonly repository: ScheduleRepository) {}
+  constructor(
+    private readonly repository: ScheduleRepository,
+    private readonly policyService: PolicyService,
+  ) { }
 
   /**
    * Finds all schedule blocks for the specified psychologist.
@@ -41,10 +45,20 @@ export class ScheduleService {
     dto: CreateScheduleBlockDto,
   ): Promise<ScheduleBlockResponse> {
     this.ensurePsychologist(user);
+
     if (dto.startTime >= dto.endTime) {
       throw new BadRequestException({
         error: 'INVALID_TIME_RANGE',
         message: 'La hora de inicio debe ser anterior a la hora de finalización',
+      });
+    }
+
+    // Verifica si el psicólogo ha aceptado los términos de uso de agenda
+    const hasAccepted = await this.policyService.hasPsychologistAcceptedScheduleTerms(user.personId);
+    if (!hasAccepted) {
+      throw new BadRequestException({
+        error: 'SCHEDULE_TERMS_NOT_ACCEPTED',
+        message: 'Debe aceptar los términos de uso de agenda antes de crear bloques de horario',
       });
     }
 
@@ -100,6 +114,7 @@ export class ScheduleService {
     dto: CreateRecurringScheduleBlockDto,
   ): Promise<RecurringScheduleBlockResponse> {
     this.ensurePsychologist(user);
+
     if (dto.startTime >= dto.endTime) {
       throw new BadRequestException({
         error: 'INVALID_TIME_RANGE',
@@ -112,6 +127,16 @@ export class ScheduleService {
         message: 'La fecha final debe ser igual o posterior a la fecha inicial',
       });
     }
+
+    // Verifica si el psicólogo ha aceptado los términos de uso de agenda
+    const hasAccepted = await this.policyService.hasPsychologistAcceptedScheduleTerms(user.personId);
+    if (!hasAccepted) {
+      throw new BadRequestException({
+        error: 'SCHEDULE_TERMS_NOT_ACCEPTED',
+        message: 'Debe aceptar los términos de uso de agenda antes de crear bloques de horario recurrentes',
+      });
+    }
+
     if (
       await this.repository.hasRecurringOverlap({
         psychologistId: user.personId,
@@ -225,6 +250,15 @@ export class ScheduleService {
       appDate: params.appDate,
       appDuration: params.duration,
     });
+  }
+
+  /**
+   * Checks if a psychologist has general availability registered in the system.
+   * @param psychologistId The ID of the psychologist to check.
+   * @returns A promise resolving to true if the psychologist has availability, false otherwise.
+   */
+  async checkPsychologistAvailability(psychologistId: number): Promise<boolean> {
+    return this.repository.checkPsychologistAvailability(psychologistId);
   }
 
   /**

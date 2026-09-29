@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { CURRENT_POLICY_VERSION } from '../config/policy.config.js';
 
 /**
  * Represents an authorization record for a user.
  */
 export interface AuthorizationRecord {
   personId: number;
+  name: string;
   email: string;
   state: string;
   userId: number | null;
@@ -33,6 +33,7 @@ export class AuthRepository {
     const rows = await this.dataSource.query(
       `SELECT
           p.per_id AS "personId",
+          p.per_name AS name,
           p.per_email AS email,
           p.per_state AS state,
           COALESCE(p.per_termns_accpted, false) AS "termsAccepted",
@@ -62,6 +63,7 @@ export class AuthRepository {
     const rows = await this.dataSource.query(
       `SELECT
           p.per_id AS "personId",
+          p.per_name AS name,
           p.per_email AS email,
           p.per_state AS state,
           COALESCE(p.per_termns_accpted, false) AS "termsAccepted",
@@ -92,6 +94,7 @@ export class AuthRepository {
     const rows = await this.dataSource.query(
       `SELECT
           p.per_id AS "personId",
+          p.per_name AS name,
           p.per_email AS email,
           p.per_state AS state,
           COALESCE(p.per_termns_accpted, false) AS "termsAccepted",
@@ -186,32 +189,56 @@ export class AuthRepository {
   /**
    * Records acceptance of platform terms and conditions by a person.
    * @param personId The ID of the person.
+   * @param ipAddress Optional IP address of the acceptor.
    */
-  async acceptTerms(personId: number): Promise<void> {
+  async acceptTerms(personId: number, ipAddress?: string): Promise<void> {
+    const pdId = await this.getCurrentPolicyDocumentId('data_treatment');
+    if (!pdId) {
+      throw new Error('No policy document found for type: data_treatment');
+    }
+
     await this.dataSource.query(
-      `UPDATE person
-       SET per_termns_accpted = true,
-           per_policy_accepted_at = now(),
-           per_policy_version = $2,
-           per_update_date = now()
-           WHERE per_id = $1`,
-          [personId, CURRENT_POLICY_VERSION],
+      `INSERT INTO policy_acceptance (per_id, pd_id, pa_ip_address)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (per_id, pd_id) WHERE dep_id IS NULL AND cn_id IS NULL AND app_id IS NULL DO NOTHING`,
+      [personId, pdId, ipAddress ?? null],
     );
   }
 
   /**
    * Records acceptance of psychologist terms and conditions.
    * @param psychologistId The ID of the psychologist.
+   * @param ipAddress Optional IP address of the acceptor.
    */
-  async acceptPsychologistTerms(psychologistId: number): Promise<void> {
+  async acceptPsychologistTerms(psychologistId: number, ipAddress?: string): Promise<void> {
+    const pdId = await this.getCurrentPolicyDocumentId('schedule_terms');
+    if (!pdId) {
+      throw new Error('No policy document found for type: schedule_terms');
+    }
+
     await this.dataSource.query(
-      `UPDATE psychologist
-       SET psy_termns_accpted = true,
-           psy_policy_accepted_at = now(),
-           psy_policy_version = $2
-           WHERE psy_id = $1`,
-          [psychologistId, CURRENT_POLICY_VERSION],
+      `INSERT INTO policy_acceptance (per_id, pd_id, pa_ip_address)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (per_id, pd_id) WHERE dep_id IS NULL AND cn_id IS NULL AND app_id IS NULL DO NOTHING`,
+      [psychologistId, pdId, ipAddress ?? null],
     );
+  }
+
+  /**
+   * Gets the current policy document ID for a given policy type.
+   * @param policyType The type of policy.
+   * @returns A promise that resolves to the policy document ID or null if not found.
+   */
+  private async getCurrentPolicyDocumentId(policyType: string): Promise<number | null> {
+    const rows = await this.dataSource.query<{ pd_id: number }[]>(
+      `SELECT pd_id
+       FROM policy_documents
+       WHERE pd_type = $1
+       ORDER BY pd_effective_from DESC
+       LIMIT 1`,
+      [policyType],
+    );
+    return rows[0]?.pd_id ?? null;
   }
 }
 

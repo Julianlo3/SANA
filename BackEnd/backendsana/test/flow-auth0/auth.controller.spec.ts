@@ -35,12 +35,16 @@ describe('AuthController', () => {
         roles: ['psicologo'],
         auth0Subject: 'auth0|user-1',
       },
+      ip: '127.0.0.1',
+      socket: {
+        remoteAddress: '127.0.0.1',
+      },
     };
 
     await expect(controller.acceptTerms(request as never)).resolves.toEqual({
       message: 'Términos y condiciones aceptados correctamente',
       termsAccepted: true,
     });
-    expect(authService.acceptTerms).toHaveBeenCalledWith(42);
+    expect(authService.acceptTerms).toHaveBeenCalledWith(42, '127.0.0.1');
   });
 });
