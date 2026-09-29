@@ -1483,3 +1483,13 @@ ALTER TABLE public.psychologist
 
 COMMENT ON CONSTRAINT "Psychologist_User_fk" ON public.psychologist
     IS E'Identificador proveniente de persona (un psicologo puede existir antes de tener cuenta de usuario)';
+
+-- ========================= MIGRATION 29/09/2026 =========================
+-- Columna usada por la entidad Person y por las solicitudes de cita (HE-2).
+-- ========================================================================
+
+ALTER TABLE public.person
+    ADD COLUMN IF NOT EXISTS per_residence_zone varchar(255);
+
+COMMENT ON COLUMN public.person.per_residence_zone
+    IS E'Zona de residencia de la persona registrada en la solicitud de cita';

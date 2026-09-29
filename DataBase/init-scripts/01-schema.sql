@@ -1149,3 +1149,13 @@ ALTER TABLE public.appointments
 
 COMMENT ON COLUMN public.appointments.app_date_ideal
     IS E'Fecha ideal del consultor para la creacion de la cita';
+
+-- ========================= MIGRATION 29/09/2026 =========================
+-- Columna usada por la entidad Person y por las solicitudes de cita (HE-2).
+-- ========================================================================
+
+ALTER TABLE public.person
+    ADD COLUMN IF NOT EXISTS per_residence_zone varchar(255);
+
+COMMENT ON COLUMN public.person.per_residence_zone
+    IS E'Zona de residencia de la persona registrada en la solicitud de cita';
