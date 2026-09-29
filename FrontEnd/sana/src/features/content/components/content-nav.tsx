@@ -4,10 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const LINKS = [
-  { href: "/content/institutional", label: "Institucional" },
-  { href: "/content/news", label: "Noticias" },
-  { href: "/content/gallery", label: "Galería" },
-  { href: "/content/banners", label: "Banners" },
+  { href: "/contenido/institucional", label: "Institucional" },
+  { href: "/contenido/noticias", label: "Noticias" },
+  { href: "/contenido/galeria", label: "Galería" },
+  { href: "/contenido/banners", label: "Banners" },
 ];
 
 export default function ContentNav() {
