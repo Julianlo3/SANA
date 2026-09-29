@@ -26,6 +26,7 @@ export default function CardSectionEditor({
     editor,
     values,
     errors,
+    isValid,
     isSaving,
     actionError,
     notice,
@@ -132,7 +133,7 @@ export default function CardSectionEditor({
             <Button variant="secondary" onClick={cancelEdit} disabled={isSaving}>
               Cancelar
             </Button>
-            <Button onClick={save} disabled={isSaving}>
+            <Button onClick={save} disabled={!isValid || isSaving}>
               {isSaving ? "Guardando…" : "Guardar"}
             </Button>
           </div>

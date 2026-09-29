@@ -12,6 +12,7 @@ export default function MissionVisionForm() {
     values,
     errors,
     isDirty,
+    isValid,
     lastEdit,
     isLoading,
     loadError,
@@ -84,7 +85,7 @@ export default function MissionVisionForm() {
         >
           Cancelar
         </Button>
-        <Button onClick={save} disabled={!isDirty || isSaving}>
+        <Button onClick={save} disabled={!isDirty || !isValid || isSaving}>
           {isSaving ? "Guardando…" : "Guardar"}
         </Button>
       </div>
