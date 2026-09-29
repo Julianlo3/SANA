@@ -18,6 +18,25 @@ export interface AuthorizationRecord {
 }
 
 /**
+ * SQL expression that is true when person `p` accepted the current version of the given policy type.
+ */
+function acceptedCurrentPolicy(policyType: 'data_treatment' | 'schedule_terms'): string {
+  return `EXISTS (
+            SELECT 1
+            FROM policy_acceptance pa
+            WHERE pa.per_id = p.per_id
+              AND pa.dep_id IS NULL
+              AND pa.pd_id = (
+                SELECT pd_id
+                FROM policy_documents
+                WHERE pd_type = '${policyType}'
+                ORDER BY pd_effective_from DESC
+                LIMIT 1
+              )
+          )`;
+}
+
+/**
  * Repository for handling authentication-related database operations.
  */
 @Injectable()
@@ -36,8 +55,9 @@ export class AuthRepository {
           p.per_name AS name,
           p.per_email AS email,
           p.per_state AS state,
-          COALESCE(p.per_termns_accpted, false) AS "termsAccepted",
-          psy.psy_termns_accpted AS "psyTermsAccepted",
+          ${acceptedCurrentPolicy('data_treatment')} AS "termsAccepted",
+          CASE WHEN psy.psy_id IS NULL THEN NULL
+               ELSE ${acceptedCurrentPolicy('schedule_terms')} END AS "psyTermsAccepted",
           u.use_id AS "userId",
           u.user_provider_id AS "providerId",
           u.user_provider_name AS "providerName",
@@ -48,7 +68,7 @@ export class AuthRepository {
         LEFT JOIN rol r ON r.rol_id=pr.rol_id
         LEFT JOIN psychologist psy ON psy.psy_id=p.per_id
         WHERE lower(p.per_email)=lower($1)
-        GROUP BY p.per_id, u.use_id, psy.psy_termns_accpted`,
+        GROUP BY p.per_id, u.use_id, psy.psy_id`,
       [email],
     );
     return rows[0] ?? null;
@@ -66,8 +86,9 @@ export class AuthRepository {
           p.per_name AS name,
           p.per_email AS email,
           p.per_state AS state,
-          COALESCE(p.per_termns_accpted, false) AS "termsAccepted",
-          psy.psy_termns_accpted AS "psyTermsAccepted",
+          ${acceptedCurrentPolicy('data_treatment')} AS "termsAccepted",
+          CASE WHEN psy.psy_id IS NULL THEN NULL
+               ELSE ${acceptedCurrentPolicy('schedule_terms')} END AS "psyTermsAccepted",
           u.use_id AS "userId",
           u.user_provider_id AS "providerId",
           u.user_provider_name AS "providerName",
@@ -78,7 +99,7 @@ export class AuthRepository {
         LEFT JOIN rol r ON r.rol_id=pr.rol_id
         LEFT JOIN psychologist psy ON psy.psy_id=p.per_id
         WHERE u.use_id=$1
-        GROUP BY p.per_id, u.use_id, psy.psy_termns_accpted`,
+        GROUP BY p.per_id, u.use_id, psy.psy_id`,
       [userId],
     );
     return rows[0] ?? null;
@@ -97,8 +118,9 @@ export class AuthRepository {
           p.per_name AS name,
           p.per_email AS email,
           p.per_state AS state,
-          COALESCE(p.per_termns_accpted, false) AS "termsAccepted",
-          psy.psy_termns_accpted AS "psyTermsAccepted",
+          ${acceptedCurrentPolicy('data_treatment')} AS "termsAccepted",
+          CASE WHEN psy.psy_id IS NULL THEN NULL
+               ELSE ${acceptedCurrentPolicy('schedule_terms')} END AS "psyTermsAccepted",
           u.use_id AS "userId",
           u.user_provider_id AS "providerId",
           u.user_provider_name AS "providerName",
@@ -109,7 +131,7 @@ export class AuthRepository {
         LEFT JOIN rol r ON r.rol_id=pr.rol_id
         LEFT JOIN psychologist psy ON psy.psy_id=p.per_id
         WHERE u.user_provider_id=$1
-        GROUP BY p.per_id, u.use_id, psy.psy_termns_accpted`,
+        GROUP BY p.per_id, u.use_id, psy.psy_id`,
       [providerId],
     );
     return rows[0] ?? null;

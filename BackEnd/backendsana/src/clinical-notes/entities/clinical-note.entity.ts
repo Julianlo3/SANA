@@ -18,9 +18,6 @@ export class ClinicalNote {
   @Column({ name: 'cn_observation', type: 'text' })
   cnObservation!: string;
 
-  @Column({ name: 'cn_termns_accpted', type: 'boolean', default: false })
-  cnTermsAccepted!: boolean;
-
   @Column({ name: 'cn_created_at', type: 'timestamptz', default: () => 'now()' })
   cnCreatedAt!: Date;
 }
