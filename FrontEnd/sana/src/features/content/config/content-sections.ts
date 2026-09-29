@@ -57,6 +57,16 @@ export const CARD_SECTIONS: CardSectionConfig[] = [
   },
 ];
 
+export const IMAGE_ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+export const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+export const IMAGE_RULES_MESSAGE =
+  "La imagen debe ser JPG, PNG o WebP de máximo 5 MB.";
+
+export const NEWS_TITLE_MAX_LENGTH = 150;
+export const NEWS_BODY_MAX_LENGTH = 10000;
+export const IMAGE_ALT_MAX_LENGTH = 150;
+export const GALLERY_CAPTION_MAX_LENGTH = 200;
+
 export const TEXT_MAX_LENGTH = 2000;
 export const CARD_DESCRIPTION_MAX_LENGTH = 1000;
 export const CARD_TITLE_MAX_LENGTH = 150;

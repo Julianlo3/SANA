@@ -35,6 +35,69 @@ export type ContentCardPayload = {
   isActive: boolean;
 };
 
+export type PublicationStatus = "published" | "retired";
+
+export type ImageFolder = "content" | "news" | "gallery";
+
+export type News = {
+  id: number;
+  title: string;
+  body: string;
+  imageUrl: string | null;
+  imageAlt: string | null;
+  status: PublicationStatus;
+  isPinned: boolean;
+  publishedAt: string;
+  createdBy: ContentEditor;
+  updatedAt: string;
+  updatedBy: ContentEditor;
+};
+
+export type NewsPayload = {
+  title: string;
+  body: string;
+  imageUrl: string | null;
+  imageAlt: string | null;
+};
+
+export type PublicNews = Pick<
+  News,
+  "id" | "title" | "body" | "imageUrl" | "imageAlt" | "isPinned" | "publishedAt"
+>;
+
+export type PublicNewsPage = {
+  items: PublicNews[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+export type GalleryImage = {
+  id: number;
+  imageUrl: string;
+  imageAlt: string;
+  caption: string | null;
+  status: PublicationStatus;
+  order: number;
+  updatedAt: string;
+  updatedBy: ContentEditor;
+};
+
+export type PublicGalleryImage = Pick<
+  GalleryImage,
+  "id" | "imageUrl" | "imageAlt" | "caption"
+>;
+
+export type ImageUploadSignature = {
+  cloudName: string;
+  apiKey: string;
+  timestamp: number;
+  signature: string;
+  folder: string;
+  allowedFormats: string;
+  maxBytes: number;
+};
+
 export type PublicContentCard = Pick<
   ContentCard,
   "id" | "title" | "subtitle" | "description" | "imageUrl" | "imageAlt"

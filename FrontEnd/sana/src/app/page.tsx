@@ -11,15 +11,25 @@ import PublicHeader from "@/components/navigation/public-header";
 import PublicFooter from "@/components/navigation/public-footer";
 import PendingContentNotice from "@/components/feedback/pending-content-notice";
 import { HOME_CONTENT } from "@/content/home";
-import { getPublicContent } from "@/features/content/services/public-content-service";
+import NewsCard from "@/features/content/components/news-card";
+import {
+  getPublicContent,
+  getPublicGallery,
+  getPublicNews,
+} from "@/features/content/services/public-content-service";
 
-const { hero, about, programs, services, team, news, donation } = HOME_CONTENT;
+const { hero, about, programs, services, team, news, gallery, donation } =
+  HOME_CONTENT;
 
 /** Iconos de cada programa, en el mismo orden que el contenido. */
 const PROGRAM_ICONS = [HeartHandshake, ShieldCheck, Users];
 
 export default async function HomePage() {
-  const content = await getPublicContent();
+  const [content, latestNews, galleryImages] = await Promise.all([
+    getPublicContent(),
+    getPublicNews(1, 3),
+    getPublicGallery(),
+  ]);
 
   return (
     <div className="flex min-h-full flex-col">
@@ -277,27 +287,60 @@ export default async function HomePage() {
             {news.title}
           </h2>
 
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
-            {news.items.map((item, index) => (
-              <article
-                key={index}
-                className="overflow-hidden rounded-2xl border border-border bg-surface"
-              >
-                <div className="flex h-40 items-center justify-center bg-surface-muted">
-                  <p className="text-xs text-text-subtle">
-                    {news.imagePlaceholder}
-                  </p>
-                </div>
+          {latestNews.items.length > 0 ? (
+            <>
+              <div className="mt-10 grid gap-6 md:grid-cols-3">
+                {latestNews.items.map((item) => (
+                  <NewsCard key={item.id} news={item} />
+                ))}
+              </div>
+              {latestNews.total > latestNews.items.length && (
+                <Link
+                  href="/noticias"
+                  className="mt-8 inline-block font-semibold text-primary hover:text-primary-dark"
+                >
+                  {news.seeAll}
+                </Link>
+              )}
+            </>
+          ) : (
+            <PendingContentNotice className="mt-8" />
+          )}
+        </section>
 
-                <div className="p-6">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-accent-strong">
-                    {item.date}
-                  </p>
+        <section id="gallery" className="bg-sidebar py-20">
+          <div className="mx-auto max-w-6xl px-6">
+            <h2 className="font-display text-4xl font-extrabold text-primary-dark">
+              {gallery.title}
+            </h2>
 
-                  <h3 className="mt-2 font-semibold text-text">{item.title}</h3>
-                </div>
-              </article>
-            ))}
+            {galleryImages.length > 0 ? (
+              <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-3">
+                {galleryImages.map((image) => (
+                  <figure
+                    key={image.id}
+                    className="overflow-hidden rounded-2xl border border-border bg-surface"
+                  >
+                    <div className="relative aspect-[4/3]">
+                      <Image
+                        src={image.imageUrl}
+                        alt={image.imageAlt}
+                        fill
+                        sizes="(max-width: 768px) 50vw, 33vw"
+                        className="object-cover"
+                      />
+                    </div>
+                    {image.caption && (
+                      <figcaption className="px-4 py-3 text-sm text-text-muted">
+                        {image.caption}
+                      </figcaption>
+                    )}
+                  </figure>
+                ))}
+              </div>
+            ) : (
+              <PendingContentNotice className="mt-8" />
+            )}
           </div>
         </section>
 

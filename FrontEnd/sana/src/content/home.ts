@@ -48,12 +48,15 @@ export const HOME_CONTENT = {
 
   news: {
     title: "Últimas noticias",
-    imagePlaceholder: "Imagen pendiente",
-    items: [
-      { date: "Fecha pendiente", title: "Título de noticia pendiente" },
-      { date: "Fecha pendiente", title: "Título de noticia pendiente" },
-      { date: "Fecha pendiente", title: "Título de noticia pendiente" },
-    ],
+    seeAll: "Ver todas las noticias",
+    pageTitle: "Noticias",
+    pageDescription:
+      "Las actividades y los logros de la fundación, de la más reciente a la más antigua.",
+    back: "Volver a noticias",
+  },
+
+  gallery: {
+    title: "Galería",
   },
 
   donation: {

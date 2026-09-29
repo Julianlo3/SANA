@@ -12,6 +12,7 @@ import {
   type CardSectionConfig,
 } from "../config/content-sections";
 import { useContentCards } from "../hooks/use-content-cards";
+import IconButton from "./icon-button";
 import LastEditNote from "./last-edit-note";
 
 export default function CardSectionEditor({
@@ -231,30 +232,5 @@ export default function CardSectionEditor({
         </Modal>
       )}
     </div>
-  );
-}
-
-function IconButton({
-  label,
-  onClick,
-  disabled,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      title={label}
-      aria-label={label}
-      onClick={onClick}
-      disabled={disabled}
-      className="cursor-pointer rounded-lg border border-border p-2 text-text-muted transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
-    >
-      {children}
-    </button>
   );
 }

@@ -1,11 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource, type EntityManager } from 'typeorm';
+import { logContentChange } from './content-change-log.js';
 import {
   CONTENT_ITEM_KEYS,
-  type ContentAction,
   type ContentCardSection,
   type ContentItemKey,
-  type ContentType,
 } from './content.constants.js';
 import type {
   ContentCardResponse,
@@ -125,7 +124,7 @@ export class ContentRepository {
            RETURNING ci_id AS "id", (xmax = 0) AS "inserted"`,
           [item.key, item.value, userId],
         );
-        await this.logChange(
+        await logContentChange(
           manager,
           userId,
           'content_item',
@@ -202,7 +201,7 @@ export class ContentRepository {
         ],
       );
       const id = rows[0].id;
-      await this.logChange(manager, userId, 'content_card', id, 'create');
+      await logContentChange(manager, userId, 'content_card', id, 'create');
       return (await this.findCardById(id, manager)) as ContentCardResponse;
     });
   }
@@ -238,7 +237,7 @@ export class ContentRepository {
       );
       if (affected === 0) return null;
 
-      await this.logChange(manager, userId, 'content_card', id, 'update');
+      await logContentChange(manager, userId, 'content_card', id, 'update');
       return this.findCardById(id, manager);
     });
   }
@@ -257,7 +256,7 @@ export class ContentRepository {
       );
       if (affected === 0) return false;
 
-      await this.logChange(manager, userId, 'content_card', id, 'delete');
+      await logContentChange(manager, userId, 'content_card', id, 'delete');
       return true;
     });
   }
@@ -273,20 +272,6 @@ export class ContentRepository {
        ORDER BY cc.cc_section, cc.cc_order, cc.cc_id`,
     );
     return rows.map(toCardResponse);
-  }
-
-  private async logChange(
-    manager: EntityManager,
-    userId: number,
-    contentType: ContentType,
-    contentId: number,
-    action: ContentAction,
-  ): Promise<void> {
-    await manager.query(
-      `INSERT INTO content_change_log (use_id, ccl_content_type, ccl_content_id, ccl_action)
-       VALUES ($1, $2, $3, $4)`,
-      [userId, contentType, contentId, action],
-    );
   }
 }
 

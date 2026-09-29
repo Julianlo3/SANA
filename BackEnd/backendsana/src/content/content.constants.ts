@@ -32,5 +32,18 @@ export type ContentAction =
 export const CONTENT_TEXT_MAX_LENGTH = 2000;
 export const CARD_DESCRIPTION_MAX_LENGTH = 1000;
 
+export const NEWS_TITLE_MAX_LENGTH = 150;
+export const NEWS_BODY_MAX_LENGTH = 10000;
+export const IMAGE_ALT_MAX_LENGTH = 150;
+export const GALLERY_CAPTION_MAX_LENGTH = 200;
+
+export const PUBLICATION_STATUSES = ['published', 'retired'] as const;
+export type PublicationStatus = (typeof PUBLICATION_STATUSES)[number];
+
+export const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+export const IMAGE_FORMATS = ['jpg', 'png', 'webp'] as const;
+export const IMAGE_FOLDERS = ['content', 'news', 'gallery'] as const;
+export type ImageFolder = (typeof IMAGE_FOLDERS)[number];
+
 export const CLOUDINARY_IMAGE_URL_PATTERN =
   /^https:\/\/res\.cloudinary\.com\/[a-z0-9_-]+\/image\/upload\/[^\s"'<>]+$/i;

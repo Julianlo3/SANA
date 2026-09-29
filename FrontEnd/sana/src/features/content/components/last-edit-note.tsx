@@ -1,9 +1,5 @@
 import { History } from "lucide-react";
-
-const DATE_FORMATTER = new Intl.DateTimeFormat("es-CO", {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
+import { formatDateTime } from "../format";
 
 export default function LastEditNote({
   name,
@@ -15,7 +11,7 @@ export default function LastEditNote({
   return (
     <p className="flex items-center gap-2 text-xs text-text-subtle">
       <History size={14} aria-hidden />
-      Última edición: {name} · {DATE_FORMATTER.format(new Date(updatedAt))}
+      Última edición: {name} · {formatDateTime(updatedAt)}
     </p>
   );
 }
