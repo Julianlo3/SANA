@@ -51,9 +51,8 @@ const EMPTY_FORM: RequestFormValues = {
  * Alineado al DTO real del backend (CreateAppointmentDto): el payload es
  * plano, no anidado en guardian/minor, y el género va en una letra.
  *
- * Departamento y municipio siguen en el formulario, pero NO se envían
- * todavía: el DTO no tiene esos campos hasta que el backend los agregue.
- * Se activan cuando confirmen los nombres exactos (ver buildPayload).
+ * Departamento y municipio se combinan en un solo texto (residenceZone),
+ * porque el backend los guarda así, no como dos campos separados.
  *
  * Decisión de equipo: no se ofrece reserva de horario real. La persona puede
  * indicar una fecha preferida, opcional, que la asistente usa como
@@ -130,11 +129,25 @@ export function useConsultationRequestForm(patientType: PatientType) {
     [setValue],
   );
 
+  /**
+   * El backend guarda la residencia como un solo texto (residenceZone),
+   * hasta 255 caracteres, opcional. Se arma como "Municipio, Departamento".
+   * Si la persona no indicó nada, se manda undefined (el campo es opcional).
+   */
+  function buildResidenceZone(
+    department: string,
+    municipality: string,
+  ): string | undefined {
+    if (!department || !municipality.trim()) return undefined;
+    return `${municipality.trim()}, ${department}`;
+  }
+
   const buildPayload = useCallback(
     (submitted: RequestFormValues): ConsultationRequestPayload => {
-      // TODO: cuando Brayan confirme los nombres de campo para departamento
-      // y municipio en CreateAppointmentDto, agregarlos aquí. Hasta
-      // entonces no se envían, aunque el formulario los pida.
+      const residenceZone = buildResidenceZone(
+        submitted.department,
+        submitted.municipality,
+      );
 
       if (patientType === "dependent") {
         return {
@@ -157,6 +170,7 @@ export function useConsultationRequestForm(patientType: PatientType) {
           appType: submitted.appType as AppointmentMode,
           appReason: submitted.consultationReason.trim(),
           appDateIdeal: preferredDate,
+          residenceZone,
         };
       }
 
@@ -173,6 +187,7 @@ export function useConsultationRequestForm(patientType: PatientType) {
         appType: submitted.appType as AppointmentMode,
         appReason: submitted.consultationReason.trim(),
         appDateIdeal: preferredDate,
+        residenceZone,
       };
     },
     [patientType, preferredDate],

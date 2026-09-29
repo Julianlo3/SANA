@@ -34,16 +34,15 @@ export type SelfRequestPayload = {
   requesterCardType: CardType;
   requesterIdentityDocument: string;
   requesterContactNumber: string;
-  /** Obligatorio en el formulario aunque el DTO lo tenga opcional: si falta, el backend guarda un correo falso y la confirmación no llegaría a nadie. */
   requesterEmail: string;
   requesterBirthdate: string;
   requesterGender: Gender;
   requesterTermsAccepted: true;
   appType: AppointmentMode;
-  /** Opcional (HU-2.2.7). */
   appReason: string;
-  /** Fecha en la que la persona preferiría la cita, con zona horaria. Solo es referencia para la asistente. */
   appDateIdeal: string | null;
+  /** "Municipio, Departamento". Opcional, hasta 255 caracteres. */
+  residenceZone?: string;
 };
 
 export type GuardianRequestPayload = {
@@ -73,6 +72,8 @@ export type GuardianRequestPayload = {
   appType: AppointmentMode;
   appReason: string;
   appDateIdeal: string | null;
+  /** "Municipio, Departamento". Opcional, hasta 255 caracteres. */
+  residenceZone?: string;
 };
 
 export type ConsultationRequestPayload =
