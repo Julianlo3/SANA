@@ -23,7 +23,7 @@ export class PolicyAcceptance {
   @Column({ name: 'pa_accepted_at', type: 'timestamptz', default: () => 'now()' })
   paAcceptedAt!: Date;
 
-  @Column({ name: 'pa_ip_address', length: 50, nullable: true })
+  @Column({ name: 'pa_ip_address', type: 'varchar', length: 50, nullable: true })
   paIpAddress?: string | null;
 
   @Column({ name: 'app_id', type: 'integer', nullable: true })
