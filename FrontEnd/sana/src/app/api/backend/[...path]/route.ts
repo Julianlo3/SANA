@@ -30,6 +30,8 @@ async function forward(
     cache: "no-store",
   });
 
+  if (response.status === 204) return new Response(null, { status: 204 });
+
   return new Response(await response.text(), {
     status: response.status,
     headers: {

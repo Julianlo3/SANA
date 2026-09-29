@@ -46,9 +46,23 @@ export class ClinicalNotesRepository {
     cnTermsAccepted: boolean;
   }): Promise<number> {
     const result = await this.dataSource.query<{ cn_id: number }[]>(
-      `INSERT INTO clinical_notes (app_id, psy_id, cn_observation, cn_termns_accpted)
-       VALUES ($1, $2, $3, $4)
-       RETURNING cn_id`,
+      `WITH note AS (
+         INSERT INTO clinical_notes (app_id, psy_id, cn_observation)
+         VALUES ($1, $2, $3)
+         RETURNING cn_id
+       ), acceptance AS (
+         INSERT INTO policy_acceptance (per_id, pd_id, cn_id)
+         SELECT $2, pd.pd_id, note.cn_id
+         FROM note, (
+           SELECT pd_id
+           FROM policy_documents
+           WHERE pd_type = 'clinical_note_terms'
+           ORDER BY pd_effective_from DESC
+           LIMIT 1
+         ) pd
+         WHERE $4::boolean
+       )
+       SELECT cn_id FROM note`,
       [params.appId, params.psyId, params.cnObservation, params.cnTermsAccepted],
     );
     return result[0].cn_id;
@@ -68,7 +82,9 @@ export class ClinicalNotesRepository {
           app_id AS "appId",
           psy_id AS "psyId",
           cn_observation AS "cnObservation",
-          cn_termns_accpted AS "cnTermsAccepted",
+          EXISTS (
+            SELECT 1 FROM policy_acceptance pa WHERE pa.cn_id = clinical_notes.cn_id
+          ) AS "cnTermsAccepted",
           cn_created_at AS "cnCreatedAt"
        FROM clinical_notes
        WHERE cn_id = $1 AND psy_id = $2`,
@@ -91,7 +107,9 @@ export class ClinicalNotesRepository {
           app_id AS "appId",
           psy_id AS "psyId",
           cn_observation AS "cnObservation",
-          cn_termns_accpted AS "cnTermsAccepted",
+          EXISTS (
+            SELECT 1 FROM policy_acceptance pa WHERE pa.cn_id = clinical_notes.cn_id
+          ) AS "cnTermsAccepted",
           cn_created_at AS "cnCreatedAt"
        FROM clinical_notes
        WHERE app_id = $1 AND psy_id = $2

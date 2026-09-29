@@ -13,6 +13,7 @@ export default async function PanelHome() {
   if (user.roles.includes("psicologo") || user.roles.includes("secretario")) {
     redirect("/consultantes");
   }
+  if (user.roles.includes("marketing")) redirect("/contenido/institucional");
 
   redirect("/acceso-restringido");
 }

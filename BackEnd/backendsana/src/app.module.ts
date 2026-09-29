@@ -11,6 +11,7 @@ import { ConsultantsModule } from './consultants/consultants.module.js';
 import { PolicyModule } from './policy/policy.module.js';
 import { ClinicalNotesModule } from './clinical-notes/clinical-notes.module.js';
 import { SecurityLogsModule } from './modules/security-logs.module.js';
+import { ContentModule } from './content/content.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 
@@ -34,6 +35,7 @@ import { AppService } from './app.service.js';
     PolicyModule,
     ClinicalNotesModule,
     SecurityLogsModule,
+    ContentModule,
   ],
 
   controllers: [AppController],

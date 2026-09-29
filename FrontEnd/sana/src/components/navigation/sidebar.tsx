@@ -33,6 +33,10 @@ type NavLink = {
 const LINKS_BY_ROLE: Record<string, NavLink[]> = {
   administrador: [
     { label: "Usuarios", href: "/usuarios", icon: UserCog, enabled: true },
+    { label: "Contenido", href: "/contenido", icon: FileText, enabled: true },
+  ],
+  marketing: [
+    { label: "Contenido", href: "/contenido", icon: FileText, enabled: true },
   ],
   psicologo: [
     { label: "Consultantes", href: "/consultantes", icon: Users, enabled: true },
@@ -55,7 +59,6 @@ const UPCOMING_LINKS: NavLink[] = [
   { label: "Expedientes", href: "/expedientes", icon: FolderOpen, enabled: false },
   { label: "Recepción", href: "/recepcion", icon: ClipboardList, enabled: false },
   { label: "Reportes", href: "/reportes", icon: BarChart3, enabled: false },
-  { label: "Contenido", href: "/contenido", icon: FileText, enabled: false },
 ];
 
 type Props = {
