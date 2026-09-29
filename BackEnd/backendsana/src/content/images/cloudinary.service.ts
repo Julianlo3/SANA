@@ -29,6 +29,8 @@ interface CloudinaryConfig {
   rootFolder: string;
 }
 
+const REQUEST_TIMEOUT_MS = 10_000;
+
 const INVALID_IMAGE_MESSAGE = `La imagen debe ser JPG, PNG o WebP de máximo ${IMAGE_MAX_BYTES / (1024 * 1024)} MB`;
 
 /**
@@ -74,12 +76,10 @@ export class CloudinaryService {
     const publicId = this.extractPublicId(imageUrl, config, folder);
     if (!publicId) throw this.invalidImage();
 
-    const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${config.cloudName}/resources/image/upload/${publicId}`,
-      {
-        headers: { Authorization: this.basicAuth(config) },
-      },
-    ).catch(() => null);
+    const url = `https://api.cloudinary.com/v1_1/${config.cloudName}/resources/image/upload/${publicId}`;
+    const init = { headers: { Authorization: this.basicAuth(config) } };
+    let response = await this.request(url, init);
+    if (!response || response.status >= 500) response = await this.request(url, init);
 
     if (!response) {
       throw new ServiceUnavailableException('No se pudo verificar la imagen. Intenta de nuevo.');
@@ -113,10 +113,10 @@ export class CloudinaryService {
     const publicId = this.extractPublicId(imageUrl, config);
     if (!publicId) return;
 
-    const response = await fetch(
+    const response = await this.request(
       `https://api.cloudinary.com/v1_1/${config.cloudName}/resources/image/upload?public_ids[]=${encodeURIComponent(publicId)}`,
       { method: 'DELETE', headers: { Authorization: this.basicAuth(config) } },
-    ).catch(() => null);
+    );
 
     if (!response?.ok) {
       this.logger.warn(
@@ -143,6 +143,13 @@ export class CloudinaryService {
     if (!match || !match[1].startsWith(expectedPrefix)) return null;
 
     return match[1];
+  }
+
+  /** Returns null on network errors or when Cloudinary does not answer in time. */
+  private request(url: string, init: RequestInit): Promise<Response | null> {
+    return fetch(url, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }).catch(
+      () => null,
+    );
   }
 
   private basicAuth(config: CloudinaryConfig): string {

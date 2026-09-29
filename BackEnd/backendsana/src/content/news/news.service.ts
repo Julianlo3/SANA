@@ -95,7 +95,7 @@ export class NewsService {
     const news = await this.repository.update(id, patch, user.userId);
     if (!news) throw new NotFoundException(NOT_FOUND_MESSAGE);
     if (current.imageUrl && patch.imageUrl !== undefined && patch.imageUrl !== current.imageUrl) {
-      await this.cloudinaryService.deleteImage(current.imageUrl);
+      void this.cloudinaryService.deleteImage(current.imageUrl);
     }
 
     this.logger.log(
@@ -167,7 +167,7 @@ export class NewsService {
 
     const wasDeleted = await this.repository.deleteRetired(id, user.userId);
     if (!wasDeleted) throw mustRetireFirst();
-    if (current.imageUrl) await this.cloudinaryService.deleteImage(current.imageUrl);
+    if (current.imageUrl) void this.cloudinaryService.deleteImage(current.imageUrl);
 
     this.logger.log(
       `Module:content, Function:deleteNews, result-success: userId-${user.userId}, newsId-${id}`,

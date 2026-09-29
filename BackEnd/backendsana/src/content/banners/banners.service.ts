@@ -139,7 +139,7 @@ export class BannersService {
     );
 
     if (current.imageUrl && patch.imageUrl !== undefined && patch.imageUrl !== current.imageUrl) {
-      await this.cloudinaryService.deleteImage(current.imageUrl);
+      void this.cloudinaryService.deleteImage(current.imageUrl);
     }
     this.logger.log(
       `Module:content, Function:updateBanner, result-success: userId-${user.userId}, bannerId-${id}`,
@@ -197,7 +197,7 @@ export class BannersService {
         message: 'Desactiva el banner antes de eliminarlo',
       });
     }
-    if (current.imageUrl) await this.cloudinaryService.deleteImage(current.imageUrl);
+    if (current.imageUrl) void this.cloudinaryService.deleteImage(current.imageUrl);
 
     this.logger.log(
       `Module:content, Function:deleteBanner, result-success: userId-${user.userId}, bannerId-${id}`,

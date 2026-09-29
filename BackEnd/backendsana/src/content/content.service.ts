@@ -166,7 +166,7 @@ export class ContentService {
     const card = await this.repository.updateCard(id, patch, user.userId);
     if (!card) throw new NotFoundException('El elemento de contenido no existe');
     if (current.imageUrl && patch.imageUrl !== undefined && patch.imageUrl !== current.imageUrl) {
-      await this.cloudinaryService.deleteImage(current.imageUrl);
+      void this.cloudinaryService.deleteImage(current.imageUrl);
     }
 
     this.logger.log(
@@ -184,7 +184,7 @@ export class ContentService {
     const current = await this.repository.findCardById(id);
     const wasDeleted = current && (await this.repository.deleteCard(id, user.userId));
     if (!wasDeleted) throw new NotFoundException('El elemento de contenido no existe');
-    if (current.imageUrl) await this.cloudinaryService.deleteImage(current.imageUrl);
+    if (current.imageUrl) void this.cloudinaryService.deleteImage(current.imageUrl);
 
     this.logger.log(
       `Module:content, Function:deleteCard, result-success: userId-${user.userId}, cardId-${id}`,
