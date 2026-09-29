@@ -1,11 +1,25 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PolicyRepository } from './policy.repository.js';
+import {
+  PolicyRepository,
+  type CurrentPolicyDocument,
+} from './policy.repository.js';
 
 @Injectable()
 export class PolicyService {
   private readonly logger = new Logger(PolicyService.name);
 
   constructor(private readonly repository: PolicyRepository) {}
+
+  /**
+   * Retrieves the current document for a specified policy type.
+   * @param policyType The type of policy to retrieve the document for.
+   * @returns A promise that resolves to the current policy document or null if not found.
+   */
+  async getCurrentPolicyDocument(
+    policyType: string,
+  ): Promise<CurrentPolicyDocument | null> {
+    return this.repository.getCurrentPolicyDocument(policyType);
+  }
 
   /**
    * Records acceptance of data treatment policy for a consultant.
