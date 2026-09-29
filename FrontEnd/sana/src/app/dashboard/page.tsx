@@ -6,7 +6,7 @@ const HOME_BY_ROLE: [role: string, path: string][] = [
   ["administrador", "/users"],
   ["secretario", "/consultants"],
   ["psicologo", "/consultants"],
-  ["marketing", "/content"],
+  ["marketing", "/content/institutional"],
 ];
 
 /** Landing route after sign-in: sends each user to the first screen their role can open. */
