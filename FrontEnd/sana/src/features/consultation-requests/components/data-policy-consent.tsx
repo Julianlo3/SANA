@@ -1,21 +1,57 @@
 "use client";
 
-import Link from "next/link";
+import { useEffect, useState } from "react";
 import { DATA_POLICY } from "@/config/data-policy";
+import { getPolicyDocument, type PolicyType } from "../services/policy-service";
 
 type Props = {
   checked: boolean;
   onChange: (checked: boolean) => void;
   error?: string;
+  /** Qué política mostrar: data_treatment (adulto) o dependent_consent (tutor/menor). */
+  policyType?: PolicyType;
+  /** Texto de respaldo si el backend no responde, o para casos sin policyType. */
   label?: string;
 };
 
+/**
+ * Muestra el texto real de la política, traído de GET /policy/:type
+ * (HU-2.2.6 y HU-2.2.8). Si la petición falla o no se da policyType, usa
+ * el texto de respaldo de DATA_POLICY para no bloquear el envío.
+ */
 export default function DataPolicyConsent({
   checked,
   onChange,
   error,
-  label = DATA_POLICY.consentLabel,
+  policyType,
+  label,
 }: Props) {
+  const [content, setContent] = useState<string | null>(null);
+  const [version, setVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!policyType) return;
+
+    let isMounted = true;
+
+    getPolicyDocument(policyType)
+      .then((document) => {
+        if (isMounted) {
+          setContent(document.pdContent);
+          setVersion(document.pdVersion);
+        }
+      })
+      .catch(() => {
+        // Se queda con el texto de respaldo; no bloquea el formulario.
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [policyType]);
+
+  const displayLabel = content ?? label ?? DATA_POLICY.consentLabel;
+
   return (
     <div>
       <label
@@ -32,17 +68,10 @@ export default function DataPolicyConsent({
         />
 
         <span className="text-xs leading-relaxed text-text-muted">
-          {label}{" "}
-          <span className="text-danger" aria-hidden>
-            *
-          </span>
-          <Link
-            href={DATA_POLICY.url}
-            target="_blank"
-            className="mt-1 block font-semibold text-primary hover:underline"
-          >
-            {DATA_POLICY.linkLabel}
-          </Link>
+          {displayLabel}
+          {version && (
+            <span className="ml-1 text-text-subtle">(versión {version})</span>
+          )}
         </span>
       </label>
 

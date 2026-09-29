@@ -21,17 +21,18 @@ import { useConsultationRequestForm } from "../hooks/use-consultation-request-fo
 import {
   validateFullName,
   validateIdentityDocument,
+  validateDocumentType,
   validateAdultBirthDate,
+  validateGender,
   validateRelationship,
   validateEmail,
   validatePhone,
-  validateAppointmentMode,
   validateMinorBirthDate,
   validateMinorIdentityDocument,
-  validateGender,
 } from "../validation/consultation-request-validation";
 import type {
   AppointmentMode,
+  CardType,
   Gender,
   GuardianRelationshipId,
 } from "../types/consultation-request-types";
@@ -48,6 +49,11 @@ const RELATIONSHIP_OPTIONS: { value: GuardianRelationshipId; label: string }[] =
   { value: 2, label: "Padre" },
   { value: 3, label: "Tío/a" },
   { value: 4, label: "Abuelo/a" },
+];
+
+const DOCUMENT_TYPES: { value: CardType; label: string }[] = [
+  { value: "CC", label: "Cédula de ciudadanía" },
+  { value: "CE", label: "Cédula de extranjería" },
 ];
 
 const GENDER_OPTIONS: { value: Gender; label: string }[] = [
@@ -75,6 +81,8 @@ export default function GuardianRequestPage() {
     setValue,
     setFieldTouched,
     setRelationship,
+    setDocumentType,
+    setGender,
     setMinorGender,
     setAppointmentMode,
     toggleGuardianDataPolicy,
@@ -85,12 +93,13 @@ export default function GuardianRequestPage() {
   function goToStep2() {
     const step1Errors = [
       validateFullName(values.fullName),
+      validateDocumentType(values.documentType),
       validateIdentityDocument(values.identityDocument),
       validateAdultBirthDate(values.birthDate),
+      validateGender(values.gender),
       validateRelationship(values.relationship),
       validateEmail(values.email),
       validatePhone(values.phone),
-      validateAppointmentMode(values.appType),
       validateFullName(values.minorFullName),
       validateMinorBirthDate(values.minorBirthDate),
       validateMinorIdentityDocument(values.minorIdentityDocument),
@@ -98,12 +107,13 @@ export default function GuardianRequestPage() {
     ];
 
     setFieldTouched("fullName");
+    setFieldTouched("documentType");
     setFieldTouched("identityDocument");
     setFieldTouched("birthDate");
+    setFieldTouched("gender");
     setFieldTouched("relationship");
     setFieldTouched("email");
     setFieldTouched("phone");
-    setFieldTouched("appType");
     setFieldTouched("minorFullName");
     setFieldTouched("minorBirthDate");
     setFieldTouched("minorIdentityDocument");
@@ -190,7 +200,36 @@ export default function GuardianRequestPage() {
                   onBlur={() => setFieldTouched("fullName")}
                 />
 
-                <div className="grid gap-5 sm:grid-cols-2">
+                <div className="grid gap-5 sm:grid-cols-[160px_1fr]">
+                  <label className="block">
+                    <span className="text-sm font-semibold text-text">
+                      Tipo{" "}
+                      <span className="text-danger" aria-hidden>
+                        *
+                      </span>
+                    </span>
+                    <select
+                      value={values.documentType}
+                      onChange={(event) =>
+                        setDocumentType(event.target.value as CardType | "")
+                      }
+                      onBlur={() => setFieldTouched("documentType")}
+                      className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    >
+                      <option value="">Selecciona</option>
+                      {DOCUMENT_TYPES.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.documentType && (
+                      <span role="alert" className="mt-1.5 block text-xs text-danger">
+                        {errors.documentType}
+                      </span>
+                    )}
+                  </label>
+
                   <TextField
                     label={guardianForm.fields.identityDocument}
                     required
@@ -203,6 +242,37 @@ export default function GuardianRequestPage() {
                     }
                     onBlur={() => setFieldTouched("identityDocument")}
                   />
+                </div>
+
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="text-sm font-semibold text-text">
+                      Género{" "}
+                      <span className="text-danger" aria-hidden>
+                        *
+                      </span>
+                    </span>
+                    <select
+                      value={values.gender}
+                      onChange={(event) =>
+                        setGender(event.target.value as Gender | "")
+                      }
+                      onBlur={() => setFieldTouched("gender")}
+                      className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    >
+                      <option value="">Selecciona</option>
+                      {GENDER_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.gender && (
+                      <span role="alert" className="mt-1.5 block text-xs text-danger">
+                        {errors.gender}
+                      </span>
+                    )}
+                  </label>
 
                   <label className="block">
                     <span className="text-sm font-semibold text-text">
@@ -547,14 +617,16 @@ export default function GuardianRequestPage() {
                   checked={values.hasAcceptedGuardianDataPolicy}
                   onChange={toggleGuardianDataPolicy}
                   error={errors.hasAcceptedGuardianDataPolicy}
-                  label="Autorizo el tratamiento de mis datos personales como tutor/acudiente conforme a la Política de Privacidad de la Fundación Dejando Huellas Felices."
+                  policyType="data_treatment"
+                  label="Autorizo el tratamiento de mis datos personales como tutor/acudiente."
                 />
 
                 <DataPolicyConsent
                   checked={values.hasAcceptedMinorDataPolicy}
                   onChange={toggleMinorDataPolicy}
                   error={errors.hasAcceptedMinorDataPolicy}
-                  label="Autorizo el tratamiento de los datos personales del menor a mi cargo conforme a la Política de Privacidad de la Fundación Dejando Huellas Felices."
+                  policyType="dependent_consent"
+                  label="Autorizo el tratamiento de los datos personales del menor a mi cargo."
                 />
               </div>
 

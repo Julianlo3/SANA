@@ -376,6 +376,7 @@ export default function SelfRequestPage() {
               checked={values.hasAcceptedDataPolicy}
               onChange={toggleDataPolicy}
               error={errors.hasAcceptedDataPolicy}
+              policyType="data_treatment"
             />
 
             {submitError && (
