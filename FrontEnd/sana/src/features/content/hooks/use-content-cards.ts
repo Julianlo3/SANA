@@ -21,6 +21,8 @@ const EMPTY_VALUES: CardFormValues = {
   title: "",
   subtitle: "",
   description: "",
+  imageUrl: "",
+  imageAlt: "",
   isActive: true,
 };
 
@@ -31,15 +33,20 @@ function toFormValues(card: ContentCard): CardFormValues {
     title: card.title,
     subtitle: card.subtitle ?? "",
     description: card.description ?? "",
+    imageUrl: card.imageUrl ?? "",
+    imageAlt: card.imageAlt ?? "",
     isActive: card.isActive,
   };
 }
 
 function toPayload(values: CardFormValues): ContentCardPayload {
+  const imageUrl = values.imageUrl || null;
   return {
     title: values.title.trim(),
     subtitle: values.subtitle.trim() || null,
     description: values.description.trim() || null,
+    imageUrl,
+    imageAlt: imageUrl ? values.imageAlt.trim() : null,
     isActive: values.isActive,
   };
 }
@@ -55,6 +62,7 @@ export function useContentCards(config: CardSectionConfig) {
   const [editor, setEditor] = useState<Editor>(null);
   const [cardToDelete, setCardToDelete] = useState<ContentCard | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -199,6 +207,8 @@ export function useContentCards(config: CardSectionConfig) {
     loadError,
     editor,
     isSaving,
+    isUploading,
+    setIsUploading,
     actionError,
     notice,
     cardToDelete,

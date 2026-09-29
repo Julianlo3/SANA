@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-react";
 import InlineMessage from "@/components/feedback/inline-message";
 import TextAreaField from "@/components/forms/text-area-field";
@@ -13,6 +14,7 @@ import {
 } from "../config/content-sections";
 import { useContentCards } from "../hooks/use-content-cards";
 import IconButton from "./icon-button";
+import ImageUploadField from "./image-upload-field";
 import LastEditNote from "./last-edit-note";
 
 export default function CardSectionEditor({
@@ -29,6 +31,8 @@ export default function CardSectionEditor({
     errors,
     isValid,
     isSaving,
+    isUploading,
+    setIsUploading,
     actionError,
     notice,
     cardToDelete,
@@ -45,6 +49,7 @@ export default function CardSectionEditor({
   } = useContentCards(config);
 
   const { title, subtitle, description } = config.fields;
+  const isBusy = isSaving || isUploading;
 
   if (isLoading) {
     return (
@@ -115,11 +120,32 @@ export default function CardSectionEditor({
             />
           )}
 
+          {config.image && (
+            <div>
+              <ImageUploadField
+                folder="content"
+                required={config.image.required}
+                imageUrl={values.imageUrl || null}
+                imageAlt={values.imageAlt}
+                altError={errors.imageAlt}
+                disabled={isSaving}
+                onImageChange={(url) => setValue("imageUrl", url ?? "")}
+                onAltChange={(alt) => setValue("imageAlt", alt)}
+                onUploadingChange={setIsUploading}
+              />
+              {errors.imageUrl && (
+                <p role="alert" className="mt-1.5 text-xs text-danger">
+                  {errors.imageUrl}
+                </p>
+              )}
+            </div>
+          )}
+
           <label className="flex cursor-pointer items-center gap-3 text-sm text-text">
             <input
               type="checkbox"
               checked={values.isActive}
-              disabled={isSaving}
+              disabled={isBusy}
               onChange={(event) => setValue("isActive", event.target.checked)}
               className="h-4 w-4 cursor-pointer accent-primary"
             />
@@ -131,10 +157,10 @@ export default function CardSectionEditor({
           )}
 
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <Button variant="secondary" onClick={cancelEdit} disabled={isSaving}>
+            <Button variant="secondary" onClick={cancelEdit} disabled={isBusy}>
               Cancelar
             </Button>
-            <Button onClick={save} disabled={!isValid || isSaving}>
+            <Button onClick={save} disabled={!isValid || isBusy}>
               {isSaving ? "Guardando…" : "Guardar"}
             </Button>
           </div>
@@ -156,9 +182,16 @@ export default function CardSectionEditor({
           {cards.map((card) => (
             <li
               key={card.id}
-              className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-5 sm:flex-row sm:items-start sm:justify-between"
+              className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-5 sm:flex-row sm:items-start"
             >
-              <div className="min-w-0 space-y-1">
+              {config.image && (
+                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full bg-surface-muted">
+                  {card.imageUrl && (
+                    <Image src={card.imageUrl} alt={card.imageAlt ?? ""} fill sizes="64px" className="object-cover" />
+                  )}
+                </div>
+              )}
+              <div className="min-w-0 flex-1 space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-semibold text-text">{card.title}</p>
                   {!card.isActive && (

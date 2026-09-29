@@ -6,6 +6,8 @@ export type MissionVisionValues = {
 };
 
 export type CardFormValues = Record<CardField, string> & {
+  imageUrl: string;
+  imageAlt: string;
   isActive: boolean;
 };
 
@@ -29,6 +31,13 @@ export function buildCardValidator(config: CardSectionConfig) {
       if (fieldConfig?.required && !values[field].trim()) {
         errors[field] = `${fieldConfig.label} es obligatorio.`;
       }
+    }
+
+    if (config.image?.required && !values.imageUrl) {
+      errors.imageUrl = `${config.image.label} es obligatoria.`;
+    }
+    if (values.imageUrl && !values.imageAlt.trim()) {
+      errors.imageAlt = "Describe la imagen.";
     }
 
     return errors;

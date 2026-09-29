@@ -263,8 +263,18 @@ export default async function HomePage() {
                     key={member.id}
                     className="rounded-2xl border border-border bg-surface p-6 text-center"
                   >
-                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary-soft font-display text-xl font-bold text-primary">
-                      {member.title.charAt(0).toUpperCase()}
+                    <div className="relative mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-primary-soft font-display text-2xl font-bold text-primary">
+                      {member.imageUrl ? (
+                        <Image
+                          src={member.imageUrl}
+                          alt={member.imageAlt ?? member.title}
+                          fill
+                          sizes="96px"
+                          className="object-cover"
+                        />
+                      ) : (
+                        member.title.charAt(0).toUpperCase()
+                      )}
                     </div>
                     <h3 className="mt-4 font-semibold text-text">
                       {member.title}

@@ -37,6 +37,8 @@ export function createContentCard(
     ...payload,
     subtitle: payload.subtitle ?? undefined,
     description: payload.description ?? undefined,
+    imageUrl: payload.imageUrl ?? undefined,
+    imageAlt: payload.imageAlt ?? undefined,
   });
 }
 

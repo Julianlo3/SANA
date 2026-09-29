@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import type { AuthenticatedUser } from '../interfaces/auth.interface.js';
 import type { ContentCardSection } from './content.constants.js';
+import { CloudinaryService } from './images/cloudinary.service.js';
 import {
   ContentRepository,
   type ContentCardPatch,
@@ -28,14 +29,14 @@ type CardFields = Pick<
 
 const REQUIRED_BY_SECTION: Record<ContentCardSection, (keyof CardFields)[]> = {
   values: ['title'],
-  team: ['title', 'subtitle'],
+  team: ['title', 'subtitle', 'imageUrl'],
   services: ['title', 'description'],
   programs: ['title', 'description'],
 };
 
 const FIELD_LABELS: Record<ContentCardSection, Partial<Record<keyof CardFields, string>>> = {
   values: { title: 'nombre del valor' },
-  team: { title: 'nombre', subtitle: 'cargo' },
+  team: { title: 'nombre', subtitle: 'cargo', imageUrl: 'foto' },
   services: { title: 'nombre del servicio', description: 'descripción' },
   programs: { title: 'nombre del programa', description: 'descripción' },
 };
@@ -47,7 +48,10 @@ const FIELD_LABELS: Record<ContentCardSection, Partial<Record<keyof CardFields, 
 export class ContentService {
   private readonly logger = new Logger(ContentService.name);
 
-  constructor(private readonly repository: ContentRepository) {}
+  constructor(
+    private readonly repository: ContentRepository,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
 
   /**
    * Finds the single-value items (mission and vision) with their last editor.
@@ -101,6 +105,9 @@ export class ContentService {
       imageAlt: emptyToNull(dto.imageAlt),
     };
     this.ensureRequiredFields(dto.section, fields);
+    if (fields.imageUrl) {
+      await this.cloudinaryService.ensureValidImage(fields.imageUrl, 'content');
+    }
 
     const card = await this.repository.createCard(
       {
@@ -152,9 +159,15 @@ export class ContentService {
       imageUrl: patch.imageUrl === undefined ? current.imageUrl : patch.imageUrl,
       imageAlt: patch.imageAlt === undefined ? current.imageAlt : patch.imageAlt,
     });
+    if (patch.imageUrl && patch.imageUrl !== current.imageUrl) {
+      await this.cloudinaryService.ensureValidImage(patch.imageUrl, 'content');
+    }
 
     const card = await this.repository.updateCard(id, patch, user.userId);
     if (!card) throw new NotFoundException('El elemento de contenido no existe');
+    if (current.imageUrl && patch.imageUrl !== undefined && patch.imageUrl !== current.imageUrl) {
+      await this.cloudinaryService.deleteImage(current.imageUrl);
+    }
 
     this.logger.log(
       `Module:content, Function:updateCard, result-success: userId-${user.userId}, cardId-${id}`,
@@ -168,8 +181,10 @@ export class ContentService {
    * @param id The ID of the card.
    */
   async deleteCard(user: AuthenticatedUser, id: number): Promise<void> {
-    const wasDeleted = await this.repository.deleteCard(id, user.userId);
+    const current = await this.repository.findCardById(id);
+    const wasDeleted = current && (await this.repository.deleteCard(id, user.userId));
     if (!wasDeleted) throw new NotFoundException('El elemento de contenido no existe');
+    if (current.imageUrl) await this.cloudinaryService.deleteImage(current.imageUrl);
 
     this.logger.log(
       `Module:content, Function:deleteCard, result-success: userId-${user.userId}, cardId-${id}`,

@@ -32,6 +32,8 @@ export type ContentCardPayload = {
   title: string;
   subtitle: string | null;
   description: string | null;
+  imageUrl: string | null;
+  imageAlt: string | null;
   isActive: boolean;
 };
 

@@ -8,6 +8,7 @@ export type CardSectionConfig = {
   description: string;
   itemName: string;
   fields: Record<CardField, { label: string; required: boolean } | null>;
+  image: { label: string; required: boolean } | null;
 };
 
 export const CARD_SECTIONS: CardSectionConfig[] = [
@@ -21,6 +22,7 @@ export const CARD_SECTIONS: CardSectionConfig[] = [
       subtitle: null,
       description: { label: "Descripción", required: false },
     },
+    image: null,
   },
   {
     section: "team",
@@ -32,6 +34,7 @@ export const CARD_SECTIONS: CardSectionConfig[] = [
       subtitle: { label: "Cargo", required: true },
       description: { label: "Descripción", required: false },
     },
+    image: { label: "Foto", required: true },
   },
   {
     section: "services",
@@ -43,6 +46,7 @@ export const CARD_SECTIONS: CardSectionConfig[] = [
       subtitle: null,
       description: { label: "Descripción", required: true },
     },
+    image: null,
   },
   {
     section: "programs",
@@ -54,6 +58,7 @@ export const CARD_SECTIONS: CardSectionConfig[] = [
       subtitle: null,
       description: { label: "Descripción", required: true },
     },
+    image: null,
   },
 ];
 
