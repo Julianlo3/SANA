@@ -42,7 +42,9 @@ export type PublicationStatus = (typeof PUBLICATION_STATUSES)[number];
 
 export const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 export const IMAGE_FORMATS = ['jpg', 'png', 'webp'] as const;
-export const IMAGE_FOLDERS = ['content', 'news', 'gallery'] as const;
+export const IMAGE_FOLDERS = ['content', 'news', 'gallery', 'banners'] as const;
+export const BANNER_TITLE_MAX_LENGTH = 120;
+export const DEFAULT_MAX_ACTIVE_BANNERS = 5;
 export type ImageFolder = (typeof IMAGE_FOLDERS)[number];
 
 export const CLOUDINARY_IMAGE_URL_PATTERN =

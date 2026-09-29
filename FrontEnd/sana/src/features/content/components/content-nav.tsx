@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/content/institutional", label: "Institucional" },
   { href: "/content/news", label: "Noticias" },
   { href: "/content/gallery", label: "Galería" },
+  { href: "/content/banners", label: "Banners" },
 ];
 
 export default function ContentNav() {

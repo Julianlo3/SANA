@@ -11,8 +11,10 @@ import PublicHeader from "@/components/navigation/public-header";
 import PublicFooter from "@/components/navigation/public-footer";
 import PendingContentNotice from "@/components/feedback/pending-content-notice";
 import { HOME_CONTENT } from "@/content/home";
+import BannerCarousel from "@/features/content/components/banner-carousel";
 import NewsCard from "@/features/content/components/news-card";
 import {
+  getPublicBanners,
   getPublicContent,
   getPublicGallery,
   getPublicNews,
@@ -25,10 +27,11 @@ const { hero, about, programs, services, team, news, gallery, donation } =
 const PROGRAM_ICONS = [HeartHandshake, ShieldCheck, Users];
 
 export default async function HomePage() {
-  const [content, latestNews, galleryImages] = await Promise.all([
+  const [content, latestNews, galleryImages, banners] = await Promise.all([
     getPublicContent(),
     getPublicNews(1, 3),
     getPublicGallery(),
+    getPublicBanners(),
   ]);
 
   return (
@@ -36,6 +39,8 @@ export default async function HomePage() {
       <PublicHeader />
 
       <main className="flex-1">
+        <BannerCarousel banners={banners} />
+
         {/* HERO */}
         <section className="relative overflow-hidden">
           <div

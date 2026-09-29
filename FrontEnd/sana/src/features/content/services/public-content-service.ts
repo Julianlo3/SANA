@@ -6,6 +6,7 @@ import {
   type PublicTag,
 } from "../config/content-access";
 import type {
+  PublicBanner,
   PublicContent,
   PublicGalleryImage,
   PublicNews,
@@ -56,6 +57,18 @@ export async function getPublicNews(page = 1, limit = 9): Promise<PublicNewsPage
 
 export function getPublicNewsItem(id: number): Promise<PublicNews | null> {
   return fetchPublic<PublicNews>(ENDPOINTS.publicNewsItem(id), PUBLIC_NEWS_TAG);
+}
+
+/** Not cached: banners depend on the current date, so an expired banner must disappear right away. */
+export async function getPublicBanners(): Promise<PublicBanner[]> {
+  try {
+    const response = await fetch(`${BACKEND_URL}${ENDPOINTS.publicBanners}`, {
+      cache: "no-store",
+    });
+    return response.ok ? ((await response.json()) as PublicBanner[]) : [];
+  } catch {
+    return [];
+  }
 }
 
 export async function getPublicGallery(): Promise<PublicGalleryImage[]> {

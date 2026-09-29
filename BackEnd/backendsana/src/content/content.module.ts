@@ -1,10 +1,15 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../modules/auth.module.js';
+import { BannersController } from './banners/banners.controller.js';
+import { BannersRepository } from './banners/banners.repository.js';
+import { BannersService } from './banners/banners.service.js';
+import { PublicBannersController } from './banners/public-banners.controller.js';
 import { ContentCardsController } from './content-cards.controller.js';
 import { ContentItemsController } from './content-items.controller.js';
 import { ContentRepository } from './content.repository.js';
 import { ContentService } from './content.service.js';
+import { Banner } from './entities/banner.entity.js';
 import { ContentCard } from './entities/content-card.entity.js';
 import { ContentChangeLog } from './entities/content-change-log.entity.js';
 import { ContentItem } from './entities/content-item.entity.js';
@@ -31,6 +36,7 @@ import { PublicContentController } from './public-content.controller.js';
       ContentChangeLog,
       News,
       GalleryImage,
+      Banner,
     ]),
   ],
   controllers: [
@@ -41,6 +47,8 @@ import { PublicContentController } from './public-content.controller.js';
     PublicNewsController,
     GalleryImagesController,
     PublicGalleryImagesController,
+    BannersController,
+    PublicBannersController,
     ImageUploadSignaturesController,
   ],
   providers: [
@@ -50,6 +58,8 @@ import { PublicContentController } from './public-content.controller.js';
     NewsService,
     GalleryRepository,
     GalleryService,
+    BannersRepository,
+    BannersService,
     CloudinaryService,
   ],
 })

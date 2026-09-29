@@ -37,4 +37,8 @@ export const ENDPOINTS = {
   publicNews: "/public/news",
   publicNewsItem: (id: number) => `/public/news/${id}`,
   publicGalleryImages: "/public/gallery-images",
+  banners: "/banners",
+  banner: (id: number) => `/banners/${id}`,
+  bannerActivation: (id: number) => `/banners/${id}/activation`,
+  publicBanners: "/public/banners",
 } as const;
