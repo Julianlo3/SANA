@@ -1,12 +1,54 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
+export interface CurrentPolicyDocument {
+  id: number;
+  type: string;
+  version: string;
+  content: string;
+  effectiveFrom: Date;
+}
+
 /**
  * Repository for managing policy acceptance records
  */
 @Injectable()
 export class PolicyRepository {
   constructor(private readonly dataSource: DataSource) { }
+
+  /**
+   * Gets the latest policy document for a given type.
+   * @param policyType The type of policy.
+   * @returns The latest policy document, or null if none exists.
+   */
+  async getCurrentPolicyDocument(
+    policyType: string,
+  ): Promise<CurrentPolicyDocument | null> {
+    const rows = await this.dataSource.query<{
+      pd_id: number;
+      pd_type: string;
+      pd_version: string;
+      pd_content: string;
+      pd_effective_from: Date;
+    }[]>(
+      `SELECT pd_id, pd_type, pd_version, pd_content, pd_effective_from
+       FROM policy_documents
+       WHERE pd_type = $1
+       ORDER BY pd_effective_from DESC, pd_id DESC
+       LIMIT 1`,
+      [policyType],
+    );
+    const document = rows[0];
+    if (!document) return null;
+
+    return {
+      id: document.pd_id,
+      type: document.pd_type,
+      version: document.pd_version,
+      content: document.pd_content,
+      effectiveFrom: document.pd_effective_from,
+    };
+  }
 
   /**
    * Gets the current policy document ID for a given policy type.
