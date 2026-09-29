@@ -25,7 +25,7 @@ export default function LoginPage() {
         </p>
 
         <div className="mt-10 rounded-2xl border border-border bg-surface p-6 shadow-sm">
-          <a href="/auth/login?connection=google-oauth2&returnTo=%2Fusers" className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-xl border border-border bg-surface py-4 font-semibold text-text transition hover:bg-surface-muted">
+          <a href="/auth/login?connection=google-oauth2&returnTo=%2Fdashboard" className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-xl border border-border bg-surface py-4 font-semibold text-text transition hover:bg-surface-muted">
                         <Image
               src="/icons/google.svg"
               alt=""
