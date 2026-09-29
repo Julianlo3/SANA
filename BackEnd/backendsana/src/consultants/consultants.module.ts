@@ -7,9 +7,11 @@ import { PersonRol } from '../users/entities/person-rol.entity.js';
 import { Rol } from '../users/entities/rol.entity.js';
 import { Appointment } from '../users/entities/appointment.entity.js';
 import { Psychologist } from '../users/entities/psychologist.entity.js';
+import { AuthModule } from '../modules/auth.module.js';
 
 @Module({
   imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       Person,
       PersonRol,
