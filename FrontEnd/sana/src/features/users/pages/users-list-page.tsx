@@ -73,7 +73,7 @@ export default function UsersListPage() {
           </div>
 
           <Link
-            href="/users/new"
+            href="/usuarios/nuevo"
             className="flex items-center justify-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-dark sm:ml-auto"
           >
             <UserPlus size={16} aria-hidden />
@@ -101,7 +101,7 @@ export default function UsersListPage() {
               </p>
               {users.length === 0 && (
                 <Link
-                  href="/users/new"
+                  href="/usuarios/nuevo"
                   className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-dark"
                 >
                   <UserPlus size={16} aria-hidden />

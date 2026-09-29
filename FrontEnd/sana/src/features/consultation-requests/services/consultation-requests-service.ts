@@ -6,59 +6,17 @@ import type {
 } from "../types/consultation-request-types";
 
 /**
- * Única puerta de entrada para las operaciones relacionadas
- * con las solicitudes de consulta.
+ * Envía una solicitud pública de cita al backend real
+ * (POST /appointments/request, sin autenticación).
  *
- * Mientras USE_MOCKS esté activo, se utilizan datos de prueba.
- * Cuando la bandera se desactiva, las mismas funciones consumen
- * la API real sin necesidad de modificar las pantallas.
- *
- * Decisión de equipo: no existe reserva automática de horario. Toda
- * solicitud queda "pending" y la asistente es quien la asigna, rechaza
- * o confirma desde su bandeja (HU-2.3). La notificación al consultante
- * se dispara solo cuando ella confirma la cita, no en este envío.
- */
-
-const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS !== "false";
-const MOCK_DELAY_MS = 600;
-
-/** Simula el tiempo de respuesta de una petición al backend. */
-function delay<T>(value: T): Promise<T> {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(value), MOCK_DELAY_MS);
-  });
-}
-
-/**
- * Genera un número de radicado de prueba.
- *
- * Formato: DH-AAAA-NNNN
- * Ejemplo: DH-2026-4821
- */
-function buildMockReference(): string {
-  const year = new Date().getFullYear();
-  const sequence = String(Math.floor(Math.random() * 9000) + 1000);
-
-  return `DH-${year}-${sequence}`;
-}
-
-/**
- * HU-2.2.2:
- * Envía una solicitud de consulta y devuelve el comprobante.
- * Siempre queda en estado "pending"; la asignación es tarea de la
- * asistente en HU-2.3.
+ * No hay mocks: este endpoint ya existe y está probado (ver
+ * BackEnd/backendsana/src/appointments/appointments.controller.ts).
+ * Toda solicitud queda en estado "pendiente"; la asistente es quien la
+ * asigna, confirma o descarta desde su bandeja (HU-2.3).
  */
 export async function submitConsultationRequest(
   payload: ConsultationRequestPayload,
 ): Promise<ConsultationRequestReceipt> {
-  if (USE_MOCKS) {
-    return delay({
-      referenceNumber: buildMockReference(),
-      status: "pending" as const,
-      submittedAt: new Date().toISOString(),
-    });
-  }
-
   return httpClient.post<ConsultationRequestReceipt>(
     ENDPOINTS.consultationRequests,
     payload,

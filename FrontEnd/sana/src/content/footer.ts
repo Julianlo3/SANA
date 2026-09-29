@@ -22,9 +22,9 @@ export const FOOTER_CONTENT = {
   links: {
     title: "Enlaces",
     items: [
-      { label: "Quiénes somos", href: "#about" },
-      { label: "Programas", href: "#programs" },
-      { label: "Noticias", href: "#news" },
+      { label: "Quiénes somos", href: "/#about" },
+      { label: "Programas", href: "/#programs" },
+      { label: "Noticias", href: "/#news" },
     ],
   },
 

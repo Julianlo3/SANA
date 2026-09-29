@@ -8,7 +8,7 @@
  * las herramientas del navegador vería igual lo que el backend envíe.
  */
 
-import type { ResidenceLocation } from "@/features/consultation-requests/types/consultation-request-types";
+import type { ResidenceLocation } from "@/config/residence-zones";
 
 /** Estado de la ficha del consultante. */
 export type ConsultantStatus = "active" | "inactive";

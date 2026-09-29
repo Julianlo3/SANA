@@ -64,7 +64,7 @@ export default function UserEditPage({ userId }: { userId: number }) {
 
       <div className="relative z-10 mx-auto max-w-3xl">
         <Link
-          href="/users"
+          href="/usuarios"
           className="inline-flex items-center gap-2 text-sm text-text-muted transition hover:text-text"
         >
           <ArrowLeft size={16} aria-hidden />

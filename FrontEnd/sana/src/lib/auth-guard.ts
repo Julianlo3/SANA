@@ -30,13 +30,13 @@ export async function getCurrentUser(): Promise<CurrentUser> {
   const session = await auth0.getSession();
 
   if (!session) {
-    redirect("/login");
+    redirect("/iniciar-sesion");
   }
 
   const accessToken = await auth0.getAccessToken();
 
   if (!accessToken?.token) {
-    redirect("/session-expired");
+    redirect("/sesion-expirada");
   }
 
   const response = await fetch(`${API_URL}/auth/me`, {
@@ -53,7 +53,7 @@ export async function getCurrentUser(): Promise<CurrentUser> {
    * El backend indica que la sesión/token ya no es válida.
    */
   if (response.status === 401) {
-    redirect("/session-expired");
+    redirect("/sesion-expirada");
   }
 
   /**
@@ -61,7 +61,7 @@ export async function getCurrentUser(): Promise<CurrentUser> {
    * autorización para acceder al recurso.
    */
   if (response.status === 403) {
-    redirect("/restricted-access");
+    redirect("/acceso-restringido");
   }
 
   /**
@@ -91,11 +91,11 @@ export async function requireAdministrator(): Promise<CurrentUser> {
   const user = await getCurrentUser();
 
   if (user.roles.length === 0) {
-    redirect("/pending-account");
+    redirect("/cuenta-pendiente");
   }
 
   if (!user.roles.includes("administrador")) {
-    redirect("/restricted-access");
+    redirect("/acceso-restringido");
   }
 
   return user;
@@ -118,7 +118,7 @@ export async function requireAnyRole(
    * no tiene ningún rol asignado.
    */
   if (user.roles.length === 0) {
-    redirect("/pending-account");
+    redirect("/cuenta-pendiente");
   }
 
   /**
@@ -130,7 +130,7 @@ export async function requireAnyRole(
   );
 
   if (!hasAllowedRole) {
-    redirect("/restricted-access");
+    redirect("/acceso-restringido");
   }
 
   return user;

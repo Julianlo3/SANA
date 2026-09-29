@@ -31,7 +31,7 @@ export default function UserCreatePage() {
 
       <div className="relative z-10 mx-auto max-w-2xl">
         <Link
-          href="/users"
+          href="/usuarios"
           className="inline-flex items-center gap-2 text-sm text-text-muted transition hover:text-text"
         >
           <ArrowLeft size={16} aria-hidden />
@@ -97,9 +97,9 @@ export default function UserCreatePage() {
             onBlur={() => setFieldTouched("contactNumber")}
           />
 
-          <RoleSelector
+            <RoleSelector
             selectedRoleIds={values.roleIds}
-            allowMultiple={false}
+            allowMultiple={true}
             onToggleRole={toggleRole}
             error={errors.roleIds}
           />
