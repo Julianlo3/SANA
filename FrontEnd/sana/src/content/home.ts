@@ -25,10 +25,9 @@ export const HOME_CONTENT = {
 
   about: {
     title: "Quiénes somos",
-    paragraphs: [
-      "Texto pendiente: historia de la fundación, año de creación, población que atiende y alcance de su trabajo.",
-      "Texto pendiente: misión y valores de la organización.",
-    ],
+    missionTitle: "Misión",
+    visionTitle: "Visión",
+    valuesTitle: "Nuestros valores",
     image: {
       src: "/images/manos-unidas.jpg",
       alt: "Manos de varias personas unidas en el centro",
@@ -37,35 +36,27 @@ export const HOME_CONTENT = {
 
   programs: {
     title: "Nuestros programas",
-    description:
-      "Texto pendiente: introducción a los servicios de la fundación.",
-    items: [
-      {
-        title: "Acompañamiento psicológico",
-        description:
-          "Texto pendiente: descripción del acompañamiento que ofrece la fundación.",
-      },
-      {
-        title: "Prevención",
-        description:
-          "Texto pendiente: descripción de los talleres y actividades de prevención.",
-      },
-      {
-        title: "Apoyo a familias",
-        description:
-          "Texto pendiente: descripción del acompañamiento a familias y cuidadores.",
-      },
-    ],
+  },
+
+  services: {
+    title: "Nuestros servicios",
+  },
+
+  team: {
+    title: "Nuestro equipo",
   },
 
   news: {
     title: "Últimas noticias",
-    imagePlaceholder: "Imagen pendiente",
-    items: [
-      { date: "Fecha pendiente", title: "Título de noticia pendiente" },
-      { date: "Fecha pendiente", title: "Título de noticia pendiente" },
-      { date: "Fecha pendiente", title: "Título de noticia pendiente" },
-    ],
+    seeAll: "Ver todas las noticias",
+    pageTitle: "Noticias",
+    pageDescription:
+      "Las actividades y los logros de la fundación, de la más reciente a la más antigua.",
+    back: "Volver a noticias",
+  },
+
+  gallery: {
+    title: "Galería",
   },
 
   donation: {
