@@ -134,7 +134,7 @@ export class UsersService {
 
         existing.perName = dto.fullName;
         existing.perCardType = dto.cardType ?? existing.perCardType ?? 'CC';
-        existing.perIdentityDocument = Number(dto.identityDocument);
+        existing.perIdentityDocument = dto.identityDocument;
         existing.perContactNumber = dto.phone;
         if (dto.birthdate !== undefined) existing.perBirthdate = dto.birthdate;
         if (dto.gender !== undefined) existing.perGender = dto.gender;
@@ -159,7 +159,7 @@ export class UsersService {
         manager.create(Person, {
           perName: dto.fullName,
           perCardType: dto.cardType ?? 'CC',
-          perIdentityDocument: Number(dto.identityDocument),
+          perIdentityDocument: dto.identityDocument,
           perEmail: email,
           perContactNumber: dto.phone,
           perBirthdate: dto.birthdate ?? null,
@@ -239,7 +239,7 @@ export class UsersService {
       if (dto.fullName !== undefined) person.perName = dto.fullName;
       if (dto.cardType !== undefined) person.perCardType = dto.cardType;
       if (dto.identityDocument !== undefined)
-        person.perIdentityDocument = Number(dto.identityDocument);
+        person.perIdentityDocument = dto.identityDocument;
       if (dto.phone !== undefined) person.perContactNumber = dto.phone;
       if (dto.birthdate !== undefined) person.perBirthdate = dto.birthdate;
       if (dto.gender !== undefined) person.perGender = dto.gender;

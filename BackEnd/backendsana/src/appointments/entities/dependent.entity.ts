@@ -8,14 +8,11 @@ export class Dependent {
   @PrimaryGeneratedColumn({ name: 'dep_id' })
   depId!: number;
 
-  @Column({ name: 'dep_identity_document' })
-  depIdentityDocument!: number;
+  @Column({ name: 'dep_identity_document', type: 'bigint' })
+  depIdentityDocument!: string;
 
   @Column({ name: 'dep_name', length: 100 })
   depName!: string;
-
-  @Column({ name: 'dep_contact_number', type: 'bigint', nullable: true })
-  depContactNumber!: string | null;
 
   @Column({ name: 'dep_birthdate', type: 'date' })
   depBirthdate!: string;

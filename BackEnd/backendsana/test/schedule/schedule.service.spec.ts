@@ -25,6 +25,7 @@ function setup() {
     createRecurringBlock: vi.fn().mockResolvedValue({ id: 2 }),
     deleteRecurringBlock: vi.fn().mockResolvedValue(true),
     findAvailability: vi.fn().mockResolvedValue([]),
+    assignAppointmentSlot: vi.fn().mockResolvedValue('assigned'),
   };
   const policyService = {
     hasPsychologistAcceptedScheduleTerms: vi.fn().mockResolvedValue(true),
@@ -200,5 +201,40 @@ describe('ScheduleService', () => {
         ],
       },
     ]);
+  });
+
+  it('delegates assignment and occupancy persistence to one repository transaction', async () => {
+    const { service, repository } = setup();
+    const result = await service.assignAppointmentSlot({
+      appId: 25,
+      secretaryUserId: 99,
+      psychologistId: 10,
+      appDate: new Date('2026-10-15T09:00:00.000Z'),
+      duration: 60,
+    });
+
+    expect(result).toBe('assigned');
+    expect(repository.assignAppointmentSlot).toHaveBeenCalledWith({
+      appId: 25,
+      secretaryUserId: 99,
+      psyId: 10,
+      appDate: new Date('2026-10-15T09:00:00.000Z'),
+      appDuration: 60,
+    });
+  });
+
+  it('returns the repository conflict result without creating an occupancy separately', async () => {
+    const { service, repository } = setup();
+    repository.assignAppointmentSlot.mockResolvedValue('slot_taken');
+
+    const result = await service.assignAppointmentSlot({
+      appId: 25,
+      secretaryUserId: 99,
+      psychologistId: 10,
+      appDate: new Date('2026-10-15T09:00:00.000Z'),
+      duration: 60,
+    });
+
+    expect(result).toBe('slot_taken');
   });
 });

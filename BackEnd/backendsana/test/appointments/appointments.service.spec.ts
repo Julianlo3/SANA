@@ -6,7 +6,7 @@ function baseRequest(overrides: Record<string, unknown> = {}) {
   return {
     requesterName: 'Ana Solicitante',
     requesterCardType: 'CC',
-    requesterIdentityDocument: '12345678',
+    requesterIdentityDocument: '10212265698',
     requesterContactNumber: '3001234567',
     requesterBirthdate: '1990-01-01',
     requesterTermsAccepted: true,
@@ -100,6 +100,11 @@ describe('AppointmentsService.requestAppointment', () => {
       service.requestAppointment(baseRequest() as never),
     ).resolves.toMatchObject({ appId: 42 });
     expect(repository.createRequest).toHaveBeenCalledOnce();
+    expect(repository.createRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requester: expect.objectContaining({ identityDocument: '10212265698' }),
+      }),
+    );
     expect(repository.relationshipExists).not.toHaveBeenCalled();
   });
 
@@ -228,19 +233,78 @@ describe('AppointmentsService assignment lifecycle', () => {
     expect(repository.discard).toHaveBeenCalledWith(42, 'Duplicada');
   });
 
-  it('only confirms an assigned request', async () => {
-    const { service, repository } = setup();
-    repository.findById.mockResolvedValue({ appId: 42, appState: 'pendiente', requesterId: 10 });
+  it('confirms a pending request with a psychologist and slot in one action', async () => {
+    const { service, repository, scheduleService } = setup();
+    repository.findById
+      .mockResolvedValueOnce({ appId: 42, appState: 'pendiente', requesterId: 10 })
+      .mockResolvedValueOnce({
+        appId: 42,
+        appState: 'confirmada',
+        requesterId: 10,
+        psychologistId: 8,
+      });
+    repository.findPsychologists.mockResolvedValue([
+      { psyId: 8, name: 'Psicóloga', speciality: 'Infantil', licenseNumber: 1 },
+    ]);
 
     await expect(
       service.confirmAppointment(
         42,
-        { psyId: 8, appDate: '2026-10-01T10:00:00.000Z' },
+        { psyId: 8, appDate: '2026-10-01T10:00:00.000Z', appDuration: 60 },
+        3,
+      ),
+    ).resolves.toMatchObject({ appState: 'confirmada', psychologistId: 8 });
+    expect(scheduleService.confirmAppointmentSlot).toHaveBeenCalledWith({
+      appId: 42,
+      secretaryUserId: 3,
+      psyId: 8,
+      appDate: new Date('2026-10-01T10:00:00.000Z'),
+      appDuration: 60,
+    });
+    expect(repository.recordAssignmentHistory).toHaveBeenCalledWith({
+      appId: 42,
+      oldPsyId: null,
+      newPsyId: 8,
+      secId: 3,
+      reason: null,
+    });
+  });
+
+  it('rejects confirmation when the selected slot is no longer available', async () => {
+    const { service, repository, scheduleService } = setup();
+    repository.findById.mockResolvedValue({ appId: 42, appState: 'pendiente', requesterId: 10 });
+    repository.findPsychologists.mockResolvedValue([
+      { psyId: 8, name: 'Psicóloga', speciality: 'Infantil', licenseNumber: 1 },
+    ]);
+    scheduleService.confirmAppointmentSlot.mockResolvedValue(false);
+
+    await expect(
+      service.confirmAppointment(
+        42,
+        { psyId: 8, appDate: '2026-10-01T10:00:00.000Z', appDuration: 60 },
         3,
       ),
     ).rejects.toMatchObject({
-      response: expect.objectContaining({ error: 'APPOINTMENT_NOT_ASSIGNED' }),
+      response: expect.objectContaining({ error: 'SCHEDULE_SLOT_TAKEN' }),
     });
+    expect(repository.recordAssignmentHistory).not.toHaveBeenCalled();
+  });
+
+  it('prevents assigning an inactive psychologist during confirmation', async () => {
+    const { service, repository, scheduleService } = setup();
+    repository.findById.mockResolvedValue({ appId: 42, appState: 'pendiente', requesterId: 10 });
+    repository.findPsychologists.mockResolvedValue([]);
+
+    await expect(
+      service.confirmAppointment(
+        42,
+        { psyId: 8, appDate: '2026-10-01T10:00:00.000Z', appDuration: 60 },
+        3,
+      ),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ error: 'PSYCHOLOGIST_NOT_AVAILABLE' }),
+    });
+    expect(scheduleService.confirmAppointmentSlot).not.toHaveBeenCalled();
   });
 
   it('prevents secretary from managing their own appointment during assignment', async () => {
@@ -283,7 +347,7 @@ describe('AppointmentsService assignment lifecycle', () => {
     await expect(
       service.confirmAppointment(
         42,
-        { psyId: 8, appDate: '2026-10-01T10:00:00.000Z' },
+        { psyId: 8, appDate: '2026-10-01T10:00:00.000Z', appDuration: 60 },
         3,
       ),
     ).rejects.toMatchObject({

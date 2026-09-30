@@ -6,7 +6,7 @@ type QueryExecutor = DataSource | EntityManager;
 export interface AppointmentRequesterParams {
   name: string;
   cardType: string;
-  identityDocument: number;
+  identityDocument: string;
   contactNumber: string;
   email?: string;
   birthdate?: string;
@@ -17,10 +17,9 @@ export interface AppointmentRequesterParams {
 
 export interface AppointmentDependentParams {
   name: string;
-  identityDocument: number;
+  identityDocument: string;
   birthdate: string;
   gender?: string;
-  contactNumber?: string;
   termsAccepted: boolean;
 }
 
@@ -37,7 +36,7 @@ export interface AppointmentRow {
   requesterId: number;
   requesterName: string;
   requesterCardType: string | null;
-  requesterIdentityDocument: number | null;
+  requesterIdentityDocument: string | null;
   requesterContactNumber: string | null;
   requesterEmail: string | null;
   patientType: 'self' | 'dependent';
@@ -61,6 +60,14 @@ export interface PsychologistOptionRow {
   name: string;
   speciality: string;
   licenseNumber: number;
+}
+
+export interface PsychologistHistoryRow {
+  psyId: number;
+  psychologistName: string;
+  totalAppointments: number;
+  currentStreak: number;
+  lastAppointmentDate: string;
 }
 
 /** 
@@ -460,23 +467,20 @@ export class AppointmentsRepository {
       [params.identityDocument],
     );
 
-    const contact = params.contactNumber ? Number(params.contactNumber) : 0;
-
     if (existing[0]) {
       return existing[0].dep_id;
     }
 
     const created = await executor.query<{ dep_id: number }[]>(
       `INSERT INTO dependents (
-         dep_name, dep_identity_document, dep_birthdate, dep_contact_number, dep_gender
+         dep_name, dep_identity_document, dep_birthdate, dep_gender
        )
-       VALUES ($1, $2, $3::date, $4, $5)
+       VALUES ($1, $2, $3::date, $4)
        RETURNING dep_id`,
       [
         params.name,
         params.identityDocument,
         params.birthdate,
-        contact,
         params.gender ?? null,
       ],
     );
@@ -662,45 +666,89 @@ export class AppointmentsRepository {
   }
 
   /**
-   * Finds psychologists who have attended a specific consultant with their streak
-   * @param consultantId The ID of the consultant (requester)
-   * @returns Array of psychologists with streak information
+   * Finds completed-appointment history for the patient on a specific appointment.
+   * @param appId The appointment that identifies the patient (self or dependent).
+   * @returns Psychologist totals, latest streak, and last completed date.
    */
-  async findConsultantPsychologistHistory(
-    consultantId: number,
-  ): Promise<{ psyId: number; psychologistName: string; totalAppointments: number; currentStreak: number; lastAppointmentDate: string }[]> {
-    return this.dataSource.query(
-      `SELECT
-          a.psy_id AS "psyId",
-          per.per_name AS "psychologistName",
-          COUNT(*) AS "totalAppointments",
-          COALESCE(
-            (
-              SELECT COUNT(*)
-              FROM appointments a2
-              WHERE a2.req_id = $1
-                AND a2.psy_id = a.psy_id
-                AND a2.app_state IN ('realizada', 'confirmada')
-                AND a2.app_date <= a.app_date
-                AND NOT EXISTS (
-                  SELECT 1 FROM appointments a3
-                  WHERE a3.req_id = $1
-                    AND a3.psy_id <> a.psy_id
-                    AND a3.app_date > a2.app_date
-                    AND a3.app_date <= a.app_date
-                )
-            ),
-            0
-          ) AS "currentStreak",
-          MAX(a.app_date) AS "lastAppointmentDate"
-        FROM appointments a
-        JOIN person per ON per.per_id = a.psy_id
-        WHERE a.req_id = $1
-          AND a.psy_id IS NOT NULL
-          AND a.app_state IN ('realizada', 'confirmada', 'asignada')
-        GROUP BY a.psy_id, per.per_name
-        ORDER BY "currentStreak" DESC, "totalAppointments" DESC`,
-      [consultantId],
+  async findPatientPsychologistHistory(
+    appId: number,
+  ): Promise<PsychologistHistoryRow[]> {
+    return this.dataSource.query<PsychologistHistoryRow[]>(
+      `WITH target_patient AS (
+         SELECT app_patient_person_id, app_patient_dependent_id
+         FROM appointments
+         WHERE app_id = $1
+       ), patient_appointments AS (
+         SELECT a.app_id, a.psy_id, a.app_date
+         FROM appointments a
+         CROSS JOIN target_patient target
+         WHERE a.psy_id IS NOT NULL
+           AND a.app_state = 'realizada'
+           AND (
+             (
+               target.app_patient_dependent_id IS NOT NULL
+               AND a.app_patient_dependent_id = target.app_patient_dependent_id
+             )
+             OR (
+               target.app_patient_dependent_id IS NULL
+               AND a.app_patient_dependent_id IS NULL
+               AND a.app_patient_person_id = target.app_patient_person_id
+             )
+           )
+       ), ordered_appointments AS (
+         SELECT
+           app_id,
+           psy_id,
+           app_date,
+           CASE
+             WHEN LAG(psy_id) OVER (ORDER BY app_date, app_id) IS DISTINCT FROM psy_id
+             THEN 1 ELSE 0
+           END AS starts_streak
+         FROM patient_appointments
+       ), streak_groups AS (
+         SELECT
+           psy_id,
+           app_date,
+           SUM(starts_streak) OVER (ORDER BY app_date, app_id) AS streak_group
+         FROM ordered_appointments
+       ), psychologist_streaks AS (
+         SELECT
+           psy_id,
+           streak_group,
+           COUNT(*)::int AS streak_count,
+           MAX(app_date) AS streak_last_date
+         FROM streak_groups
+         GROUP BY psy_id, streak_group
+       ), ranked_streaks AS (
+         SELECT
+           psy_id,
+           streak_count,
+           ROW_NUMBER() OVER (
+             PARTITION BY psy_id
+             ORDER BY streak_last_date DESC, streak_group DESC
+           ) AS streak_rank
+         FROM psychologist_streaks
+       ), psychologist_totals AS (
+         SELECT
+           psy_id,
+           COUNT(*)::int AS total_appointments,
+           MAX(app_date) AS last_appointment_date
+         FROM patient_appointments
+         GROUP BY psy_id
+       )
+       SELECT
+         totals.psy_id AS "psyId",
+         per.per_name AS "psychologistName",
+         totals.total_appointments AS "totalAppointments",
+         COALESCE(streaks.streak_count, 0) AS "currentStreak",
+         totals.last_appointment_date AS "lastAppointmentDate"
+       FROM psychologist_totals totals
+       JOIN person per ON per.per_id = totals.psy_id
+       LEFT JOIN ranked_streaks streaks
+         ON streaks.psy_id = totals.psy_id AND streaks.streak_rank = 1
+       ORDER BY "currentStreak" DESC, "totalAppointments" DESC,
+                "lastAppointmentDate" DESC, per.per_name`,
+      [appId],
     );
   }
 
