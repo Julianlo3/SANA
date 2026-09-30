@@ -103,9 +103,9 @@ export class AppointmentsController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     this.logger.log(
-      `Module:appointments, Function:markAsCompleted, result-start: appId-${id}, psychologistUserId-${request.user.userId}`,
+      `Module:appointments, Function:markAsCompleted, result-start: appId-${id}, psychologistId-${request.user.personId}`,
     );
-    return this.appointmentsService.markAsCompleted(id, request.user.userId);
+    return this.appointmentsService.markAsCompleted(id, request.user.personId);
   }
 
   /**
@@ -142,7 +142,7 @@ export class AppointmentsController {
     return this.appointmentsService.confirmAppointment(
       id,
       dto,
-      request.user.userId,
+      request.user.personId,
     );
   }
 
@@ -164,12 +164,13 @@ export class AppointmentsController {
     return this.appointmentsService.assignAppointment(
       id,
       dto,
-      request.user.userId,
+      request.user.personId,
     );
   }
 
   /**
    * Protected endpoint: Secretary discards an appointment request.
+   * @param request The HTTP request object.
    * @param id The ID of the appointment to discard.
    * @param dto The DTO containing the discard details.
    * @returns A promise resolving to the discarded appointment.
@@ -178,14 +179,16 @@ export class AppointmentsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Secretary)
   discard(
+    @Req() request: Request & { user: AuthenticatedUser },
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: DiscardAppointmentDto,
   ) {
-    return this.appointmentsService.discardAppointment(id, dto);
+    return this.appointmentsService.discardAppointment(id, dto, request.user.personId);
   }
 
   /**
    * Protected endpoint: Updates appointment status.
+   * @param request The HTTP request object.
    * @param id The ID of the appointment to update.
    * @param dto The DTO containing the new status.
    * @returns A promise resolving to the updated appointment.
@@ -194,26 +197,27 @@ export class AppointmentsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Secretary)
   updateStatus(
+    @Req() request: Request & { user: AuthenticatedUser },
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateAppointmentStatusDto,
   ) {
     this.logger.log(
       `Module:appointments, Function:updateStatus, result-start: appId-${id}, newState-${dto.state}`,
     );
-    return this.appointmentsService.updateStatus(id, dto);
+    return this.appointmentsService.updateStatus(id, dto, request.user.personId);
   }
 
   /**
-   * Protected endpoint: Gets psychologist history for a specific consultant.
-   * Shows which psychologists have attended the consultant and their current streak.
-   * @param consultantId The ID of the consultant (requester).
-   * @returns A promise resolving to the psychologist history with streak information.
+   * Protected endpoint: Gets psychologist history for the patient in an appointment.
+   * The appointment identifies whether the patient is the requester or a dependent.
+   * @param id The appointment ID.
+   * @returns A promise resolving to the psychologist history for that patient.
    */
-  @Get('consultant/:consultantId/psychologist-history')
+  @Get(':id/psychologist-history')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Secretary)
-  findConsultantPsychologistHistory(@Param('consultantId', ParseIntPipe) consultantId: number) {
-    return this.appointmentsService.findConsultantPsychologistHistory(consultantId);
+  findPatientPsychologistHistory(@Param('id', ParseIntPipe) id: number) {
+    return this.appointmentsService.findPatientPsychologistHistory(id);
   }
 
   /**
@@ -230,7 +234,7 @@ export class AppointmentsController {
     @Req() request: Request & { user: AuthenticatedUser },
     @Query('state') state?: 'confirmada' | 'realizada' | 'cancelada',
   ) {
-    return this.appointmentsService.findByPsychologist(request.user.userId, state);
+    return this.appointmentsService.findByPsychologist(request.user.personId, state);
   }
 
   /**
@@ -247,6 +251,6 @@ export class AppointmentsController {
     @Req() request: Request & { user: AuthenticatedUser },
     @Param('id', ParseIntPipe) id: number,
   ) {
-    return this.appointmentsService.findByIdForPsychologist(id, request.user.userId);
+    return this.appointmentsService.findByIdForPsychologist(id, request.user.personId);
   }
 }

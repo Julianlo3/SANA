@@ -56,7 +56,7 @@ export class ConsultantsService {
   ): Promise<ConsultantResponse> {
     // Validar que no exista el consultante por documento de identidad
     const existingByDocument = await this.personRepository.findOne({
-      where: { perIdentityDocument: Number(dto.identityDocument) },
+      where: { perIdentityDocument: dto.identityDocument },
     });
 
     if (existingByDocument) {
@@ -75,7 +75,7 @@ export class ConsultantsService {
         manager.create(Person, {
           perName: dto.fullName,
           perCardType: dto.cardType,
-          perIdentityDocument: Number(dto.identityDocument),
+          perIdentityDocument: dto.identityDocument,
           perEmail: dto.email.trim().toLowerCase(),
           perContactNumber: dto.phone,
           perBirthdate: dto.birthdate,
@@ -201,7 +201,7 @@ export class ConsultantsService {
     // Validar duplicado por documento si se está cambiando
     if (dto.identityDocument && dto.identityDocument !== person.perIdentityDocument?.toString()) {
       const existingByDocument = await this.personRepository.findOne({
-        where: { perIdentityDocument: Number(dto.identityDocument) },
+        where: { perIdentityDocument: dto.identityDocument },
       });
 
       if (existingByDocument) {
@@ -218,7 +218,7 @@ export class ConsultantsService {
       if (dto.fullName !== undefined) personToUpdate.perName = dto.fullName;
       if (dto.cardType !== undefined) personToUpdate.perCardType = dto.cardType;
       if (dto.identityDocument !== undefined)
-        personToUpdate.perIdentityDocument = Number(dto.identityDocument);
+        personToUpdate.perIdentityDocument = dto.identityDocument;
       if (dto.email !== undefined) personToUpdate.perEmail = dto.email.trim().toLowerCase();
       if (dto.phone !== undefined) personToUpdate.perContactNumber = dto.phone;
       if (dto.birthdate !== undefined) personToUpdate.perBirthdate = dto.birthdate;

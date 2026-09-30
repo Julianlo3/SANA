@@ -1,4 +1,4 @@
-import { IsDateString, IsInt, IsOptional, IsPositive } from 'class-validator';
+import { IsDateString, IsInt, IsPositive } from 'class-validator';
 
 /** 
  * DTO for the secretary to confirm an appointment request.
@@ -12,8 +12,7 @@ export class ConfirmAppointmentDto {
   @IsDateString()
   appDate!: string;
 
-  @IsOptional()
   @IsInt()
   @IsPositive()
-  appDuration?: number;
+  appDuration!: number;
 }

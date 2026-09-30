@@ -14,6 +14,7 @@ import type { UpdateAppointmentStatusDto } from './dto/update-appointment-status
 import {
   AppointmentsRepository,
   type AppointmentRow,
+  type PsychologistHistoryRow,
   type PsychologistOptionRow,
   type RelationshipRow,
 } from './appointments.repository.js';
@@ -120,7 +121,7 @@ export class AppointmentsService {
       requester: {
         name: dto.requesterName.trim(),
         cardType: dto.requesterCardType,
-        identityDocument: Number(dto.requesterIdentityDocument),
+        identityDocument: dto.requesterIdentityDocument,
         contactNumber: dto.requesterContactNumber.trim(),
         email: dto.requesterEmail?.trim(),
         birthdate: dto.requesterBirthdate,
@@ -131,10 +132,9 @@ export class AppointmentsService {
       dependent: dto.patientType === 'dependent'
         ? {
           name: dto.dependentName!,
-          identityDocument: Number(dto.dependentIdentityDocument),
+          identityDocument: dto.dependentIdentityDocument!,
           birthdate: dto.dependentBirthdate!,
           gender: dto.dependentGender,
-          contactNumber: dto.dependentContactNumber?.trim() || dto.requesterContactNumber.trim(),
           termsAccepted: dto.dependentTermsAccepted!,
           relationshipId: dto.relationshipId!,
         }
@@ -168,25 +168,33 @@ export class AppointmentsService {
   ): Promise<AppointmentRow> {
     const appointment = await this.findByIdOrFail(appId);
 
-    if (appointment.appState !== 'asignada') {
+    // Validar que el secretario no gestione su propia cita
+    if (appointment.requesterId === secretaryUserId) {
       throw new BadRequestException({
-        error: 'APPOINTMENT_NOT_ASSIGNED',
-        message: 'Solo se pueden confirmar citas que ya fueron asignadas a un psicólogo',
+        error: 'SECRETARY_CANNOT_MANAGE_OWN_APPOINTMENT',
+        message: 'Un secretario no puede gestionar su propia cita. Solicite que otro secretario gestione esta solicitud.',
       });
     }
 
-    if (appointment.psychologistId !== dto.psyId) {
+    if (!['pendiente', 'asignada'].includes(appointment.appState)) {
+      throw new BadRequestException({
+        error: 'APPOINTMENT_NOT_CONFIRMABLE',
+        message: 'Solo se pueden confirmar solicitudes pendientes o citas asignadas',
+      });
+    }
+
+    if (appointment.appState === 'asignada' && appointment.psychologistId !== dto.psyId) {
       throw new BadRequestException({
         error: 'PSYCHOLOGIST_ASSIGNMENT_MISMATCH',
-        message: 'La cita debe confirmarse con el psicólogo actualmente asignado',
+        message: 'La cita asignada debe confirmarse con el psicólogo actualmente seleccionado',
       });
     }
 
-    if (
+    if (appointment.appState === 'asignada' && (
       !appointment.appDate ||
       new Date(appointment.appDate).getTime() !== new Date(dto.appDate).getTime() ||
       appointment.appDuration !== dto.appDuration
-    ) {
+    )) {
       throw new BadRequestException({
         error: 'APPOINTMENT_SLOT_MISMATCH',
         message: 'La franja confirmada debe coincidir con la franja asignada previamente',
@@ -196,9 +204,22 @@ export class AppointmentsService {
     if (!dto.appDuration) {
       throw new BadRequestException({
         error: 'APPOINTMENT_DURATION_REQUIRED',
-        message: 'La duración es obligatoria para ocupar la franja del psicólogo',
+        message: 'La duración es obligatoria para confirmar la cita',
       });
     }
+    if (!(await this.repo.findPsychologists()).some((psychologist) => psychologist.psyId === dto.psyId)) {
+      throw new BadRequestException({
+        error: 'PSYCHOLOGIST_NOT_AVAILABLE',
+        message: 'El psicólogo no está activo o no puede ser seleccionado',
+      });
+    }
+    if (appointment.requesterId === dto.psyId) {
+      throw new BadRequestException({
+        error: 'PSYCHOLOGIST_CANNOT_ATTEND_OWN_APPOINTMENT',
+        message: 'Un psicólogo no puede ser asignado a su propia cita. Seleccione otro psicólogo.',
+      });
+    }
+
     const confirmed = await this.scheduleService.confirmAppointmentSlot({
       appId,
       secretaryUserId,
@@ -210,6 +231,16 @@ export class AppointmentsService {
       throw new ConflictException({
         error: 'SCHEDULE_SLOT_TAKEN',
         message: 'La franja seleccionada ya no está disponible',
+      });
+    }
+
+    if (appointment.appState === 'pendiente') {
+      await this.repo.recordAssignmentHistory({
+        appId,
+        oldPsyId: null,
+        newPsyId: dto.psyId,
+        secId: secretaryUserId,
+        reason: null,
       });
     }
 
@@ -245,6 +276,14 @@ export class AppointmentsService {
       });
     }
 
+    // Validar que el secretario no gestione su propia cita
+    if (appointment.requesterId === secretaryUserId) {
+      throw new BadRequestException({
+        error: 'SECRETARY_CANNOT_MANAGE_OWN_APPOINTMENT',
+        message: 'Un secretario no puede gestionar su propia cita. Solicite que otro secretario gestione esta solicitud.',
+      });
+    }
+
     const psychologist = (await this.repo.findPsychologists()).find(
       (option) => option.psyId === dto.psyId,
     );
@@ -261,6 +300,14 @@ export class AppointmentsService {
       throw new BadRequestException({
         error: 'PSYCHOLOGIST_NO_GENERAL_AVAILABILITY',
         message: 'El psicólogo no tiene disponibilidad general registrada en el sistema',
+      });
+    }
+
+    // Validar que el psicólogo no sea asignado a su propia cita
+    if (appointment.requesterId === dto.psyId) {
+      throw new BadRequestException({
+        error: 'PSYCHOLOGIST_CANNOT_ATTEND_OWN_APPOINTMENT',
+        message: 'Un psicólogo no puede ser asignado a su propia cita. Seleccione otro psicólogo.',
       });
     }
 
@@ -310,13 +357,24 @@ export class AppointmentsService {
    * Discards an appointment request.
    * @param appId The ID of the appointment to discard.
    * @param dto The DTO containing the discard details.
+   * @param secretaryUserId The ID of the secretary performing the discard.
    * @returns A promise resolving to the discarded appointment.
    */
   async discardAppointment(
     appId: number,
     dto: DiscardAppointmentDto,
+    secretaryUserId: number,
   ): Promise<AppointmentRow> {
-    await this.findByIdOrFail(appId);
+    const appointment = await this.findByIdOrFail(appId);
+
+    // Validar que el secretario no gestione su propia cita
+    if (appointment.requesterId === secretaryUserId) {
+      throw new BadRequestException({
+        error: 'SECRETARY_CANNOT_MANAGE_OWN_APPOINTMENT',
+        message: 'Un secretario no puede gestionar su propia cita. Solicite que otro secretario gestione esta solicitud.',
+      });
+    }
+
     try {
       await this.repo.discard(appId, dto.reason.trim());
     } catch (error) {
@@ -335,13 +393,23 @@ export class AppointmentsService {
    * Updates an appointment's status (cancelada / realizada).
    * @param appId The ID of the appointment to update.
    * @param dto The DTO containing the status details.
+   * @param secretaryUserId The ID of the secretary performing the update.
    * @returns A promise resolving to the updated appointment.
    */
   async updateStatus(
     appId: number,
     dto: UpdateAppointmentStatusDto,
+    secretaryUserId: number,
   ): Promise<AppointmentRow> {
     const appointment = await this.findByIdOrFail(appId);
+
+    // Validar que el secretario no gestione su propia cita
+    if (appointment.requesterId === secretaryUserId) {
+      throw new BadRequestException({
+        error: 'SECRETARY_CANNOT_MANAGE_OWN_APPOINTMENT',
+        message: 'Un secretario no puede gestionar su propia cita. Solicite que otro secretario gestione esta solicitud.',
+      });
+    }
 
     if (
       appointment.appState === 'cancelada' ||
@@ -437,14 +505,15 @@ export class AppointmentsService {
   }
 
   /**
-   * Finds psychologist history for a specific consultant with streak information.
-   * @param consultantId The ID of the consultant (requester).
-   * @returns A promise resolving to the psychologist history with streak information.
+   * Finds psychologist history for the patient on a specific appointment.
+   * @param appId The appointment ID used to identify the patient.
+   * @returns A promise resolving to that patient's psychologist history.
    */
-  async findConsultantPsychologistHistory(
-    consultantId: number,
-  ): Promise<{ psyId: number; psychologistName: string; totalAppointments: number; currentStreak: number; lastAppointmentDate: string }[]> {
-    return this.repo.findConsultantPsychologistHistory(consultantId);
+  async findPatientPsychologistHistory(
+    appId: number,
+  ): Promise<PsychologistHistoryRow[]> {
+    await this.findByIdOrFail(appId);
+    return this.repo.findPatientPsychologistHistory(appId);
   }
 
   /**
@@ -468,12 +537,12 @@ export class AppointmentsService {
    */
   async markAsCompleted(
     appId: number,
-    psychologistUserId: number,
+    psychologistId: number,
   ): Promise<AppointmentRow> {
     const appointment = await this.findByIdOrFail(appId);
 
     // Verificar que la cita le pertenece a este psicólogo
-    if (appointment.psychologistId !== psychologistUserId) {
+    if (appointment.psychologistId !== psychologistId) {
       throw new BadRequestException({
         error: 'NOT_ASSIGNED_PSYCHOLOGIST',
         message: 'Solo el psicólogo asignado puede marcar la cita como realizada',
@@ -492,7 +561,7 @@ export class AppointmentsService {
     const updated = await this.findByIdOrFail(appId);
 
     this.logger.log(
-      `Module:appointments, Function:markAsCompleted, result-success: appId-${appId}, psychologistUserId-${psychologistUserId}`,
+      `Module:appointments, Function:markAsCompleted, result-success: appId-${appId}, psychologistId-${psychologistId}`,
     );
 
     return updated;

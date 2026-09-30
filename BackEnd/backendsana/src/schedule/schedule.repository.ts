@@ -24,7 +24,7 @@ export class ScheduleRepository {
          sch_start_time AS "startTime",
          sch_end_time AS "endTime",
          sch_reason AS "reason",
-         app_id AS "appointmentId"
+         NULL::integer AS "appointmentId"
        FROM schedule
        WHERE psy_id = $1
        ORDER BY sch_date, sch_start_time`,
@@ -83,7 +83,7 @@ export class ScheduleRepository {
          sch_start_time AS "startTime",
          sch_end_time AS "endTime",
          sch_reason AS "reason",
-         app_id AS "appointmentId"`,
+         NULL::integer AS "appointmentId"`,
       [
         params.psychologistId,
         params.date,
@@ -104,7 +104,7 @@ export class ScheduleRepository {
   async deleteBlock(psychologistId: number, blockId: number): Promise<boolean> {
     const result = await this.dataSource.query(
       `DELETE FROM schedule
-       WHERE sch_id = $1 AND psy_id = $2 AND app_id IS NULL`,
+       WHERE sch_id = $1 AND psy_id = $2`,
       [blockId, psychologistId],
     );
     return result.rowCount > 0;
@@ -267,29 +267,29 @@ export class ScheduleRepository {
        JOIN person per ON per.per_id = p.psy_id
        WHERE per.per_state = 'activo'
          ${psychologistFilter}
-         AND NOT EXISTS (
-           SELECT 1 FROM schedule b
-           WHERE b.psy_id = p.psy_id AND b.sch_date = s.start_at::date
-             AND b.sch_start_time < (s.start_at + ($3 || ' minutes')::interval)::time
-             AND b.sch_end_time > s.start_at::time
+         AND (
+           EXISTS (
+             SELECT 1 FROM schedule b
+             WHERE b.psy_id = p.psy_id AND b.sch_date = s.start_at::date
+               AND b.sch_start_time <= s.start_at::time
+               AND b.sch_end_time >= (s.start_at + ($3 || ' minutes')::interval)::time
+           )
+           OR EXISTS (
+             SELECT 1 FROM schedule_recurring_blocks r
+             WHERE r.psy_id = p.psy_id AND r.srb_active = true
+               AND r.srb_day_of_week = EXTRACT(ISODOW FROM s.start_at::date)
+               AND r.srb_valid_from <= s.start_at::date
+               AND (r.srb_valid_until IS NULL OR r.srb_valid_until >= s.start_at::date)
+               AND r.srb_start_time <= s.start_at::time
+               AND r.srb_end_time >= (s.start_at + ($3 || ' minutes')::interval)::time
+           )
          )
          AND NOT EXISTS (
-           SELECT 1 FROM appointments a
-           WHERE a.psy_id = p.psy_id
-             AND a.app_state IN ('asignada', 'confirmada')
-             AND a.app_date IS NOT NULL
-             AND a.app_date::date = s.start_at::date
-             AND a.app_date::time < (s.start_at + ($3 || ' minutes')::interval)::time
-             AND (a.app_date + (a.app_duration || ' minutes')::interval)::time > s.start_at::time
-         )
-         AND NOT EXISTS (
-           SELECT 1 FROM schedule_recurring_blocks r
-           WHERE r.psy_id = p.psy_id AND r.srb_active = true
-             AND r.srb_day_of_week = EXTRACT(ISODOW FROM s.start_at::date)
-             AND r.srb_valid_from <= s.start_at::date
-             AND (r.srb_valid_until IS NULL OR r.srb_valid_until >= s.start_at::date)
-             AND r.srb_start_time < (s.start_at + ($3 || ' minutes')::interval)::time
-             AND r.srb_end_time > s.start_at::time
+           SELECT 1 FROM schedule_occupancy o
+           WHERE o.psy_id = p.psy_id
+             AND o.occ_date = s.start_at::date
+             AND o.occ_start_time < (s.start_at + ($3 || ' minutes')::interval)::time
+             AND o.occ_end_time > s.start_at::time
          )
        ORDER BY s.start_at, per.per_name`,
       [params.appointmentStart, params.delayHours, params.duration, params.psychologistIds ?? null],
@@ -328,32 +328,41 @@ export class ScheduleRepository {
         [params.psyId, params.appDate.toISOString().slice(0, 10)],
       );
 
-      const concreteConflict = await manager.query<{ exists: boolean }[]>(
+      const hasAvailability = await manager.query<{ exists: boolean }[]>(
         `SELECT EXISTS (
-           SELECT 1 FROM schedule
+           SELECT 1
+           FROM schedule
            WHERE psy_id = $1
              AND sch_date = $2::date
-             AND sch_start_time < ($2::time + ($3 || ' minutes')::interval)::time
-             AND sch_end_time > $2::time
-         ) AS exists`,
-        [params.psyId, params.appDate, params.appDuration],
-      );
-      if (concreteConflict[0]?.exists) return 'slot_taken';
-
-      const recurringConflict = await manager.query<{ exists: boolean }[]>(
-        `SELECT EXISTS (
-           SELECT 1 FROM schedule_recurring_blocks
+             AND sch_start_time <= $2::time
+             AND sch_end_time >= ($2::time + ($3 || ' minutes')::interval)::time
+         ) OR EXISTS (
+           SELECT 1
+           FROM schedule_recurring_blocks
            WHERE psy_id = $1
              AND srb_active = true
              AND srb_day_of_week = EXTRACT(ISODOW FROM $2::date)
              AND srb_valid_from <= $2::date
              AND (srb_valid_until IS NULL OR srb_valid_until >= $2::date)
-             AND srb_start_time < ($2::time + ($3 || ' minutes')::interval)::time
-             AND srb_end_time > $2::time
+             AND srb_start_time <= $2::time
+             AND srb_end_time >= ($2::time + ($3 || ' minutes')::interval)::time
          ) AS exists`,
         [params.psyId, params.appDate, params.appDuration],
       );
-      if (recurringConflict[0]?.exists) return 'slot_taken';
+      if (!hasAvailability[0]?.exists) return 'slot_taken';
+
+      const occupiedConflict = await manager.query<{ exists: boolean }[]>(
+        `SELECT EXISTS (
+           SELECT 1 FROM schedule_occupancy
+           WHERE psy_id = $1
+             AND occ_date = $2::date
+             AND app_id IS DISTINCT FROM $4
+             AND occ_start_time < ($2::time + ($3 || ' minutes')::interval)::time
+             AND occ_end_time > $2::time
+         ) AS exists`,
+        [params.psyId, params.appDate, params.appDuration, params.appId],
+      );
+      if (occupiedConflict[0]?.exists) return 'slot_taken';
 
       const assignedConflict = await manager.query<{ exists: boolean }[]>(
         `SELECT EXISTS (
@@ -376,6 +385,20 @@ export class ScheduleRepository {
              app_date = $3, app_duration = $4
          WHERE app_id = $5`,
         [params.psyId, params.secretaryUserId, params.appDate, params.appDuration, params.appId],
+      );
+      await manager.query(
+        `INSERT INTO schedule_occupancy (
+           psy_id, app_id, occ_date, occ_start_time, occ_end_time, source_type
+         )
+         VALUES ($1, $2, $3::date, $3::time,
+                 ($3::time + ($4 || ' minutes')::interval)::time, 'appointment')
+         ON CONFLICT (app_id) DO UPDATE SET
+           psy_id = EXCLUDED.psy_id,
+           occ_date = EXCLUDED.occ_date,
+           occ_start_time = EXCLUDED.occ_start_time,
+           occ_end_time = EXCLUDED.occ_end_time,
+           source_type = EXCLUDED.source_type`,
+        [params.psyId, params.appId, params.appDate, params.appDuration],
       );
       return 'assigned';
     });
@@ -422,8 +445,12 @@ export class ScheduleRepository {
         [params.appId],
       );
       const appointment = rows[0];
-      if (!appointment || appointment.app_state !== 'asignada') return 'slot_taken';
-      if (appointment.psy_id !== params.psyId) return 'slot_taken';
+      if (!appointment || !['pendiente', 'asignada'].includes(appointment.app_state)) {
+        return 'slot_taken';
+      }
+      if (appointment.app_state === 'asignada' && appointment.psy_id !== params.psyId) {
+        return 'slot_taken';
+      }
 
       await manager.query(
         `SELECT pg_advisory_xact_lock($1, hashtext($2::text))`,
@@ -438,38 +465,47 @@ export class ScheduleRepository {
         [params.appId],
       );
       const slot = assignedSlot[0];
-      if (
+      if (appointment.app_state === 'asignada' && (
         !slot?.app_date ||
         new Date(slot.app_date).getTime() !== params.appDate.getTime() ||
         slot.app_duration !== params.appDuration
-      ) {
+      )) {
         return 'slot_taken';
       }
 
-      const conflict = await manager.query<{ exists: boolean }[]>(
+      const hasAvailability = await manager.query<{ exists: boolean }[]>(
         `SELECT EXISTS (
            SELECT 1 FROM schedule
-           WHERE psy_id = $1 AND sch_date = $2::date
-             AND sch_start_time < ($3::time + ($4 || ' minutes')::interval)::time
-             AND sch_end_time > $3::time
-         ) AS exists`,
-        [params.psyId, params.appDate, params.appDate, params.appDuration],
-      );
-      if (conflict[0]?.exists) return 'slot_taken';
-
-      const recurringConflict = await manager.query<{ exists: boolean }[]>(
-        `SELECT EXISTS (
+           WHERE psy_id = $1
+             AND sch_date = $2::date
+             AND sch_start_time <= $3::time
+             AND sch_end_time >= ($3::time + ($4 || ' minutes')::interval)::time
+         ) OR EXISTS (
            SELECT 1 FROM schedule_recurring_blocks
-           WHERE psy_id = $1 AND srb_active = true
+           WHERE psy_id = $1
+             AND srb_active = true
              AND srb_day_of_week = EXTRACT(ISODOW FROM $2::date)
              AND srb_valid_from <= $2::date
              AND (srb_valid_until IS NULL OR srb_valid_until >= $2::date)
-             AND srb_start_time < ($3::time + ($4 || ' minutes')::interval)::time
-             AND srb_end_time > $3::time
+             AND srb_start_time <= $3::time
+             AND srb_end_time >= ($3::time + ($4 || ' minutes')::interval)::time
          ) AS exists`,
         [params.psyId, params.appDate, params.appDate, params.appDuration],
       );
-      if (recurringConflict[0]?.exists) return 'slot_taken';
+      if (!hasAvailability[0]?.exists) return 'slot_taken';
+
+      const occupiedConflict = await manager.query<{ exists: boolean }[]>(
+        `SELECT EXISTS (
+           SELECT 1 FROM schedule_occupancy
+           WHERE psy_id = $1
+             AND occ_date = $2::date
+             AND app_id IS DISTINCT FROM $5
+             AND occ_start_time < ($3::time + ($4 || ' minutes')::interval)::time
+             AND occ_end_time > $3::time
+         ) AS exists`,
+        [params.psyId, params.appDate, params.appDate, params.appDuration, params.appId],
+      );
+      if (occupiedConflict[0]?.exists) return 'slot_taken';
 
       const assignedConflict = await manager.query<{ exists: boolean }[]>(
         `SELECT EXISTS (
@@ -493,11 +529,20 @@ export class ScheduleRepository {
          WHERE app_id = $5`,
         [params.secretaryUserId, params.psyId, params.appDate, params.appDuration, params.appId],
       );
+
       await manager.query(
-        `INSERT INTO schedule (psy_id, app_id, sch_date, sch_start_time, sch_end_time, sch_reason)
-         VALUES ($1, $2, $3::date, $4::time,
-                 ($4::time + ($5 || ' minutes')::interval)::time, $6)`,
-        [params.psyId, params.appId, params.appDate, params.appDate, params.appDuration, 'appointment'],
+        `INSERT INTO schedule_occupancy (
+           psy_id, app_id, occ_date, occ_start_time, occ_end_time, source_type
+         )
+         VALUES ($1, $2, $3::date, $3::time,
+                 ($3::time + ($4 || ' minutes')::interval)::time, 'appointment')
+         ON CONFLICT (app_id) DO UPDATE SET
+           psy_id = EXCLUDED.psy_id,
+           occ_date = EXCLUDED.occ_date,
+           occ_start_time = EXCLUDED.occ_start_time,
+           occ_end_time = EXCLUDED.occ_end_time,
+           source_type = EXCLUDED.source_type`,
+        [params.psyId, params.appId, params.appDate, params.appDuration],
       );
       return 'confirmed';
     });
