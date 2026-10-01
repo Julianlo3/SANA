@@ -17,11 +17,8 @@ export interface EmailMessage {
 }
 
 export interface SmtpOptions {
-  host: string;
-  port: number;
-  secure: true;
+  url: string;
   tls: { minVersion: 'TLSv1.2'; rejectUnauthorized: true };
-  auth?: { user: string; pass: string };
   connectionTimeout: number;
   greetingTimeout: number;
   socketTimeout: number;
@@ -148,30 +145,31 @@ export class EmailService implements OnModuleInit, OnModuleDestroy {
     const host = this.configService.get<string>('SMTP_HOST')?.trim();
     const from = this.configService.get<string>('SMTP_FROM')?.trim();
     const rawPort = this.configService.get<string>('SMTP_PORT')?.trim();
-    const port = rawPort ? Number(rawPort) : 587;
-    const rawSecure = this.configService.get<string>('SMTP_SECURE')?.trim().toLowerCase();
-    const secure = rawSecure ? rawSecure === 'true' : port === 465;
+    const port = rawPort ? Number(rawPort) : 465;
     const user = this.configService.get<string>('SMTP_USER')?.trim();
     const password = this.configService.get<string>('SMTP_PASSWORD');
 
     if (
       !host || !from || !isEmail(from) ||
       !Number.isInteger(port) || port < 1 || port > 65535 ||
-      (rawSecure && rawSecure !== 'true' && rawSecure !== 'false') ||
-      !secure ||
       Boolean(user) !== Boolean(password)
     ) {
       return null;
     }
 
+    const smtpUrl = new URL('smtps://localhost');
+    smtpUrl.hostname = host;
+    smtpUrl.port = String(port);
+    if (user && password) {
+      smtpUrl.username = user;
+      smtpUrl.password = password;
+    }
+
     return {
       from,
       options: {
-        host,
-        port,
-        secure: true,
+        url: smtpUrl.toString(),
         tls: { minVersion: 'TLSv1.2', rejectUnauthorized: true },
-        ...(user && password ? { auth: { user, pass: password } } : {}),
         connectionTimeout: 10_000,
         greetingTimeout: 10_000,
         socketTimeout: 30_000,

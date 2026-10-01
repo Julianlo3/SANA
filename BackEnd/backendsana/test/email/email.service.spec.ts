@@ -33,32 +33,6 @@ describe('EmailService', () => {
     expect(repository.enqueue).not.toHaveBeenCalled();
   });
 
-  it('refuses SMTP settings that do not enable implicit TLS', async () => {
-    const repository = { enqueue: vi.fn() };
-    const factory = vi.fn();
-    const service = new EmailService(
-      configuration({
-        SMTP_HOST: 'smtp.example.com',
-        SMTP_PORT: '587',
-        SMTP_SECURE: 'false',
-        SMTP_FROM: 'notificaciones@example.com',
-      }) as never,
-      repository as never,
-      factory as SmtpTransportFactory,
-    );
-
-    await expect(
-      service.enqueueEmail({
-        to: 'person@example.com',
-        subject: 'Aviso',
-        text: 'Mensaje',
-      }),
-    ).resolves.toBeUndefined();
-
-    expect(factory).not.toHaveBeenCalled();
-    expect(repository.enqueue).not.toHaveBeenCalled();
-  });
-
   it('persists a retry after a temporary SMTP failure without throwing', async () => {
     const repository = {
       claimDue: vi.fn().mockResolvedValue([
@@ -82,7 +56,6 @@ describe('EmailService', () => {
       configuration({
         SMTP_HOST: 'smtp.example.com',
         SMTP_PORT: '465',
-        SMTP_SECURE: 'true',
         SMTP_FROM: 'notificaciones@example.com',
       }) as never,
       repository as never,
@@ -90,8 +63,8 @@ describe('EmailService', () => {
     );
 
     expect(factory).toHaveBeenCalledWith(expect.objectContaining({
-      secure: true,
-      tls: { minVersion: 'TLSv1.2', rejectUnauthorized: true },
+        url: 'smtps://smtp.example.com:465',
+        tls: { minVersion: 'TLSv1.2', rejectUnauthorized: true },
     }));
 
     await expect(service.processPendingEmails()).resolves.toBeUndefined();
@@ -120,7 +93,6 @@ describe('EmailService', () => {
       configuration({
         SMTP_HOST: 'smtp.example.com',
         SMTP_PORT: '465',
-        SMTP_SECURE: 'true',
         SMTP_FROM: 'notificaciones@example.com',
       }) as never,
       repository as never,

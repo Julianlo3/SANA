@@ -18,10 +18,7 @@ import {
       provide: SMTP_TRANSPORT_FACTORY,
       useValue: (options: SmtpOptions): SmtpTransport =>
         createTransport({
-          host: options.host,
-          port: options.port,
-          secure: true,
-          auth: options.auth,
+          url: options.url,
           tls: options.tls,
           connectionTimeout: options.connectionTimeout,
           greetingTimeout: options.greetingTimeout,
