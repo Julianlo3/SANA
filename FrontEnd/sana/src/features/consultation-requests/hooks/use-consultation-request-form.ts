@@ -23,16 +23,19 @@ const EMPTY_FORM: RequestFormValues = {
   fullName: "",
   documentType: "",
   identityDocument: "",
+  confirmIdentityDocument: "",
   birthDate: "",
   gender: "",
   email: "",
+  confirmEmail: "",
   phone: "",
   appType: "",
   relationship: "",
   minorFullName: "",
   minorBirthDate: "",
   minorGender: "",
-  minorIdentityDocument: "",
+    minorIdentityDocument: "",
+  confirmMinorIdentityDocument: "",
   department: "",
   municipality: "",
   consultationReason: "",
@@ -54,9 +57,10 @@ const EMPTY_FORM: RequestFormValues = {
  * Departamento y municipio se combinan en un solo texto (residenceZone),
  * porque el backend los guarda así, no como dos campos separados.
  *
- * Decisión de equipo: no se ofrece reserva de horario real. La persona puede
- * indicar una fecha preferida, opcional, que la asistente usa como
- * referencia al asignar la cita desde su bandeja (HU-2.3).
+ * Pedido del cliente (reunión 30/09): se quitó la fecha preferida de cita
+ * del formulario. appDateIdeal ya no se pide a la persona; se manda null
+ * siempre, y la pantalla muestra un mensaje fijo de que la asistente
+ * asignará la cita en el menor tiempo posible.
  */
 export function useConsultationRequestForm(patientType: PatientType) {
   const router = useRouter();
@@ -69,7 +73,6 @@ export function useConsultationRequestForm(patientType: PatientType) {
 
   const [isSaving, setIsSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [preferredDate, setPreferredDate] = useState<string | null>(null);
 
   const { values, setValue, submit } = form;
 
@@ -169,7 +172,7 @@ export function useConsultationRequestForm(patientType: PatientType) {
           dependentTermsAccepted: true,
           appType: submitted.appType as AppointmentMode,
           appReason: submitted.consultationReason.trim(),
-          appDateIdeal: preferredDate,
+          appDateIdeal: null,
           residenceZone,
         };
       }
@@ -186,11 +189,11 @@ export function useConsultationRequestForm(patientType: PatientType) {
         requesterTermsAccepted: true,
         appType: submitted.appType as AppointmentMode,
         appReason: submitted.consultationReason.trim(),
-        appDateIdeal: preferredDate,
+        appDateIdeal: null,
         residenceZone,
       };
     },
-    [patientType, preferredDate],
+    [patientType],
   );
 
   const send = useCallback(async () => {
@@ -231,8 +234,6 @@ export function useConsultationRequestForm(patientType: PatientType) {
     toggleMinorDataPolicy,
     isSaving,
     submitError,
-    preferredDate,
-    setPreferredDate,
     send,
   };
 }

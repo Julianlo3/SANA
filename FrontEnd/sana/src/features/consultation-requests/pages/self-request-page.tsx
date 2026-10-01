@@ -15,6 +15,7 @@ import {
   COLOMBIA_DEPARTMENTS,
   NO_ZONE_REPORTED_LABEL,
 } from "@/config/residence-zones";
+import { VULNERABLE_POPULATION_OPTIONS } from "@/config/vulnerable-population";
 import DataPolicyConsent from "../components/data-policy-consent";
 import { useConsultationRequestForm } from "../hooks/use-consultation-request-form";
 import type {
@@ -50,8 +51,6 @@ export default function SelfRequestPage() {
     isSaving,
     submitError,
     isValid,
-    preferredDate,
-    setPreferredDate,
     setValue,
     setFieldTouched,
     setDocumentType,
@@ -149,6 +148,20 @@ export default function SelfRequestPage() {
                 />
               </div>
 
+              <TextField
+                label="Confirma el número de documento"
+                required
+                inputMode="numeric"
+                value={values.confirmIdentityDocument}
+                error={errors.confirmIdentityDocument}
+                maxLength={12}
+                placeholder="Escríbelo de nuevo"
+                onChange={(value) =>
+                  setValue("confirmIdentityDocument", keepDigits(value))
+                }
+                onBlur={() => setFieldTouched("confirmIdentityDocument")}
+              />
+
               <div className="grid gap-5 sm:grid-cols-2">
                 <label className="block">
                   <span className="text-sm font-semibold text-text">
@@ -201,6 +214,27 @@ export default function SelfRequestPage() {
                   )}
                 </label>
               </div>
+
+              <label className="block">
+                <span className="text-sm font-medium text-text">
+                  ¿Perteneces a alguna población vulnerable? (opcional)
+                </span>
+                <select
+                  defaultValue=""
+                  className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
+                >
+                  <option value="">Prefiero no decir</option>
+                  {VULNERABLE_POPULATION_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <span className="mt-1.5 block text-xs text-text-subtle">
+                  Esta información es opcional y nos ayuda a orientar mejor la
+                  atención.
+                </span>
+              </label>
             </fieldset>
 
             <fieldset className="space-y-5">
@@ -221,17 +255,29 @@ export default function SelfRequestPage() {
                 />
 
                 <TextField
-                  label={selfForm.fields.phone}
+                  label="Confirma tu correo"
                   required
-                  type="tel"
-                  inputMode="numeric"
-                  value={values.phone}
-                  error={errors.phone}
-                  maxLength={12}
-                  onChange={(value) => setValue("phone", keepDigits(value))}
-                  onBlur={() => setFieldTouched("phone")}
+                  type="email"
+                  inputMode="email"
+                  value={values.confirmEmail}
+                  error={errors.confirmEmail}
+                  placeholder="Escríbelo de nuevo"
+                  onChange={(value) => setValue("confirmEmail", value)}
+                  onBlur={() => setFieldTouched("confirmEmail")}
                 />
               </div>
+
+              <TextField
+                label={selfForm.fields.phone}
+                required
+                type="tel"
+                inputMode="numeric"
+                value={values.phone}
+                error={errors.phone}
+                maxLength={12}
+                onChange={(value) => setValue("phone", keepDigits(value))}
+                onBlur={() => setFieldTouched("phone")}
+              />
 
               <div className="grid gap-5 sm:grid-cols-2">
                 <label className="block">
@@ -352,30 +398,18 @@ export default function SelfRequestPage() {
                 />
               </label>
 
-              <label className="block">
-                <span className="text-sm font-medium text-text">
-                  Fecha preferida para la cita (opcional)
-                </span>
-                <input
-                  type="date"
-                  value={preferredDate ?? ""}
-                  min={new Date().toISOString().split("T")[0]}
-                  onChange={(event) =>
-                    setPreferredDate(event.target.value || null)
-                  }
-                  className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
-                />
-                <span className="mt-1.5 block text-xs text-text-subtle">
-                  Es solo una referencia para la asistente al asignar tu cita,
-                  no reserva un horario.
-                </span>
-              </label>
+              <p className="mt-4 rounded-xl bg-primary-soft/40 p-4 text-sm text-text-muted">
+                Una vez enviada tu solicitud, te asignaremos una cita en el
+                menor tiempo posible. Te contactaremos por correo o teléfono
+                para confirmar la fecha y hora.
+              </p>
             </fieldset>
 
-            <DataPolicyConsent
+           <DataPolicyConsent
               checked={values.hasAcceptedDataPolicy}
               onChange={toggleDataPolicy}
               error={errors.hasAcceptedDataPolicy}
+              policyType="data_treatment"
             />
 
             {submitError && (

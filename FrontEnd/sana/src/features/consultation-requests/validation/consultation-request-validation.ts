@@ -7,6 +7,9 @@ import type { CardType, Gender } from "../types/consultation-request-types";
  * documento entre 6 y 12 dígitos, teléfono entre 7 y 12, tres tipos de
  * documento posibles (CC, TI, CE). El menor de edad sí necesita documento
  * (NUIP o TI, según su edad): el backend lo exige siempre, no es opcional.
+ *
+ * Pedido del cliente (reunión 30/09): confirmar dos veces el documento y
+ * el correo, para evitar errores de tipeo en el contacto de la persona.
  */
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -27,9 +30,11 @@ export type RequestFormValues = {
   fullName: string;
   documentType: CardType | "";
   identityDocument: string;
+  confirmIdentityDocument: string;
   birthDate: string;
   gender: Gender | "";
   email: string;
+  confirmEmail: string;
   phone: string;
   appType: "presencial" | "virtual" | "";
   relationship: number | "";
@@ -37,6 +42,7 @@ export type RequestFormValues = {
   minorBirthDate: string;
   minorGender: Gender | "";
   minorIdentityDocument: string;
+  confirmMinorIdentityDocument: string;
   department: string;
   municipality: string;
   consultationReason: string;
@@ -83,6 +89,19 @@ export function validateIdentityDocument(value: string): string | undefined {
   return undefined;
 }
 
+/** Confirma que el documento escrito dos veces coincida. */
+export function validateConfirmIdentityDocument(
+  document: string,
+  confirmDocument: string,
+): string | undefined {
+  if (!confirmDocument.trim()) return "Confirma el número de documento.";
+  if (document.trim() !== confirmDocument.trim()) {
+    return "Los documentos no coinciden.";
+  }
+
+  return undefined;
+}
+
 /**
  * Documento del menor: el backend lo exige siempre. Antes de los 7 años es
  * el número del registro civil de nacimiento (NUIP); desde los 7, la
@@ -107,12 +126,38 @@ export function validateMinorIdentityDocument(
   return undefined;
 }
 
+/** Confirma que el documento del menor escrito dos veces coincida. */
+export function validateConfirmMinorIdentityDocument(
+  document: string,
+  confirmDocument: string,
+): string | undefined {
+  if (!confirmDocument.trim()) return "Confirma el documento del menor.";
+  if (document.trim() !== confirmDocument.trim()) {
+    return "Los documentos del menor no coinciden.";
+  }
+
+  return undefined;
+}
+
 export function validateEmail(value: string): string | undefined {
   const email = value.trim();
 
   if (!email) return "Escribe tu correo electrónico.";
   if (!EMAIL_PATTERN.test(email)) {
     return "Escribe un correo válido, por ejemplo nombre@correo.com.";
+  }
+
+  return undefined;
+}
+
+/** Confirma que el correo escrito dos veces coincida. */
+export function validateConfirmEmail(
+  email: string,
+  confirmEmail: string,
+): string | undefined {
+  if (!confirmEmail.trim()) return "Confirma tu correo electrónico.";
+  if (email.trim().toLowerCase() !== confirmEmail.trim().toLowerCase()) {
+    return "Los correos no coinciden.";
   }
 
   return undefined;
@@ -219,9 +264,14 @@ export function validateSelfRequest(values: RequestFormValues): RequestFormError
     fullName: validateFullName(values.fullName),
     documentType: validateDocumentType(values.documentType),
     identityDocument: validateIdentityDocument(values.identityDocument),
+    confirmIdentityDocument: validateConfirmIdentityDocument(
+      values.identityDocument,
+      values.confirmIdentityDocument,
+    ),
     birthDate: validateAdultBirthDate(values.birthDate),
     gender: validateGender(values.gender),
     email: validateEmail(values.email),
+    confirmEmail: validateConfirmEmail(values.email, values.confirmEmail),
     phone: validatePhone(values.phone),
     appType: validateAppointmentMode(values.appType),
     municipality: validateMunicipality(values.department, values.municipality),
@@ -241,17 +291,26 @@ export function validateGuardianRequest(values: RequestFormValues): RequestFormE
   return removeEmptyErrors({
     fullName: validateFullName(values.fullName),
     identityDocument: validateIdentityDocument(values.identityDocument),
+    confirmIdentityDocument: validateConfirmIdentityDocument(
+      values.identityDocument,
+      values.confirmIdentityDocument,
+    ),
     birthDate: validateAdultBirthDate(values.birthDate),
     relationship: validateRelationship(values.relationship),
     email: validateEmail(values.email),
+    confirmEmail: validateConfirmEmail(values.email, values.confirmEmail),
     phone: validatePhone(values.phone),
     appType: validateAppointmentMode(values.appType),
 
-    minorFullName: validateFullName(values.minorFullName),
+      minorFullName: validateFullName(values.minorFullName),
     minorBirthDate: validateMinorBirthDate(values.minorBirthDate),
     minorGender: validateGender(values.minorGender),
     minorIdentityDocument: validateMinorIdentityDocument(
       values.minorIdentityDocument,
+    ),
+    confirmMinorIdentityDocument: validateConfirmMinorIdentityDocument(
+      values.minorIdentityDocument,
+      values.confirmMinorIdentityDocument,
     ),
 
     municipality: validateMunicipality(values.department, values.municipality),
