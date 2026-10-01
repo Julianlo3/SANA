@@ -568,7 +568,7 @@ export class AppointmentsRepository {
    * @param state new state
    * @returns void
    */
-  async updateState(
+  updateState(
     appId: number,
     state: 'cancelada' | 'realizada',
   ): Promise<boolean> {

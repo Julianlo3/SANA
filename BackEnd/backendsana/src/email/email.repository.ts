@@ -43,7 +43,7 @@ export class EmailRepository {
    * @param staleLockSeconds The number of seconds after which a locked email is considered stale.
    * @returns A promise resolving to the list of claimed email rows.
    */
-  async claimDue(batchSize: number, staleLockSeconds: number): Promise<EmailOutboxRow[]> {
+  claimDue(batchSize: number, staleLockSeconds: number): Promise<EmailOutboxRow[]> {
     return this.dataSource.query<EmailOutboxRow[]>(
       `WITH candidates AS (
          SELECT email_id

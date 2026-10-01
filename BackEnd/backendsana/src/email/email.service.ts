@@ -6,7 +6,8 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EmailRepository } from './email.repository.js';
+import { isEmail } from 'class-validator';
+import { EmailRepository, type EmailOutboxRow } from './email.repository.js';
 
 export interface EmailMessage {
   to: string;
@@ -18,8 +19,7 @@ export interface EmailMessage {
 export interface SmtpOptions {
   host: string;
   port: number;
-  secure: boolean;
-  requireTLS: boolean;
+  secure: true;
   tls: { minVersion: 'TLSv1.2'; rejectUnauthorized: true };
   auth?: { user: string; pass: string };
   connectionTimeout: number;
@@ -34,7 +34,6 @@ export interface SmtpTransport {
 export type SmtpTransportFactory = (options: SmtpOptions) => SmtpTransport;
 export const SMTP_TRANSPORT_FACTORY = Symbol('SMTP_TRANSPORT_FACTORY');
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const POLL_INTERVAL_MS = 15_000;
 const BATCH_SIZE = 10;
 const STALE_LOCK_SECONDS = 300;
@@ -100,7 +99,7 @@ export class EmailService implements OnModuleInit, OnModuleDestroy {
     const recipient = typeof message?.to === 'string' ? message.to.trim() : '';
     const subject = typeof message?.subject === 'string' ? message.subject.trim() : '';
     const text = typeof message?.text === 'string' ? message.text.trim() : '';
-    if (!recipient || !EMAIL_PATTERN.test(recipient)) {
+    if (!recipient || !isEmail(recipient)) {
       this.logger.warn('Email skipped because the recipient address is missing or invalid');
       return;
     }
@@ -133,43 +132,7 @@ export class EmailService implements OnModuleInit, OnModuleDestroy {
     this.processing = true;
     try {
       const queued = await this.repository.claimDue(BATCH_SIZE, STALE_LOCK_SECONDS);
-      for (const email of queued) {
-        try {
-          await this.transport.sendMail({
-            from: this.sender,
-            to: email.email_to,
-            subject: email.email_subject,
-            text: email.email_text,
-            ...(email.email_html ? { html: email.email_html } : {}),
-          });
-        } catch (error) {
-          const delay = Math.min(
-            30_000 * 2 ** Math.max(0, email.email_attempts - 1),
-            MAX_RETRY_DELAY_MS,
-          );
-          const errorCode = this.errorCode(error);
-          try {
-            await this.repository.scheduleRetry(email.email_id, delay, errorCode);
-          } catch (retryError) {
-            this.logger.error(
-              `Email retry could not be saved: emailId-${email.email_id}, code-${this.errorCode(retryError)}`,
-            );
-          }
-          this.logger.warn(
-            `Email delivery failed and will be retried: emailId-${email.email_id}, attempt-${email.email_attempts}, code-${errorCode}`,
-          );
-          continue;
-        }
-
-        try {
-          await this.repository.markSent(email.email_id);
-          this.logger.log(`Email sent: emailId-${email.email_id}`);
-        } catch (error) {
-          this.logger.error(
-            `Email was sent but its outbox status could not be updated: emailId-${email.email_id}, code-${this.errorCode(error)}`,
-          );
-        }
-      }
+      await Promise.all(queued.map((email) => this.processClaimedEmail(email)));
     } catch (error) {
       this.logger.error(`Email outbox processing failed (${this.errorCode(error)})`);
     } finally {
@@ -192,9 +155,10 @@ export class EmailService implements OnModuleInit, OnModuleDestroy {
     const password = this.configService.get<string>('SMTP_PASSWORD');
 
     if (
-      !host || !from || !EMAIL_PATTERN.test(from) ||
+      !host || !from || !isEmail(from) ||
       !Number.isInteger(port) || port < 1 || port > 65535 ||
       (rawSecure && rawSecure !== 'true' && rawSecure !== 'false') ||
+      !secure ||
       Boolean(user) !== Boolean(password)
     ) {
       return null;
@@ -205,8 +169,7 @@ export class EmailService implements OnModuleInit, OnModuleDestroy {
       options: {
         host,
         port,
-        secure,
-        requireTLS: !secure,
+        secure: true,
         tls: { minVersion: 'TLSv1.2', rejectUnauthorized: true },
         ...(user && password ? { auth: { user, pass: password } } : {}),
         connectionTimeout: 10_000,
@@ -214,6 +177,49 @@ export class EmailService implements OnModuleInit, OnModuleDestroy {
         socketTimeout: 30_000,
       },
     };
+  }
+
+  /**
+   * Processes a claimed email for sending.
+   * @param email The email to process.
+   * @returns A promise resolving when the processing is complete.
+   */
+  private async processClaimedEmail(email: EmailOutboxRow): Promise<void> {
+    try {
+      await this.transport!.sendMail({
+        from: this.sender!,
+        to: email.email_to,
+        subject: email.email_subject,
+        text: email.email_text,
+        ...(email.email_html ? { html: email.email_html } : {}),
+      });
+    } catch (error) {
+      const delay = Math.min(
+        30_000 * 2 ** Math.max(0, email.email_attempts - 1),
+        MAX_RETRY_DELAY_MS,
+      );
+      const errorCode = this.errorCode(error);
+      try {
+        await this.repository.scheduleRetry(email.email_id, delay, errorCode);
+      } catch (retryError) {
+        this.logger.error(
+          `Email retry could not be saved: emailId-${email.email_id}, code-${this.errorCode(retryError)}`,
+        );
+      }
+      this.logger.warn(
+        `Email delivery failed and will be retried: emailId-${email.email_id}, attempt-${email.email_attempts}, code-${errorCode}`,
+      );
+      return;
+    }
+
+    try {
+      await this.repository.markSent(email.email_id);
+      this.logger.log(`Email sent: emailId-${email.email_id}`);
+    } catch (error) {
+      this.logger.error(
+        `Email was sent but its outbox status could not be updated: emailId-${email.email_id}, code-${this.errorCode(error)}`,
+      );
+    }
   }
 
   /**

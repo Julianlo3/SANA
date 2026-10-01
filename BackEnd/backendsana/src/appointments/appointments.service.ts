@@ -609,10 +609,15 @@ export class AppointmentsService {
         this.logger.warn(`Appointment request email skipped: no active secretary email is available (appId-${appId})`);
         return;
       }
+      const emailService = this.emailService;
+      if (!emailService) {
+        this.logger.warn(`Appointment request email skipped: email service is unavailable (appId-${appId})`);
+        return;
+      }
 
       const patientName = dto.patientType === 'dependent' ? dto.dependentName : dto.requesterName;
       await Promise.all(recipients.map((recipient) =>
-        this.emailService?.enqueueEmail({
+        emailService.enqueueEmail({
           to: recipient,
           subject: `Nueva solicitud de cita #${appId}`,
           text: [
