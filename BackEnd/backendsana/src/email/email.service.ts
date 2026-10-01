@@ -17,7 +17,11 @@ export interface EmailMessage {
 }
 
 export interface SmtpOptions {
-  url: string;
+  host: string;
+  port: number;
+  secure: true;
+  requireTLS: true;
+  auth?: { user: string; pass: string };
   tls: { minVersion: 'TLSv1.2'; rejectUnauthorized: true };
   connectionTimeout: number;
   greetingTimeout: number;
@@ -166,14 +170,18 @@ export class EmailService implements OnModuleInit, OnModuleDestroy {
     }
 
     return {
-      from,
-      options: {
-        url: smtpUrl.toString(),
-        tls: { minVersion: 'TLSv1.2', rejectUnauthorized: true },
-        connectionTimeout: 10_000,
-        greetingTimeout: 10_000,
-        socketTimeout: 30_000,
-      },
+        from,
+        options: {
+            host,
+            port,
+            secure: true,
+            requireTLS: true,
+            ...(user && password ? { auth: { user, pass: password } } : {}),
+            tls: { minVersion: 'TLSv1.2', rejectUnauthorized: true },
+            connectionTimeout: 10_000,
+            greetingTimeout: 10_000,
+            socketTimeout: 30_000,
+        },
     };
   }
 

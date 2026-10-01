@@ -63,7 +63,9 @@ describe('EmailService', () => {
     );
 
     expect(factory).toHaveBeenCalledWith(expect.objectContaining({
-        url: 'smtps://smtp.example.com:465',
+        host: 'smtp.example.com',
+        port: 465,
+        secure: true,
         tls: { minVersion: 'TLSv1.2', rejectUnauthorized: true },
     }));
 
@@ -110,4 +112,22 @@ describe('EmailService', () => {
     expect(repository.markSent).toHaveBeenCalledWith(18);
     expect(repository.scheduleRetry).not.toHaveBeenCalled();
   });
+
+  it('passes credentials to the transport when user and password are set', () => {
+  const factory = vi.fn().mockReturnValue({ sendMail: vi.fn() });
+  new EmailService(
+    configuration({
+      SMTP_HOST: 'smtp.example.com',
+      SMTP_FROM: 'notificaciones@example.com',
+      SMTP_USER: 'user@example.com',
+      SMTP_PASSWORD: 'p@ss:word/#1',
+    }) as never,
+    { enqueue: vi.fn() } as never,
+    factory,
+  );
+
+  expect(factory).toHaveBeenCalledWith(
+    expect.objectContaining({ auth: { user: 'user@example.com', pass: 'p@ss:word/#1' } }),
+  );
+});
 });

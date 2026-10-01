@@ -12,9 +12,11 @@ import {
 
 function buildTransport(options: SmtpOptions): SmtpTransport {
   const transportOptions: SmtpTransportOptions = {
-    url: options.url,
+    host: options.host,
+    port: options.port,
     secure: true,
     requireTLS: true,
+    ...(options.auth ? { auth: options.auth } : {}),
     tls: options.tls,
     connectionTimeout: options.connectionTimeout,
     greetingTimeout: options.greetingTimeout,
