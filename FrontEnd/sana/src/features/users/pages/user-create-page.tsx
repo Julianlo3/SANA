@@ -71,6 +71,19 @@ export default function UserCreatePage() {
           />
 
           <TextField
+            label="Confirma el documento de identidad"
+            required
+            inputMode="numeric"
+            value={values.confirmIdentityDocument}
+            error={errors.confirmIdentityDocument}
+            maxLength={10}
+            placeholder="Escríbelo de nuevo"
+            onChange={(value) =>
+              setValue("confirmIdentityDocument", keepDigits(value))
+            }
+                      onBlur={() => setFieldTouched("confirmIdentityDocument")}
+          />
+          <TextField
             label="Correo"
             required
             type="email"
@@ -82,6 +95,19 @@ export default function UserCreatePage() {
             hint="Con este correo entrará a SANA, así que debe ser una cuenta de Google."
             onChange={(value) => setValue("email", value)}
             onBlur={() => setFieldTouched("email")}
+          />
+
+          <TextField
+            label="Confirma el correo"
+            required
+            type="email"
+            inputMode="email"
+            value={values.confirmEmail}
+            error={errors.confirmEmail}
+            maxLength={100}
+            placeholder="Escríbelo de nuevo"
+            onChange={(value) => setValue("confirmEmail", value)}
+                      onBlur={() => setFieldTouched("confirmEmail")}
           />
 
           <TextField
@@ -97,9 +123,9 @@ export default function UserCreatePage() {
             onBlur={() => setFieldTouched("contactNumber")}
           />
 
-            <RoleSelector
+          <RoleSelector
             selectedRoleIds={values.roleIds}
-            allowMultiple={true}
+            allowMultiple={false}
             onToggleRole={toggleRole}
             error={errors.roleIds}
           />

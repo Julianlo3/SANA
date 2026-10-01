@@ -5,6 +5,6 @@ import WeeklyAvailabilityPage from "@/features/schedule/pages/weekly-availabilit
 export const metadata: Metadata = { title: "Mi disponibilidad | SANA" };
 
 export default async function MyAvailability() {
-  const user = await requireAnyRole(["psicologo"]);
-  return <WeeklyAvailabilityPage psychologistId={user.userId} />;
+  await requireAnyRole(["psicologo"]);
+  return <WeeklyAvailabilityPage />;
 }
