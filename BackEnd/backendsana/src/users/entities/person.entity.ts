@@ -10,8 +10,8 @@ export class Person {
   @Column({ name: 'per_name', length: 100 })
   perName!: string;
 
-  @Column({ name: 'per_identity_document', type: 'integer', nullable: true })
-  perIdentityDocument!: number | null;
+  @Column({ name: 'per_identity_document', type: 'bigint', nullable: true })
+  perIdentityDocument!: string | null;
 
   @Column({ name: 'per_email', length: 100 })
   perEmail!: string;

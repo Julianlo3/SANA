@@ -243,13 +243,15 @@ export class ScheduleService {
     appDate: Date;
     duration: number;
   }): Promise<'assigned' | 'slot_taken' | 'not_assignable'> {
-    return this.repository.assignAppointmentSlot({
+    const result = await this.repository.assignAppointmentSlot({
       appId: params.appId,
       secretaryUserId: params.secretaryUserId,
       psyId: params.psychologistId,
       appDate: params.appDate,
       appDuration: params.duration,
     });
+
+    return result;
   }
 
   /**
