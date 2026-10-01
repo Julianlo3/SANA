@@ -97,15 +97,20 @@ export class EmailRepository {
     emailId: number,
     delayMilliseconds: number,
     errorCode: string,
-  ): Promise<void> {
-    await this.dataSource.query(
-      `UPDATE email_outbox
-       SET email_status = 'pending',
-           email_locked_at = NULL,
-           email_next_attempt_at = now() + ($2 * interval '1 millisecond'),
-           email_last_error_code = $3
-       WHERE email_id = $1`,
-      [emailId, delayMilliseconds, errorCode],
-    );
-  }
+    maxAttempts: number,
+    ): Promise<void> {
+        await this.dataSource.query(
+        `UPDATE email_outbox
+        SET email_status = CASE WHEN email_attempts >= $4 THEN 'failed' ELSE 'pending' END,
+            email_to = CASE WHEN email_attempts >= $4 THEN NULL ELSE email_to END,
+            email_subject = CASE WHEN email_attempts >= $4 THEN NULL ELSE email_subject END,
+            email_text = CASE WHEN email_attempts >= $4 THEN NULL ELSE email_text END,
+            email_html = CASE WHEN email_attempts >= $4 THEN NULL ELSE email_html END,
+            email_locked_at = NULL,
+            email_next_attempt_at = now() + ($2 * interval '1 millisecond'),
+            email_last_error_code = $3
+        WHERE email_id = $1`,
+    [emailId, delayMilliseconds, errorCode, maxAttempts],
+  );
+}
 }

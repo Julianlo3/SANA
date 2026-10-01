@@ -71,7 +71,7 @@ describe('EmailService', () => {
 
     await expect(service.processPendingEmails()).resolves.toBeUndefined();
 
-    expect(repository.scheduleRetry).toHaveBeenCalledWith(17, 30_000, 'ETIMEDOUT');
+    expect(repository.scheduleRetry).toHaveBeenCalledWith(17, 30_000, 'ETIMEDOUT', 8);
     expect(repository.markSent).not.toHaveBeenCalled();
   });
 
@@ -129,5 +129,43 @@ describe('EmailService', () => {
   expect(factory).toHaveBeenCalledWith(
     expect.objectContaining({ auth: { user: 'user@example.com', pass: 'p@ss:word/#1' } }),
   );
+});
+it.each([
+  { attempts: 1, delay: 30_000 },
+  { attempts: 2, delay: 60_000 },
+  { attempts: 3, delay: 120_000 },
+  { attempts: 8, delay: 3_600_000 }, // 30s * 2^7 = 3.840.000 → tope de 1 hora
+])('schedules retry with delay $delay and the attempt limit at attempt $attempts', async ({ attempts, delay }) => {
+  const repository = {
+    claimDue: vi.fn().mockResolvedValue([
+      {
+        email_id: 19,
+        email_to: 'person@example.com',
+        email_subject: 'Confirmación',
+        email_text: 'Tu cita está confirmada.',
+        email_html: null,
+        email_attempts: attempts,
+      },
+    ]),
+    scheduleRetry: vi.fn().mockResolvedValue(undefined),
+    markSent: vi.fn(),
+  };
+  const transport: SmtpTransport = {
+    sendMail: vi.fn().mockRejectedValue(Object.assign(new Error('timeout'), { code: 'ETIMEDOUT' })),
+  };
+  const service = new EmailService(
+    configuration({
+      SMTP_HOST: 'smtp.example.com',
+      SMTP_PORT: '465',
+      SMTP_FROM: 'notificaciones@example.com',
+    }) as never,
+    repository as never,
+    vi.fn().mockReturnValue(transport),
+  );
+
+  await expect(service.processPendingEmails()).resolves.toBeUndefined();
+
+  expect(repository.scheduleRetry).toHaveBeenCalledWith(19, delay, 'ETIMEDOUT', 8);
+  expect(repository.markSent).not.toHaveBeenCalled();
 });
 });

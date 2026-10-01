@@ -44,4 +44,17 @@ describe('EmailRepository', () => {
     expect(dataSource.query.mock.calls[0][0]).toContain('email_text = NULL');
     expect(dataSource.query.mock.calls[0][0]).toContain('email_to = NULL');
   });
+    it('passes the attempt limit and fails the row, scrubbing its content, when reached', async () => {
+    const dataSource = { query: vi.fn().mockResolvedValue([]) };
+    const repository = new EmailRepository(dataSource as never);
+
+    await repository.scheduleRetry(5, 60_000, 'EAUTH', 8);
+
+    const sql = dataSource.query.mock.calls[0][0] as string;
+    expect(dataSource.query.mock.calls[0][1]).toEqual([5, 60_000, 'EAUTH', 8]);
+    expect(sql).toContain("'failed'");
+    expect(sql).toContain('email_attempts >= $4');
+    expect(sql).toMatch(/email_to = CASE WHEN email_attempts >= \$4 THEN NULL/);
+    expect(sql).toMatch(/email_text = CASE WHEN email_attempts >= \$4 THEN NULL/);
+  });
 });

@@ -39,6 +39,7 @@ const POLL_INTERVAL_MS = 15_000;
 const BATCH_SIZE = 10;
 const STALE_LOCK_SECONDS = 300;
 const MAX_RETRY_DELAY_MS = 60 * 60 * 1000;
+const MAX_ATTEMPTS = 8;
 
 /**
  * Service for managing email delivery, including queuing, sending, and retrying failed emails.
@@ -206,7 +207,7 @@ export class EmailService implements OnModuleInit, OnModuleDestroy {
       );
       const errorCode = this.errorCode(error);
       try {
-        await this.repository.scheduleRetry(email.email_id, delay, errorCode);
+        await this.repository.scheduleRetry(email.email_id, delay, errorCode, MAX_ATTEMPTS);
       } catch (retryError) {
         this.logger.error(
           `Email retry could not be saved: emailId-${email.email_id}, code-${this.errorCode(retryError)}`,
