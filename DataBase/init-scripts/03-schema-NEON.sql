@@ -1820,8 +1820,7 @@ CREATE TABLE IF NOT EXISTS public.email_outbox (
 );
 
 CREATE INDEX IF NOT EXISTS "Email_Outbox_pending_idx"
-    ON public.email_outbox (email_next_attempt_at, email_created_at)
-    WHERE email_status = 'pending';
+    ON public.email_outbox (email_status, email_next_attempt_at, email_created_at);
 CREATE INDEX IF NOT EXISTS "Email_Outbox_stale_lock_idx"
     ON public.email_outbox (email_locked_at)
     WHERE email_status = 'sending';

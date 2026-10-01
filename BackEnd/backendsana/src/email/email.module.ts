@@ -17,7 +17,16 @@ import {
     {
       provide: SMTP_TRANSPORT_FACTORY,
       useValue: (options: SmtpOptions): SmtpTransport =>
-        createTransport({ ...options, secure: true } as never) as unknown as SmtpTransport,
+        createTransport({
+          host: options.host,
+          port: options.port,
+          secure: true,
+          auth: options.auth,
+          tls: options.tls,
+          connectionTimeout: options.connectionTimeout,
+          greetingTimeout: options.greetingTimeout,
+          socketTimeout: options.socketTimeout,
+        } as never) as unknown as SmtpTransport,
     },
   ],
   exports: [EmailService],
