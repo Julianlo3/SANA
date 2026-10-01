@@ -63,6 +63,12 @@ describe('EmailService', () => {
       factory,
     );
 
+    expect(factory).toHaveBeenCalledWith(expect.objectContaining({
+      secure: false,
+      requireTLS: true,
+      tls: { minVersion: 'TLSv1.2', rejectUnauthorized: true },
+    }));
+
     await expect(service.processPendingEmails()).resolves.toBeUndefined();
 
     expect(repository.scheduleRetry).toHaveBeenCalledWith(17, 30_000, 'ETIMEDOUT');

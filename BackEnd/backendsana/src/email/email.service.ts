@@ -19,6 +19,8 @@ export interface SmtpOptions {
   host: string;
   port: number;
   secure: boolean;
+  requireTLS: boolean;
+  tls: { minVersion: 'TLSv1.2'; rejectUnauthorized: true };
   auth?: { user: string; pass: string };
   connectionTimeout: number;
   greetingTimeout: number;
@@ -204,6 +206,8 @@ export class EmailService implements OnModuleInit, OnModuleDestroy {
         host,
         port,
         secure,
+        requireTLS: !secure,
+        tls: { minVersion: 'TLSv1.2', rejectUnauthorized: true },
         ...(user && password ? { auth: { user, pass: password } } : {}),
         connectionTimeout: 10_000,
         greetingTimeout: 10_000,
