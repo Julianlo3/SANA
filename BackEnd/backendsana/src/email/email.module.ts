@@ -19,6 +19,7 @@ import {
       useValue: (options: SmtpOptions): SmtpTransport =>
         createTransport({
           url: options.url,
+          secure: true,
           tls: options.tls,
           connectionTimeout: options.connectionTimeout,
           greetingTimeout: options.greetingTimeout,
