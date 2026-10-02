@@ -20,7 +20,9 @@ export type EditableFormValues = UserFormValues & {
 const EMPTY_VALUES: EditableFormValues = {
   fullName: "",
   identityDocument: "",
+  confirmIdentityDocument: "",
   email: "",
+  confirmEmail: "",
   contactNumber: "",
   roleIds: [],
   inactiveRoleIds: [],
@@ -42,7 +44,9 @@ function toFormValues(user: User): EditableFormValues {
   return {
     fullName: user.fullName,
     identityDocument: user.identityDocument,
+    confirmIdentityDocument: user.identityDocument,
     email: user.email,
+    confirmEmail: user.email,
     contactNumber: user.contactNumber,
     roleIds: user.roles.map((role) => role.id),
     inactiveRoleIds: user.roles

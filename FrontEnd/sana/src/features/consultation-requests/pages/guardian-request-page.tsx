@@ -11,27 +11,28 @@ import TextField from "@/components/forms/text-field";
 import Button from "@/components/ui/button";
 import { REQUEST_CONTENT } from "@/content/consultation-request";
 import { keepDigits } from "@/lib/format/text";
-import { HUILA_MUNICIPALITIES } from "@/config/huila-municipalities";
-import {
-  COLOMBIA_DEPARTMENTS,
-  NO_ZONE_REPORTED_LABEL,
-} from "@/config/residence-zones";
+import { VULNERABLE_POPULATION_OPTIONS } from "@/config/vulnerable-population";
+import AppointmentModeField from "../components/appointment-mode-field";
 import DataPolicyConsent from "../components/data-policy-consent";
+import ResidenceFields from "../components/residence-fields";
 import { useConsultationRequestForm } from "../hooks/use-consultation-request-form";
 import {
   validateFullName,
   validateIdentityDocument,
+  validateConfirmIdentityDocument,
+  validateDocumentType,
   validateAdultBirthDate,
+  validateGender,
   validateRelationship,
   validateEmail,
+  validateConfirmEmail,
   validatePhone,
-  validateAppointmentMode,
   validateMinorBirthDate,
   validateMinorIdentityDocument,
-  validateGender,
+  validateConfirmMinorIdentityDocument,
 } from "../validation/consultation-request-validation";
 import type {
-  AppointmentMode,
+  CardType,
   Gender,
   GuardianRelationshipId,
 } from "../types/consultation-request-types";
@@ -50,16 +51,16 @@ const RELATIONSHIP_OPTIONS: { value: GuardianRelationshipId; label: string }[] =
   { value: 4, label: "Abuelo/a" },
 ];
 
+const DOCUMENT_TYPES: { value: CardType; label: string }[] = [
+  { value: "CC", label: "Cédula de ciudadanía" },
+  { value: "CE", label: "Cédula de extranjería" },
+];
+
 const GENDER_OPTIONS: { value: Gender; label: string }[] = [
   { value: "M", label: "Hombre" },
   { value: "F", label: "Mujer" },
   { value: "O", label: "Otro" },
   { value: "P", label: "No quiero especificar" },
-];
-
-const APPOINTMENT_MODE_OPTIONS: { value: AppointmentMode; label: string }[] = [
-  { value: "presencial", label: "Presencial" },
-  { value: "virtual", label: "Virtual" },
 ];
 
 export default function GuardianRequestPage() {
@@ -70,11 +71,11 @@ export default function GuardianRequestPage() {
     errors,
     isSaving,
     submitError,
-    preferredDate,
-    setPreferredDate,
     setValue,
     setFieldTouched,
     setRelationship,
+    setDocumentType,
+    setGender,
     setMinorGender,
     setAppointmentMode,
     toggleGuardianDataPolicy,
@@ -85,28 +86,42 @@ export default function GuardianRequestPage() {
   function goToStep2() {
     const step1Errors = [
       validateFullName(values.fullName),
+      validateDocumentType(values.documentType),
       validateIdentityDocument(values.identityDocument),
+      validateConfirmIdentityDocument(
+        values.identityDocument,
+        values.confirmIdentityDocument,
+      ),
       validateAdultBirthDate(values.birthDate),
+      validateGender(values.gender),
       validateRelationship(values.relationship),
       validateEmail(values.email),
+      validateConfirmEmail(values.email, values.confirmEmail),
       validatePhone(values.phone),
-      validateAppointmentMode(values.appType),
       validateFullName(values.minorFullName),
       validateMinorBirthDate(values.minorBirthDate),
       validateMinorIdentityDocument(values.minorIdentityDocument),
+      validateConfirmMinorIdentityDocument(
+        values.minorIdentityDocument,
+        values.confirmMinorIdentityDocument,
+      ),
       validateGender(values.minorGender),
     ];
 
     setFieldTouched("fullName");
+    setFieldTouched("documentType");
     setFieldTouched("identityDocument");
+    setFieldTouched("confirmIdentityDocument");
     setFieldTouched("birthDate");
+    setFieldTouched("gender");
     setFieldTouched("relationship");
     setFieldTouched("email");
+    setFieldTouched("confirmEmail");
     setFieldTouched("phone");
-    setFieldTouched("appType");
     setFieldTouched("minorFullName");
     setFieldTouched("minorBirthDate");
     setFieldTouched("minorIdentityDocument");
+    setFieldTouched("confirmMinorIdentityDocument");
     setFieldTouched("minorGender");
 
     if (step1Errors.every((error) => !error)) {
@@ -190,7 +205,36 @@ export default function GuardianRequestPage() {
                   onBlur={() => setFieldTouched("fullName")}
                 />
 
-                <div className="grid gap-5 sm:grid-cols-2">
+                <div className="grid gap-5 sm:grid-cols-[160px_1fr]">
+                  <label className="block">
+                    <span className="text-sm font-semibold text-text">
+                      Tipo{" "}
+                      <span className="text-danger" aria-hidden>
+                        *
+                      </span>
+                    </span>
+                    <select
+                      value={values.documentType}
+                      onChange={(event) =>
+                        setDocumentType(event.target.value as CardType | "")
+                      }
+                      onBlur={() => setFieldTouched("documentType")}
+                      className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    >
+                      <option value="">Selecciona</option>
+                      {DOCUMENT_TYPES.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.documentType && (
+                      <span role="alert" className="mt-1.5 block text-xs text-danger">
+                        {errors.documentType}
+                      </span>
+                    )}
+                  </label>
+
                   <TextField
                     label={guardianForm.fields.identityDocument}
                     required
@@ -202,6 +246,92 @@ export default function GuardianRequestPage() {
                       setValue("identityDocument", keepDigits(value))
                     }
                     onBlur={() => setFieldTouched("identityDocument")}
+                  />
+                </div>
+
+                <TextField
+                  label="Confirma el número de documento"
+                  required
+                  inputMode="numeric"
+                  value={values.confirmIdentityDocument}
+                  error={errors.confirmIdentityDocument}
+                  maxLength={12}
+                  placeholder="Escríbelo de nuevo"
+                  onChange={(value) =>
+                    setValue("confirmIdentityDocument", keepDigits(value))
+                  }
+                  onBlur={() => setFieldTouched("confirmIdentityDocument")}
+                />
+
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="text-sm font-semibold text-text">
+                      Tu fecha de nacimiento{" "}
+                      <span className="text-danger" aria-hidden>
+                        *
+                      </span>
+                    </span>
+                    <input
+                      type="date"
+                      value={values.birthDate}
+                      max={new Date().toISOString().split("T")[0]}
+                      onChange={(event) =>
+                        setValue("birthDate", event.target.value)
+                      }
+                      onBlur={() => setFieldTouched("birthDate")}
+                      className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <span className="mt-1.5 block text-xs text-text-subtle">
+                      Debes ser mayor de edad para solicitar la cita.
+                    </span>
+                    {errors.birthDate && (
+                      <span role="alert" className="mt-1.5 block text-xs text-danger">
+                        {errors.birthDate}
+                      </span>
+                    )}
+                  </label>
+
+                  <label className="block">
+                    <span className="text-sm font-semibold text-text">
+                      Género{" "}
+                      <span className="text-danger" aria-hidden>
+                        *
+                      </span>
+                    </span>
+                    <select
+                      value={values.gender}
+                      onChange={(event) =>
+                        setGender(event.target.value as Gender | "")
+                      }
+                      onBlur={() => setFieldTouched("gender")}
+                      className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    >
+                      <option value="">Selecciona</option>
+                      {GENDER_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.gender && (
+                      <span role="alert" className="mt-1.5 block text-xs text-danger">
+                        {errors.gender}
+                      </span>
+                    )}
+                  </label>
+                </div>
+
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <TextField
+                    label={guardianForm.fields.phone}
+                    required
+                    type="tel"
+                    inputMode="numeric"
+                    value={values.phone}
+                    error={errors.phone}
+                    maxLength={12}
+                    onChange={(value) => setValue("phone", keepDigits(value))}
+                    onBlur={() => setFieldTouched("phone")}
                   />
 
                   <label className="block">
@@ -241,56 +371,29 @@ export default function GuardianRequestPage() {
                 </div>
 
                 <div className="grid gap-5 sm:grid-cols-2">
-                  <label className="block">
-                    <span className="text-sm font-semibold text-text">
-                      Tu fecha de nacimiento{" "}
-                      <span className="text-danger" aria-hidden>
-                        *
-                      </span>
-                    </span>
-                    <input
-                      type="date"
-                      value={values.birthDate}
-                      max={new Date().toISOString().split("T")[0]}
-                      onChange={(event) =>
-                        setValue("birthDate", event.target.value)
-                      }
-                      onBlur={() => setFieldTouched("birthDate")}
-                      className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
-                    />
-                    <span className="mt-1.5 block text-xs text-text-subtle">
-                      Debes ser mayor de edad para solicitar la cita.
-                    </span>
-                    {errors.birthDate && (
-                      <span role="alert" className="mt-1.5 block text-xs text-danger">
-                        {errors.birthDate}
-                      </span>
-                    )}
-                  </label>
+                  <TextField
+                    label={guardianForm.fields.email}
+                    required
+                    type="email"
+                    inputMode="email"
+                    value={values.email}
+                    error={errors.email}
+                    onChange={(value) => setValue("email", value)}
+                    onBlur={() => setFieldTouched("email")}
+                  />
 
                   <TextField
-                    label={guardianForm.fields.phone}
+                    label="Confirma tu correo"
                     required
-                    type="tel"
-                    inputMode="numeric"
-                    value={values.phone}
-                    error={errors.phone}
-                    maxLength={12}
-                    onChange={(value) => setValue("phone", keepDigits(value))}
-                    onBlur={() => setFieldTouched("phone")}
+                    type="email"
+                    inputMode="email"
+                    value={values.confirmEmail}
+                    error={errors.confirmEmail}
+                    placeholder="Escríbelo de nuevo"
+                    onChange={(value) => setValue("confirmEmail", value)}
+                    onBlur={() => setFieldTouched("confirmEmail")}
                   />
                 </div>
-
-                <TextField
-                  label={guardianForm.fields.email}
-                  required
-                  type="email"
-                  inputMode="email"
-                  value={values.email}
-                  error={errors.email}
-                  onChange={(value) => setValue("email", value)}
-                  onBlur={() => setFieldTouched("email")}
-                />
               </fieldset>
 
               <fieldset className="space-y-5">
@@ -396,6 +499,42 @@ export default function GuardianRequestPage() {
                     )}
                   </div>
                 </div>
+
+                <TextField
+                  label="Confirma el documento del menor"
+                  required
+                  inputMode="numeric"
+                  value={values.confirmMinorIdentityDocument}
+                  error={errors.confirmMinorIdentityDocument}
+                  maxLength={12}
+                  placeholder="Escríbelo de nuevo"
+                  onChange={(value) =>
+                    setValue("confirmMinorIdentityDocument", keepDigits(value))
+                  }
+                  onBlur={() => setFieldTouched("confirmMinorIdentityDocument")}
+                />
+
+                <label className="block">
+                  <span className="text-sm font-medium text-text">
+                    ¿El menor pertenece a alguna población vulnerable?
+                    (opcional)
+                  </span>
+                  <select
+                    defaultValue=""
+                    className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  >
+                    <option value="">Prefiero no decir</option>
+                    {VULNERABLE_POPULATION_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="mt-1.5 block text-xs text-text-subtle">
+                    Esta información es opcional y nos ayuda a orientar mejor
+                    la atención.
+                  </span>
+                </label>
               </fieldset>
 
               <p className="flex items-start gap-2 text-xs leading-relaxed text-text-subtle">
@@ -410,101 +549,25 @@ export default function GuardianRequestPage() {
                   {guardianForm.sections.detail}
                 </legend>
 
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <label className="block">
-                    <span className="text-sm font-medium text-text">
-                      {guardianForm.fields.residenceZone} (opcional)
-                    </span>
-                    <select
-                      value={values.department}
-                      onChange={(event) => {
-                        setValue("department", event.target.value);
-                        setValue("municipality", "");
-                      }}
-                      className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
-                    >
-                      <option value="">{NO_ZONE_REPORTED_LABEL}</option>
-                      {COLOMBIA_DEPARTMENTS.map((department) => (
-                        <option key={department} value={department}>
-                          {department}
-                        </option>
-                      ))}
-                    </select>
-                    <span className="mt-1.5 block text-xs text-text-subtle">
-                      El departamento donde vive el menor.
-                    </span>
-                  </label>
+                <ResidenceFields
+                  department={values.department}
+                  municipality={values.municipality}
+                  municipalityError={errors.municipality}
+                  helperText="El departamento donde vive el menor."
+                  onDepartmentChange={(value) => {
+                    setValue("department", value);
+                    setValue("municipality", "");
+                  }}
+                  onMunicipalityChange={(value) => setValue("municipality", value)}
+                  onMunicipalityBlur={() => setFieldTouched("municipality")}
+                />
 
-                  {values.department === "Huila" ? (
-                    <label className="block">
-                      <span className="text-sm font-medium text-text">
-                        Municipio
-                      </span>
-                      <select
-                        value={values.municipality}
-                        onChange={(event) =>
-                          setValue("municipality", event.target.value)
-                        }
-                        onBlur={() => setFieldTouched("municipality")}
-                        className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
-                      >
-                        <option value="">Selecciona</option>
-                        {HUILA_MUNICIPALITIES.map((municipality) => (
-                          <option key={municipality} value={municipality}>
-                            {municipality}
-                          </option>
-                        ))}
-                      </select>
-                      {errors.municipality && (
-                        <span role="alert" className="mt-1.5 block text-xs text-danger">
-                          {errors.municipality}
-                        </span>
-                      )}
-                    </label>
-                  ) : (
-                    values.department && (
-                      <TextField
-                        label="Municipio"
-                        value={values.municipality}
-                        error={errors.municipality}
-                        placeholder="Ej. Bogotá"
-                        onChange={(value) => setValue("municipality", value)}
-                        onBlur={() => setFieldTouched("municipality")}
-                      />
-                    )
-                  )}
-                </div>
-
-                <label className="block">
-                  <span className="text-sm font-semibold text-text">
-                    Modalidad de la cita{" "}
-                    <span className="text-danger" aria-hidden>
-                      *
-                    </span>
-                  </span>
-                  <select
-                    value={values.appType}
-                    onChange={(event) =>
-                      setAppointmentMode(
-                        event.target.value as AppointmentMode | "",
-                      )
-                    }
-                    onBlur={() => setFieldTouched("appType")}
-                    className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  >
-                    <option value="">Selecciona</option>
-                    {APPOINTMENT_MODE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.appType && (
-                    <span role="alert" className="mt-1.5 block text-xs text-danger">
-                      {errors.appType}
-                    </span>
-                  )}
-                </label>
+                <AppointmentModeField
+                  value={values.appType}
+                  error={errors.appType}
+                  onChange={setAppointmentMode}
+                  onBlur={() => setFieldTouched("appType")}
+                />
 
                 <label className="block">
                   <span className="text-sm font-medium text-text">
@@ -522,24 +585,11 @@ export default function GuardianRequestPage() {
                   />
                 </label>
 
-                <label className="block">
-                  <span className="text-sm font-medium text-text">
-                    Fecha preferida para la cita (opcional)
-                  </span>
-                  <input
-                    type="date"
-                    value={preferredDate ?? ""}
-                    min={new Date().toISOString().split("T")[0]}
-                    onChange={(event) =>
-                      setPreferredDate(event.target.value || null)
-                    }
-                    className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  />
-                  <span className="mt-1.5 block text-xs text-text-subtle">
-                    Es solo una referencia para la asistente al asignar la
-                    cita, no reserva un horario.
-                  </span>
-                </label>
+                <p className="rounded-xl bg-primary-soft/40 p-4 text-sm text-text-muted">
+                  Una vez enviada la solicitud, se asignará una cita en el
+                  menor tiempo posible. Te contactaremos por correo o teléfono
+                  para confirmar la fecha y hora.
+                </p>
               </fieldset>
 
               <div className="space-y-3">
@@ -547,14 +597,16 @@ export default function GuardianRequestPage() {
                   checked={values.hasAcceptedGuardianDataPolicy}
                   onChange={toggleGuardianDataPolicy}
                   error={errors.hasAcceptedGuardianDataPolicy}
-                  label="Autorizo el tratamiento de mis datos personales como tutor/acudiente conforme a la Política de Privacidad de la Fundación Dejando Huellas Felices."
+                  policyType="data_treatment"
+                  label="Autorizo el tratamiento de mis datos personales como tutor/acudiente."
                 />
 
                 <DataPolicyConsent
                   checked={values.hasAcceptedMinorDataPolicy}
                   onChange={toggleMinorDataPolicy}
                   error={errors.hasAcceptedMinorDataPolicy}
-                  label="Autorizo el tratamiento de los datos personales del menor a mi cargo conforme a la Política de Privacidad de la Fundación Dejando Huellas Felices."
+                  policyType="dependent_consent"
+                  label="Autorizo el tratamiento de los datos personales del menor a mi cargo."
                 />
               </div>
 

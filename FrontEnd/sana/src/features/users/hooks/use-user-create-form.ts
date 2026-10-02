@@ -14,7 +14,9 @@ import {
 const EMPTY_FORM: UserFormValues = {
   fullName: "",
   identityDocument: "",
+  confirmIdentityDocument: "",
   email: "",
+  confirmEmail: "",
   contactNumber: "",
   roleIds: [],
   licenseNumber: "",
@@ -34,7 +36,7 @@ export function useUserCreateForm() {
 
   const { values, setValue, submit } = form;
 
-    const toggleRole = useCallback(
+  const toggleRole = useCallback(
     (roleId: number) => {
       const current = values.roleIds;
       setValue(
