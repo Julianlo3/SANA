@@ -32,8 +32,8 @@ describe('ScheduleRepository.confirmWithSchedule', () => {
     expect(manager.query.mock.calls[4][0]).toContain('app_id IS DISTINCT FROM $5');
     expect(manager.query.mock.calls[4][1]).toEqual([
       8,
-      new Date('2026-10-06T09:00:00.000Z'),
-      new Date('2026-10-06T09:00:00.000Z'),
+      '2026-10-06',
+      '09:00:00',
       60,
       42,
     ]);
