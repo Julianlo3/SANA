@@ -203,11 +203,7 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
           <h2 className="font-display text-lg font-bold text-text">Cita</h2>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <Field label="Fecha que prefiere (solo referencia)">
-              {appointment.appDateIdeal
-                ? formatDate(appointment.appDateIdeal)
-                : "Sin preferencia"}
-            </Field>
+          
             <Field label="Psicólogo asignado">
               {appointment.psychologistName ?? "Sin asignar"}
             </Field>

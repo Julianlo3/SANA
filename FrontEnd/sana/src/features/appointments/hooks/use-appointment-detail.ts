@@ -12,12 +12,7 @@ import {
 } from "../services/appointments-service";
 import type { Appointment } from "../types/appointment-types";
 
-/**
- * Aviso tras confirmar. El backend todavía no envía el WhatsApp ni el correo
- * (solo lo deja en el log). Se quita esta frase cuando esa integración exista.
- */
-const CONFIRM_NOTICE =
-  "Cita confirmada. Ojo: el aviso automático al consultante aún no está activo en el backend.";
+const CONFIRM_NOTICE = "Cita confirmada.";
 
 function messageFrom(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
