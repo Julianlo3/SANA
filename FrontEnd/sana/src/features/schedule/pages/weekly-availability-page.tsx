@@ -9,6 +9,8 @@ import { useScheduleTerms } from "../hooks/use-schedule-terms";
 import type {
   CreateRecurringScheduleBlockPayload,
   CreateScheduleBlockPayload,
+  RecurringScheduleBlock,
+  ScheduleBlock,
 } from "../types/schedule-types";
 
 const DAY_LABELS: Record<number, string> = {
@@ -49,6 +51,26 @@ const EMPTY_RECURRING_FORM: CreateRecurringScheduleBlockPayload = {
   reason: "",
 };
 
+function renderBlocksList(isLoading: boolean, blocks: ScheduleBlock[]) {
+  if (isLoading) {
+    return <p className="text-sm text-text-subtle">Cargando…</p>;
+  }
+  if (blocks.length === 0) {
+    return <p className="text-sm text-text-subtle">No tienes bloqueos puntuales.</p>;
+  }
+  return null;
+}
+
+function renderRecurringList(isLoading: boolean, rules: RecurringScheduleBlock[]) {
+  if (isLoading) {
+    return <p className="text-sm text-text-subtle">Cargando…</p>;
+  }
+  if (rules.length === 0) {
+    return <p className="text-sm text-text-subtle">No tienes reglas recurrentes.</p>;
+  }
+  return null;
+}
+
 /**
  * Agenda del psicólogo (modelo de bloqueos): todo cuenta como disponible
  * para que la asistente asigne citas, salvo las horas que aquí se bloqueen,
@@ -68,6 +90,10 @@ export default function WeeklyAvailabilityPage() {
     return <p className="text-sm text-text-subtle">Cargando…</p>;
   }
 
+  if (terms.loadError) {
+    return <InlineMessage tone="error">{terms.loadError}</InlineMessage>;
+  }
+
   if (!terms.hasAccepted) {
     return (
       <div className="mx-auto max-w-2xl">
@@ -77,7 +103,7 @@ export default function WeeklyAvailabilityPage() {
         <div className="mt-4 rounded-2xl border border-border bg-surface p-6 text-sm leading-relaxed text-text">
           {terms.policyContent ?? "Cargando términos…"}
         </div>
-              <div className="mt-6">
+        <div className="mt-6">
           <Button onClick={terms.accept} disabled={terms.isAccepting}>
             {terms.isAccepting ? "Guardando…" : "Acepto y continúo"}
           </Button>
@@ -101,6 +127,12 @@ export default function WeeklyAvailabilityPage() {
       setShowRecurringForm(false);
     }
   }
+
+  const blocksEmptyState = renderBlocksList(schedule.isLoading, schedule.blocks);
+  const recurringEmptyState = renderRecurringList(
+    schedule.isLoading,
+    schedule.recurringBlocks,
+  );
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -202,11 +234,7 @@ export default function WeeklyAvailabilityPage() {
         )}
 
         <div className="mt-4 space-y-2">
-          {schedule.isLoading ? (
-            <p className="text-sm text-text-subtle">Cargando…</p>
-          ) : schedule.blocks.length === 0 ? (
-            <p className="text-sm text-text-subtle">No tienes bloqueos puntuales.</p>
-          ) : (
+          {blocksEmptyState ??
             schedule.blocks.map((block) => (
               <div
                 key={block.id}
@@ -238,8 +266,7 @@ export default function WeeklyAvailabilityPage() {
                   <Lock size={16} className="text-text-subtle" aria-hidden />
                 )}
               </div>
-            ))
-          )}
+            ))}
         </div>
       </section>
 
@@ -376,13 +403,7 @@ export default function WeeklyAvailabilityPage() {
         )}
 
         <div className="mt-4 space-y-2">
-          {schedule.isLoading ? (
-            <p className="text-sm text-text-subtle">Cargando…</p>
-          ) : schedule.recurringBlocks.length === 0 ? (
-            <p className="text-sm text-text-subtle">
-              No tienes reglas recurrentes.
-            </p>
-          ) : (
+          {recurringEmptyState ??
             schedule.recurringBlocks.map((rule) => (
               <div
                 key={rule.id}
@@ -410,8 +431,7 @@ export default function WeeklyAvailabilityPage() {
                   <Trash2 size={16} />
                 </button>
               </div>
-            ))
-          )}
+            ))}
         </div>
       </section>
     </div>

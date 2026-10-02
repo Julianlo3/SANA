@@ -16,6 +16,7 @@ export function useScheduleTerms() {
   const [hasAccepted, setHasAccepted] = useState<boolean | null>(null);
   const [policyContent, setPolicyContent] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
 
   useEffect(() => {
@@ -26,6 +27,11 @@ export function useScheduleTerms() {
         if (!isMounted) return;
         setHasAccepted(status.hasAccepted);
         setPolicyContent(policy.pdContent);
+      })
+      .catch(() => {
+        if (isMounted) {
+          setLoadError("No pudimos cargar los términos. Intenta de nuevo.");
+        }
       })
       .finally(() => {
         if (isMounted) setIsLoading(false);
@@ -46,5 +52,5 @@ export function useScheduleTerms() {
     }
   }, []);
 
-  return { hasAccepted, policyContent, isLoading, isAccepting, accept };
+  return { hasAccepted, policyContent, isLoading, loadError, isAccepting, accept };
 }

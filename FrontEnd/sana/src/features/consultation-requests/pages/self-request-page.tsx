@@ -10,19 +10,12 @@ import TextField from "@/components/forms/text-field";
 import Button from "@/components/ui/button";
 import { REQUEST_CONTENT } from "@/content/consultation-request";
 import { keepDigits } from "@/lib/format/text";
-import { HUILA_MUNICIPALITIES } from "@/config/huila-municipalities";
-import {
-  COLOMBIA_DEPARTMENTS,
-  NO_ZONE_REPORTED_LABEL,
-} from "@/config/residence-zones";
 import { VULNERABLE_POPULATION_OPTIONS } from "@/config/vulnerable-population";
+import AppointmentModeField from "../components/appointment-mode-field";
 import DataPolicyConsent from "../components/data-policy-consent";
+import ResidenceFields from "../components/residence-fields";
 import { useConsultationRequestForm } from "../hooks/use-consultation-request-form";
-import type {
-  AppointmentMode,
-  CardType,
-  Gender,
-} from "../types/consultation-request-types";
+import type { CardType, Gender } from "../types/consultation-request-types";
 
 const { selfForm } = REQUEST_CONTENT;
 
@@ -36,11 +29,6 @@ const GENDER_OPTIONS: { value: Gender; label: string }[] = [
   { value: "F", label: "Mujer" },
   { value: "O", label: "Otro" },
   { value: "P", label: "No quiero especificar" },
-];
-
-const APPOINTMENT_MODE_OPTIONS: { value: AppointmentMode; label: string }[] = [
-  { value: "presencial", label: "Presencial" },
-  { value: "virtual", label: "Virtual" },
 ];
 
 /** HU-2.2: formulario de quien solicita la atención para sí mismo. */
@@ -279,71 +267,18 @@ export default function SelfRequestPage() {
                 onBlur={() => setFieldTouched("phone")}
               />
 
-              <div className="grid gap-5 sm:grid-cols-2">
-                <label className="block">
-                  <span className="text-sm font-medium text-text">
-                    {selfForm.fields.residenceZone} (opcional)
-                  </span>
-                  <select
-                    value={values.department}
-                    onChange={(event) => {
-                      setValue("department", event.target.value);
-                      setValue("municipality", "");
-                    }}
-                    className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  >
-                    <option value="">{NO_ZONE_REPORTED_LABEL}</option>
-                    {COLOMBIA_DEPARTMENTS.map((department) => (
-                      <option key={department} value={department}>
-                        {department}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="mt-1.5 block text-xs text-text-subtle">
-                    El departamento donde vives actualmente. Si prefieres no
-                    indicarlo, deja “{NO_ZONE_REPORTED_LABEL}”.
-                  </span>
-                </label>
-
-                {values.department === "Huila" ? (
-                  <label className="block">
-                    <span className="text-sm font-medium text-text">
-                      Municipio
-                    </span>
-                    <select
-                      value={values.municipality}
-                      onChange={(event) =>
-                        setValue("municipality", event.target.value)
-                      }
-                      onBlur={() => setFieldTouched("municipality")}
-                      className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
-                    >
-                      <option value="">Selecciona</option>
-                      {HUILA_MUNICIPALITIES.map((municipality) => (
-                        <option key={municipality} value={municipality}>
-                          {municipality}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.municipality && (
-                      <span role="alert" className="mt-1.5 block text-xs text-danger">
-                        {errors.municipality}
-                      </span>
-                    )}
-                  </label>
-                ) : (
-                  values.department && (
-                    <TextField
-                      label="Municipio"
-                      value={values.municipality}
-                      error={errors.municipality}
-                      placeholder="Ej. Bogotá"
-                      onChange={(value) => setValue("municipality", value)}
-                      onBlur={() => setFieldTouched("municipality")}
-                    />
-                  )
-                )}
-              </div>
+              <ResidenceFields
+                department={values.department}
+                municipality={values.municipality}
+                municipalityError={errors.municipality}
+                helperText="El departamento donde vives actualmente. Si prefieres no indicarlo, déjalo en blanco."
+                onDepartmentChange={(value) => {
+                  setValue("department", value);
+                  setValue("municipality", "");
+                }}
+                onMunicipalityChange={(value) => setValue("municipality", value)}
+                onMunicipalityBlur={() => setFieldTouched("municipality")}
+              />
             </fieldset>
 
             <fieldset className="space-y-2">
@@ -351,36 +286,12 @@ export default function SelfRequestPage() {
                 {selfForm.sections.detail}
               </legend>
 
-              <label className="block">
-                <span className="text-sm font-semibold text-text">
-                  Modalidad de la cita{" "}
-                  <span className="text-danger" aria-hidden>
-                    *
-                  </span>
-                </span>
-                <select
-                  value={values.appType}
-                  onChange={(event) =>
-                    setAppointmentMode(
-                      event.target.value as AppointmentMode | "",
-                    )
-                  }
-                  onBlur={() => setFieldTouched("appType")}
-                  className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
-                >
-                  <option value="">Selecciona</option>
-                  {APPOINTMENT_MODE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                {errors.appType && (
-                  <span role="alert" className="mt-1.5 block text-xs text-danger">
-                    {errors.appType}
-                  </span>
-                )}
-              </label>
+              <AppointmentModeField
+                value={values.appType}
+                error={errors.appType}
+                onChange={setAppointmentMode}
+                onBlur={() => setFieldTouched("appType")}
+              />
 
               <label className="mt-5 block">
                 <span className="text-sm font-medium text-text">
@@ -405,7 +316,7 @@ export default function SelfRequestPage() {
               </p>
             </fieldset>
 
-           <DataPolicyConsent
+            <DataPolicyConsent
               checked={values.hasAcceptedDataPolicy}
               onChange={toggleDataPolicy}
               error={errors.hasAcceptedDataPolicy}
