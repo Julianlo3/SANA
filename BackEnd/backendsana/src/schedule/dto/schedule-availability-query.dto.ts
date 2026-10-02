@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
   IsDateString,
   IsInt,
@@ -14,11 +15,13 @@ export class ScheduleAvailabilityQueryDto {
   @IsDateString()
   appointmentStart!: string;
 
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(480)
   duration!: number;
 
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(24)
