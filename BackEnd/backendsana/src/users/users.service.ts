@@ -4,6 +4,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, QueryFailedError, Repository } from 'typeorm';
@@ -25,6 +26,7 @@ import { Schedule } from './entities/schedule.entity.js';
 import { UserAccount } from './entities/user-account.entity.js';
 import type { UserResponse, UserRoleResponse } from './interfaces/user-response.interface.js';
 import { ASSIGNABLE_ROLES } from './users.constants.js';
+import { EmailService } from '../email/email.service.js';
 
 const FOREIGN_KEY_VIOLATION = '23503';
 
@@ -65,6 +67,7 @@ export class UsersService {
     private readonly scheduleRepository: Repository<Schedule>,
     private readonly dataSource: DataSource,
     private readonly securityLogService: SecurityLogService,
+    @Optional() private readonly emailService?: EmailService,
   ) { }
 
   private readonly logger = new Logger(UsersService.name);
@@ -114,7 +117,7 @@ export class UsersService {
     const email = dto.email.trim().toLowerCase();
     const role = await this.findAssignableRoleOrFail(dto.roleId);
 
-    return this.dataSource.transaction(async (manager) => {
+    const user = await this.dataSource.transaction(async (manager) => {
       const existing = await manager
         .createQueryBuilder(Person, 'person')
         .where('lower(person.per_email) = :email', { email })
@@ -180,6 +183,18 @@ export class UsersService {
       );
       return this.toResponse(manager, created.perId);
     });
+
+    await this.emailService?.enqueueEmail({
+      to: email,
+      subject: 'Tu cuenta de SANA está lista',
+      text: [
+        `Hola ${dto.fullName},`,
+        'El administrador creó o habilitó tu cuenta en SANA.',
+        'Ya puedes ingresar con la cuenta de Google asociada a este correo.',
+      ].join('\n'),
+    });
+
+    return user;
   }
 
   /**

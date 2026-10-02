@@ -10,12 +10,14 @@ import { AppointmentsController } from './appointments.controller.js';
 import { AppointmentsService } from './appointments.service.js';
 import { AppointmentsRepository } from './appointments.repository.js';
 import { ScheduleModule } from '../schedule/schedule.module.js';
+import { EmailModule } from '../email/email.module.js';
 
 @Module({
   imports: [
     AuthModule,
     PolicyModule,
     ScheduleModule,
+    EmailModule,
     TypeOrmModule.forFeature([
       Appointment,
       Dependent,

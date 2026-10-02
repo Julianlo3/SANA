@@ -28,7 +28,6 @@ export interface AppointmentRow {
   appState: string;
   appType: string;
   appDate: string | null;
-  appDateIdeal: string | null;
   appDuration: number | null;
   appDiscardReason: string | null;
   appReason: string | null;
@@ -96,7 +95,6 @@ export class AppointmentsRepository {
           a.app_state                                AS "appState",
           a.app_type                                 AS "appType",
           a.app_date                                 AS "appDate",
-          a.app_date_ideal                           AS "appDateIdeal",
           a.app_duration                             AS "appDuration",
           a.app_discard_reason                       AS "appDiscardReason",
           NULL::text                                 AS "appReason",
@@ -144,7 +142,6 @@ export class AppointmentsRepository {
           a.app_state                                AS "appState",
           a.app_type                                 AS "appType",
           a.app_date                                 AS "appDate",
-          a.app_date_ideal                           AS "appDateIdeal",
           a.app_duration                             AS "appDuration",
           a.app_discard_reason                       AS "appDiscardReason",
           NULL::text                                 AS "appReason",
@@ -192,7 +189,6 @@ export class AppointmentsRepository {
           a.app_state                                AS "appState",
           a.app_type                                 AS "appType",
           a.app_date                                 AS "appDate",
-          a.app_date_ideal                           AS "appDateIdeal",
           a.app_duration                             AS "appDuration",
           a.app_discard_reason                       AS "appDiscardReason",
           a.app_reason                               AS "appReason",
@@ -248,7 +244,6 @@ export class AppointmentsRepository {
           a.app_state                                AS "appState",
           a.app_type                                 AS "appType",
           a.app_date                                 AS "appDate",
-          a.app_date_ideal                           AS "appDateIdeal",
           a.app_duration                             AS "appDuration",
           a.app_discard_reason                       AS "appDiscardReason",
           a.app_reason                               AS "appReason",
@@ -289,7 +284,6 @@ export class AppointmentsRepository {
     dependent: (AppointmentDependentParams & { relationshipId: number }) | null;
     appType: string;
     appReason: string | null;
-    appDateIdeal: string | null;
   }): Promise<number> {
     return this.dataSource.transaction(async (manager) => {
       const requesterId = await this.upsertRequester(params.requester, manager);
@@ -314,7 +308,6 @@ export class AppointmentsRepository {
           patientDependentId,
           appType: params.appType,
           appReason: params.appReason,
-          appDateIdeal: params.appDateIdeal,
         },
         manager,
       );
@@ -511,7 +504,7 @@ export class AppointmentsRepository {
 
   /**
    * insert appointment in 'pendiente' state
-   * @param params contains requesterId, patientPersonId, patientDependentId, appType, appReason, appDateIdeal
+   * @param params contains requesterId, patientPersonId, patientDependentId, appType, appReason
    * @returns app_id or null
    */
   async create(params: {
@@ -520,14 +513,13 @@ export class AppointmentsRepository {
     patientDependentId: number | null;
     appType: string;
     appReason: string | null;
-    appDateIdeal: string | null;
   }, executor: QueryExecutor = this.dataSource): Promise<number> {
     const result = await executor.query<{ app_id: number }[]>(
       `INSERT INTO appointments (
          req_id, app_patient_person_id, app_patient_dependent_id,
-         app_state, app_type, app_reason, app_date_ideal, app_created_at
+         app_state, app_type, app_reason, app_created_at
        )
-       VALUES ($1, $2, $3, 'pendiente', $4, $5, $6::timestamptz, now())
+       VALUES ($1, $2, $3, 'pendiente', $4, $5, now())
        RETURNING app_id`,
       [
         params.requesterId,
@@ -535,7 +527,6 @@ export class AppointmentsRepository {
         params.patientDependentId,
         params.appType,
         params.appReason,
-        params.appDateIdeal,
       ],
     );
     return result[0].app_id;
@@ -577,11 +568,29 @@ export class AppointmentsRepository {
    * @param state new state
    * @returns void
    */
-  async updateState(appId: number, state: string): Promise<void> {
-    await this.dataSource.query(
-      `UPDATE appointments SET app_state = $1 WHERE app_id = $2`,
-      [state, appId],
-    );
+  updateState(
+    appId: number,
+    state: 'cancelada' | 'realizada',
+  ): Promise<boolean> {
+    return this.dataSource.transaction(async (manager) => {
+      const updated = await manager.query<{ app_id: number }[]>(
+        `UPDATE appointments
+         SET app_state = $1
+         WHERE app_id = $2 AND app_state = 'confirmada'
+         RETURNING app_id`,
+        [state, appId],
+      );
+      if (updated.length === 0) return false;
+
+      if (state === 'cancelada') {
+        await manager.query(
+          `DELETE FROM schedule_occupancy WHERE app_id = $1`,
+          [appId],
+        );
+      }
+
+      return true;
+    });
   }
 
   /**
@@ -591,13 +600,20 @@ export class AppointmentsRepository {
    * @returns void
    */
   async discard(appId: number, reason: string): Promise<void> {
-    const result = await this.dataSource.query(
-      `UPDATE appointments
-       SET app_state = 'descartada', app_discard_reason = $1
-       WHERE app_id = $2 AND app_state IN ('pendiente', 'asignada')`,
-      [reason, appId],
-    );
-    if (result?.rowCount === 0) throw new Error('APPOINTMENT_NOT_DISCARDABLE');
+    await this.dataSource.transaction(async (manager) => {
+      const result = await manager.query(
+        `UPDATE appointments
+         SET app_state = 'descartada', app_discard_reason = $1
+         WHERE app_id = $2 AND app_state IN ('pendiente', 'asignada')`,
+        [reason, appId],
+      );
+      if (result?.rowCount === 0) throw new Error('APPOINTMENT_NOT_DISCARDABLE');
+
+      await manager.query(
+        `DELETE FROM schedule_occupancy WHERE app_id = $1`,
+        [appId],
+      );
+    });
   }
 
   /**
@@ -644,6 +660,39 @@ export class AppointmentsRepository {
         WHERE per.per_state = 'activo'
         ORDER BY per.per_name`,
     );
+  }
+
+  /**
+   * finds the email of a specific psychologist
+   * @param psychologistId The ID of the psychologist whose email is to be retrieved.
+   * @returns A promise that resolves to the email of the psychologist, or null if not found.
+   */
+  async findPsychologistEmail(psychologistId: number): Promise<string | null> {
+    const rows = await this.dataSource.query<{ per_email: string }[]>(
+      `SELECT per_email
+       FROM person
+        WHERE per_id = $1`,
+      [psychologistId],
+    );
+    return rows[0]?.per_email ?? null;
+  }
+
+  /**
+   * finds active secretary emails for notifications
+   * @returns array of secretary emails
+   */
+  async findActiveSecretaryEmails(): Promise<string[]> {
+    const rows = await this.dataSource.query<{ email: string }[]>(
+      `SELECT DISTINCT person.per_email AS email
+       FROM person
+       JOIN person_rol ON person_rol.per_id = person.per_id
+       JOIN rol ON rol.rol_id = person_rol.rol_id
+       WHERE person.per_state = 'activo'
+         AND person_rol.pr_active = true
+         AND rol.rol_description = 'secretario'
+       ORDER BY person.per_email`,
+    );
+    return rows.map((row) => row.email);
   }
 
   /**

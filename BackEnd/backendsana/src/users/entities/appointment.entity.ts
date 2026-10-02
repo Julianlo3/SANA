@@ -47,9 +47,6 @@ export class Appointment {
   @Column({ name: 'app_discard_reason', type: 'text', nullable: true })
   appDiscardReason!: string | null;
 
-  @Column({ name: 'app_date_ideal', type: 'timestamptz', nullable: true })
-  appDateIdeal!: Date | null;
-
   @Column({ name: 'app_duration', type: 'integer', nullable: true })
   appDuration!: number | null;
 

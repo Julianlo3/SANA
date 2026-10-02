@@ -1,11 +1,11 @@
 import { IsEnum } from 'class-validator';
 
-export type AppointmentStatusUpdate = 'cancelada' | 'realizada';
+export type AppointmentStatusUpdate = 'cancelada';
 
-/** 
- * DTO for the secretary or system to change the status of an appointment. 
-*/
+/**
+ * DTO for updating the status of an appointment.
+ */
 export class UpdateAppointmentStatusDto {
-  @IsEnum(['cancelada', 'realizada'] as const)
+  @IsEnum(['cancelada'] as const)
   state!: AppointmentStatusUpdate;
 }

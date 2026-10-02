@@ -5,6 +5,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import type { CreateAppointmentDto } from './dto/create-appointment.dto.js';
 import type { ConfirmAppointmentDto } from './dto/confirm-appointment.dto.js';
@@ -19,6 +20,7 @@ import {
   type RelationshipRow,
 } from './appointments.repository.js';
 import { ScheduleService } from '../schedule/schedule.service.js';
+import { EmailService } from '../email/email.service.js';
 
 /**
  * Calculates the age of a person based on their birthdate.
@@ -48,6 +50,7 @@ export class AppointmentsService {
   constructor(
     private readonly repo: AppointmentsRepository,
     private readonly scheduleService: ScheduleService,
+    @Optional() private readonly emailService?: EmailService,
   ) { }
 
   /**
@@ -141,12 +144,12 @@ export class AppointmentsService {
         : null,
       appType: dto.appType,
       appReason: dto.appReason?.trim() ?? null,
-      appDateIdeal: dto.appDateIdeal ?? null,
     });
 
     this.logger.log(
       `Module:appointments, Function:requestAppointment, result-success: appId-${appId}, requesterDoc-${dto.requesterIdentityDocument}, patientType-${dto.patientType}, type-${dto.appType}`,
     );
+    await this.notifySecretaryOfNewRequest(dto, appId);
 
     return {
       appId,
@@ -411,22 +414,38 @@ export class AppointmentsService {
       });
     }
 
-    if (
-      appointment.appState === 'cancelada' ||
-      appointment.appState === 'realizada' ||
-      appointment.appState === 'descartada'
-    ) {
+    if (dto.state !== 'cancelada') {
       throw new BadRequestException({
-        error: 'APPOINTMENT_ALREADY_CLOSED',
-        message: `La cita ya se encuentra en estado '${appointment.appState}' y no puede modificarse`,
+        error: 'INVALID_APPOINTMENT_STATUS_TRANSITION',
+        message: 'El secretario solo puede cancelar citas confirmadas',
       });
     }
 
-    await this.repo.updateState(appId, dto.state);
+    if (appointment.appState !== 'confirmada') {
+      if (['cancelada', 'realizada', 'descartada'].includes(appointment.appState)) {
+        throw new BadRequestException({
+          error: 'APPOINTMENT_ALREADY_CLOSED',
+          message: `La cita ya se encuentra en estado '${appointment.appState}' y no puede modificarse`,
+        });
+      }
+      throw new BadRequestException({
+        error: 'APPOINTMENT_NOT_CONFIRMED',
+        message: 'Solo se pueden cancelar citas que ya fueron confirmadas',
+      });
+    }
+
+    const transitioned = await this.repo.updateState(appId, 'cancelada');
+    if (!transitioned) {
+      throw new ConflictException({
+        error: 'APPOINTMENT_STATE_CHANGED',
+        message: 'La cita cambió de estado y ya no puede cancelarse',
+      });
+    }
     const updated = await this.findByIdOrFail(appId);
     this.logger.log(
       `Module:appointments, Function:updateStatus, result-success: appId-${appId}, newState-${dto.state}`,
     );
+    await this.sendCancellationNotification(updated);
     return updated;
   }
 
@@ -557,7 +576,13 @@ export class AppointmentsService {
       });
     }
 
-    await this.repo.updateState(appId, 'realizada');
+    const transitioned = await this.repo.updateState(appId, 'realizada');
+    if (!transitioned) {
+      throw new ConflictException({
+        error: 'APPOINTMENT_STATE_CHANGED',
+        message: 'La cita cambió de estado y ya no puede marcarse como realizada',
+      });
+    }
     const updated = await this.findByIdOrFail(appId);
 
     this.logger.log(
@@ -568,38 +593,180 @@ export class AppointmentsService {
   }
 
   /**
-   * Helper to send confirmation notification.
-   * @param appointment Appointment to send confirmation notification.
+   * Notifies the secretary of a new appointment request.
+   * @param dto The DTO containing the appointment request details.
+   * @param appId The ID of the appointment.
+   * @returns A promise resolving when the notification is sent.
+   */
+  private async notifySecretaryOfNewRequest(
+    dto: CreateAppointmentDto,
+    appId: number,
+  ): Promise<void> {
+    try {
+      const recipients = (await this.repo.findActiveSecretaryEmails())
+        .filter((email) => email && !this.isPlaceholderEmail(email));
+      if (!recipients.length) {
+        this.logger.warn(`Appointment request email skipped: no active secretary email is available (appId-${appId})`);
+        return;
+      }
+      const emailService = this.emailService;
+      if (!emailService) {
+        this.logger.warn(`Appointment request email skipped: email service is unavailable (appId-${appId})`);
+        return;
+      }
+
+      const patientName = dto.patientType === 'dependent' ? dto.dependentName : dto.requesterName;
+      await Promise.all(recipients.map((recipient) =>
+        emailService.enqueueEmail({
+          to: recipient,
+          subject: `Nueva solicitud de cita #${appId}`,
+          text: [
+            'Se recibió una nueva solicitud de cita.',
+            `Radicado: ${appId}`,
+            `Solicitante: ${dto.requesterName}`,
+            `Paciente: ${patientName}`,
+            `Modalidad: ${dto.appType}`,
+          ].join('\n'),
+        }),
+      ));
+    } catch (error) {
+      this.logger.warn(`Appointment request email recipients could not be resolved (appId-${appId}, code-${this.notificationErrorCode(error)})`);
+    }
+  }
+
+  /**
+   * Sends a confirmation notification for a new appointment.
+   * @param appointment The appointment for which to send confirmation.
    */
   private async sendConfirmationNotification(
     appointment: AppointmentRow,
   ): Promise<void> {
-    this.logger.log(
-      `Module:appointments, Function:sendConfirmationNotification, result-start: appId-${appointment.appId}, recipient-${appointment.requesterName}, phone-${appointment.requesterContactNumber}, email-${appointment.requesterEmail}`,
-    );
-    this.logger.log(
-      `Module:appointments, Function:sendConfirmationNotification, result-notification-data: appDate-${appointment.appDate}, psychologist-${appointment.psychologistName}, appType-${appointment.appType}`,
-    );
+    try {
+      await this.deliverConfirmationNotification(appointment);
+    } catch (error) {
+      this.logger.warn(`Appointment confirmation email could not be prepared (appId-${appointment.appId}, code-${this.notificationErrorCode(error)})`);
+    }
+  }
 
-    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // ESPACIO PARA INTEGRACIÓN CON SERVICIOS EXTERNOS
-    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  /**
+   * Delivers a confirmation notification for a new appointment.
+   * @param appointment The appointment for which to deliver confirmation.
+   */
+  private async deliverConfirmationNotification(
+    appointment: AppointmentRow,
+  ): Promise<void> {
+    const date = this.formatAppointmentDate(appointment.appDate);
+    const patientMessage = [
+      `Hola ${appointment.requesterName},`,
+      `La cita para ${appointment.patientName} quedó confirmada.`,
+      `Fecha y hora: ${date}`,
+      `Modalidad: ${appointment.appType}`,
+      `Profesional: ${appointment.psychologistName ?? 'Por confirmar'}`,
+      'Este mensaje no incluye información clínica.',
+    ].join('\n');
 
-    // TODO: Integración WhatsApp Business API
-    // const whatsappPayload = {
-    //   to: appointment.requesterContactNumber,
-    //   template: 'appointment_confirmed',
-    //   parameters: [appointment.requesterName, appointment.appDate, appointment.psychologistName],
-    // };
-    // await this.whatsappService.send(whatsappPayload);
+    if (appointment.requesterEmail && !this.isPlaceholderEmail(appointment.requesterEmail)) {
+      await this.emailService?.enqueueEmail({
+        to: appointment.requesterEmail,
+        subject: 'Confirmación de tu cita psicológica - Fundación Dejando Huellas Felices',
+        text: patientMessage,
+      });
+    } else {
+      this.logger.warn(`Appointment confirmation email skipped: requester has no usable email (appId-${appointment.appId})`);
+    }
 
-    // TODO: Integración Servicio de Correo Electrónico
-    // const emailPayload = {
-    //   to: appointment.requesterEmail,
-    //   subject: 'Confirmación de tu cita psicológica - Fundación Dejando Huellas Felices',
-    //   template: 'appointment-confirmation',
-    //   context: { appointment },
-    // };
-    // await this.emailService.send(emailPayload);
+    if (appointment.psychologistId && this.emailService) {
+      const psychologistEmail = await this.repo.findPsychologistEmail(appointment.psychologistId);
+      if (psychologistEmail && !this.isPlaceholderEmail(psychologistEmail)) {
+        await this.emailService?.enqueueEmail({
+          to: psychologistEmail,
+          subject: `Nueva cita asignada #${appointment.appId}`,
+          text: [
+            `Hola ${appointment.psychologistName ?? 'profesional'},`,
+            `Tienes una cita confirmada con ${appointment.patientName}.`,
+            `Fecha y hora: ${date}`,
+            `Modalidad: ${appointment.appType}`,
+          ].join('\n'),
+        });
+      } else {
+        this.logger.warn(`Appointment confirmation email skipped: psychologist has no usable email (appId-${appointment.appId})`);
+      }
+    }
+  }
+
+  /**
+   * Sends a cancellation notification for an appointment.
+   * @param appointment The appointment for which to send cancellation notification.
+   */
+  private async sendCancellationNotification(appointment: AppointmentRow): Promise<void> {
+    try {
+      await this.deliverCancellationNotification(appointment);
+    } catch (error) {
+      this.logger.warn(`Appointment cancellation email could not be prepared (appId-${appointment.appId}, code-${this.notificationErrorCode(error)})`);
+    }
+  }
+
+  /**
+   * Delivers a cancellation notification for an appointment.
+   * @param appointment The appointment for which to deliver cancellation notification.
+   */
+  private async deliverCancellationNotification(appointment: AppointmentRow): Promise<void> {
+    const date = this.formatAppointmentDate(appointment.appDate);
+    if (appointment.requesterEmail && !this.isPlaceholderEmail(appointment.requesterEmail)) {
+      await this.emailService?.enqueueEmail({
+        to: appointment.requesterEmail,
+        subject: `Cita cancelada #${appointment.appId}`,
+        text: `La cita para ${appointment.patientName} del ${date} fue cancelada. Para coordinar una nueva fecha, comunícate con la fundación.`,
+      });
+    }
+
+    if (appointment.psychologistId && this.emailService) {
+      const psychologistEmail = await this.repo.findPsychologistEmail(appointment.psychologistId);
+      if (psychologistEmail && !this.isPlaceholderEmail(psychologistEmail)) {
+        await this.emailService?.enqueueEmail({
+          to: psychologistEmail,
+          subject: `Cita cancelada #${appointment.appId}`,
+          text: `La cita con ${appointment.patientName} del ${date} fue cancelada.`,
+        });
+      }
+    }
+  }
+
+  /**
+   * Formats the date of an appointment for display.
+   * @param value The date value to format.
+   * @returns The formatted date string.
+   */
+  private formatAppointmentDate(value: string | null): string {
+    if (!value) return 'Fecha por confirmar';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return new Intl.DateTimeFormat('es-CO', {
+      dateStyle: 'long',
+      timeStyle: 'short',
+      timeZone: 'America/Bogota',
+    }).format(date);
+  }
+
+  /**
+   * Checks whether an email is a placeholder email.
+   * @param email The email to check.
+   * @returns A boolean indicating whether the email is a placeholder.
+   */
+  private isPlaceholderEmail(email: string): boolean {
+    return /^doc_\d+@sana\.org$/i.test(email.trim());
+  }
+
+  /**
+   * Extracts the error code from a notification error.
+   * @param error The error from which to extract the code.
+   * @returns The extracted error code.
+   */
+  private notificationErrorCode(error: unknown): string {
+    if (typeof error === 'object' && error !== null && 'code' in error) {
+      const code = (error as { code?: unknown }).code;
+      if (typeof code === 'string' && /^[A-Za-z0-9_-]+$/.test(code)) return code.slice(0, 80);
+    }
+    return 'NOTIFICATION_ERROR';
   }
 }
