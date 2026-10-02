@@ -46,6 +46,12 @@ const LINKS_BY_ROLE: Record<string, NavLink[]> = {
       icon: ClipboardCheck,
       enabled: true,
     },
+    {
+      label: "Mi disponibilidad",
+      href: "/mi-disponibilidad",
+      icon: Calendar,
+      enabled: true,
+    },
   ],
   secretario: [
     { label: "Solicitudes", href: "/solicitudes", icon: Inbox, enabled: true },

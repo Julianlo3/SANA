@@ -10,18 +10,12 @@ import TextField from "@/components/forms/text-field";
 import Button from "@/components/ui/button";
 import { REQUEST_CONTENT } from "@/content/consultation-request";
 import { keepDigits } from "@/lib/format/text";
-import { HUILA_MUNICIPALITIES } from "@/config/huila-municipalities";
-import {
-  COLOMBIA_DEPARTMENTS,
-  NO_ZONE_REPORTED_LABEL,
-} from "@/config/residence-zones";
+import { VULNERABLE_POPULATION_OPTIONS } from "@/config/vulnerable-population";
+import AppointmentModeField from "../components/appointment-mode-field";
 import DataPolicyConsent from "../components/data-policy-consent";
+import ResidenceFields from "../components/residence-fields";
 import { useConsultationRequestForm } from "../hooks/use-consultation-request-form";
-import type {
-  AppointmentMode,
-  CardType,
-  Gender,
-} from "../types/consultation-request-types";
+import type { CardType, Gender } from "../types/consultation-request-types";
 
 const { selfForm } = REQUEST_CONTENT;
 
@@ -37,11 +31,6 @@ const GENDER_OPTIONS: { value: Gender; label: string }[] = [
   { value: "P", label: "No quiero especificar" },
 ];
 
-const APPOINTMENT_MODE_OPTIONS: { value: AppointmentMode; label: string }[] = [
-  { value: "presencial", label: "Presencial" },
-  { value: "virtual", label: "Virtual" },
-];
-
 /** HU-2.2: formulario de quien solicita la atención para sí mismo. */
 export default function SelfRequestPage() {
   const {
@@ -50,8 +39,6 @@ export default function SelfRequestPage() {
     isSaving,
     submitError,
     isValid,
-    preferredDate,
-    setPreferredDate,
     setValue,
     setFieldTouched,
     setDocumentType,
@@ -149,6 +136,20 @@ export default function SelfRequestPage() {
                 />
               </div>
 
+              <TextField
+                label="Confirma el número de documento"
+                required
+                inputMode="numeric"
+                value={values.confirmIdentityDocument}
+                error={errors.confirmIdentityDocument}
+                maxLength={12}
+                placeholder="Escríbelo de nuevo"
+                onChange={(value) =>
+                  setValue("confirmIdentityDocument", keepDigits(value))
+                }
+                onBlur={() => setFieldTouched("confirmIdentityDocument")}
+              />
+
               <div className="grid gap-5 sm:grid-cols-2">
                 <label className="block">
                   <span className="text-sm font-semibold text-text">
@@ -201,6 +202,27 @@ export default function SelfRequestPage() {
                   )}
                 </label>
               </div>
+
+              <label className="block">
+                <span className="text-sm font-medium text-text">
+                  ¿Perteneces a alguna población vulnerable? (opcional)
+                </span>
+                <select
+                  defaultValue=""
+                  className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
+                >
+                  <option value="">Prefiero no decir</option>
+                  {VULNERABLE_POPULATION_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <span className="mt-1.5 block text-xs text-text-subtle">
+                  Esta información es opcional y nos ayuda a orientar mejor la
+                  atención.
+                </span>
+              </label>
             </fieldset>
 
             <fieldset className="space-y-5">
@@ -221,83 +243,42 @@ export default function SelfRequestPage() {
                 />
 
                 <TextField
-                  label={selfForm.fields.phone}
+                  label="Confirma tu correo"
                   required
-                  type="tel"
-                  inputMode="numeric"
-                  value={values.phone}
-                  error={errors.phone}
-                  maxLength={12}
-                  onChange={(value) => setValue("phone", keepDigits(value))}
-                  onBlur={() => setFieldTouched("phone")}
+                  type="email"
+                  inputMode="email"
+                  value={values.confirmEmail}
+                  error={errors.confirmEmail}
+                  placeholder="Escríbelo de nuevo"
+                  onChange={(value) => setValue("confirmEmail", value)}
+                  onBlur={() => setFieldTouched("confirmEmail")}
                 />
               </div>
 
-              <div className="grid gap-5 sm:grid-cols-2">
-                <label className="block">
-                  <span className="text-sm font-medium text-text">
-                    {selfForm.fields.residenceZone} (opcional)
-                  </span>
-                  <select
-                    value={values.department}
-                    onChange={(event) => {
-                      setValue("department", event.target.value);
-                      setValue("municipality", "");
-                    }}
-                    className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  >
-                    <option value="">{NO_ZONE_REPORTED_LABEL}</option>
-                    {COLOMBIA_DEPARTMENTS.map((department) => (
-                      <option key={department} value={department}>
-                        {department}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="mt-1.5 block text-xs text-text-subtle">
-                    El departamento donde vives actualmente. Si prefieres no
-                    indicarlo, deja “{NO_ZONE_REPORTED_LABEL}”.
-                  </span>
-                </label>
+              <TextField
+                label={selfForm.fields.phone}
+                required
+                type="tel"
+                inputMode="numeric"
+                value={values.phone}
+                error={errors.phone}
+                maxLength={12}
+                onChange={(value) => setValue("phone", keepDigits(value))}
+                onBlur={() => setFieldTouched("phone")}
+              />
 
-                {values.department === "Huila" ? (
-                  <label className="block">
-                    <span className="text-sm font-medium text-text">
-                      Municipio
-                    </span>
-                    <select
-                      value={values.municipality}
-                      onChange={(event) =>
-                        setValue("municipality", event.target.value)
-                      }
-                      onBlur={() => setFieldTouched("municipality")}
-                      className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
-                    >
-                      <option value="">Selecciona</option>
-                      {HUILA_MUNICIPALITIES.map((municipality) => (
-                        <option key={municipality} value={municipality}>
-                          {municipality}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.municipality && (
-                      <span role="alert" className="mt-1.5 block text-xs text-danger">
-                        {errors.municipality}
-                      </span>
-                    )}
-                  </label>
-                ) : (
-                  values.department && (
-                    <TextField
-                      label="Municipio"
-                      value={values.municipality}
-                      error={errors.municipality}
-                      placeholder="Ej. Bogotá"
-                      onChange={(value) => setValue("municipality", value)}
-                      onBlur={() => setFieldTouched("municipality")}
-                    />
-                  )
-                )}
-              </div>
+              <ResidenceFields
+                department={values.department}
+                municipality={values.municipality}
+                municipalityError={errors.municipality}
+                helperText="El departamento donde vives actualmente. Si prefieres no indicarlo, déjalo en blanco."
+                onDepartmentChange={(value) => {
+                  setValue("department", value);
+                  setValue("municipality", "");
+                }}
+                onMunicipalityChange={(value) => setValue("municipality", value)}
+                onMunicipalityBlur={() => setFieldTouched("municipality")}
+              />
             </fieldset>
 
             <fieldset className="space-y-2">
@@ -305,36 +286,12 @@ export default function SelfRequestPage() {
                 {selfForm.sections.detail}
               </legend>
 
-              <label className="block">
-                <span className="text-sm font-semibold text-text">
-                  Modalidad de la cita{" "}
-                  <span className="text-danger" aria-hidden>
-                    *
-                  </span>
-                </span>
-                <select
-                  value={values.appType}
-                  onChange={(event) =>
-                    setAppointmentMode(
-                      event.target.value as AppointmentMode | "",
-                    )
-                  }
-                  onBlur={() => setFieldTouched("appType")}
-                  className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
-                >
-                  <option value="">Selecciona</option>
-                  {APPOINTMENT_MODE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                {errors.appType && (
-                  <span role="alert" className="mt-1.5 block text-xs text-danger">
-                    {errors.appType}
-                  </span>
-                )}
-              </label>
+              <AppointmentModeField
+                value={values.appType}
+                error={errors.appType}
+                onChange={setAppointmentMode}
+                onBlur={() => setFieldTouched("appType")}
+              />
 
               <label className="mt-5 block">
                 <span className="text-sm font-medium text-text">
@@ -352,30 +309,18 @@ export default function SelfRequestPage() {
                 />
               </label>
 
-              <label className="block">
-                <span className="text-sm font-medium text-text">
-                  Fecha preferida para la cita (opcional)
-                </span>
-                <input
-                  type="date"
-                  value={preferredDate ?? ""}
-                  min={new Date().toISOString().split("T")[0]}
-                  onChange={(event) =>
-                    setPreferredDate(event.target.value || null)
-                  }
-                  className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
-                />
-                <span className="mt-1.5 block text-xs text-text-subtle">
-                  Es solo una referencia para la asistente al asignar tu cita,
-                  no reserva un horario.
-                </span>
-              </label>
+              <p className="mt-4 rounded-xl bg-primary-soft/40 p-4 text-sm text-text-muted">
+                Una vez enviada tu solicitud, te asignaremos una cita en el
+                menor tiempo posible. Te contactaremos por correo o teléfono
+                para confirmar la fecha y hora.
+              </p>
             </fieldset>
 
             <DataPolicyConsent
               checked={values.hasAcceptedDataPolicy}
               onChange={toggleDataPolicy}
               error={errors.hasAcceptedDataPolicy}
+              policyType="data_treatment"
             />
 
             {submitError && (
