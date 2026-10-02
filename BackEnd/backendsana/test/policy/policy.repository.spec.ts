@@ -99,3 +99,47 @@ describe('PolicyRepository.recordAcceptance', () => {
     expect(lookupSql).toContain('app_id IS NOT DISTINCT FROM $5::int');
   });
 });
+
+describe('PolicyRepository.hasPsychologistAcceptedScheduleTerms', () => {
+  it('checks acceptance using IS NOT DISTINCT FROM for nullable context and returns true when found', async () => {
+    const { repository, dataSource } = setup();
+    dataSource.query
+      .mockResolvedValueOnce([{ pd_id: 12 }])
+      .mockResolvedValueOnce([{ exists: true }]);
+
+    await expect(
+      repository.hasPsychologistAcceptedScheduleTerms(3),
+    ).resolves.toBe(true);
+
+    expect(dataSource.query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('WHERE pd_type = $1'),
+      ['schedule_terms'],
+    );
+
+    const existsSql = dataSource.query.mock.calls[1][0] as string;
+    expect(existsSql).toContain('dep_id IS NOT DISTINCT FROM $3::int');
+    expect(existsSql).toContain('app_id IS NOT DISTINCT FROM $4::int');
+    expect(dataSource.query.mock.calls[1][1]).toEqual([3, 12, null, null]);
+  });
+
+  it('returns false when no acceptance record exists', async () => {
+    const { repository, dataSource } = setup();
+    dataSource.query
+      .mockResolvedValueOnce([{ pd_id: 12 }])
+      .mockResolvedValueOnce([{ exists: false }]);
+
+    await expect(
+      repository.hasPsychologistAcceptedScheduleTerms(3),
+    ).resolves.toBe(false);
+  });
+
+  it('returns false when policy document is not found', async () => {
+    const { repository, dataSource } = setup();
+    dataSource.query.mockResolvedValueOnce([]);
+
+    await expect(
+      repository.hasPsychologistAcceptedScheduleTerms(3),
+    ).resolves.toBe(false);
+  });
+});
