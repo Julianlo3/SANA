@@ -12,6 +12,7 @@ import { REQUEST_CONTENT } from "@/content/consultation-request";
 import { keepDigits } from "@/lib/format/text";
 import { VULNERABLE_POPULATION_OPTIONS } from "@/config/vulnerable-population";
 import AppointmentModeField from "../components/appointment-mode-field";
+import ConfirmedField from "../components/confirmed-field";
 import DataPolicyConsent from "../components/data-policy-consent";
 import ResidenceFields from "../components/residence-fields";
 import { useConsultationRequestForm } from "../hooks/use-consultation-request-form";
@@ -230,30 +231,20 @@ export default function SelfRequestPage() {
                 {selfForm.sections.contact}
               </legend>
 
-              <div className="grid gap-5 sm:grid-cols-2">
-                <TextField
-                  label={selfForm.fields.email}
-                  required
-                  type="email"
-                  inputMode="email"
-                  value={values.email}
-                  error={errors.email}
-                  onChange={(value) => setValue("email", value)}
-                  onBlur={() => setFieldTouched("email")}
-                />
-
-                <TextField
-                  label="Confirma tu correo"
-                  required
-                  type="email"
-                  inputMode="email"
-                  value={values.confirmEmail}
-                  error={errors.confirmEmail}
-                  placeholder="Escríbelo de nuevo"
-                  onChange={(value) => setValue("confirmEmail", value)}
-                  onBlur={() => setFieldTouched("confirmEmail")}
-                />
-              </div>
+              <ConfirmedField
+                label={selfForm.fields.email}
+                confirmLabel="Confirma tu correo"
+                type="email"
+                inputMode="email"
+                value={values.email}
+                confirmValue={values.confirmEmail}
+                error={errors.email}
+                confirmError={errors.confirmEmail}
+                onChange={(value) => setValue("email", value)}
+                onConfirmChange={(value) => setValue("confirmEmail", value)}
+                onBlur={() => setFieldTouched("email")}
+                onConfirmBlur={() => setFieldTouched("confirmEmail")}
+              />
 
               <TextField
                 label={selfForm.fields.phone}
