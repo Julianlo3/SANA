@@ -71,13 +71,17 @@ function renderRecurringList(isLoading: boolean, rules: RecurringScheduleBlock[]
   return null;
 }
 
+type Props = {
+  psyTermsAccepted: boolean | null;
+};
+
 /**
  * Agenda del psicólogo (modelo de bloqueos): todo cuenta como disponible
  * para que la asistente asigne citas, salvo las horas que aquí se bloqueen,
  * puntuales o recurrentes.
  */
-export default function WeeklyAvailabilityPage() {
-  const terms = useScheduleTerms();
+export default function WeeklyAvailabilityPage({ psyTermsAccepted }: Props) {
+  const terms = useScheduleTerms(psyTermsAccepted);
   const schedule = useScheduleBlocks();
 
   const [showBlockForm, setShowBlockForm] = useState(false);

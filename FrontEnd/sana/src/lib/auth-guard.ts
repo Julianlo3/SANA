@@ -10,6 +10,8 @@ export type CurrentUser = {
   roles: string[];
   auth0Subject: string;
   state: string;
+  /** Null si el usuario no es psicólogo; true/false si lo es. */
+  psyTermsAccepted: boolean | null;
 };
 
 const API_URL =
