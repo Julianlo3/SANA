@@ -50,3 +50,52 @@ describe('PolicyRepository.getCurrentPolicyDocument', () => {
     ).resolves.toBeNull();
   });
 });
+
+describe('PolicyRepository.recordAcceptance', () => {
+  it('uses one conflict handler and returns the inserted acceptance ID', async () => {
+    const { repository, dataSource } = setup();
+    dataSource.query
+      .mockResolvedValueOnce([{ pd_id: 12 }])
+      .mockResolvedValueOnce([{ pa_id: 91 }]);
+
+    await expect(
+      repository.recordAcceptance({
+        personId: 7,
+        policyType: 'schedule_terms',
+        ipAddress: '127.0.0.1',
+      }),
+    ).resolves.toBe(91);
+
+    const insertSql = dataSource.query.mock.calls[1][0] as string;
+    expect((insertSql.match(/ON CONFLICT/g) ?? [])).toHaveLength(1);
+    expect(insertSql).toContain('ON CONFLICT DO NOTHING');
+    expect(dataSource.query.mock.calls[1][1]).toEqual([
+      7,
+      null,
+      null,
+      12,
+      '127.0.0.1',
+      null,
+    ]);
+  });
+
+  it('recovers only an existing acceptance with the same nullable context', async () => {
+    const { repository, dataSource } = setup();
+    dataSource.query
+      .mockResolvedValueOnce([{ pd_id: 12 }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ pa_id: 91 }]);
+
+    await expect(
+      repository.recordAcceptance({
+        personId: 7,
+        policyType: 'schedule_terms',
+      }),
+    ).resolves.toBe(91);
+
+    const lookupSql = dataSource.query.mock.calls[2][0] as string;
+    expect(lookupSql).toContain('dep_id IS NOT DISTINCT FROM $3::int');
+    expect(lookupSql).toContain('cn_id IS NOT DISTINCT FROM $4::int');
+    expect(lookupSql).toContain('app_id IS NOT DISTINCT FROM $5::int');
+  });
+});

@@ -11,10 +11,12 @@ import { Schedule } from './entities/schedule.entity.js';
 import { UserAccount } from './entities/user-account.entity.js';
 import { UsersController } from './users.controller.js';
 import { UsersService } from './users.service.js';
+import { EmailModule } from '../email/email.module.js';
 
 @Module({
   imports: [
     AuthModule,
+    EmailModule,
     TypeOrmModule.forFeature([
       Person,
       Psychologist,

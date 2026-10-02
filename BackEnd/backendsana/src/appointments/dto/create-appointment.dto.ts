@@ -105,8 +105,9 @@ export class CreateAppointmentDto {
   @IsEnum(['presencial', 'virtual'] as const)
   appType!: 'presencial' | 'virtual';
 
+  // Compatibilidad con versiones anteriores: eliminar a futuro
   @IsOptional()
-  @IsDateString({}, { message: 'appDateIdeal debe ser una fecha válida' })
+  @IsDateString({}, { message: 'appDateIdeal debe tener formato de fecha válido' })
   appDateIdeal?: string;
 
   @IsOptional()

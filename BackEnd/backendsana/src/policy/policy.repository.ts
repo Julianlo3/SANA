@@ -95,9 +95,7 @@ export class PolicyRepository {
          per_id, dep_id, cn_id, pd_id, pa_ip_address, app_id
        )
        VALUES ($1, $2, $3, $4, $5, $6)
-       ON CONFLICT (app_id, pd_id) WHERE app_id IS NOT NULL DO NOTHING
-       ON CONFLICT (per_id, pd_id) WHERE dep_id IS NULL AND cn_id IS NULL AND app_id IS NULL DO NOTHING
-       ON CONFLICT (cn_id, pd_id) WHERE cn_id IS NOT NULL DO NOTHING
+      ON CONFLICT DO NOTHING
        RETURNING pa_id`,
       [
         params.personId,
@@ -115,9 +113,9 @@ export class PolicyRepository {
         `SELECT pa_id
          FROM policy_acceptance
          WHERE per_id = $1 AND pd_id = $2
-           AND COALESCE(dep_id, $3::int) = COALESCE($3::int, dep_id)
-           AND COALESCE(cn_id, $4::int) = COALESCE($4::int, cn_id)
-           AND COALESCE(app_id, $5::int) = COALESCE($5::int, app_id)
+           AND dep_id IS NOT DISTINCT FROM $3::int
+           AND cn_id IS NOT DISTINCT FROM $4::int
+           AND app_id IS NOT DISTINCT FROM $5::int
          LIMIT 1`,
         [
           params.personId,
