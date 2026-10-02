@@ -46,4 +46,19 @@ describe('ScheduleAvailabilityQueryDto', () => {
     expect(errors.length).toBeGreaterThan(0);
     expect(errors.some((e) => e.property === 'delayHours')).toBe(true);
   });
+
+  it('fails validation gracefully when a non-numeric string like "a" is sent', async () => {
+    const rawQuery = {
+      appointmentStart: '2026-10-15T10:00:00.000Z',
+      duration: 'a',
+      delayHours: '4',
+    };
+
+    const instance = plainToInstance(ScheduleAvailabilityQueryDto, rawQuery);
+    expect(Number.isNaN(instance.duration)).toBe(true);
+
+    const errors = await validate(instance);
+    expect(errors.length).toBeGreaterThan(0);
+    expect(errors.some((e) => e.property === 'duration')).toBe(true);
+  });
 });
