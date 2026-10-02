@@ -1,0 +1,39 @@
+name: superprompt
+
+on:
+  pull_request:
+    paths: ["superprompt/**"]
+  push:
+    branches: [main]
+    paths: ["superprompt/**"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validar secciones
+        if: github.event_name == 'pull_request'
+        run: python superprompt/build.py --check
+
+      - name: Generar SUPERPROMPT.md
+        if: github.event_name != 'pull_request'
+        run: python superprompt/build.py
+
+      - name: Commit del resultado
+        if: github.event_name != 'pull_request'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add SUPERPROMPT.md
+          git diff --cached --quiet || git commit -m "docs: regenerar SUPERPROMPT.md [skip ci]"
+          git push
