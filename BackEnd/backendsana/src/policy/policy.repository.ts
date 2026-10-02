@@ -156,8 +156,8 @@ export class PolicyRepository {
          FROM policy_acceptance
          WHERE per_id = $1
            AND pd_id = $2
-           AND COALESCE(dep_id, $3::int) = COALESCE($3::int, dep_id)
-           AND COALESCE(app_id, $4::int) = COALESCE($4::int, app_id)
+           AND dep_id IS NOT DISTINCT FROM $3::int
+           AND app_id IS NOT DISTINCT FROM $4::int
        ) AS exists`,
       [
         params.personId,
