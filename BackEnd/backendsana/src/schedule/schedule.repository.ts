@@ -325,9 +325,12 @@ export class ScheduleRepository {
         return 'not_assignable';
       }
 
+      const appDateStr = params.appDate.toISOString().slice(0, 10);
+      const appTimeStr = params.appDate.toISOString().slice(11, 19);
+
       await manager.query(
         `SELECT pg_advisory_xact_lock($1, hashtext($2::text))`,
-        [params.psyId, params.appDate.toISOString().slice(0, 10)],
+        [params.psyId, appDateStr],
       );
 
       const hasAvailability = await manager.query<{ exists: boolean }[]>(
@@ -336,8 +339,8 @@ export class ScheduleRepository {
            FROM schedule
            WHERE psy_id = $1
              AND sch_date = $2::date
-             AND sch_start_time <= $2::time
-             AND sch_end_time >= ($2::time + ($3 || ' minutes')::interval)::time
+             AND sch_start_time <= $3::time
+             AND sch_end_time >= ($3::time + ($4 || ' minutes')::interval)::time
          ) OR EXISTS (
            SELECT 1
            FROM schedule_recurring_blocks
@@ -346,10 +349,10 @@ export class ScheduleRepository {
              AND srb_day_of_week = EXTRACT(ISODOW FROM $2::date)
              AND srb_valid_from <= $2::date
              AND (srb_valid_until IS NULL OR srb_valid_until >= $2::date)
-             AND srb_start_time <= $2::time
-             AND srb_end_time >= ($2::time + ($3 || ' minutes')::interval)::time
+             AND srb_start_time <= $3::time
+             AND srb_end_time >= ($3::time + ($4 || ' minutes')::interval)::time
          ) AS exists`,
-        [params.psyId, params.appDate, params.appDuration],
+        [params.psyId, appDateStr, appTimeStr, params.appDuration],
       );
       if (!hasAvailability[0]?.exists) return 'slot_taken';
 
@@ -358,11 +361,11 @@ export class ScheduleRepository {
            SELECT 1 FROM schedule_occupancy
            WHERE psy_id = $1
              AND occ_date = $2::date
-             AND app_id IS DISTINCT FROM $4
-             AND occ_start_time < ($2::time + ($3 || ' minutes')::interval)::time
-             AND occ_end_time > $2::time
+             AND app_id IS DISTINCT FROM $5
+             AND occ_start_time < ($3::time + ($4 || ' minutes')::interval)::time
+             AND occ_end_time > $3::time
          ) AS exists`,
-        [params.psyId, params.appDate, params.appDuration, params.appId],
+        [params.psyId, appDateStr, appTimeStr, params.appDuration, params.appId],
       );
       if (occupiedConflict[0]?.exists) return 'slot_taken';
 
@@ -374,10 +377,10 @@ export class ScheduleRepository {
              AND app_state IN ('asignada', 'confirmada')
              AND app_date IS NOT NULL
              AND app_date::date = $3::date
-             AND app_date::time < ($3::time + ($4 || ' minutes')::interval)::time
-             AND (app_date + (app_duration || ' minutes')::interval)::time > $3::time
+             AND app_date::time < ($4::time + ($5 || ' minutes')::interval)::time
+             AND (app_date + (app_duration || ' minutes')::interval)::time > $4::time
          ) AS exists`,
-        [params.appId, params.psyId, params.appDate, params.appDuration],
+        [params.appId, params.psyId, appDateStr, appTimeStr, params.appDuration],
       );
       if (assignedConflict[0]?.exists) return 'slot_taken';
 
@@ -392,15 +395,15 @@ export class ScheduleRepository {
         `INSERT INTO schedule_occupancy (
            psy_id, app_id, occ_date, occ_start_time, occ_end_time, source_type
          )
-         VALUES ($1, $2, $3::date, $3::time,
-                 ($3::time + ($4 || ' minutes')::interval)::time, 'appointment')
+         VALUES ($1, $2, $3::date, $4::time,
+                 ($4::time + ($5 || ' minutes')::interval)::time, 'appointment')
          ON CONFLICT (app_id) DO UPDATE SET
            psy_id = EXCLUDED.psy_id,
            occ_date = EXCLUDED.occ_date,
            occ_start_time = EXCLUDED.occ_start_time,
            occ_end_time = EXCLUDED.occ_end_time,
            source_type = EXCLUDED.source_type`,
-        [params.psyId, params.appId, params.appDate, params.appDuration],
+        [params.psyId, params.appId, appDateStr, appTimeStr, params.appDuration],
       );
       return 'assigned';
     });
