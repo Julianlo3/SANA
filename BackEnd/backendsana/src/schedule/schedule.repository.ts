@@ -9,7 +9,7 @@ import type { ScheduleAvailabilitySlot } from './dto/schedule-availability-respo
  */
 @Injectable()
 export class ScheduleRepository {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(private readonly dataSource: DataSource) { }
 
   /**
    * Finds all schedule blocks for the specified psychologist.
@@ -292,7 +292,9 @@ export class ScheduleRepository {
              AND o.occ_end_time > s.start_at::time
          )
        ORDER BY s.start_at, per.per_name`,
-      [params.appointmentStart, params.delayHours, params.duration, params.psychologistIds ?? null],
+      params.psychologistIds?.length
+        ? [params.appointmentStart, params.delayHours, params.duration, params.psychologistIds]
+        : [params.appointmentStart, params.delayHours, params.duration],
     );
   }
 
