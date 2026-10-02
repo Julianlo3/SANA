@@ -18,6 +18,11 @@ type TermsStep = "psychologist" | "schedule";
  * 2. schedule_terms (POST /schedule/me/accept-terms) — específico de la
  *    agenda. El backend rechaza crear bloqueos si falta cualquiera de
  *    los dos, aunque ya se haya aceptado el otro.
+ *
+ * isLoading arranca en false cuando el primer paso (psychologist-terms)
+ * todavía falta: en ese caso no hay nada que consultar todavía, así que
+ * el efecto de abajo no hace ningún setState síncrono — simplemente no
+ * corre su cuerpo.
  */
 export function useScheduleTerms(initialPsyTermsAccepted: boolean | null) {
   const [step, setStep] = useState<TermsStep | null>(
@@ -27,18 +32,14 @@ export function useScheduleTerms(initialPsyTermsAccepted: boolean | null) {
     initialPsyTermsAccepted ? null : false,
   );
   const [policyContent, setPolicyContent] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => Boolean(initialPsyTermsAccepted));
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
 
   useEffect(() => {
-    let isMounted = true;
+    if (!initialPsyTermsAccepted) return;
 
-    if (!initialPsyTermsAccepted) {
-      // Falta el primer check; no hace falta consultar el de agenda todavía.
-      setIsLoading(false);
-      return;
-    }
+    let isMounted = true;
 
     getScheduleTermsStatus()
       .then((status) => {
@@ -64,9 +65,8 @@ export function useScheduleTerms(initialPsyTermsAccepted: boolean | null) {
     if (!step) return;
 
     let isMounted = true;
-    const policyType = step === "psychologist" ? "schedule_terms" : "schedule_terms";
 
-    getPolicyDocument(policyType).then((policy) => {
+    getPolicyDocument("schedule_terms").then((policy) => {
       if (isMounted) setPolicyContent(policy.pdContent);
     });
 

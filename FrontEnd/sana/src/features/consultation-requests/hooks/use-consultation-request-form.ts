@@ -74,7 +74,7 @@ export function useConsultationRequestForm(patientType: PatientType) {
   const [isSaving, setIsSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const { values, setValue, submit } = form;
+    const { setValue, submit } = form;
 
   const setRelationship = useCallback(
     (relationship: GuardianRelationshipId | "") => {

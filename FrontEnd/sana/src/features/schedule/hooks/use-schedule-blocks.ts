@@ -16,7 +16,17 @@ import type {
   ScheduleBlock,
 } from "../types/schedule-types";
 
-/** Lógica de la pantalla de agenda: lista los dos tipos de bloqueo y permite crear/borrar. */
+/**
+ * Lógica de la pantalla de agenda: lista los dos tipos de bloqueo y permite
+ * crear/borrar.
+ *
+ * La carga inicial vive directo dentro del useEffect (patrón isMounted),
+ * en vez de llamar a una función compartida: la regla de lint
+ * react-hooks/set-state-in-effect no permite que un efecto invoque ninguna
+ * función que internamente haga setState, ni siquiera asíncrona. reload()
+ * sí es una función aparte, pero solo se usa desde manejadores de eventos
+ * (addBlock, removeBlock, etc.), nunca desde un efecto.
+ */
 export function useScheduleBlocks() {
   const [blocks, setBlocks] = useState<ScheduleBlock[]>([]);
   const [recurringBlocks, setRecurringBlocks] = useState<RecurringScheduleBlock[]>(
@@ -26,8 +36,32 @@ export function useScheduleBlocks() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    Promise.all([getMyBlocks(), getMyRecurringBlocks()])
+      .then(([blocksResult, recurringResult]) => {
+        if (!isMounted) return;
+        setBlocks(blocksResult);
+        setRecurringBlocks(recurringResult);
+      })
+      .catch(() => {
+        if (isMounted) {
+          setError("No pudimos cargar tu agenda. Intenta de nuevo.");
+        }
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const reload = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
     try {
       const [blocksResult, recurringResult] = await Promise.all([
         getMyBlocks(),
@@ -41,10 +75,6 @@ export function useScheduleBlocks() {
       setIsLoading(false);
     }
   }, []);
-
-  useEffect(() => {
-    reload();
-  }, [reload]);
 
   const addBlock = useCallback(
     async (payload: CreateScheduleBlockPayload) => {
