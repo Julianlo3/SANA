@@ -10,8 +10,11 @@ export default function PublicHeader() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-background">
-      <div className="mx-auto flex max-w-6xl items-center gap-4 px-6 py-3">
+    <header
+      className="sticky top-0 z-30"
+      style={{ backgroundColor: "#eb5886" }}
+    >
+      <div className="flex items-center gap-4 px-6 py-3 lg:px-12">
         <Link href="/" className="flex items-center">
           <Image
             src={PUBLIC_NAV.logo.src}
@@ -19,16 +22,16 @@ export default function PublicHeader() {
             width={400}
             height={92}
             priority
-            className="h-12 w-auto"
+            className="h-11 w-auto brightness-0 invert"
           />
         </Link>
 
-        <nav className="ml-auto hidden items-center gap-7 md:flex">
+        <nav className="ml-auto hidden items-center gap-8 md:flex">
           {PUBLIC_NAV.links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm font-semibold text-text-muted transition hover:text-primary"
+              className="text-xs font-bold uppercase tracking-wider text-white transition hover:text-white/80"
             >
               {link.label}
             </Link>
@@ -38,14 +41,15 @@ export default function PublicHeader() {
         <div className="ml-auto flex items-center gap-3 md:ml-0">
           <Link
             href="/iniciar-sesion"
-            className="hidden text-sm font-semibold text-text-muted transition hover:text-primary md:block"
+            className="hidden text-xs font-bold uppercase tracking-wider text-white transition hover:text-white/80 md:block"
           >
             {PUBLIC_NAV.staffAccess}
           </Link>
 
           <button
             type="button"
-            className="cursor-pointer rounded-full bg-accent px-4 py-2.5 text-sm font-bold text-white transition hover:bg-accent-strong"
+            className="cursor-pointer rounded-full bg-white px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition hover:bg-white/90"
+            style={{ color: "#eb5886" }}
           >
             {PUBLIC_NAV.donate}
           </button>
@@ -54,7 +58,7 @@ export default function PublicHeader() {
             onClick={() => setIsOpen((current) => !current)}
             aria-label={isOpen ? "Cerrar menú" : "Abrir menú"}
             aria-expanded={isOpen}
-            className="cursor-pointer rounded-xl border border-border p-2 text-text-muted transition hover:bg-surface-muted hover:text-text md:hidden"
+            className="cursor-pointer rounded-xl border border-white/40 p-2 text-white transition hover:bg-white/10 md:hidden"
           >
             {isOpen ? <X size={20} aria-hidden /> : <Menu size={20} aria-hidden />}
           </button>
@@ -62,25 +66,28 @@ export default function PublicHeader() {
       </div>
 
       {isOpen && (
-        <nav className="border-t border-border bg-background px-6 py-4 md:hidden">
+        <nav
+          className="border-t border-white/20 px-6 py-4 md:hidden"
+          style={{ backgroundColor: "#eb5886" }}
+        >
           <ul className="flex flex-col gap-1">
             {PUBLIC_NAV.links.map((link) => (
               <li key={link.href}>
                 <Link
                   href={link.href}
                   onClick={() => setIsOpen(false)}
-                  className="block rounded-xl px-3 py-3 text-sm font-semibold text-text-muted transition hover:bg-primary-soft hover:text-primary"
+                  className="block rounded-xl px-3 py-3 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white/10"
                 >
                   {link.label}
                 </Link>
               </li>
             ))}
 
-            <li className="mt-1 border-t border-border pt-1">
+            <li className="mt-1 border-t border-white/20 pt-1">
               <Link
                 href="/iniciar-sesion"
                 onClick={() => setIsOpen(false)}
-                className="block rounded-xl px-3 py-3 text-sm font-semibold text-primary transition hover:bg-primary-soft"
+                className="block rounded-xl px-3 py-3 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white/10"
               >
                 {PUBLIC_NAV.staffAccess}
               </Link>
