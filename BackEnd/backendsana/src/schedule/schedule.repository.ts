@@ -3,6 +3,7 @@ import { DataSource } from 'typeorm';
 import type { ScheduleBlockResponse } from './dto/schedule-block-response.dto.js';
 import type { RecurringScheduleBlockResponse } from './dto/recurring-schedule-block-response.dto.js';
 import type { ScheduleAvailabilitySlot } from './dto/schedule-availability-response.dto.js';
+import type { ScheduleCalendarResponse } from './dto/schedule-calendar-response.dto.js';
 
 /**
  * Repository for handling schedule-related database operations, including schedule blocks and recurring schedule blocks for psychologists.
@@ -30,6 +31,57 @@ export class ScheduleRepository {
        ORDER BY sch_date, sch_start_time`,
       [psychologistId],
     );
+  }
+
+  /**
+   * Finds availability blocks and occupied intervals for a psychologist.
+   * @param psychologistId The ID of the psychologist.
+   * @returns The psychologist's availability and occupancy as separate collections.
+   */
+  async findCalendar(
+    psychologistId: number,
+  ): Promise<ScheduleCalendarResponse> {
+    const rows = await this.dataSource.query<ScheduleCalendarResponse[]>(
+      `SELECT
+         COALESCE(
+           (
+             SELECT jsonb_agg(
+               jsonb_build_object(
+                 'id', sch_id,
+                 'date', sch_date::text,
+                 'startTime', sch_start_time::text,
+                 'endTime', sch_end_time::text,
+                 'reason', sch_reason,
+                 'appointmentId', NULL::integer
+               )
+               ORDER BY sch_date, sch_start_time
+             )
+             FROM schedule
+             WHERE psy_id = $1
+           ),
+           '[]'::jsonb
+         ) AS availability,
+         COALESCE(
+           (
+             SELECT jsonb_agg(
+               jsonb_build_object(
+                 'id', occ_id,
+                 'date', occ_date::text,
+                 'startTime', occ_start_time::text,
+                 'endTime', occ_end_time::text,
+                 'sourceType', source_type,
+                 'appointmentId', app_id
+               )
+               ORDER BY occ_date, occ_start_time
+             )
+             FROM schedule_occupancy
+             WHERE psy_id = $1
+           ),
+           '[]'::jsonb
+         ) AS occupancy`,
+      [psychologistId],
+    );
+    return rows[0];
   }
 
   /**
@@ -290,6 +342,15 @@ export class ScheduleRepository {
              AND o.occ_date = s.start_at::date
              AND o.occ_start_time < (s.start_at + ($3 || ' minutes')::interval)::time
              AND o.occ_end_time > s.start_at::time
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM appointments a
+           WHERE a.psy_id = p.psy_id
+             AND a.app_state IN ('asignada', 'confirmada')
+             AND a.app_date IS NOT NULL
+             AND a.app_duration IS NOT NULL
+             AND a.app_date < s.start_at + ($3 || ' minutes')::interval
+             AND a.app_date + (a.app_duration || ' minutes')::interval > s.start_at
          )
        ORDER BY s.start_at, per.per_name`,
       params.psychologistIds?.length

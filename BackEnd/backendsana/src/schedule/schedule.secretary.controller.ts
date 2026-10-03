@@ -1,4 +1,11 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard.js';
 import { OriginGuard } from '../guards/origin.guard.js';
 import { RolesGuard } from '../guards/roles.guard.js';
@@ -15,6 +22,30 @@ import { ScheduleAvailabilityQueryDto } from './dto/schedule-availability-query.
 @Roles(UserRole.Secretary)
 export class ScheduleSecretaryController {
   constructor(private readonly scheduleService: ScheduleService) {}
+
+  /**
+   * Finds schedule blocks for a psychologist selected by the secretary.
+   * @param psychologistId The ID of the psychologist whose blocks are requested.
+   * @returns A promise resolving to the psychologist's schedule blocks.
+   */
+  @Get('psychologists/:psychologistId/blocks')
+  findPsychologistBlocks(
+    @Param('psychologistId', ParseIntPipe) psychologistId: number,
+  ) {
+    return this.scheduleService.findPsychologistBlocks(psychologistId);
+  }
+
+  /**
+   * Retrieves availability and occupied intervals for a psychologist's calendar.
+   * @param psychologistId The ID of the psychologist whose calendar is requested.
+   * @returns Availability and occupancy in separate collections.
+   */
+  @Get('psychologists/:psychologistId/calendar')
+  findPsychologistCalendar(
+    @Param('psychologistId', ParseIntPipe) psychologistId: number,
+  ) {
+    return this.scheduleService.findPsychologistCalendar(psychologistId);
+  }
 
   /**
    * Finds available time slots for scheduling appointments.
