@@ -15,11 +15,10 @@ import {
 } from "../services/appointments-service";
 import type { AvailabilitySlot } from "../types/appointment-types";
 
-/** Franja y psicólogo elegidos, junto con la duración con la que se buscó. */
+/** Franja y psicólogo elegidos. Toda cita dura 1 hora, sin excepción. */
 export type SlotSelection = {
   slot: AvailabilitySlot;
   psychologistId: number;
-  /** Asignar debe usar la misma duración con la que se buscó. */
   duration: number;
 };
 
@@ -31,11 +30,13 @@ type Props = {
   disabled?: boolean;
 };
 
-const DURATIONS = [30, 45, 60, 90];
+/** Toda cita dura 1 hora. Decisión de equipo (02/10): ya no se elige duración. */
+const APPOINTMENT_DURATION_MINUTES = 60;
 
 /**
- * HU-2.3.3 y 2.3.4: busca horarios libres y deja elegir franja y psicólogo.
- * Si la búsqueda no devuelve nada, se avisa: no se puede asignar sin cupo.
+ * HU-2.3.3 y 2.3.4: busca horarios libres de 1 hora y deja elegir franja y
+ * psicólogo. Si la búsqueda no devuelve nada, se avisa: no se puede asignar
+ * sin cupo.
  */
 export default function SlotPicker({
   defaultDate,
@@ -44,9 +45,7 @@ export default function SlotPicker({
   disabled = false,
 }: Props) {
   const [date, setDate] = useState(defaultDate);
-  const [duration, setDuration] = useState(60);
   const [slots, setSlots] = useState<AvailabilitySlot[] | null>(null);
-  const [searchedDuration, setSearchedDuration] = useState(60);
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
@@ -61,11 +60,6 @@ export default function SlotPicker({
 
   function changeDate(value: string) {
     setDate(value);
-    clearResults();
-  }
-
-  function changeDuration(value: number) {
-    setDuration(value);
     clearResults();
   }
 
@@ -86,12 +80,15 @@ export default function SlotPicker({
 
     try {
       const result = await findAvailability(
-        { appointmentStart, duration, delayHours: 24 },
+        {
+          appointmentStart,
+          duration: APPOINTMENT_DURATION_MINUTES,
+          delayHours: 24,
+        },
         controller.signal,
       );
       if (controller.signal.aborted) return;
       setSlots(result);
-      setSearchedDuration(duration);
     } catch (caught: unknown) {
       if (controller.signal.aborted) return;
       setSlots(null);
@@ -116,7 +113,7 @@ export default function SlotPicker({
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+      <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
         <label className="block">
           <span className="text-sm font-medium text-text">
             Buscar desde el día
@@ -131,35 +128,20 @@ export default function SlotPicker({
           />
         </label>
 
-        <label className="block">
-          <span className="text-sm font-medium text-text">
-            Duración de la cita
-          </span>
-          <select
-            value={duration}
-            disabled={disabled}
-            onChange={(event) => changeDuration(Number(event.target.value))}
-            className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:bg-surface-muted"
-          >
-            {DURATIONS.map((minutes) => (
-              <option key={minutes} value={minutes}>
-                {minutes} minutos
-              </option>
-            ))}
-          </select>
-        </label>
-
         <Button onClick={search} disabled={disabled || isSearching || !date}>
           {isSearching ? "Buscando…" : "Buscar horarios"}
         </Button>
       </div>
 
+      <p className="text-xs text-text-subtle">
+        Todas las citas duran 1 hora.
+      </p>
+
       {error && <InlineMessage tone="error">{error}</InlineMessage>}
 
       {slots !== null && slots.length === 0 && (
         <p className="rounded-xl border border-border bg-surface-muted px-4 py-6 text-center text-sm text-text-muted">
-          No hay horarios libres en esa ventana. Prueba con otro día u otra
-          duración.
+          No hay horarios libres en esa ventana. Prueba con otro día.
         </p>
       )}
 
@@ -192,7 +174,7 @@ export default function SlotPicker({
                         onSelect({
                           slot,
                           psychologistId: psychologist.id,
-                          duration: searchedDuration,
+                          duration: APPOINTMENT_DURATION_MINUTES,
                         })
                       }
                       className={`cursor-pointer rounded-full border px-4 py-1.5 text-left text-xs transition disabled:cursor-not-allowed ${
