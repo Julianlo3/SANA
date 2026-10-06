@@ -10,12 +10,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { JwtAuthGuard } from '../guards/jwt-auth.guard.js';
+import { JwtAuthGuard } from './jwt-auth.guard.js';
 import { OriginGuard } from '../guards/origin.guard.js';
 import { RateLimitGuard } from '../guards/rate-limit.guard.js';
-import type { AuthenticatedUser } from '../interfaces/auth.interface.js';
+import type { AuthenticatedUser } from './auth.interface.js';
 import { Section } from '../middlewares/section.decorator.js';
-import { AuthService } from '../services/auth.service.js';
+import { AuthService } from './auth.service.js';
 
 @Controller('auth')
 @Section('Authentication Service')

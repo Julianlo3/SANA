@@ -5,8 +5,8 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { AuthService } from '../services/auth.service.js';
-import { Auth0IdentityService } from '../services/auth0-identity.service.js';
+import { AuthService } from './auth.service.js';
+import { Auth0IdentityService } from './auth0-identity.service.js';
 
 /**
  * Guard that checks for a valid JWT access token in the request headers.

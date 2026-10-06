@@ -17,7 +17,7 @@ export interface SecurityAccessLogRow {
 }
 
 /**
- * Service dedicated to recording security access and account-management audit logs.
+ * Records shared security access and account-management audit logs.
  */
 @Injectable()
 export class SecurityLogService {
@@ -150,4 +150,3 @@ export class SecurityLogService {
     );
   }
 }
-

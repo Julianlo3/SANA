@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AuthRepository } from '../../src/repositories/auth.repository.js';
+import { AuthRepository } from '../../src/auth/auth.repository.js';
 
 describe('AuthRepository', () => {
   function setup() {

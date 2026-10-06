@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, QueryFailedError, Repository } from 'typeorm';
-import { SecurityLogService } from '../services/security-log.service.js';
+import { SecurityLogService } from '../security-logs/security-log.service.js';
 import { UserRole } from '../models/user-role.enum.js';
 import { AssignedRoleDto } from './dto/assigned-role.dto.js';
 import { CreateUserDto } from './dto/create-user.dto.js';

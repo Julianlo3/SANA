@@ -4,7 +4,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import type { AuthenticatedUser } from '../interfaces/auth.interface.js';
+import type { AuthenticatedUser } from '../auth/auth.interface.js';
 import type { ContentCardSection } from './content.constants.js';
 import { CloudinaryService } from './images/cloudinary.service.js';
 import {

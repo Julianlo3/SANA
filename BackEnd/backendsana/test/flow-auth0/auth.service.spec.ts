@@ -1,7 +1,7 @@
 import { ForbiddenException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { AccountState } from '../../src/models/account-state.enum.js';
-import { AuthService } from '../../src/services/auth.service.js';
+import { AuthService } from '../../src/auth/auth.service.js';
 
 const profile = {
   subject: 'auth0|user-1',

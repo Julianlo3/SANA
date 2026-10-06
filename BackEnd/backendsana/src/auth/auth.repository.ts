@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
 /**
- * Represents an authorization record for a user.
+ * Represents the local person and roles used to authorize an identity.
  */
 export interface AuthorizationRecord {
   personId: number;
@@ -245,4 +245,3 @@ export class AuthRepository {
     return rows[0]?.pd_id ?? null;
   }
 }
-

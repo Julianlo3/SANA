@@ -1,9 +1,9 @@
 import { Body, Controller, Get, Patch, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
-import { JwtAuthGuard } from '../guards/jwt-auth.guard.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { OriginGuard } from '../guards/origin.guard.js';
 import { RolesGuard } from '../guards/roles.guard.js';
-import type { AuthenticatedUser } from '../interfaces/auth.interface.js';
+import type { AuthenticatedUser } from '../auth/auth.interface.js';
 import { Roles } from '../middlewares/roles.decorator.js';
 import { Section } from '../middlewares/section.decorator.js';
 import { UserRole } from '../models/user-role.enum.js';

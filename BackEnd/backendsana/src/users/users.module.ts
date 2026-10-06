@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuthModule } from '../modules/auth.module.js';
+import { AuthModule } from '../auth/auth.module.js';
+import { SecurityLogModule } from '../security-logs/security-log.module.js';
 import { Appointment } from './entities/appointment.entity.js';
 import { Person } from './entities/person.entity.js';
 import { Psychologist } from './entities/psychologist.entity.js';
@@ -16,6 +17,7 @@ import { EmailModule } from '../email/email.module.js';
 @Module({
   imports: [
     AuthModule,
+    SecurityLogModule,
     EmailModule,
     TypeOrmModule.forFeature([
       Person,

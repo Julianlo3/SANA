@@ -7,9 +7,9 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
-import type { AuthenticatedUser } from '../interfaces/auth.interface.js';
+import type { AuthenticatedUser } from '../auth/auth.interface.js';
 import { SECTION_KEY } from '../middlewares/section.decorator.js';
-import { SecurityLogService } from '../services/security-log.service.js';
+import { SecurityLogService } from '../security-logs/security-log.service.js';
 
 export const ROLES_KEY = 'roles';
 
