@@ -121,18 +121,6 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
         <AppointmentStateBadge state={appointment.appState} />
       </div>
 
-      {detail.notice && (
-        <div className="mt-6 rounded-xl border border-primary/30 bg-primary-soft/50 px-4 py-3 text-sm text-text">
-          {detail.notice}
-        </div>
-      )}
-
-      {detail.actionError && (
-        <div className="mt-6">
-          <InlineMessage tone="error">{detail.actionError}</InlineMessage>
-        </div>
-      )}
-
       <div className="mt-6 space-y-6">
         <section className={CARD_CLASS}>
           <h2 className="font-display text-lg font-bold text-text">
@@ -203,7 +191,6 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
           <h2 className="font-display text-lg font-bold text-text">Cita</h2>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          
             <Field label="Psicólogo asignado">
               {appointment.psychologistName ?? "Sin asignar"}
             </Field>
@@ -386,6 +373,16 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
               </div>
             )}
           </section>
+        )}
+
+        {detail.notice && (
+          <div className="rounded-xl border border-primary/30 bg-primary-soft/50 px-4 py-3 text-sm text-text">
+            {detail.notice}
+          </div>
+        )}
+
+        {detail.actionError && (
+          <InlineMessage tone="error">{detail.actionError}</InlineMessage>
         )}
       </div>
     </div>
