@@ -147,7 +147,7 @@ export class AppointmentsRepository {
    * @param requesterId The ID of the requester.
    * @returns A promise resolving to the list of requested appointments.
    */
-  async findByRequester(requesterId: number): Promise<RequesterAppointmentRow[]> {
+  findByRequester(requesterId: number): Promise<RequesterAppointmentRow[]> {
     return this.dataSource.query<RequesterAppointmentRow[]>(
       `SELECT
           a.app_id AS "appId",

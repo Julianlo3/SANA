@@ -132,6 +132,22 @@ export class UsersService {
       : EMPLOYEE_PROFILE_FIELDS;
     const submittedFields = Object.keys(dto);
 
+    this.validateOwnProfileUpdate(dto, allowedFields);
+
+    return await this.persistOwnProfileUpdate(
+      personId,
+      isConsultant,
+      dto,
+      submittedFields,
+    );
+  }
+
+  private validateOwnProfileUpdate(
+    dto: UpdateOwnProfileDto,
+    allowedFields: Set<string>,
+  ): void {
+    const submittedFields = Object.keys(dto);
+
     if (submittedFields.length === 0) {
       throw new BadRequestException({
         error: 'PROFILE_UPDATE_EMPTY',
@@ -149,41 +165,18 @@ export class UsersService {
         details: { fields: forbiddenFields },
       });
     }
+  }
 
+  private async persistOwnProfileUpdate(
+    personId: number,
+    isConsultant: boolean,
+    dto: UpdateOwnProfileDto,
+    submittedFields: string[],
+  ): Promise<OwnProfileResponse> {
     return this.dataSource.transaction(async (manager) => {
       const person = await this.findByIdOrFail(personId, manager);
 
-      if (dto.fullName !== undefined) {
-        const fullName = dto.fullName.trim();
-        if (!fullName) {
-          throw new BadRequestException({
-            error: 'PROFILE_NAME_REQUIRED',
-            message: 'El nombre no puede estar vacío',
-          });
-        }
-        person.perName = fullName;
-      }
-      if (dto.phone !== undefined) person.perContactNumber = dto.phone;
-
-      if (isConsultant) {
-        if (dto.birthdate !== undefined) person.perBirthdate = dto.birthdate;
-        if (dto.gender !== undefined) person.perGender = dto.gender;
-        if (dto.residenceZone !== undefined) {
-          person.perResidenceZone = dto.residenceZone?.trim() || null;
-        }
-        if (dto.vulnerabilities !== undefined) {
-          const vulnerabilities =
-            dto.vulnerabilities?.map((value) => value.trim()) ?? null;
-          if (vulnerabilities?.some((value) => !value)) {
-            throw new BadRequestException({
-              error: 'INVALID_VULNERABILITY',
-              message: 'Las vulnerabilidades no pueden estar vacías',
-            });
-          }
-          person.perVulnerabilities = vulnerabilities;
-        }
-      }
-
+      this.applyOwnProfileUpdate(person, dto, isConsultant);
       person.perUpdateDate = new Date();
       const updated = await manager.save(person);
 
@@ -193,6 +186,53 @@ export class UsersService {
 
       return this.toOwnProfileResponse(updated, isConsultant);
     });
+  }
+
+  private applyOwnProfileUpdate(
+    person: Person,
+    dto: UpdateOwnProfileDto,
+    isConsultant: boolean,
+  ): void {
+    if (dto.fullName !== undefined) {
+      const fullName = dto.fullName.trim();
+      if (!fullName) {
+        throw new BadRequestException({
+          error: 'PROFILE_NAME_REQUIRED',
+          message: 'El nombre no puede estar vacío',
+        });
+      }
+      person.perName = fullName;
+    }
+    if (dto.phone !== undefined) person.perContactNumber = dto.phone;
+    if (isConsultant) this.applyConsultantProfileUpdate(person, dto);
+  }
+
+  private applyConsultantProfileUpdate(
+    person: Person,
+    dto: UpdateOwnProfileDto,
+  ): void {
+    if (dto.birthdate !== undefined) person.perBirthdate = dto.birthdate;
+    if (dto.gender !== undefined) person.perGender = dto.gender;
+    if (dto.residenceZone !== undefined) {
+      person.perResidenceZone = dto.residenceZone?.trim() || null;
+    }
+    if (dto.vulnerabilities !== undefined) {
+      const vulnerabilities = this.normalizeVulnerabilities(dto.vulnerabilities);
+      person.perVulnerabilities = vulnerabilities;
+    }
+  }
+
+  private normalizeVulnerabilities(
+    vulnerabilities: string[] | null | undefined,
+  ): string[] | null {
+    const normalized = vulnerabilities?.map((value) => value.trim()) ?? null;
+    if (normalized?.some((value) => !value)) {
+      throw new BadRequestException({
+        error: 'INVALID_VULNERABILITY',
+        message: 'Las vulnerabilidades no pueden estar vacías',
+      });
+    }
+    return normalized;
   }
 
   /**

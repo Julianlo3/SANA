@@ -467,7 +467,7 @@ export class AppointmentsService {
   async findByRequester(
     requesterId: number,
   ): Promise<RequesterAppointmentRow[]> {
-    return this.repo.findByRequester(requesterId);
+    return await this.repo.findByRequester(requesterId);
   }
 
   /**
