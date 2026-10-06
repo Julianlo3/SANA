@@ -11,6 +11,7 @@ const ALLOWED_ROLES = new Set([
   UserRole.Secretary,
   UserRole.Psychologist,
   UserRole.Marketing,
+  UserRole.Requester,
 ]);
 
 /**

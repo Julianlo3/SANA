@@ -78,6 +78,18 @@ export class AppointmentsController {
   }
 
   /**
+   * Protected endpoint: Lists appointments requested by the authenticated consultant.
+   * @param request The HTTP request object.
+   * @returns A promise resolving to the list of requested appointments.
+   */
+  @Get('my-requests')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Requester)
+  findMyRequests(@Req() request: Request & { user: AuthenticatedUser }) {
+    return this.appointmentsService.findByRequester(request.user.personId);
+  }
+
+  /**
    * Protected endpoint: Lists active psychologists for the assignment selector.
    * @returns A promise resolving to the list of available psychologists.
    */

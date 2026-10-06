@@ -49,6 +49,18 @@ export interface AppointmentRow {
   relationshipDescription: string | null;
 }
 
+export interface RequesterAppointmentRow {
+  appId: number;
+  appState: string;
+  appType: string;
+  appDate: string | null;
+  appDuration: number | null;
+  appCreatedAt: string;
+  patientType: 'self' | 'dependent';
+  patientName: string;
+  psychologistName: string | null;
+}
+
 export interface RelationshipRow {
   relId: number;
   relDescription: string;
@@ -127,6 +139,36 @@ export class AppointmentsRepository {
         ${whereClause}
         ORDER BY a.app_created_at DESC`,
       params,
+    );
+  }
+
+  /**
+   * Finds appointments requested by a specific requester.
+   * @param requesterId The ID of the requester.
+   * @returns A promise resolving to the list of requested appointments.
+   */
+  async findByRequester(requesterId: number): Promise<RequesterAppointmentRow[]> {
+    return this.dataSource.query<RequesterAppointmentRow[]>(
+      `SELECT
+          a.app_id AS "appId",
+          a.app_state AS "appState",
+          a.app_type AS "appType",
+          a.app_date AS "appDate",
+          a.app_duration AS "appDuration",
+          a.app_created_at AS "appCreatedAt",
+          CASE
+            WHEN a.app_patient_dependent_id IS NOT NULL THEN 'dependent'
+            ELSE 'self'
+          END AS "patientType",
+          COALESCE(dep.dep_name, req.per_name) AS "patientName",
+          psy.per_name AS "psychologistName"
+        FROM appointments a
+        JOIN person req ON req.per_id = a.req_id
+        LEFT JOIN dependents dep ON dep.dep_id = a.app_patient_dependent_id
+        LEFT JOIN person psy ON psy.per_id = a.psy_id
+        WHERE a.req_id = $1
+        ORDER BY a.app_created_at DESC`,
+      [requesterId],
     );
   }
 
