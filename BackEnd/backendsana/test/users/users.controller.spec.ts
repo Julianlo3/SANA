@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { UsersController } from './users.controller.js';
+import { UsersController } from '../../src/users/users.controller.js';
 
 describe('UsersController', () => {
   const service = {
     create: vi.fn(),
     findAll: vi.fn(),
+    getOwnProfile: vi.fn(),
+    updateOwnProfile: vi.fn(),
     update: vi.fn(),
     updateStatus: vi.fn(),
     remove: vi.fn(),
@@ -45,6 +47,34 @@ describe('UsersController', () => {
       status: 'active',
       search: 'ana',
     });
+  });
+
+  it('delegates self-service profile reads and updates using the authenticated person and roles', async () => {
+    const controller = setup();
+    const consultantRequest = {
+      user: {
+        ...adminRequest.user,
+        personId: 84,
+        roles: ['consultante'],
+      },
+    };
+    const dto = { fullName: 'Ana', vulnerabilities: ['desplazamiento'] };
+    service.getOwnProfile.mockResolvedValue({ fullName: 'Ana' });
+    service.updateOwnProfile.mockResolvedValue({ fullName: 'Ana' });
+
+    await expect(
+      controller.getOwnProfile(consultantRequest as never),
+    ).resolves.toEqual({ fullName: 'Ana' });
+    expect(service.getOwnProfile).toHaveBeenCalledWith(84, ['consultante']);
+
+    await expect(
+      controller.updateOwnProfile(consultantRequest as never, dto as never),
+    ).resolves.toEqual({ fullName: 'Ana' });
+    expect(service.updateOwnProfile).toHaveBeenCalledWith(
+      84,
+      ['consultante'],
+      dto,
+    );
   });
 
   it('delegates edits, status changes and deletion by id', async () => {

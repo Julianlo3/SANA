@@ -81,7 +81,7 @@ describe('AuthService.authorizeAuth0', () => {
 
   it.each([
     { state: AccountState.Inactive },
-    { roles: ['consultante'] },
+    { roles: ['pendiente'] },
   ])('rejects a local account that is not authorized', async (overrides) => {
     const { service } = setup(overrides);
     await expect(service.authorizeAuth0(profile)).rejects.toBeInstanceOf(
@@ -133,6 +133,68 @@ describe('AuthService.authorizeAuth0', () => {
       'auth0',
       true,
     );
+  });
+
+  it('claims a consultant person record using their verified Auth0 identity', async () => {
+    const { service, repository } = setup({
+      personId: 42,
+      name: 'Ana Consultante',
+      email: 'ana@example.com',
+      userId: null,
+      providerId: null,
+      providerName: null,
+      roles: ['consultante'],
+      termsAccepted: true,
+      psyTermsAccepted: null,
+    });
+    const claimedRecord = {
+      personId: 42,
+      name: 'Ana Consultante',
+      email: 'ana@example.com',
+      userId: 42,
+      providerId: 'google-oauth2|ana',
+      providerName: 'google-oauth2',
+      state: AccountState.Active,
+      roles: ['consultante'],
+      termsAccepted: true,
+      psyTermsAccepted: null,
+    };
+    repository.findByProviderId
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(claimedRecord);
+    repository.findByEmail.mockResolvedValue({
+      ...claimedRecord,
+      userId: null,
+      providerId: null,
+      providerName: null,
+    });
+
+    await expect(
+      service.authorizeAuth0({
+        subject: 'google-oauth2|ana',
+        email: 'ANA@example.com',
+        name: 'Ana Consultante',
+        isEmailVerified: true,
+      }),
+    ).resolves.toEqual({
+      userId: 42,
+      personId: 42,
+      name: 'Ana Consultante',
+      email: 'ana@example.com',
+      roles: ['consultante'],
+      auth0Subject: 'google-oauth2|ana',
+      state: AccountState.Active,
+      termsAccepted: true,
+      psyTermsAccepted: null,
+    });
+
+    expect(repository.claim).toHaveBeenCalledWith(
+      42,
+      'google-oauth2|ana',
+      'google-oauth2',
+      true,
+    );
+    expect(repository.updateLastLogin).toHaveBeenCalledWith(42);
   });
 
   it('links a new Auth0 provider to an existing account with a different provider', async () => {

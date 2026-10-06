@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -9,6 +10,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, QueryFailedError, Repository } from 'typeorm';
 import { SecurityLogService } from '../services/security-log.service.js';
+import { UserRole } from '../models/user-role.enum.js';
 import { AssignedRoleDto } from './dto/assigned-role.dto.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import {
@@ -16,6 +18,7 @@ import {
   type UserStatus,
 } from './dto/update-user-status.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
+import { UpdateOwnProfileDto } from './dto/update-own-profile.dto.js';
 import { Appointment } from './entities/appointment.entity.js';
 import { Person, PersonState } from './entities/person.entity.js';
 import { PersonRol } from './entities/person-rol.entity.js';
@@ -24,7 +27,11 @@ import { RequesterDependent } from './entities/requester-dependent.entity.js';
 import { Rol } from './entities/rol.entity.js';
 import { Schedule } from './entities/schedule.entity.js';
 import { UserAccount } from './entities/user-account.entity.js';
-import type { UserResponse, UserRoleResponse } from './interfaces/user-response.interface.js';
+import type {
+  OwnProfileResponse,
+  UserResponse,
+  UserRoleResponse,
+} from './interfaces/user-response.interface.js';
 import { ASSIGNABLE_ROLES } from './users.constants.js';
 import { EmailService } from '../email/email.service.js';
 
@@ -42,6 +49,25 @@ const STATUS_TO_STATE: Record<UserStatus, PersonState> = {
   inactive: 'inactivo',
   blocked: 'bloqueado',
 };
+
+const SELF_SERVICE_ROLES = new Set<string>([
+  UserRole.Administrator,
+  UserRole.Secretary,
+  UserRole.Psychologist,
+  UserRole.Marketing,
+  UserRole.Requester,
+]);
+
+const CONSULTANT_PROFILE_FIELDS = new Set([
+  'fullName',
+  'phone',
+  'birthdate',
+  'gender',
+  'residenceZone',
+  'vulnerabilities',
+]);
+
+const EMPLOYEE_PROFILE_FIELDS = new Set(['fullName', 'phone']);
 
 /**
  * Service for users management.
@@ -72,6 +98,138 @@ export class UsersService {
 
   private readonly logger = new Logger(UsersService.name);
 
+  /**
+   * Gets the profile of the authenticated user.
+   * @param personId The ID of the person whose profile to retrieve.
+   * @param roles The roles of the authenticated user.
+   * @returns A promise resolving to the user's profile.
+   */
+  async getOwnProfile(
+    personId: number,
+    roles: string[],
+  ): Promise<OwnProfileResponse> {
+    const isConsultant = this.isConsultantSelfService(roles);
+    const person = await this.findByIdOrFail(personId);
+
+    return this.toOwnProfileResponse(person, isConsultant);
+  }
+
+  /**
+   * Updates the profile of the authenticated user.
+   * @param personId The ID of the person whose profile to update.
+   * @param roles The roles of the authenticated user.
+   * @param dto The update data.
+   * @returns A promise resolving to the updated user's profile.
+   */
+  async updateOwnProfile(
+    personId: number,
+    roles: string[],
+    dto: UpdateOwnProfileDto,
+  ): Promise<OwnProfileResponse> {
+    const isConsultant = this.isConsultantSelfService(roles);
+    const allowedFields = isConsultant
+      ? CONSULTANT_PROFILE_FIELDS
+      : EMPLOYEE_PROFILE_FIELDS;
+    const submittedFields = Object.keys(dto);
+
+    if (submittedFields.length === 0) {
+      throw new BadRequestException({
+        error: 'PROFILE_UPDATE_EMPTY',
+        message: 'Debe enviar al menos un campo editable para actualizar',
+      });
+    }
+
+    const forbiddenFields = submittedFields.filter(
+      (field) => !allowedFields.has(field),
+    );
+    if (forbiddenFields.length > 0) {
+      throw new ForbiddenException({
+        error: 'PROFILE_FIELD_NOT_EDITABLE',
+        message: 'Uno o más campos no se pueden actualizar desde el perfil',
+        details: { fields: forbiddenFields },
+      });
+    }
+
+    return this.dataSource.transaction(async (manager) => {
+      const person = await this.findByIdOrFail(personId, manager);
+
+      if (dto.fullName !== undefined) {
+        const fullName = dto.fullName.trim();
+        if (!fullName) {
+          throw new BadRequestException({
+            error: 'PROFILE_NAME_REQUIRED',
+            message: 'El nombre no puede estar vacío',
+          });
+        }
+        person.perName = fullName;
+      }
+      if (dto.phone !== undefined) person.perContactNumber = dto.phone;
+
+      if (isConsultant) {
+        if (dto.birthdate !== undefined) person.perBirthdate = dto.birthdate;
+        if (dto.gender !== undefined) person.perGender = dto.gender;
+        if (dto.residenceZone !== undefined) {
+          person.perResidenceZone = dto.residenceZone?.trim() || null;
+        }
+        if (dto.vulnerabilities !== undefined) {
+          const vulnerabilities =
+            dto.vulnerabilities?.map((value) => value.trim()) ?? null;
+          if (vulnerabilities?.some((value) => !value)) {
+            throw new BadRequestException({
+              error: 'INVALID_VULNERABILITY',
+              message: 'Las vulnerabilidades no pueden estar vacías',
+            });
+          }
+          person.perVulnerabilities = vulnerabilities;
+        }
+      }
+
+      person.perUpdateDate = new Date();
+      const updated = await manager.save(person);
+
+      this.logger.log(
+        `Module:users, Function:updateOwnProfile, result-success: personId-${personId}, fieldsUpdated-[${submittedFields.join(',')}]`,
+      );
+
+      return this.toOwnProfileResponse(updated, isConsultant);
+    });
+  }
+
+  /**
+   * Checks if the authenticated user is a consultant and has self-service permissions.
+   * @param roles The roles of the authenticated user.
+   * @returns A promise resolving to a boolean indicating if the user has self-service permissions.
+   */
+  private isConsultantSelfService(roles: string[]): boolean {
+    if (!roles.some((role) => SELF_SERVICE_ROLES.has(role))) {
+      throw new ForbiddenException('Account role is not authorized for profile access');
+    }
+
+    return roles.includes(UserRole.Requester);
+  }
+
+  /**
+   * Converts a person entity to an own profile response.
+   * @param person The person entity.
+   * @param isConsultant A boolean indicating if the person is a consultant.
+   * @returns The own profile response.
+   */
+  private toOwnProfileResponse(
+    person: Person,
+    isConsultant: boolean,
+  ): OwnProfileResponse {
+    return {
+      fullName: person.perName,
+      cardType: person.perCardType,
+      identityDocument: person.perIdentityDocument,
+      email: person.perEmail,
+      phone: person.perContactNumber,
+      birthdate: person.perBirthdate,
+      gender: person.perGender,
+      residenceZone: isConsultant ? person.perResidenceZone : null,
+      vulnerabilities: isConsultant ? person.perVulnerabilities : null,
+    };
+  }
 
   /**
    * Records the acceptance of terms and conditions for a user.

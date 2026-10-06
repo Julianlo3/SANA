@@ -26,3 +26,15 @@ export interface UserResponse {
     termsAccepted?: boolean;
   };
 }
+
+export interface OwnProfileResponse {
+  fullName: string;
+  cardType: string | null;
+  identityDocument: string | null;
+  email: string;
+  phone: string | null;
+  birthdate: string | null;
+  gender: string | null;
+  residenceZone: string | null;
+  vulnerabilities: string[] | null;
+}
