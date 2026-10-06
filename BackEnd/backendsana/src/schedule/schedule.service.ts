@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { AuthenticatedUser } from '../interfaces/auth.interface.js';
+import type { AuthenticatedUser } from '../auth/auth.interface.js';
 import { ScheduleRepository } from './schedule.repository.js';
 import { PolicyService } from '../policy/policy.service.js';
 import type { CreateScheduleBlockDto } from './dto/create-schedule-block.dto.js';

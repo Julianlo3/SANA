@@ -6,7 +6,7 @@ import { ClinicalNotesController } from './clinical-notes.controller.js';
 import { ClinicalNotesService } from './clinical-notes.service.js';
 import { ClinicalNotesRepository } from './clinical-notes.repository.js';
 import { AppointmentsModule } from '../appointments/appointments.module.js';
-import { AuthModule } from '../modules/auth.module.js';
+import { AuthModule } from '../auth/auth.module.js';
 
 @Module({
   imports: [

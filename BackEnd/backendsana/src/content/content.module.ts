@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuthModule } from '../modules/auth.module.js';
+import { AuthModule } from '../auth/auth.module.js';
 import { BannersController } from './banners/banners.controller.js';
 import { BannersRepository } from './banners/banners.repository.js';
 import { BannersService } from './banners/banners.service.js';

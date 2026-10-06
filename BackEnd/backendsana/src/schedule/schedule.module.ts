@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuthModule } from '../modules/auth.module.js';
+import { AuthModule } from '../auth/auth.module.js';
 import { PolicyModule } from '../policy/policy.module.js';
 import { Schedule } from '../users/entities/schedule.entity.js';
 import { RecurringScheduleBlock } from './entities/recurring-schedule-block.entity.js';

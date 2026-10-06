@@ -17,6 +17,7 @@ import {
   type AppointmentRow,
   type PsychologistHistoryRow,
   type PsychologistOptionRow,
+  type RequesterAppointmentRow,
   type RelationshipRow,
 } from './appointments.repository.js';
 import { ScheduleService } from '../schedule/schedule.service.js';
@@ -456,6 +457,17 @@ export class AppointmentsService {
    */
   async findAll(state?: string): Promise<AppointmentRow[]> {
     return this.repo.findAll(state);
+  }
+
+  /**
+   * Finds appointments requested by a specific requester.
+   * @param requesterId The ID of the requester.
+   * @returns A promise resolving to the list of requested appointments.
+   */
+  async findByRequester(
+    requesterId: number,
+  ): Promise<RequesterAppointmentRow[]> {
+    return await this.repo.findByRequester(requesterId);
   }
 
   /**

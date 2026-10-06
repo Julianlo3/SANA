@@ -6,7 +6,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { AuthenticatedUser } from '../../interfaces/auth.interface.js';
+import type { AuthenticatedUser } from '../../auth/auth.interface.js';
 import { DEFAULT_MAX_ACTIVE_BANNERS } from '../content.constants.js';
 import { CloudinaryService } from '../images/cloudinary.service.js';
 import type {

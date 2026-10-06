@@ -46,4 +46,13 @@ export class Person {
 
   @Column({ name: 'per_residence_zone', type: 'varchar', length: 255, nullable: true })
   perResidenceZone!: string | null;
+
+  @Column({
+    name: 'per_vulnerabilities',
+    type: 'varchar',
+    length: 75,
+    array: true,
+    nullable: true,
+  })
+  perVulnerabilities!: string[] | null;
 }

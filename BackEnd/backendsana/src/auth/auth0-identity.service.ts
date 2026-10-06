@@ -19,7 +19,7 @@ interface Auth0Claims extends JWTPayload {
 }
 
 /**
- * Service for verifying Auth0 access tokens and extracting user profiles.
+ * Verifies Auth0 access tokens and extracts user profiles.
  */
 @Injectable()
 export class Auth0IdentityService {

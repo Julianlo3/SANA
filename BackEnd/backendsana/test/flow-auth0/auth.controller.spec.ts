@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AuthController } from '../../src/controllers/auth.controller.js';
+import { AuthController } from '../../src/auth/auth.controller.js';
 
 describe('AuthController', () => {
   const authService = {
