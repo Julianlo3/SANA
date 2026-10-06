@@ -167,7 +167,7 @@ export class UsersService {
     }
   }
 
-  private async persistOwnProfileUpdate(
+  private persistOwnProfileUpdate(
     personId: number,
     isConsultant: boolean,
     dto: UpdateOwnProfileDto,
