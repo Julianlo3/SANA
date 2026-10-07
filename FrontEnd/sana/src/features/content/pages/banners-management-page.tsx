@@ -7,27 +7,17 @@ import TextField from "@/components/forms/text-field";
 import Button from "@/components/ui/button";
 import Modal from "@/components/ui/modal";
 import PageDecor from "@/components/ui/page-decor";
-import DateField from "../components/date-field";
 import IconButton from "../components/icon-button";
 import ImageUploadField from "../components/image-upload-field";
 import LastEditNote from "../components/last-edit-note";
-import { formatDate } from "../format";
 import { useBannersManagement } from "../hooks/use-banners-management";
-import type { Banner, BannerState } from "../types/content-types";
 
 const BANNER_TITLE_MAX_LENGTH = 120;
 
-const STATE_STYLES: Record<BannerState, { label: string; className: string }> = {
-  current: { label: "Vigente", className: "bg-success-soft text-success" },
-  scheduled: { label: "Programado", className: "bg-highlight text-text" },
-  expired: { label: "Vencido", className: "bg-surface-muted text-text-subtle" },
+const STATE_STYLES = {
+  active: { label: "Activo", className: "bg-success-soft text-success" },
   inactive: { label: "Inactivo", className: "border border-border text-text-subtle" },
 };
-
-function formatPeriod(banner: Banner): string {
-  if (!banner.startsAt || !banner.endsAt) return "Sin vigencia definida";
-  return `${formatDate(banner.startsAt)} – ${formatDate(banner.endsAt)}`;
-}
 
 export default function BannersManagementPage() {
   const {
@@ -72,8 +62,8 @@ export default function BannersManagementPage() {
               Banners
             </h1>
             <p className="mt-2 max-w-xl text-sm text-text-muted">
-              Se muestran en el inicio solo durante su vigencia. Al vencer salen
-              solos, sin que tengas que desactivarlos.
+              Los banners activos rotan en la primera pantalla del inicio.
+              Siempre debe quedar al menos uno activo.
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -122,31 +112,15 @@ export default function BannersManagementPage() {
                 onUploadingChange={setIsUploading}
               />
               <p className="mt-1.5 text-xs text-text-subtle">
-                Medida recomendada: 1920 × 600 px.
+                Medida recomendada: 1920 × 1080 px. Evita poner lo importante en
+                el centro y en los bordes laterales: ahí van el texto y las curvas
+                del inicio.
               </p>
               {errors.imageUrl && (
                 <p role="alert" className="mt-1.5 text-xs text-danger">
                   {errors.imageUrl}
                 </p>
               )}
-            </div>
-
-            <div className="grid gap-5 sm:grid-cols-2">
-              <DateField
-                label="Desde"
-                value={values.startDate}
-                error={errors.startDate}
-                disabled={isBusy}
-                onChange={(value) => setValue("startDate", value)}
-              />
-              <DateField
-                label="Hasta"
-                value={values.endDate}
-                min={values.startDate || undefined}
-                error={errors.endDate}
-                disabled={isBusy}
-                onChange={(value) => setValue("endDate", value)}
-              />
             </div>
 
             {editor.mode === "create" && (
@@ -163,7 +137,7 @@ export default function BannersManagementPage() {
                   <span className="mt-0.5 block text-xs text-text-subtle">
                     {isLimitReached
                       ? `Ya hay ${maxActive} banners activos. Puedes guardarlo inactivo y activarlo después.`
-                      : "Necesita imagen y vigencia. Si no lo activas, queda guardado para usarlo después."}
+                      : "Necesita imagen. Si no lo activas, queda guardado para usarlo después."}
                   </span>
                 </span>
               </label>
@@ -191,26 +165,27 @@ export default function BannersManagementPage() {
           <InlineMessage tone="error">{loadError}</InlineMessage>
         ) : banners.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-text-subtle">
-            Todavía no hay banners. Mientras no haya uno vigente, el inicio se
-            muestra como siempre.
+            Todavía no hay banners. Crea uno y actívalo para que aparezca en la
+            primera pantalla del inicio.
           </p>
         ) : (
           <ul className="space-y-3">
             {banners.map((banner) => {
-              const state = STATE_STYLES[banner.state];
+              const state = STATE_STYLES[banner.isActive ? "active" : "inactive"];
+              const isLastActive = banner.isActive && activeCount === 1;
               return (
                 <li
                   key={banner.id}
                   className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-5 sm:flex-row"
                 >
-                  <div className="relative aspect-[16/5] w-full shrink-0 overflow-hidden rounded-xl bg-surface-muted sm:w-56">
+                  <div className="relative aspect-video w-full shrink-0 overflow-hidden rounded-xl bg-surface-muted sm:w-56">
                     {banner.imageUrl ? (
                       <Image
                         src={banner.imageUrl}
                         alt={banner.imageAlt ?? ""}
                         fill
                         sizes="224px"
-                        className={`object-cover ${banner.state === "current" ? "" : "grayscale"}`}
+                        className={`object-cover ${banner.isActive ? "" : "grayscale"}`}
                       />
                     ) : (
                       <span className="absolute inset-0 flex items-center justify-center text-xs text-text-subtle">
@@ -224,16 +199,26 @@ export default function BannersManagementPage() {
                       {state.label}
                     </span>
                     <p className="font-semibold text-text">{banner.title}</p>
-                    <p className="text-sm text-text-muted">{formatPeriod(banner)}</p>
+                    {isLastActive && (
+                      <p className="text-xs text-text-subtle">
+                        Es el único activo. Activa otro antes de desactivarlo.
+                      </p>
+                    )}
                     <LastEditNote name={banner.updatedBy.name} updatedAt={banner.updatedAt} />
                   </div>
 
                   <div className="flex shrink-0 gap-2 sm:flex-col">
                     <IconButton
-                      label={banner.isActive ? "Desactivar" : "Activar"}
+                      label={
+                        isLastActive
+                          ? "Es el único banner activo. Activa otro para poder desactivarlo."
+                          : banner.isActive
+                            ? "Desactivar"
+                            : "Activar"
+                      }
                       isActive={banner.isActive}
                       onClick={() => toggleActive(banner)}
-                      disabled={isBusy || Boolean(editor)}
+                      disabled={isBusy || Boolean(editor) || isLastActive}
                     >
                       {banner.isActive ? <PowerOff size={16} /> : <Power size={16} />}
                     </IconButton>
