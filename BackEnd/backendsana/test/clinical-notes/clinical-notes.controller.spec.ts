@@ -1,4 +1,3 @@
-import { NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { ClinicalNotesController } from '../../src/clinical-notes/clinical-notes.controller.js';
 

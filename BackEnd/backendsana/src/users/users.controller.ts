@@ -14,22 +14,53 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { JwtAuthGuard } from '../guards/jwt-auth.guard.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { OriginGuard } from '../guards/origin.guard.js';
 import { RolesGuard } from '../guards/roles.guard.js';
-import type { AuthenticatedUser } from '../interfaces/auth.interface.js';
+import type { AuthenticatedUser } from '../auth/auth.interface.js';
 import { Roles } from '../middlewares/roles.decorator.js';
 import { UserRole } from '../models/user-role.enum.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
+import { UpdateOwnProfileDto } from './dto/update-own-profile.dto.js';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 import { UsersService } from './users.service.js';
+
+const SELF_SERVICE_ROLES = [
+  UserRole.Administrator,
+  UserRole.Secretary,
+  UserRole.Psychologist,
+  UserRole.Marketing,
+  UserRole.Requester,
+];
 
 @Controller('users')
 @UseGuards(OriginGuard, JwtAuthGuard, RolesGuard)
 @Roles(UserRole.Administrator)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
+
+  @Get('me')
+  @Roles(...SELF_SERVICE_ROLES)
+  getOwnProfile(@Req() request: Request & { user: AuthenticatedUser }) {
+    return this.usersService.getOwnProfile(
+      request.user.personId,
+      request.user.roles,
+    );
+  }
+
+  @Patch('me')
+  @Roles(...SELF_SERVICE_ROLES)
+  updateOwnProfile(
+    @Req() request: Request & { user: AuthenticatedUser },
+    @Body() dto: UpdateOwnProfileDto,
+  ) {
+    return this.usersService.updateOwnProfile(
+      request.user.personId,
+      request.user.roles,
+      dto,
+    );
+  }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)

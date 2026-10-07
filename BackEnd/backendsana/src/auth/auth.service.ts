@@ -1,16 +1,17 @@
 import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
-import type { AuthenticatedUser } from '../interfaces/auth.interface.js';
+import type { AuthenticatedUser } from './auth.interface.js';
 import { AccountState } from '../models/account-state.enum.js';
 import { UserRole } from '../models/user-role.enum.js';
-import { AuthRepository } from '../repositories/auth.repository.js';
+import { AuthRepository } from './auth.repository.js';
 import type { Auth0Profile } from './auth0-identity.service.js';
-import { SecurityLogService } from './security-log.service.js';
+import { SecurityLogService } from '../security-logs/security-log.service.js';
 
 const ALLOWED_ROLES = new Set([
   UserRole.Administrator,
   UserRole.Secretary,
   UserRole.Psychologist,
   UserRole.Marketing,
+  UserRole.Requester,
 ]);
 
 /**

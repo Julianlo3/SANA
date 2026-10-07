@@ -1,6 +1,6 @@
 import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import { JwtAuthGuard } from '../../src/guards/jwt-auth.guard.js';
+import { JwtAuthGuard } from '../../src/auth/jwt-auth.guard.js';
 import { OriginGuard } from '../../src/guards/origin.guard.js';
 import { RolesGuard } from '../../src/guards/roles.guard.js';
 

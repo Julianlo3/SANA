@@ -14,10 +14,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { JwtAuthGuard } from '../guards/jwt-auth.guard.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { OriginGuard } from '../guards/origin.guard.js';
 import { RolesGuard } from '../guards/roles.guard.js';
-import type { AuthenticatedUser } from '../interfaces/auth.interface.js';
+import type { AuthenticatedUser } from '../auth/auth.interface.js';
 import { Roles } from '../middlewares/roles.decorator.js';
 import { UserRole } from '../models/user-role.enum.js';
 import { AppointmentsService } from './appointments.service.js';
@@ -75,6 +75,18 @@ export class AppointmentsController {
   @Roles(UserRole.Secretary)
   findAll(@Query('state') state?: string) {
     return this.appointmentsService.findAll(state);
+  }
+
+  /**
+   * Protected endpoint: Lists appointments requested by the authenticated consultant.
+   * @param request The HTTP request object.
+   * @returns A promise resolving to the list of requested appointments.
+   */
+  @Get('my-requests')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Requester)
+  findMyRequests(@Req() request: Request & { user: AuthenticatedUser }) {
+    return this.appointmentsService.findByRequester(request.user.personId);
   }
 
   /**

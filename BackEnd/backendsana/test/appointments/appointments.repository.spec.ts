@@ -18,6 +18,23 @@ function requester() {
   };
 }
 
+describe('AppointmentsRepository.findByRequester', () => {
+  it('limits consultant appointment results to their person ID', async () => {
+    const query = vi.fn().mockResolvedValue([]);
+    const repository = new AppointmentsRepository({
+      query,
+    } as never);
+
+    await expect(repository.findByRequester(42)).resolves.toEqual([]);
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('WHERE a.req_id = $1'),
+      [42],
+    );
+    expect(query.mock.calls[0][0]).not.toContain('app_reason');
+  });
+});
+
 describe('AppointmentsRepository.createRequest', () => {
   it('persists the complete request in one transaction', async () => {
     const manager = { query: vi.fn() };
@@ -150,4 +167,3 @@ describe('AppointmentsRepository.discard', () => {
     expect(manager.query.mock.calls[1][1]).toEqual([42]);
   });
 });
-
