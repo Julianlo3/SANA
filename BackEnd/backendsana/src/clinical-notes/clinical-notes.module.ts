@@ -7,10 +7,13 @@ import { ClinicalNotesService } from './clinical-notes.service.js';
 import { ClinicalNotesRepository } from './clinical-notes.repository.js';
 import { AppointmentsModule } from '../appointments/appointments.module.js';
 import { AuthModule } from '../auth/auth.module.js';
+import { RolesGuard } from '../guards/roles.guard.js';
+import { SecurityLogModule } from '../security-logs/security-log.module.js';
 
 @Module({
   imports: [
     AuthModule,
+    SecurityLogModule,
     AppointmentsModule,
     TypeOrmModule.forFeature([
       ClinicalNote,
@@ -18,7 +21,7 @@ import { AuthModule } from '../auth/auth.module.js';
     ]),
   ],
   controllers: [ClinicalNotesController],
-  providers: [ClinicalNotesService, ClinicalNotesRepository],
+  providers: [ClinicalNotesService, ClinicalNotesRepository, RolesGuard],
   exports: [ClinicalNotesService, ClinicalNotesRepository],
 })
 export class ClinicalNotesModule {}

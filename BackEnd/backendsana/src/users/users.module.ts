@@ -13,6 +13,7 @@ import { UserAccount } from './entities/user-account.entity.js';
 import { UsersController } from './users.controller.js';
 import { UsersService } from './users.service.js';
 import { EmailModule } from '../email/email.module.js';
+import { RolesGuard } from '../guards/roles.guard.js';
 
 @Module({
   imports: [
@@ -31,6 +32,6 @@ import { EmailModule } from '../email/email.module.js';
     ]),
   ],
   controllers: [UsersController],
-  providers: [UsersService],
+  providers: [UsersService, RolesGuard],
 })
 export class UsersModule {}

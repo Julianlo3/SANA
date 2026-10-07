@@ -3,7 +3,6 @@ import { AuthController } from './auth.controller.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
 import { OriginGuard } from '../guards/origin.guard.js';
 import { RateLimitGuard } from '../guards/rate-limit.guard.js';
-import { RolesGuard } from '../guards/roles.guard.js';
 import { AuthRepository } from './auth.repository.js';
 import { AuthService } from './auth.service.js';
 import { Auth0IdentityService } from './auth0-identity.service.js';
@@ -22,7 +21,6 @@ import { SecurityLogModule } from '../security-logs/security-log.module.js';
     JwtAuthGuard,
     OriginGuard,
     RateLimitGuard,
-    RolesGuard,
   ],
   exports: [
     AuthService,
@@ -30,7 +28,6 @@ import { SecurityLogModule } from '../security-logs/security-log.module.js';
     JwtAuthGuard,
     OriginGuard,
     RateLimitGuard,
-    RolesGuard,
   ],
 })
 export class AuthModule {}
