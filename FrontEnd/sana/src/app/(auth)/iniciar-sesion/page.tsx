@@ -12,14 +12,16 @@ const COPY = {
     description:
       "Área reservada para el equipo de la Fundación Dejando Huellas Felices.",
     note: "Solo pueden ingresar cuentas aprobadas por la administración de la fundación.",
+    returnTo: "%2Fpanel",
     switchLabel: "¿Eres consultante?",
     switchAction: "Entra aquí",
     switchHref: "/iniciar-sesion?tipo=consultante",
   },
   requester: {
     title: "Mi cuenta",
-    description: "Consulta tus datos y el estado de tus citas.",
-    note: "Entra con tu cuenta de Google.",
+    description: "Consulta el estado de tus citas y tus datos.",
+    note: "Entra con la cuenta de Google que usaste al pedir tu cita.",
+    returnTo: "%2Fmi-cuenta",
     switchLabel: "¿Eres parte del equipo?",
     switchAction: "Acceso personal autorizado",
     switchHref: "/iniciar-sesion",
@@ -54,7 +56,7 @@ export default async function LoginPage({ searchParams }: Props) {
 
         <div className="mt-10 rounded-2xl border border-border bg-surface p-6 shadow-sm">
           <a
-            href="/auth/login?connection=google-oauth2&returnTo=%2Fpanel"
+            href={`/auth/login?connection=google-oauth2&returnTo=${copy.returnTo}`}
             className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-xl border border-border bg-surface py-4 font-semibold text-text transition hover:bg-surface-muted"
           >
             <Image
