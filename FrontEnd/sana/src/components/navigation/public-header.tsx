@@ -40,7 +40,14 @@ export default function PublicHeader() {
 
         <div className="ml-auto flex items-center gap-3 md:ml-0">
           <Link
-            href="/iniciar-sesion"
+            href={PUBLIC_NAV.requesterHref}
+            className="hidden text-xs font-bold uppercase tracking-wider text-white transition hover:text-white/80 md:block"
+          >
+            {PUBLIC_NAV.requesterAccess}
+          </Link>
+
+          <Link
+            href={PUBLIC_NAV.staffHref}
             className="hidden text-xs font-bold uppercase tracking-wider text-white transition hover:text-white/80 md:block"
           >
             {PUBLIC_NAV.staffAccess}
@@ -85,7 +92,17 @@ export default function PublicHeader() {
 
             <li className="mt-1 border-t border-white/20 pt-1">
               <Link
-                href="/iniciar-sesion"
+                href={PUBLIC_NAV.requesterHref}
+                onClick={() => setIsOpen(false)}
+                className="block rounded-xl px-3 py-3 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white/10"
+              >
+                {PUBLIC_NAV.requesterAccess}
+              </Link>
+            </li>
+
+            <li>
+              <Link
+                href={PUBLIC_NAV.staffHref}
                 onClick={() => setIsOpen(false)}
                 className="block rounded-xl px-3 py-3 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white/10"
               >

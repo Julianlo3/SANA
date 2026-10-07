@@ -11,6 +11,9 @@ export const PUBLIC_NAV = {
     { label: "Noticias", href: "/#news" },
     { label: "Contacto", href: "/#contact" },
   ],
-  staffAccess: "Acceso personal",
+  staffAccess: "Personal autorizado",
+  staffHref: "/iniciar-sesion",
+  requesterAccess: "Consultantes",
+  requesterHref: "/iniciar-sesion?tipo=consultante",
   donate: "Dona aquí",
 } as const;

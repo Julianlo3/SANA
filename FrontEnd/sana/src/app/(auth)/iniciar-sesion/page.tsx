@@ -1,7 +1,35 @@
 import Image from "next/image";
+import Link from "next/link";
 import PageDecor from "@/components/ui/page-decor";
 
-export default function LoginPage() {
+type Props = {
+  readonly searchParams: Promise<{ tipo?: string }>;
+};
+
+const COPY = {
+  staff: {
+    title: "Acceso seguro",
+    description:
+      "Área reservada para el equipo de la Fundación Dejando Huellas Felices.",
+    note: "Solo pueden ingresar cuentas aprobadas por la administración de la fundación.",
+    switchLabel: "¿Eres consultante?",
+    switchAction: "Entra aquí",
+    switchHref: "/iniciar-sesion?tipo=consultante",
+  },
+  requester: {
+    title: "Mi cuenta",
+    description: "Consulta tus datos y el estado de tus citas.",
+    note: "Entra con tu cuenta de Google.",
+    switchLabel: "¿Eres parte del equipo?",
+    switchAction: "Acceso personal autorizado",
+    switchHref: "/iniciar-sesion",
+  },
+} as const;
+
+export default async function LoginPage({ searchParams }: Props) {
+  const { tipo } = await searchParams;
+  const copy = tipo === "consultante" ? COPY.requester : COPY.staff;
+
   return (
     <main className="relative flex flex-1 items-center justify-center overflow-hidden px-6 py-16">
       <PageDecor variant="auth" />
@@ -17,11 +45,11 @@ export default function LoginPage() {
         />
 
         <h1 className="mt-6 font-display text-4xl font-extrabold tracking-tight text-primary-dark">
-          Acceso seguro
+          {copy.title}
         </h1>
 
         <p className="mx-auto mt-4 max-w-xs leading-relaxed text-text-muted">
-          Área reservada para el equipo de la Fundación Dejando Huellas Felices.
+          {copy.description}
         </p>
 
         <div className="mt-10 rounded-2xl border border-border bg-surface p-6 shadow-sm">
@@ -41,10 +69,19 @@ export default function LoginPage() {
           </a>
 
           <p className="mt-4 text-xs leading-relaxed text-text-subtle">
-            Solo pueden ingresar cuentas aprobadas por la administración de la
-            fundación.
+            {copy.note}
           </p>
         </div>
+
+        <p className="mt-6 text-sm text-text-muted">
+          {copy.switchLabel}{" "}
+          <Link
+            href={copy.switchHref}
+            className="font-semibold text-primary transition hover:text-primary-dark"
+          >
+            {copy.switchAction}
+          </Link>
+        </p>
 
         <p className="mt-10 text-xs text-text-subtle">
           Privacidad · Términos
