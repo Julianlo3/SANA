@@ -1,7 +1,6 @@
 import { Transform } from 'class-transformer';
 import {
   IsBoolean,
-  IsISO8601,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -22,7 +21,7 @@ const isPresent = (_: unknown, value: unknown) =>
   value !== null && value !== undefined;
 
 /**
- * DTO for creating a banner. It can be saved as a draft without image or period.
+ * DTO for creating a banner. It can be saved as a draft without image.
  */
 export class CreateBannerDto {
   @Transform(trim)
@@ -45,20 +44,12 @@ export class CreateBannerDto {
   imageAlt?: string;
 
   @IsOptional()
-  @IsISO8601({ strict: true }, { message: 'startsAt must be a valid date' })
-  startsAt?: string;
-
-  @IsOptional()
-  @IsISO8601({ strict: true }, { message: 'endsAt must be a valid date' })
-  endsAt?: string;
-
-  @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 }
 
 /**
- * DTO for editing a banner; `null` clears the image or the period.
+ * DTO for editing a banner; `null` clears the image.
  */
 export class UpdateBannerDto {
   @IsOptional()
@@ -80,14 +71,6 @@ export class UpdateBannerDto {
   @IsString()
   @MaxLength(IMAGE_ALT_MAX_LENGTH)
   imageAlt?: string | null;
-
-  @ValidateIf(isPresent)
-  @IsISO8601({ strict: true }, { message: 'startsAt must be a valid date' })
-  startsAt?: string | null;
-
-  @ValidateIf(isPresent)
-  @IsISO8601({ strict: true }, { message: 'endsAt must be a valid date' })
-  endsAt?: string | null;
 }
 
 export class UpdateBannerActivationDto {
@@ -95,17 +78,12 @@ export class UpdateBannerActivationDto {
   isActive!: boolean;
 }
 
-export type BannerState = 'inactive' | 'scheduled' | 'current' | 'expired';
-
 export interface BannerResponse {
   id: number;
   title: string;
   imageUrl: string | null;
   imageAlt: string | null;
-  startsAt: Date | null;
-  endsAt: Date | null;
   isActive: boolean;
-  state: BannerState;
   updatedAt: Date;
   updatedBy: ContentEditor;
 }

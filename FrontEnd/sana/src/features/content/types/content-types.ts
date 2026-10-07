@@ -41,17 +41,12 @@ export type PublicationStatus = "published" | "retired";
 
 export type ImageFolder = "content" | "news" | "gallery" | "banners";
 
-export type BannerState = "inactive" | "scheduled" | "current" | "expired";
-
 export type Banner = {
   id: number;
   title: string;
   imageUrl: string | null;
   imageAlt: string | null;
-  startsAt: string | null;
-  endsAt: string | null;
   isActive: boolean;
-  state: BannerState;
   updatedAt: string;
   updatedBy: ContentEditor;
 };
@@ -66,8 +61,6 @@ export type BannerPayload = {
   title: string;
   imageUrl: string | null;
   imageAlt: string | null;
-  startsAt: string | null;
-  endsAt: string | null;
 };
 
 export type PublicBanner = {
