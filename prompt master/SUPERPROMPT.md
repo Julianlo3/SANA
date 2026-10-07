@@ -19,8 +19,7 @@ Archivo generado por `superprompt/build.py` a partir de `superprompt/secciones/`
 - [11. Interfaz de usuario](#11-interfaz-de-usuario)
 - [12. Pruebas y aseguramiento de calidad](#12-pruebas-y-aseguramiento-de-calidad)
 - [13. Documentación a generar](#13-documentación-a-generar)
-- [14. Uso responsable de IA](#14-uso-responsable-de-ia)
-- [15. Plan de ejecución](#15-plan-de-ejecución)
+- [14. Plan de ejecución](#14-plan-de-ejecución)
 
 ---
 
