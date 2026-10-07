@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { SecurityLogsController } from './security-logs.controller.js';
 import { SecurityLogModule } from './security-log.module.js';
 import { AuthModule } from '../auth/auth.module.js';
+import { RolesGuard } from '../guards/roles.guard.js';
 
 /**
  * Module for security logs management.
@@ -10,5 +11,6 @@ import { AuthModule } from '../auth/auth.module.js';
 @Module({
   imports: [AuthModule, SecurityLogModule],
   controllers: [SecurityLogsController],
+  providers: [RolesGuard],
 })
 export class SecurityLogsModule { }

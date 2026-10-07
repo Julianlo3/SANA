@@ -11,10 +11,13 @@ import { AppointmentsService } from './appointments.service.js';
 import { AppointmentsRepository } from './appointments.repository.js';
 import { ScheduleModule } from '../schedule/schedule.module.js';
 import { EmailModule } from '../email/email.module.js';
+import { RolesGuard } from '../guards/roles.guard.js';
+import { SecurityLogModule } from '../security-logs/security-log.module.js';
 
 @Module({
   imports: [
     AuthModule,
+    SecurityLogModule,
     PolicyModule,
     ScheduleModule,
     EmailModule,
@@ -26,7 +29,7 @@ import { EmailModule } from '../email/email.module.js';
     ]),
   ],
   controllers: [AppointmentsController],
-  providers: [AppointmentsService, AppointmentsRepository],
+  providers: [AppointmentsService, AppointmentsRepository, RolesGuard],
   exports: [AppointmentsService, AppointmentsRepository],
 })
 export class AppointmentsModule {}
