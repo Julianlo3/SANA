@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { calendarToEvents } from "../lib/psychologist-calendar";
+import { useEffect, useState } from "react";
 import { getPsychologistCalendar } from "../services/psychologist-calendar-service";
-import type { CalendarEvent } from "../types/calendar-types";
 import type { PsychologistCalendar } from "../types/psychologist-calendar-types";
 
 type Loaded = {
@@ -45,13 +43,8 @@ export function usePsychologistCalendar(psychologistId: number | null) {
   const current =
     loaded !== null && loaded.psychologistId === psychologistId ? loaded : null;
 
-  const events: CalendarEvent[] = useMemo(
-    () => (current?.calendar ? calendarToEvents(current.calendar) : []),
-    [current],
-  );
-
   return {
-    events,
+    calendar: current?.calendar ?? null,
     isLoading: psychologistId !== null && current === null,
     error: current?.error ?? null,
   };
