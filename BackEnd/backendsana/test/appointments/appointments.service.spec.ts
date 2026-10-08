@@ -572,7 +572,6 @@ describe('AppointmentsService.cancelOwnAppointment', () => {
     { appState: 'confirmada', transition: 'cancelByRequester' },
   ])('returns a conflict if a $appState appointment changes state concurrently', async ({
     appState,
-    transition,
   }) => {
     const { service, repository } = setup();
     repository.findById.mockResolvedValue({
@@ -580,7 +579,10 @@ describe('AppointmentsService.cancelOwnAppointment', () => {
       appState,
       requesterId: 7,
     });
-    repository[transition].mockResolvedValue(false);
+    const transition = appState === 'pendiente'
+      ? repository.discardByRequester
+      : repository.cancelByRequester;
+    transition.mockResolvedValue(false);
 
     await expect(service.cancelOwnAppointment(42, 7)).rejects.toMatchObject({
       response: expect.objectContaining({ error: 'APPOINTMENT_STATE_CHANGED' }),
