@@ -1,7 +1,7 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 /**
- * Entity for home page banners with a validity period.
+ * Entity for home page banners.
  */
 @Entity({ name: 'banners' })
 export class Banner {
@@ -16,12 +16,6 @@ export class Banner {
 
   @Column({ name: 'ban_image_alt', type: 'varchar', length: 150, nullable: true })
   imageAlt!: string | null;
-
-  @Column({ name: 'ban_starts_at', type: 'timestamptz', nullable: true })
-  startsAt!: Date | null;
-
-  @Column({ name: 'ban_ends_at', type: 'timestamptz', nullable: true })
-  endsAt!: Date | null;
 
   @Column({ name: 'ban_is_active', type: 'boolean' })
   isActive!: boolean;
