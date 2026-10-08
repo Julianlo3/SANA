@@ -1,13 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import InlineMessage from "@/components/feedback/inline-message";
 import TextField from "@/components/forms/text-field";
 import Button from "@/components/ui/button";
 import type { Gender } from "@/features/consultation-requests/types/consultation-request-types";
 import { keepDigits } from "@/lib/format/text";
+import CancelRequestDialog from "../components/cancel-request-dialog";
 import RequestCard from "../components/request-card";
 import { useMyRequests } from "../hooks/use-my-requests";
 import { useOwnProfile } from "../hooks/use-own-profile";
+import type { MyRequest } from "../types/my-account-types";
 
 const GENDER_OPTIONS: { value: Gender; label: string }[] = [
   { value: "M", label: "Hombre" },
@@ -20,17 +23,27 @@ const INPUT_CLASS =
   "mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:bg-surface-muted";
 
 /**
- * Vista del consultante: su información, el estado de sus citas y, cuando
- * el backend lo permita, cancelar y pedir una nueva sin llenar todo otra vez.
+ * Vista del consultante: su información, el estado de sus citas, y cancelar
+ * o retirar una solicitud. Pedir una cita nueva sin llenar todo otra vez
+ * queda desactivado hasta que el backend tenga ese endpoint.
  */
 export default function MyAccountPage() {
   const profile = useOwnProfile();
   const requests = useMyRequests();
+  const [requestToCancel, setRequestToCancel] = useState<MyRequest | null>(
+    null,
+  );
 
   const documentText =
     profile.profile?.identityDocument != null
       ? `${profile.profile.cardType ?? ""} ${profile.profile.identityDocument}`.trim()
       : "—";
+
+  async function confirmCancel() {
+    if (!requestToCancel) return;
+    await requests.cancel(requestToCancel);
+    setRequestToCancel(null);
+  }
 
   return (
     <div className="space-y-10">
@@ -202,17 +215,43 @@ export default function MyAccountPage() {
             ) : (
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 {requests.requests.map((request) => (
-                  <RequestCard key={request.appId} request={request} />
+                  <RequestCard
+                    key={request.appId}
+                    request={request}
+                    onCancel={setRequestToCancel}
+                  />
                 ))}
               </div>
             )}
 
             <p className="mt-4 text-xs text-text-subtle">
-              Pronto podrás cancelar una cita y pedir una nueva desde aquí.
+              Pronto podrás pedir una nueva cita desde aquí sin llenar todo otra
+              vez.
             </p>
+
+            {requests.notice && (
+              <div className="mt-4">
+                <InlineMessage tone="success">{requests.notice}</InlineMessage>
+              </div>
+            )}
+
+            {requests.actionError && (
+              <div className="mt-4">
+                <InlineMessage tone="error">{requests.actionError}</InlineMessage>
+              </div>
+            )}
           </>
         )}
       </section>
+
+      {requestToCancel && (
+        <CancelRequestDialog
+          request={requestToCancel}
+          isSaving={requests.cancelingId === requestToCancel.appId}
+          onConfirm={confirmCancel}
+          onClose={() => setRequestToCancel(null)}
+        />
+      )}
     </div>
   );
 }
