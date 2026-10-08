@@ -1,6 +1,7 @@
 "use client";
 
-import InlineMessage from "@/components/feedback/inline-message";
+import LoadState from "@/components/feedback/load-state";
+import FilterChips from "@/components/ui/filter-chips";
 import MyAppointmentCard from "../components/my-appointment-card";
 import { useMyAppointments } from "../hooks/use-my-appointments";
 import type { MyAppointmentState } from "../types/my-appointments-types";
@@ -22,6 +23,8 @@ export default function MyAppointmentsPage() {
   const { filter, changeFilter, appointments, isLoading, loadError } =
     useMyAppointments();
 
+  const isReady = !isLoading && !loadError;
+
   return (
     <div className="mx-auto max-w-6xl">
       <h1 className="font-display text-3xl font-bold text-primary-dark">
@@ -32,51 +35,31 @@ export default function MyAppointmentsPage() {
         realices.
       </p>
 
-      <div className="mt-6 flex flex-wrap gap-2">
-        {FILTERS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => changeFilter(option.value)}
-            aria-pressed={filter === option.value}
-            className={`cursor-pointer rounded-full border px-4 py-1.5 text-sm font-semibold transition ${
-              filter === option.value
-                ? "border-primary bg-primary text-white"
-                : "border-border bg-surface text-text-muted hover:border-primary hover:text-primary"
-            }`}
-          >
-            {option.label}
-          </button>
-        ))}
+      <div className="mt-6">
+        <FilterChips options={FILTERS} value={filter} onChange={changeFilter} />
       </div>
 
-      {loadError && (
-        <div className="mt-6">
-          <InlineMessage tone="error">{loadError}</InlineMessage>
+      <LoadState
+        isLoading={isLoading}
+        error={loadError}
+        loadingText="Cargando tus citas…"
+      />
+
+      {isReady && appointments.length === 0 && (
+        <p className="mt-6 rounded-2xl border border-border bg-surface px-5 py-10 text-center text-sm text-text-subtle">
+          {EMPTY_TEXT[filter]}
+        </p>
+      )}
+
+      {isReady && appointments.length > 0 && (
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {appointments.map((appointment) => (
+            <MyAppointmentCard
+              key={appointment.appId}
+              appointment={appointment}
+            />
+          ))}
         </div>
-      )}
-
-      {isLoading && (
-        <p className="mt-8 text-sm text-text-subtle">Cargando tus citas…</p>
-      )}
-
-      {!isLoading && !loadError && (
-        <>
-          {appointments.length === 0 ? (
-            <p className="mt-6 rounded-2xl border border-border bg-surface px-5 py-10 text-center text-sm text-text-subtle">
-              {EMPTY_TEXT[filter]}
-            </p>
-          ) : (
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {appointments.map((appointment) => (
-                <MyAppointmentCard
-                  key={appointment.appId}
-                  appointment={appointment}
-                />
-              ))}
-            </div>
-          )}
-        </>
       )}
     </div>
   );
