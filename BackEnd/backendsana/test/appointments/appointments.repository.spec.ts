@@ -32,6 +32,7 @@ describe('AppointmentsRepository.findByRequester', () => {
       [42],
     );
     expect(query.mock.calls[0][0]).not.toContain('app_reason');
+    expect(query.mock.calls[0][0]).not.toContain('WHERE a.app_state');
   });
 });
 
@@ -144,6 +145,76 @@ describe('AppointmentsRepository.updateState', () => {
     const repository = new AppointmentsRepository(dataSource as never);
 
     await expect(repository.updateState(42, 'cancelada')).resolves.toBe(false);
+    expect(manager.query).toHaveBeenCalledOnce();
+  });
+});
+
+describe('AppointmentsRepository.cancelByRequester', () => {
+  it("cancels only the requester's confirmed appointment and releases occupancy in one transaction", async () => {
+    const manager = {
+      query: vi.fn().mockResolvedValueOnce([{ app_id: 42 }]).mockResolvedValueOnce([]),
+    };
+    const dataSource = { query: vi.fn(), transaction: vi.fn() };
+    dataSource.transaction.mockImplementation(async (callback) => callback(manager));
+    const repository = new AppointmentsRepository(dataSource as never);
+
+    await expect(repository.cancelByRequester(42, 7)).resolves.toBe(true);
+
+    expect(dataSource.transaction).toHaveBeenCalledOnce();
+    expect(manager.query).toHaveBeenCalledTimes(2);
+    expect(manager.query.mock.calls[0][0]).toContain('req_id = $2');
+    expect(manager.query.mock.calls[0][0]).toContain("app_state = 'confirmada'");
+    expect(manager.query.mock.calls[0][1]).toEqual([42, 7]);
+    expect(manager.query.mock.calls[1][0]).toContain(
+      'DELETE FROM schedule_occupancy WHERE app_id = $1',
+    );
+    expect(manager.query.mock.calls[1][1]).toEqual([42]);
+  });
+
+  it('does not release occupancy when the appointment was not transitioned', async () => {
+    const manager = { query: vi.fn().mockResolvedValue([]) };
+    const dataSource = { query: vi.fn(), transaction: vi.fn() };
+    dataSource.transaction.mockImplementation(async (callback) => callback(manager));
+    const repository = new AppointmentsRepository(dataSource as never);
+
+    await expect(repository.cancelByRequester(42, 7)).resolves.toBe(false);
+    expect(manager.query).toHaveBeenCalledOnce();
+  });
+});
+
+describe('AppointmentsRepository.discardByRequester', () => {
+  it('discards only the requester’s unconfirmed appointment and releases occupancy transactionally', async () => {
+    const manager = {
+      query: vi.fn().mockResolvedValueOnce([{ app_id: 42 }]).mockResolvedValueOnce([]),
+    };
+    const dataSource = { query: vi.fn(), transaction: vi.fn() };
+    dataSource.transaction.mockImplementation(async (callback) => callback(manager));
+    const repository = new AppointmentsRepository(dataSource as never);
+
+    await expect(repository.discardByRequester(42, 7)).resolves.toBe(true);
+
+    expect(manager.query).toHaveBeenCalledTimes(2);
+    expect(manager.query.mock.calls[0][0]).toContain('req_id = $2');
+    expect(manager.query.mock.calls[0][0]).toContain(
+      "app_state IN ('pendiente', 'asignada')",
+    );
+    expect(manager.query.mock.calls[0][0]).toContain(
+      "app_discard_reason = 'Solicitud retirada por el consultante'",
+    );
+    expect(manager.query.mock.calls[0][1]).toEqual([42, 7]);
+    expect(manager.query.mock.calls[1][0]).toContain(
+      'DELETE FROM schedule_occupancy WHERE app_id = $1',
+    );
+    expect(manager.query.mock.calls[1][1]).toEqual([42]);
+  });
+
+  it('does not release occupancy if the unconfirmed request was not withdrawn', async () => {
+    const manager = { query: vi.fn().mockResolvedValue([]) };
+    const dataSource = { query: vi.fn(), transaction: vi.fn() };
+    dataSource.transaction.mockImplementation(async (callback) => callback(manager));
+    const repository = new AppointmentsRepository(dataSource as never);
+
+    await expect(repository.discardByRequester(42, 7)).resolves.toBe(false);
     expect(manager.query).toHaveBeenCalledOnce();
   });
 });

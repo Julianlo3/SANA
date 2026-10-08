@@ -28,6 +28,8 @@ function setup() {
     ]),
     findPsychologistEmail: vi.fn().mockResolvedValue(null),
     discard: vi.fn(),
+    cancelByRequester: vi.fn().mockResolvedValue(true),
+    discardByRequester: vi.fn().mockResolvedValue(true),
     confirm: vi.fn(),
     updateState: vi.fn().mockResolvedValue(true),
     recordAssignmentHistory: vi.fn().mockResolvedValue(undefined),
@@ -184,6 +186,7 @@ describe('AppointmentsService assignment lifecycle', () => {
       appDate: new Date('2026-10-06T09:00:00.000Z'),
       duration: 60,
     });
+
     expect(repository.recordAssignmentHistory).toHaveBeenCalledWith({
       appId: 42,
       oldPsyId: null,
@@ -465,5 +468,130 @@ describe('AppointmentsService assignment lifecycle', () => {
       response: expect.objectContaining({ error: 'INVALID_APPOINTMENT_STATUS_TRANSITION' }),
     });
     expect(repository.updateState).not.toHaveBeenCalled();
+  });
+});
+
+describe('AppointmentsService.cancelOwnAppointment', () => {
+  it('cancels the authenticated requester’s confirmed appointment and notifies participants', async () => {
+    const { service, repository, emailService } = setup();
+    repository.findById
+      .mockResolvedValueOnce({
+        appId: 42,
+        appState: 'confirmada',
+        requesterId: 7,
+        requesterEmail: 'requester@example.com',
+        psychologistId: 8,
+        psychologistName: 'Psicóloga',
+        patientName: 'Paciente',
+        appDate: '2026-10-20T10:00:00.000Z',
+        appType: 'virtual',
+      })
+      .mockResolvedValueOnce({
+        appId: 42,
+        appState: 'cancelada',
+        requesterId: 7,
+        requesterEmail: 'requester@example.com',
+        psychologistId: 8,
+        psychologistName: 'Psicóloga',
+        patientName: 'Paciente',
+        appDate: '2026-10-20T10:00:00.000Z',
+        appType: 'virtual',
+      });
+    repository.findPsychologistEmail.mockResolvedValue('psychologist@example.com');
+
+    await expect(service.cancelOwnAppointment(42, 7)).resolves.toMatchObject({
+      appId: 42,
+      appState: 'cancelada',
+    });
+    expect(repository.cancelByRequester).toHaveBeenCalledWith(42, 7);
+    expect(emailService.enqueueEmail).toHaveBeenCalledTimes(2);
+  });
+
+  it('forbids cancelling another requester’s appointment', async () => {
+    const { service, repository } = setup();
+    repository.findById.mockResolvedValue({
+      appId: 42,
+      appState: 'confirmada',
+      requesterId: 9,
+    });
+
+    await expect(service.cancelOwnAppointment(42, 7)).rejects.toMatchObject({
+      response: expect.objectContaining({
+        error: 'APPOINTMENT_NOT_REQUESTED_BY_USER',
+      }),
+    });
+    expect(repository.cancelByRequester).not.toHaveBeenCalled();
+  });
+
+  it.each(['pendiente', 'asignada'])(
+    'withdraws the requester’s unconfirmed appointment in the %s state',
+    async (appState) => {
+      const { service, repository, emailService } = setup();
+      repository.findById
+        .mockResolvedValueOnce({
+          appId: 42,
+          appState,
+          requesterId: 7,
+        })
+        .mockResolvedValueOnce({
+          appId: 42,
+          appState: 'descartada',
+          requesterId: 7,
+        });
+
+      await expect(service.cancelOwnAppointment(42, 7)).resolves.toMatchObject({
+        appId: 42,
+        appState: 'descartada',
+      });
+      expect(repository.discardByRequester).toHaveBeenCalledWith(42, 7);
+      expect(repository.cancelByRequester).not.toHaveBeenCalled();
+      expect(emailService.enqueueEmail).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['cancelada', 'realizada', 'descartada'])(
+    'does not cancel an appointment in the %s state',
+    async (appState) => {
+      const { service, repository } = setup();
+      repository.findById.mockResolvedValue({
+        appId: 42,
+        appState,
+        requesterId: 7,
+      });
+
+      await expect(service.cancelOwnAppointment(42, 7)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(repository.discardByRequester).not.toHaveBeenCalled();
+      expect(repository.cancelByRequester).not.toHaveBeenCalled();
+    },
+  );
+
+  it('returns a conflict if an unconfirmed request is confirmed concurrently', async () => {
+    const { service, repository } = setup();
+    repository.findById.mockResolvedValue({
+      appId: 42,
+      appState: 'pendiente',
+      requesterId: 7,
+    });
+    repository.discardByRequester.mockResolvedValue(false);
+
+    await expect(service.cancelOwnAppointment(42, 7)).rejects.toMatchObject({
+      response: expect.objectContaining({ error: 'APPOINTMENT_STATE_CHANGED' }),
+    });
+  });
+
+  it('returns a conflict if the appointment changes state concurrently', async () => {
+    const { service, repository } = setup();
+    repository.findById.mockResolvedValue({
+      appId: 42,
+      appState: 'confirmada',
+      requesterId: 7,
+    });
+    repository.cancelByRequester.mockResolvedValue(false);
+
+    await expect(service.cancelOwnAppointment(42, 7)).rejects.toMatchObject({
+      response: expect.objectContaining({ error: 'APPOINTMENT_STATE_CHANGED' }),
+    });
   });
 });

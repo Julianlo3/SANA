@@ -636,6 +636,61 @@ export class AppointmentsRepository {
   }
 
   /**
+   * Cancels a confirmed appointment only when it belongs to the requester, and removes its schedule occupancy.
+   * @param appId The ID of the appointment to cancel.
+   * @param requesterId The ID of the person requesting the cancellation.
+   * @returns A promise resolving to a boolean indicating whether the cancellation was successful.
+   */
+  cancelByRequester(appId: number, requesterId: number): Promise<boolean> {
+    return this.dataSource.transaction(async (manager) => {
+      const updated = await manager.query<{ app_id: number }[]>(
+        `UPDATE appointments
+         SET app_state = 'cancelada'
+         WHERE app_id = $1
+           AND req_id = $2
+           AND app_state = 'confirmada'
+         RETURNING app_id`,
+        [appId, requesterId],
+      );
+      if (updated.length === 0) return false;
+
+      await manager.query(
+        `DELETE FROM schedule_occupancy WHERE app_id = $1`,
+        [appId],
+      );
+      return true;
+    });
+  }
+
+  /**
+   * Discards a request that has not yet been confirmed by the secretary.
+   * @param appId The ID of the appointment to discard.
+   * @param requesterId The ID of the person requesting the discard.
+   * @returns A promise resolving to a boolean indicating whether the discard was successful.
+   */
+  discardByRequester(appId: number, requesterId: number): Promise<boolean> {
+    return this.dataSource.transaction(async (manager) => {
+      const updated = await manager.query<{ app_id: number }[]>(
+        `UPDATE appointments
+         SET app_state = 'descartada',
+             app_discard_reason = 'Solicitud retirada por el consultante'
+         WHERE app_id = $1
+           AND req_id = $2
+           AND app_state IN ('pendiente', 'asignada')
+         RETURNING app_id`,
+        [appId, requesterId],
+      );
+      if (updated.length === 0) return false;
+
+      await manager.query(
+        `DELETE FROM schedule_occupancy WHERE app_id = $1`,
+        [appId],
+      );
+      return true;
+    });
+  }
+
+  /**
    * discards an appointment with a given reason
    * @param appId appointment id
    * @param reason reason for discarding

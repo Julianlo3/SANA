@@ -984,7 +984,7 @@ ALTER TABLE public.appointments
 COMMENT ON COLUMN public.appointments.app_reason
     IS E'Motivo de consulta opcional indicado por el consultante al hacer la solicitud';
 COMMENT ON COLUMN public.appointments.app_discard_reason
-    IS E'Motivo interno indicado por la asistente al descartar una solicitud';
+    IS E'Motivo interno indicado por la asistente, o motivo automatico cuando el consultante retira una solicitud no confirmada';
 COMMENT ON COLUMN public.appointments.app_created_at
     IS E'Fecha y hora en que el consultante registró la solicitud de cita';
 COMMENT ON CONSTRAINT "Appointment_state_ck" ON public.appointments
