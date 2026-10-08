@@ -567,28 +567,20 @@ describe('AppointmentsService.cancelOwnAppointment', () => {
     },
   );
 
-  it('returns a conflict if an unconfirmed request is confirmed concurrently', async () => {
+  it.each([
+    { appState: 'pendiente', transition: 'discardByRequester' },
+    { appState: 'confirmada', transition: 'cancelByRequester' },
+  ])('returns a conflict if a $appState appointment changes state concurrently', async ({
+    appState,
+    transition,
+  }) => {
     const { service, repository } = setup();
     repository.findById.mockResolvedValue({
       appId: 42,
-      appState: 'pendiente',
+      appState,
       requesterId: 7,
     });
-    repository.discardByRequester.mockResolvedValue(false);
-
-    await expect(service.cancelOwnAppointment(42, 7)).rejects.toMatchObject({
-      response: expect.objectContaining({ error: 'APPOINTMENT_STATE_CHANGED' }),
-    });
-  });
-
-  it('returns a conflict if the appointment changes state concurrently', async () => {
-    const { service, repository } = setup();
-    repository.findById.mockResolvedValue({
-      appId: 42,
-      appState: 'confirmada',
-      requesterId: 7,
-    });
-    repository.cancelByRequester.mockResolvedValue(false);
+    repository[transition].mockResolvedValue(false);
 
     await expect(service.cancelOwnAppointment(42, 7)).rejects.toMatchObject({
       response: expect.objectContaining({ error: 'APPOINTMENT_STATE_CHANGED' }),
