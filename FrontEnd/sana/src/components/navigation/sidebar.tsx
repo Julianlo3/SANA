@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import {
   Users,
   Calendar,
+  CalendarCheck,
   FolderOpen,
   ClipboardList,
   BarChart3,
@@ -40,6 +41,7 @@ const LINKS_BY_ROLE: Record<string, NavLink[]> = {
   ],
   psicologo: [
     { label: "Consultantes", href: "/consultantes", icon: Users, enabled: true },
+    { label: "Mis citas", href: "/mis-citas", icon: CalendarCheck, enabled: true },
     {
       label: "Registrar atención",
       href: "/registro-atencion/nuevo",
