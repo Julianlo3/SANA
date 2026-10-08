@@ -11,9 +11,10 @@ import type { MyRequest } from "../types/my-account-types";
 
 type Props = {
   readonly request: MyRequest;
+  readonly onCancel: (request: MyRequest) => void;
 };
 
-/** Estados en los que la persona todavía puede cancelar. El backend también lo valida. */
+/** Estados en los que el backend deja cancelar o retirar. */
 const CANCELABLE_STATES: readonly AppointmentState[] = [
   "pendiente",
   "asignada",
@@ -21,9 +22,11 @@ const CANCELABLE_STATES: readonly AppointmentState[] = [
 ];
 
 /** Una solicitud de cita de la persona, con su estado y, si ya hay, fecha y psicólogo. */
-export default function RequestCard({ request }: Props) {
+export default function RequestCard({ request, onCancel }: Props) {
   const ModeIcon = request.appType === "virtual" ? Video : MapPin;
   const canCancel = CANCELABLE_STATES.includes(request.appState);
+  const actionLabel =
+    request.appState === "confirmada" ? "Cancelar cita" : "Retirar solicitud";
 
   return (
     <article className="flex flex-col rounded-2xl border border-border bg-surface p-5">
@@ -65,8 +68,8 @@ export default function RequestCard({ request }: Props) {
 
       {canCancel && (
         <div className="mt-5">
-          <Button variant="secondary" disabled onClick={() => undefined}>
-            Cancelar cita
+          <Button variant="secondary" onClick={() => onCancel(request)}>
+            {actionLabel}
           </Button>
         </div>
       )}
