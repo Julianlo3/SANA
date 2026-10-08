@@ -16,8 +16,6 @@ export type BannerFormValues = {
   title: string;
   imageUrl: string;
   imageAlt: string;
-  startDate: string;
-  endDate: string;
   isActive: boolean;
 };
 
@@ -25,27 +23,16 @@ const EMPTY_VALUES: BannerFormValues = {
   title: "",
   imageUrl: "",
   imageAlt: "",
-  startDate: "",
-  endDate: "",
   isActive: false,
 };
 
-const BOGOTA_OFFSET = "-05:00";
-const DATE_ONLY = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" });
-
 type Editor = { mode: "create" } | { mode: "edit"; banner: Banner } | null;
-
-function toDateInput(iso: string | null): string {
-  return iso ? DATE_ONLY.format(new Date(iso)) : "";
-}
 
 function toFormValues(banner: Banner): BannerFormValues {
   return {
     title: banner.title,
     imageUrl: banner.imageUrl ?? "",
     imageAlt: banner.imageAlt ?? "",
-    startDate: toDateInput(banner.startsAt),
-    endDate: toDateInput(banner.endsAt),
     isActive: banner.isActive,
   };
 }
@@ -56,8 +43,6 @@ function toPayload(values: BannerFormValues): BannerPayload {
     title: values.title.trim(),
     imageUrl,
     imageAlt: imageUrl ? values.imageAlt.trim() : null,
-    startsAt: values.startDate ? `${values.startDate}T00:00:00${BOGOTA_OFFSET}` : null,
-    endsAt: values.endDate ? `${values.endDate}T23:59:59${BOGOTA_OFFSET}` : null,
   };
 }
 
@@ -65,19 +50,12 @@ function validate(values: BannerFormValues): Partial<Record<keyof BannerFormValu
   const errors: Partial<Record<keyof BannerFormValues, string>> = {};
   if (!values.title.trim()) errors.title = "Escribe el título.";
   if (values.imageUrl && !values.imageAlt.trim()) errors.imageAlt = "Describe la imagen.";
-  if (values.startDate && values.endDate && values.endDate < values.startDate) {
-    errors.endDate = "La fecha de fin debe ser igual o posterior a la de inicio.";
-  }
-  if (values.isActive) {
-    if (!values.imageUrl) errors.imageUrl = "Sube una imagen para activarlo.";
-    if (!values.startDate) errors.startDate = "Elige la fecha de inicio para activarlo.";
-    if (!values.endDate) errors.endDate ??= "Elige la fecha de fin para activarlo.";
-  }
+  if (values.isActive && !values.imageUrl) errors.imageUrl = "Sube una imagen para activarlo.";
   return errors;
 }
 
 function countActive(items: Banner[]): number {
-  return items.filter((item) => item.isActive && item.state !== "expired").length;
+  return items.filter((item) => item.isActive).length;
 }
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -192,8 +170,6 @@ export function useBannersManagement() {
           changes.imageUrl = payload.imageUrl;
           changes.imageAlt = payload.imageAlt;
         }
-        if (changedFields.includes("startDate")) changes.startsAt = payload.startsAt;
-        if (changedFields.includes("endDate")) changes.endsAt = payload.endsAt;
         replaceBanner(await updateBanner(editor.banner.id, changes));
       },
       editor.mode === "create" ? "El banner quedó guardado." : "Los cambios quedaron guardados.",
@@ -211,7 +187,7 @@ export function useBannersManagement() {
         },
         banner.isActive
           ? "El banner salió del inicio. Sigue guardado para reutilizarlo."
-          : "El banner quedó activo. Se mostrará durante su vigencia.",
+          : "El banner quedó activo. Ya se muestra en el inicio.",
         "No pudimos cambiar el estado del banner. Intenta de nuevo.",
       ),
     [replaceBanner, runWrite],

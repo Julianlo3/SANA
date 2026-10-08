@@ -12,20 +12,17 @@ export interface BannerFields {
   title: string;
   imageUrl: string | null;
   imageAlt: string | null;
-  startsAt: string | null;
-  endsAt: string | null;
 }
 
 export type BannerPatch = Partial<BannerFields>;
 
 export const ACTIVE_LIMIT_REACHED = 'ACTIVE_LIMIT_REACHED';
+export const LAST_ACTIVE_BANNER = 'LAST_ACTIVE_BANNER';
 
 const PATCH_COLUMNS: Record<keyof BannerPatch, string> = {
   title: 'ban_title',
   imageUrl: 'ban_image_url',
   imageAlt: 'ban_image_alt',
-  startsAt: 'ban_starts_at',
-  endsAt: 'ban_ends_at',
 };
 
 const BANNER_SELECT = `
@@ -34,15 +31,7 @@ const BANNER_SELECT = `
     b.ban_title AS "title",
     b.ban_image_url AS "imageUrl",
     b.ban_image_alt AS "imageAlt",
-    b.ban_starts_at AS "startsAt",
-    b.ban_ends_at AS "endsAt",
     b.ban_is_active AS "isActive",
-    CASE
-      WHEN NOT b.ban_is_active THEN 'inactive'
-      WHEN now() < b.ban_starts_at THEN 'scheduled'
-      WHEN now() > b.ban_ends_at THEN 'expired'
-      ELSE 'current'
-    END AS "state",
     b.ban_updated_at AS "updatedAt",
     p.per_id AS "editorId",
     p.per_name AS "editorName"
@@ -50,8 +39,7 @@ const BANNER_SELECT = `
   JOIN person p ON p.per_id = b.ban_updated_by`;
 
 /**
- * Repository for home page banners. The period is resolved by date on every query, so expired
- * banners stop showing without any scheduled job.
+ * Repository for home page banners. Active banners are shown until they are deactivated.
  */
 @Injectable()
 export class BannersRepository {
@@ -64,7 +52,7 @@ export class BannersRepository {
   async findAll(): Promise<BannerResponse[]> {
     const rows = await this.dataSource.query<BannerRow[]>(
       `${BANNER_SELECT}
-       ORDER BY b.ban_is_active DESC, b.ban_starts_at DESC NULLS LAST, b.ban_id DESC`,
+       ORDER BY b.ban_is_active DESC, b.ban_id DESC`,
     );
     return rows.map(toBannerResponse);
   }
@@ -83,7 +71,7 @@ export class BannersRepository {
   }
 
   /**
-   * Counts the active banners that have not expired yet (current or scheduled).
+   * Counts the active banners.
    * @param excludeId Optional banner to leave out of the count.
    * @returns A promise that resolves to the number of active banners.
    */
@@ -94,7 +82,7 @@ export class BannersRepository {
     const rows = await manager.query<{ total: number }[]>(
       `SELECT COUNT(*)::int AS "total"
        FROM banners
-       WHERE ban_is_active AND ban_ends_at >= now()
+       WHERE ban_is_active
          AND ($1::int IS NULL OR ban_id <> $1::int)`,
       [excludeId],
     );
@@ -102,8 +90,8 @@ export class BannersRepository {
   }
 
   /**
-   * Finds the banners to show right now on the home page.
-   * @returns A promise that resolves to the active banners within their period.
+   * Finds the banners to show on the home page.
+   * @returns A promise that resolves to the active banners.
    */
   async findCurrent(): Promise<PublicBanner[]> {
     return this.dataSource.query<PublicBanner[]>(
@@ -113,8 +101,8 @@ export class BannersRepository {
          ban_image_url AS "imageUrl",
          ban_image_alt AS "imageAlt"
        FROM banners
-       WHERE ban_is_active AND now() BETWEEN ban_starts_at AND ban_ends_at
-       ORDER BY ban_starts_at, ban_id`,
+       WHERE ban_is_active
+       ORDER BY ban_id`,
     );
   }
 
@@ -139,20 +127,11 @@ export class BannersRepository {
 
       const rows = await manager.query<{ id: number }[]>(
         `INSERT INTO banners (
-           ban_title, ban_image_url, ban_image_alt, ban_starts_at, ban_ends_at,
-           ban_is_active, ban_created_by, ban_updated_by
+           ban_title, ban_image_url, ban_image_alt, ban_is_active, ban_created_by, ban_updated_by
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
+         VALUES ($1, $2, $3, $4, $5, $5)
          RETURNING ban_id AS "id"`,
-        [
-          fields.title,
-          fields.imageUrl,
-          fields.imageAlt,
-          fields.startsAt,
-          fields.endsAt,
-          isActive,
-          userId,
-        ],
+        [fields.title, fields.imageUrl, fields.imageAlt, isActive, userId],
       );
       const id = rows[0].id;
       await logContentChange(manager, userId, 'banner', id, 'create');
@@ -165,20 +144,10 @@ export class BannersRepository {
    * @param id The ID of the banner.
    * @param patch The fields to change.
    * @param userId The ID of the user making the change.
-   * @param maxActive The maximum number of active banners, or null when the change cannot take a new slot.
-   * @returns A promise that resolves to the banner, null if it does not exist, or ACTIVE_LIMIT_REACHED.
+   * @returns A promise that resolves to the banner, or null if it does not exist.
    */
-  async update(
-    id: number,
-    patch: BannerPatch,
-    userId: number,
-    maxActive: number | null,
-  ): Promise<BannerResponse | null | typeof ACTIVE_LIMIT_REACHED> {
+  async update(id: number, patch: BannerPatch, userId: number): Promise<BannerResponse | null> {
     return this.dataSource.transaction(async (manager) => {
-      if (maxActive !== null && (await this.isLimitReached(manager, id, maxActive))) {
-        return ACTIVE_LIMIT_REACHED;
-      }
-
       const assignments: string[] = [];
       const values: unknown[] = [];
       for (const field of Object.keys(PATCH_COLUMNS) as (keyof BannerPatch)[]) {
@@ -202,22 +171,29 @@ export class BannersRepository {
   }
 
   /**
-   * Activates or deactivates a banner. Activation checks the active limit under a lock.
+   * Activates or deactivates a banner. Both checks run under a lock: activation respects the
+   * active limit, and the last active banner cannot be deactivated.
    * @param id The ID of the banner.
    * @param isActive The new activation state.
    * @param userId The ID of the user making the change.
    * @param maxActive The maximum number of active banners.
-   * @returns A promise that resolves to the banner, null if it does not exist, or ACTIVE_LIMIT_REACHED.
+   * @returns A promise that resolves to the banner, null if it does not exist,
+   * ACTIVE_LIMIT_REACHED or LAST_ACTIVE_BANNER.
    */
   async setActive(
     id: number,
     isActive: boolean,
     userId: number,
     maxActive: number,
-  ): Promise<BannerResponse | null | typeof ACTIVE_LIMIT_REACHED> {
+  ): Promise<
+    BannerResponse | null | typeof ACTIVE_LIMIT_REACHED | typeof LAST_ACTIVE_BANNER
+  > {
     return this.dataSource.transaction(async (manager) => {
       if (isActive && (await this.isLimitReached(manager, id, maxActive))) {
         return ACTIVE_LIMIT_REACHED;
+      }
+      if (!isActive && (await this.isLastActive(manager, id))) {
+        return LAST_ACTIVE_BANNER;
       }
 
       const [, affected] = await manager.query<[unknown[], number]>(
@@ -252,13 +228,30 @@ export class BannersRepository {
     });
   }
 
+  private async lockActivation(manager: EntityManager): Promise<void> {
+    await manager.query(`SELECT pg_advisory_xact_lock(hashtext('content_banners_activation'))`);
+  }
+
   private async isLimitReached(
     manager: EntityManager,
     excludeId: number | null,
     maxActive: number,
   ): Promise<boolean> {
-    await manager.query(`SELECT pg_advisory_xact_lock(hashtext('content_banners_activation'))`);
+    await this.lockActivation(manager);
     return (await this.countActive(excludeId, manager)) >= maxActive;
+  }
+
+  private async isLastActive(manager: EntityManager, id: number): Promise<boolean> {
+    await this.lockActivation(manager);
+    const rows = await manager.query<{ isTarget: boolean | null; others: number }[]>(
+      `SELECT
+         bool_or(ban_id = $1) AS "isTarget",
+         COUNT(*) FILTER (WHERE ban_id <> $1)::int AS "others"
+       FROM banners
+       WHERE ban_is_active`,
+      [id],
+    );
+    return Boolean(rows[0]?.isTarget) && rows[0].others === 0;
   }
 }
 

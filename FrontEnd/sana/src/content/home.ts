@@ -17,10 +17,6 @@ export const HOME_CONTENT = {
       "Texto pendiente: frase de presentación de la fundación, su propósito y a quiénes acompaña.",
     primaryAction: "Solicitar una cita",
     secondaryAction: "Conoce la fundación",
-    image: {
-      src: "/images/ninos-abrazo.jpg",
-      alt: "Dos niños abrazados sonriendo",
-    },
   },
 
   about: {

@@ -12,7 +12,7 @@ import PublicHeader from "@/components/navigation/public-header";
 import PublicFooter from "@/components/navigation/public-footer";
 import PendingContentNotice from "@/components/feedback/pending-content-notice";
 import { HOME_CONTENT } from "@/content/home";
-import BannerCarousel from "@/features/content/components/banner-carousel";
+import HeroCarousel from "@/features/content/components/hero-carousel";
 import NewsCard from "@/features/content/components/news-card";
 import {
   getPublicBanners,
@@ -50,15 +50,13 @@ export default async function HomePage() {
 
       <main className="flex-1">
         {/* HERO — rosa */}
-        <section className="relative h-[85vh] min-h-[600px] w-full overflow-hidden">
-          <Image
-            src={hero.image.src}
-            alt={hero.image.alt}
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover"
-          />
+        <HeroCarousel
+          slides={banners.map((banner) => ({
+            key: String(banner.id),
+            src: banner.imageUrl,
+            alt: banner.imageAlt,
+          }))}
+        >
 
           <div
             aria-hidden
@@ -102,11 +100,7 @@ export default async function HomePage() {
               </Link>
             </div>
           </div>
-        </section>
-
-        <div className="py-8">
-          <BannerCarousel banners={banners} />
-        </div>
+        </HeroCarousel>
 
         {/* QUIÉNES SOMOS — blanco, acentos rosa */}
         <section id="about" className="mx-auto max-w-6xl px-6 py-20">
