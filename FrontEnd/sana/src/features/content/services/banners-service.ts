@@ -13,8 +13,6 @@ export function createBanner(
     title: payload.title,
     imageUrl: payload.imageUrl ?? undefined,
     imageAlt: payload.imageAlt ?? undefined,
-    startsAt: payload.startsAt ?? undefined,
-    endsAt: payload.endsAt ?? undefined,
     isActive: payload.isActive,
   });
 }

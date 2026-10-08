@@ -18,6 +18,7 @@ import type {
 } from './banners.dto.js';
 import {
   ACTIVE_LIMIT_REACHED,
+  LAST_ACTIVE_BANNER,
   BannersRepository,
   type BannerFields,
   type BannerPatch,
@@ -56,8 +57,8 @@ export class BannersService {
   }
 
   /**
-   * Finds the banners to show on the home page right now.
-   * @returns A promise that resolves to the current banners.
+   * Finds the banners to show on the home page.
+   * @returns A promise that resolves to the active banners.
    */
   findCurrent(): Promise<PublicBanner[]> {
     return this.repository.findCurrent();
@@ -74,8 +75,6 @@ export class BannersService {
       title: dto.title,
       imageUrl: dto.imageUrl ?? null,
       imageAlt: dto.imageAlt || null,
-      startsAt: dto.startsAt ?? null,
-      endsAt: dto.endsAt ?? null,
     };
     const isActive = dto.isActive ?? false;
 
@@ -95,7 +94,7 @@ export class BannersService {
   }
 
   /**
-   * Edits a banner. An active banner must keep an image and a complete period.
+   * Edits a banner. An active banner must keep an image.
    * @param user The authenticated user making the change.
    * @param id The ID of the banner.
    * @param dto The fields to change.
@@ -113,8 +112,6 @@ export class BannersService {
       title: dto.title,
       imageUrl: dto.imageUrl,
       imageAlt: dto.imageAlt === undefined ? undefined : dto.imageAlt || null,
-      startsAt: dto.startsAt,
-      endsAt: dto.endsAt,
     };
     if (patch.imageUrl === null) patch.imageAlt = null;
 
@@ -122,8 +119,6 @@ export class BannersService {
       title: patch.title ?? current.title,
       imageUrl: patch.imageUrl === undefined ? current.imageUrl : patch.imageUrl,
       imageAlt: patch.imageAlt === undefined ? current.imageAlt : patch.imageAlt,
-      startsAt: patch.startsAt === undefined ? toIso(current.startsAt) : patch.startsAt,
-      endsAt: patch.endsAt === undefined ? toIso(current.endsAt) : patch.endsAt,
     };
 
     ensureConsistent(merged);
@@ -132,11 +127,7 @@ export class BannersService {
       await this.cloudinaryService.ensureValidImage(patch.imageUrl, 'banners');
     }
 
-    const takesSlot =
-      current.isActive && merged.endsAt !== null && new Date(merged.endsAt) >= new Date();
-    const banner = this.unwrap(
-      await this.repository.update(id, patch, user.userId, takesSlot ? this.maxActive : null),
-    );
+    const banner = this.unwrap(await this.repository.update(id, patch, user.userId));
 
     if (current.imageUrl && patch.imageUrl !== undefined && patch.imageUrl !== current.imageUrl) {
       void this.cloudinaryService.deleteImage(current.imageUrl);
@@ -148,7 +139,8 @@ export class BannersService {
   }
 
   /**
-   * Activates or deactivates a banner. A deactivated banner stays in the list to be reused.
+   * Activates or deactivates a banner. A deactivated banner stays in the list to be reused,
+   * and at least one banner must remain active.
    * @param user The authenticated user making the change.
    * @param id The ID of the banner.
    * @param isActive The new activation state.
@@ -161,15 +153,7 @@ export class BannersService {
   ): Promise<BannerResponse> {
     const current = await this.repository.findById(id);
     if (!current) throw new NotFoundException(NOT_FOUND_MESSAGE);
-    if (isActive) {
-      ensureActivatable({
-        title: current.title,
-        imageUrl: current.imageUrl,
-        imageAlt: current.imageAlt,
-        startsAt: toIso(current.startsAt),
-        endsAt: toIso(current.endsAt),
-      });
-    }
+    if (isActive) ensureActivatable(current);
 
     const banner = this.unwrap(
       await this.repository.setActive(id, isActive, user.userId, this.maxActive),
@@ -205,7 +189,7 @@ export class BannersService {
   }
 
   private unwrap(
-    result: BannerResponse | null | typeof ACTIVE_LIMIT_REACHED,
+    result: BannerResponse | null | typeof ACTIVE_LIMIT_REACHED | typeof LAST_ACTIVE_BANNER,
   ): BannerResponse {
     if (result === ACTIVE_LIMIT_REACHED) {
       throw new ConflictException({
@@ -213,13 +197,15 @@ export class BannersService {
         message: `Ya hay ${this.maxActive} banners activos. Desactiva uno para activar este.`,
       });
     }
+    if (result === LAST_ACTIVE_BANNER) {
+      throw new ConflictException({
+        error: 'LAST_ACTIVE_BANNER',
+        message: 'Debe quedar al menos un banner activo en el inicio. Activa otro antes de desactivar este.',
+      });
+    }
     if (!result) throw new NotFoundException(NOT_FOUND_MESSAGE);
     return result;
   }
-}
-
-function toIso(date: Date | null): string | null {
-  return date ? new Date(date).toISOString() : null;
 }
 
 function ensureConsistent(fields: BannerFields): void {
@@ -230,31 +216,14 @@ function ensureConsistent(fields: BannerFields): void {
       fields: ['imageAlt'],
     });
   }
-  if (fields.startsAt && fields.endsAt && new Date(fields.endsAt) <= new Date(fields.startsAt)) {
-    throw new UnprocessableEntityException({
-      error: 'INVALID_PERIOD',
-      message: 'La fecha de fin debe ser posterior a la fecha de inicio',
-    });
-  }
 }
 
 function ensureActivatable(fields: BannerFields): void {
-  const missing: [string, string][] = [];
-  if (!fields.imageUrl) missing.push(['imageUrl', 'imagen']);
-  if (!fields.startsAt) missing.push(['startsAt', 'fecha de inicio']);
-  if (!fields.endsAt) missing.push(['endsAt', 'fecha de fin']);
-
-  if (missing.length > 0) {
+  if (!fields.imageUrl) {
     throw new UnprocessableEntityException({
       error: 'MISSING_REQUIRED_FIELDS',
-      message: `Para activar el banner falta: ${missing.map(([, label]) => label).join(', ')}`,
-      fields: missing.map(([field]) => field),
-    });
-  }
-  if (new Date(fields.endsAt as string) < new Date()) {
-    throw new UnprocessableEntityException({
-      error: 'PERIOD_ENDED',
-      message: 'La vigencia ya terminó. Cambia la fecha de fin para activarlo.',
+      message: 'Para activar el banner falta: imagen',
+      fields: ['imageUrl'],
     });
   }
 }
