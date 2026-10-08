@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, UserRound } from "lucide-react";
 import PageDecor from "@/components/ui/page-decor";
 import PublicHeader from "@/components/navigation/public-header";
 import PublicFooter from "@/components/navigation/public-footer";
@@ -53,13 +53,23 @@ export default function RequestConfirmationPage() {
             </div>
           )}
 
-          <Link
-            href="/"
-            className="mt-10 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-white transition hover:bg-primary-dark"
-          >
-            <ArrowLeft size={16} aria-hidden />
-            {success.backHome}
-          </Link>
+          <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+            <Link
+              href="/iniciar-sesion?tipo=consultante"
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-white transition hover:bg-primary-dark"
+            >
+              <UserRound size={16} aria-hidden />
+              Entrar a mi cuenta
+            </Link>
+
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-6 py-3 text-sm font-semibold text-text-muted transition hover:border-primary hover:text-primary"
+            >
+              <ArrowLeft size={16} aria-hidden />
+              {success.backHome}
+            </Link>
+          </div>
         </div>
       </main>
 
