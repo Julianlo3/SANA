@@ -21,3 +21,12 @@ export async function updateOwnProfile(
 export async function listMyRequests(signal?: AbortSignal): Promise<MyRequest[]> {
   return httpClient.get<MyRequest[]>("/appointments/my-requests", signal);
 }
+
+/**
+ * Retira una solicitud pendiente o asignada, o cancela una cita confirmada.
+ * El backend decide qué hacer según el estado y solo deja actuar sobre las
+ * citas pedidas por la propia cuenta.
+ */
+export async function cancelMyRequest(appId: number): Promise<void> {
+  await httpClient.patch<unknown>(`/appointments/${appId}/cancel`, {});
+}
