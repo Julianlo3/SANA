@@ -4,7 +4,7 @@ import { RateLimit } from '../../middlewares/rate-limit.decorator.js';
 import { BannersService } from './banners.service.js';
 
 /**
- * Read-only banners endpoint for the public site. Only active banners within their period are returned.
+ * Read-only banners endpoint for the public site. Only active banners are returned.
  */
 @Controller('public/banners')
 @UseGuards(RateLimitGuard)

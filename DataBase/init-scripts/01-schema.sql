@@ -1347,3 +1347,24 @@ CREATE INDEX IF NOT EXISTS "Content_Change_Log_content_idx"
     ON public.content_change_log (ccl_content_type, ccl_content_id, ccl_changed_at DESC);
 CREATE INDEX IF NOT EXISTS "Content_Change_Log_user_idx"
     ON public.content_change_log (use_id);
+-- ========================= MIGRATION 06/10/2026 =========================
+-- Los banners dejan de tener vigencia: se muestran mientras esten activos.
+-- ========================================================================
+
+ALTER TABLE public.banners
+    DROP CONSTRAINT IF EXISTS "Banners_period_ck",
+    DROP CONSTRAINT IF EXISTS "Banners_active_requires_ck";
+
+DROP INDEX IF EXISTS public."Banners_active_ends_idx";
+
+ALTER TABLE public.banners
+    DROP COLUMN IF EXISTS ban_starts_at,
+    DROP COLUMN IF EXISTS ban_ends_at;
+
+ALTER TABLE public.banners
+    ADD CONSTRAINT "Banners_active_requires_ck" CHECK (NOT ban_is_active OR ban_image_url IS NOT NULL);
+
+COMMENT ON TABLE public.banners
+    IS E'Banners de la pagina de inicio; los activos rotan en la primera pantalla';
+COMMENT ON COLUMN public.banners.ban_is_active
+    IS E'Activado por el usuario. Requiere imagen';
