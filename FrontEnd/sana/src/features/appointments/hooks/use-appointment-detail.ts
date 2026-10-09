@@ -9,16 +9,18 @@ import {
   confirmAppointment,
   discardAppointment,
   getAppointment,
+  updateAppointmentStatus,
 } from "../services/appointments-service";
 import type { Appointment } from "../types/appointment-types";
 
 const CONFIRM_NOTICE = "Cita confirmada.";
+const CANCEL_NOTICE = "Cita cancelada.";
 
 function messageFrom(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
 }
 
-/** Lógica del detalle de una solicitud: carga, asignar, confirmar y descartar. */
+/** Lógica del detalle de una solicitud: carga, asignar, confirmar, descartar y cancelar. */
 export function useAppointmentDetail(appointmentId: number) {
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,6 +34,7 @@ export function useAppointmentDetail(appointmentId: number) {
   const [isChangingSlot, setIsChangingSlot] = useState(false);
   const [isDiscarding, setIsDiscarding] = useState(false);
   const [discardReason, setDiscardReason] = useState("");
+  const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -66,6 +69,7 @@ export function useAppointmentDetail(appointmentId: number) {
         setIsChangingSlot(false);
         setIsDiscarding(false);
         setDiscardReason("");
+        setIsCancelling(false);
       } catch (error: unknown) {
         setActionError(
           messageFrom(error, "No pudimos completar la acción. Intenta de nuevo."),
@@ -130,8 +134,17 @@ export function useAppointmentDetail(appointmentId: number) {
     );
   }, [appointmentId, discardReason, run]);
 
+  /** Cancela una cita ya confirmada. El backend no admite cancelar desde otro estado. */
+  const cancel = useCallback(async () => {
+    await run(
+      () => updateAppointmentStatus(appointmentId, "cancelada"),
+      CANCEL_NOTICE,
+    );
+  }, [appointmentId, run]);
+
   const startChangingSlot = useCallback(() => {
     setIsDiscarding(false);
+    setIsCancelling(false);
     setActionError(null);
     setNotice(null);
     setIsChangingSlot(true);
@@ -145,6 +158,7 @@ export function useAppointmentDetail(appointmentId: number) {
 
   const startDiscarding = useCallback(() => {
     setIsChangingSlot(false);
+    setIsCancelling(false);
     setSelection(null);
     setActionError(null);
     setNotice(null);
@@ -154,6 +168,20 @@ export function useAppointmentDetail(appointmentId: number) {
   const cancelDiscarding = useCallback(() => {
     setIsDiscarding(false);
     setDiscardReason("");
+    setActionError(null);
+  }, []);
+
+  const startCancelling = useCallback(() => {
+    setIsChangingSlot(false);
+    setIsDiscarding(false);
+    setSelection(null);
+    setActionError(null);
+    setNotice(null);
+    setIsCancelling(true);
+  }, []);
+
+  const stopCancelling = useCallback(() => {
+    setIsCancelling(false);
     setActionError(null);
   }, []);
 
@@ -174,8 +202,12 @@ export function useAppointmentDetail(appointmentId: number) {
     cancelDiscarding,
     discardReason,
     setDiscardReason,
+    isCancelling,
+    startCancelling,
+    stopCancelling,
     assign,
     confirm,
     discard,
+    cancel,
   };
 }

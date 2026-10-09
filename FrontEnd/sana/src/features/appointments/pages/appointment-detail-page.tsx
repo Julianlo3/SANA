@@ -84,6 +84,7 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
 
   const isPending = appointment.appState === "pendiente";
   const isAssigned = appointment.appState === "asignada";
+  const isConfirmed = appointment.appState === "confirmada";
   const canAssign = isPending || (isAssigned && detail.isChangingSlot);
   const canDiscard = isPending || isAssigned;
   const ModeIcon = appointment.appType === "virtual" ? Video : MapPin;
@@ -368,6 +369,61 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
                     disabled={detail.isWorking}
                   >
                     Descartar solicitud
+                  </Button>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {isConfirmed && (
+          <section className={CARD_CLASS}>
+            <h2 className="font-display text-lg font-bold text-text">
+              Cancelar cita
+            </h2>
+
+            {detail.isCancelling ? (
+              <div className="mt-3 space-y-4">
+                <p className="text-sm text-text-muted">
+                  Vas a cancelar la cita de{" "}
+                  <strong className="text-text">{appointment.patientName}</strong>
+                  {appointment.appDate
+                    ? ` del ${formatDateTime(appointment.appDate)}`
+                    : ""}
+                  . Esta acción no se puede deshacer, y el sistema intenta
+                  avisar por correo a la persona y al psicólogo.
+                </p>
+
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <Button
+                    variant="danger"
+                    onClick={detail.cancel}
+                    disabled={detail.isWorking}
+                  >
+                    {detail.isWorking ? "Cancelando…" : "Sí, cancelar cita"}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={detail.stopCancelling}
+                    disabled={detail.isWorking}
+                  >
+                    Volver
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-3">
+                <p className="text-sm text-text-muted">
+                  Si la persona no puede asistir, puedes cancelar la cita
+                  confirmada.
+                </p>
+                <div className="mt-4">
+                  <Button
+                    variant="secondary"
+                    onClick={detail.startCancelling}
+                    disabled={detail.isWorking}
+                  >
+                    Cancelar cita
                   </Button>
                 </div>
               </div>
