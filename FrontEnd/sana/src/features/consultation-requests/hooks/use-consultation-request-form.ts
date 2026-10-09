@@ -108,6 +108,9 @@ const ALREADY_REGISTERED_CODE = "REQUESTER_ALREADY_REGISTERED";
 const ALREADY_REGISTERED_MESSAGE =
   "Estos datos ya están registrados. Si ya pediste una cita antes, entra con tu cuenta en Ingresar → Consultantes.";
 
+/** Mensaje para errores del servidor, sin afirmar cuál fue la causa. */
+const SERVER_ERROR_MESSAGE =
+  "No pudimos registrar tu solicitud. Si ya pediste una cita antes con estos datos, entra por Ingresar → Consultantes. Si el problema continúa, intenta más tarde o comunícate con la fundación.";
 /** Pasa los errores del backend a los campos del formulario. */
 function mapServerErrors(error: ApiError): RequestFormErrors {
   const mapped: RequestFormErrors = {};
@@ -360,6 +363,8 @@ export function useConsultationRequestForm(patientType: PatientType) {
         window.setTimeout(scrollToFirstError, 50);
       } else if (error.code === ALREADY_REGISTERED_CODE) {
         setSubmitError(ALREADY_REGISTERED_MESSAGE);
+      } else if (error.status >= 500) {
+        setSubmitError(SERVER_ERROR_MESSAGE);
       } else {
         setSubmitError(error.message);
       }
