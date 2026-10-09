@@ -8,9 +8,6 @@ import {
   Users,
   Calendar,
   CalendarCheck,
-  FolderOpen,
-  ClipboardList,
-  BarChart3,
   FileText,
   UserCog,
   ClipboardCheck,
@@ -27,48 +24,31 @@ type NavLink = {
   label: string;
   href: string;
   icon: typeof Users;
-  enabled: boolean;
 };
 
 /** Qué enlaces ve cada rol dentro de su propio grupo del menú. */
 const LINKS_BY_ROLE: Record<string, NavLink[]> = {
   administrador: [
-    { label: "Usuarios", href: "/usuarios", icon: UserCog, enabled: true },
-    { label: "Contenido", href: "/contenido", icon: FileText, enabled: true },
+    { label: "Usuarios", href: "/usuarios", icon: UserCog },
+    { label: "Contenido", href: "/contenido", icon: FileText },
   ],
-  marketing: [
-    { label: "Contenido", href: "/contenido", icon: FileText, enabled: true },
-  ],
+  marketing: [{ label: "Contenido", href: "/contenido", icon: FileText }],
   psicologo: [
-    { label: "Consultantes", href: "/consultantes", icon: Users, enabled: true },
-    { label: "Mis citas", href: "/mis-citas", icon: CalendarCheck, enabled: true },
+    { label: "Consultantes", href: "/consultantes", icon: Users },
+    { label: "Mis citas", href: "/mis-citas", icon: CalendarCheck },
     {
       label: "Registrar atención",
       href: "/registro-atencion/nuevo",
       icon: ClipboardCheck,
-      enabled: true,
     },
-    {
-      label: "Mi disponibilidad",
-      href: "/mi-disponibilidad",
-      icon: Calendar,
-      enabled: true,
-    },
+    { label: "Mi disponibilidad", href: "/mi-disponibilidad", icon: Calendar },
   ],
   secretario: [
-    { label: "Solicitudes", href: "/solicitudes", icon: Inbox, enabled: true },
-    { label: "Calendario", href: "/calendario", icon: Calendar, enabled: true },
-    { label: "Consultantes", href: "/consultantes", icon: Users, enabled: true },
+    { label: "Solicitudes", href: "/solicitudes", icon: Inbox },
+    { label: "Calendario", href: "/calendario", icon: Calendar },
+    { label: "Consultantes", href: "/consultantes", icon: Users },
   ],
 };
-
-/** Enlaces sin rol propio todavía: se agrupan aparte, visibles siempre. */
-const UPCOMING_LINKS: NavLink[] = [
-  { label: "Citas", href: "/citas", icon: Calendar, enabled: false },
-  { label: "Expedientes", href: "/expedientes", icon: FolderOpen, enabled: false },
-  { label: "Recepción", href: "/recepcion", icon: ClipboardList, enabled: false },
-  { label: "Reportes", href: "/reportes", icon: BarChart3, enabled: false },
-];
 
 type Props = {
   roles: string[];
@@ -91,19 +71,6 @@ export default function Sidebar({ roles, fullName }: Props) {
 
   function renderLink(link: NavLink) {
     const Icon = link.icon;
-
-    if (!link.enabled) {
-      return (
-        <span
-          key={link.href}
-          title="Disponible en un próximo sprint"
-          className="flex cursor-not-allowed items-center gap-3 rounded-xl px-4 py-2.5 text-text-subtle/40"
-        >
-          <Icon size={18} />
-          <span className="text-sm">{link.label}</span>
-        </span>
-      );
-    }
 
     return (
       <Link
@@ -203,13 +170,6 @@ export default function Sidebar({ roles, fullName }: Props) {
               );
             })
           )}
-
-          <div className="mt-2 border-t border-border pt-2">
-            <p className="px-4 py-1 text-xs font-bold uppercase tracking-wider text-text-subtle/60">
-              Próximamente
-            </p>
-            {UPCOMING_LINKS.map(renderLink)}
-          </div>
         </nav>
 
         <div className="mt-auto flex items-center gap-3 rounded-xl bg-surface p-3">
