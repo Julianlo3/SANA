@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CalendarPlus, Lock, UserRound } from "lucide-react";
 import InlineMessage from "@/components/feedback/inline-message";
 import TextField from "@/components/forms/text-field";
 import Button from "@/components/ui/button";
@@ -20,13 +21,21 @@ const GENDER_OPTIONS: { value: Gender; label: string }[] = [
   { value: "P", label: "No quiero especificar" },
 ];
 
+const ACTIVE_STATES = ["pendiente", "asignada", "confirmada"];
+
 const INPUT_CLASS =
   "mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:bg-surface-muted";
 
+function activeSummary(count: number): string {
+  if (count === 0) return "No tienes citas activas por ahora.";
+  if (count === 1) return "Tienes 1 cita activa.";
+  return `Tienes ${count} citas activas.`;
+}
+
 /**
- * Vista del consultante: su información, el estado de sus citas, y cancelar
- * o retirar una solicitud. También puede pedir una cita nueva para sí mismo
- * sin llenar todo el formulario otra vez.
+ * Vista del consultante: saludo, sus citas con el estado de cada una y, más
+ * abajo, sus datos. Puede cancelar o retirar una solicitud y pedir una cita
+ * nueva para sí mismo sin llenar todo el formulario otra vez.
  */
 export default function MyAccountPage() {
   const profile = useOwnProfile();
@@ -35,6 +44,11 @@ export default function MyAccountPage() {
     null,
   );
   const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
+
+  const firstName = profile.profile?.fullName.trim().split(" ")[0] ?? "";
+  const activeCount = requests.requests.filter((request) =>
+    ACTIVE_STATES.includes(request.appState),
+  ).length;
 
   const documentText =
     profile.profile?.identityDocument != null
@@ -56,13 +70,85 @@ export default function MyAccountPage() {
 
   return (
     <div className="space-y-10">
-      <section>
-        <h1 className="font-display text-3xl font-bold text-primary-dark">
+      <section
+        className="rounded-3xl p-6 sm:p-8"
+        style={{ backgroundColor: "#fbeaf0" }}
+      >
+        <p className="text-xs font-bold uppercase tracking-wider text-primary-dark">
           Mi cuenta
+        </p>
+        <h1 className="mt-2 font-display text-3xl font-extrabold text-primary-dark sm:text-4xl">
+          {firstName ? `¡Hola, ${firstName}!` : "¡Hola!"}
         </h1>
         <p className="mt-2 text-sm text-text-muted">
-          Consulta y actualiza tus datos, y revisa en qué va tu cita.
+          {requests.isLoading
+            ? "Cargando tus citas…"
+            : activeSummary(activeCount)}
         </p>
+
+        <div className="mt-6">
+          <Button
+            onClick={() => setIsNewRequestOpen(true)}
+            disabled={!profile.profile}
+          >
+            <span className="inline-flex items-center gap-2">
+              <CalendarPlus size={16} aria-hidden />
+              Solicitar una nueva cita
+            </span>
+          </Button>
+        </div>
+      </section>
+
+      <section>
+        <h2 className="font-display text-2xl font-bold text-primary-dark">
+          Mis citas
+        </h2>
+
+        {requests.loadError && (
+          <div className="mt-6">
+            <InlineMessage tone="error">{requests.loadError}</InlineMessage>
+          </div>
+        )}
+
+        {!requests.isLoading && !requests.loadError && (
+          <>
+            {requests.requests.length === 0 ? (
+              <p className="mt-6 rounded-2xl border border-dashed border-border bg-surface px-5 py-10 text-center text-sm text-text-subtle">
+                Todavía no tienes solicitudes. Cuando pidas una cita, la verás
+                aquí con su estado.
+              </p>
+            ) : (
+              <div className="mt-6 grid gap-5 sm:grid-cols-2">
+                {requests.requests.map((request) => (
+                  <RequestCard
+                    key={request.appId}
+                    request={request}
+                    onCancel={setRequestToCancel}
+                  />
+                ))}
+              </div>
+            )}
+
+            {requests.notice && (
+              <div className="mt-4">
+                <InlineMessage tone="success">{requests.notice}</InlineMessage>
+              </div>
+            )}
+
+            {requests.actionError && (
+              <div className="mt-4">
+                <InlineMessage tone="error">{requests.actionError}</InlineMessage>
+              </div>
+            )}
+          </>
+        )}
+      </section>
+
+      <section>
+        <h2 className="flex items-center gap-2 font-display text-2xl font-bold text-primary-dark">
+          <UserRound size={22} aria-hidden />
+          Mis datos
+        </h2>
 
         {profile.isLoading && (
           <p className="mt-6 text-sm text-text-subtle">Cargando tu información…</p>
@@ -75,7 +161,7 @@ export default function MyAccountPage() {
         )}
 
         {profile.profile && (
-          <div className="mt-6 space-y-5 rounded-2xl border border-border bg-surface p-6">
+          <div className="mt-6 space-y-5 rounded-2xl border border-border bg-surface p-6 shadow-sm">
             <TextField
               label="Nombre completo"
               required
@@ -100,6 +186,11 @@ export default function MyAccountPage() {
                 hint="Es la cuenta con la que inicias sesión."
               />
             </div>
+
+            <p className="flex items-center gap-2 text-xs text-text-subtle">
+              <Lock size={12} aria-hidden />
+              El documento y el correo no se pueden editar.
+            </p>
 
             <div className="grid gap-5 sm:grid-cols-2">
               <TextField
@@ -192,62 +283,6 @@ export default function MyAccountPage() {
               <InlineMessage tone="error">{profile.saveError}</InlineMessage>
             )}
           </div>
-        )}
-      </section>
-
-      <section>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-display text-2xl font-bold text-primary-dark">
-            Mis citas
-          </h2>
-          <Button
-            onClick={() => setIsNewRequestOpen(true)}
-            disabled={!profile.profile}
-          >
-            Solicitar una nueva cita
-          </Button>
-        </div>
-
-        {requests.isLoading && (
-          <p className="mt-6 text-sm text-text-subtle">Cargando tus citas…</p>
-        )}
-
-        {requests.loadError && (
-          <div className="mt-6">
-            <InlineMessage tone="error">{requests.loadError}</InlineMessage>
-          </div>
-        )}
-
-        {!requests.isLoading && !requests.loadError && (
-          <>
-            {requests.requests.length === 0 ? (
-              <p className="mt-6 rounded-2xl border border-border bg-surface px-5 py-10 text-center text-sm text-text-subtle">
-                Todavía no tienes solicitudes de cita.
-              </p>
-            ) : (
-              <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                {requests.requests.map((request) => (
-                  <RequestCard
-                    key={request.appId}
-                    request={request}
-                    onCancel={setRequestToCancel}
-                  />
-                ))}
-              </div>
-            )}
-
-            {requests.notice && (
-              <div className="mt-4">
-                <InlineMessage tone="success">{requests.notice}</InlineMessage>
-              </div>
-            )}
-
-            {requests.actionError && (
-              <div className="mt-4">
-                <InlineMessage tone="error">{requests.actionError}</InlineMessage>
-              </div>
-            )}
-          </>
         )}
       </section>
 
