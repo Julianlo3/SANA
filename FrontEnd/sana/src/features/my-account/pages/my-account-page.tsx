@@ -7,6 +7,7 @@ import Button from "@/components/ui/button";
 import type { Gender } from "@/features/consultation-requests/types/consultation-request-types";
 import { keepDigits } from "@/lib/format/text";
 import CancelRequestDialog from "../components/cancel-request-dialog";
+import NewRequestDialog from "../components/new-request-dialog";
 import RequestCard from "../components/request-card";
 import { useMyRequests } from "../hooks/use-my-requests";
 import { useOwnProfile } from "../hooks/use-own-profile";
@@ -24,8 +25,8 @@ const INPUT_CLASS =
 
 /**
  * Vista del consultante: su información, el estado de sus citas, y cancelar
- * o retirar una solicitud. Pedir una cita nueva sin llenar todo otra vez
- * queda desactivado hasta que el backend tenga ese endpoint.
+ * o retirar una solicitud. También puede pedir una cita nueva para sí mismo
+ * sin llenar todo el formulario otra vez.
  */
 export default function MyAccountPage() {
   const profile = useOwnProfile();
@@ -33,6 +34,7 @@ export default function MyAccountPage() {
   const [requestToCancel, setRequestToCancel] = useState<MyRequest | null>(
     null,
   );
+  const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
 
   const documentText =
     profile.profile?.identityDocument != null
@@ -43,6 +45,13 @@ export default function MyAccountPage() {
     if (!requestToCancel) return;
     await requests.cancel(requestToCancel);
     setRequestToCancel(null);
+  }
+
+  function handleCreated() {
+    setIsNewRequestOpen(false);
+    requests.reload(
+      "Tu solicitud fue enviada. Una asistente te contactará para confirmar la cita.",
+    );
   }
 
   return (
@@ -191,7 +200,10 @@ export default function MyAccountPage() {
           <h2 className="font-display text-2xl font-bold text-primary-dark">
             Mis citas
           </h2>
-          <Button variant="secondary" disabled onClick={() => undefined}>
+          <Button
+            onClick={() => setIsNewRequestOpen(true)}
+            disabled={!profile.profile}
+          >
             Solicitar una nueva cita
           </Button>
         </div>
@@ -224,11 +236,6 @@ export default function MyAccountPage() {
               </div>
             )}
 
-            <p className="mt-4 text-xs text-text-subtle">
-              Pronto podrás pedir una nueva cita desde aquí sin llenar todo otra
-              vez.
-            </p>
-
             {requests.notice && (
               <div className="mt-4">
                 <InlineMessage tone="success">{requests.notice}</InlineMessage>
@@ -250,6 +257,14 @@ export default function MyAccountPage() {
           isSaving={requests.cancelingId === requestToCancel.appId}
           onConfirm={confirmCancel}
           onClose={() => setRequestToCancel(null)}
+        />
+      )}
+
+      {isNewRequestOpen && profile.profile && (
+        <NewRequestDialog
+          profile={profile.profile}
+          onCreated={handleCreated}
+          onClose={() => setIsNewRequestOpen(false)}
         />
       )}
     </div>
