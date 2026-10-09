@@ -14,10 +14,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { JwtAuthGuard } from '../guards/jwt-auth.guard.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { OriginGuard } from '../guards/origin.guard.js';
 import { RolesGuard } from '../guards/roles.guard.js';
-import type { AuthenticatedUser } from '../interfaces/auth.interface.js';
+import type { AuthenticatedUser } from '../auth/auth.interface.js';
 import { Roles } from '../middlewares/roles.decorator.js';
 import { UserRole } from '../models/user-role.enum.js';
 import { AppointmentsService } from './appointments.service.js';
@@ -78,6 +78,41 @@ export class AppointmentsController {
   }
 
   /**
+   * Protected endpoint: Lists appointments requested by the authenticated consultant.
+   * @param request The HTTP request object.
+   * @returns A promise resolving to the list of requested appointments.
+   */
+  @Get('my-requests')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Requester)
+  findMyRequests(@Req() request: Request & { user: AuthenticatedUser }) {
+    return this.appointmentsService.findByRequester(request.user.personId);
+  }
+
+  /**
+   * Protected endpoint: Allows an authenticated consultant to withdraw an unconfirmed request
+   * or cancel their own confirmed appointment.
+   * @param request The HTTP request object.
+   * @param id The ID of the appointment to cancel.
+   * @returns A promise resolving to the withdrawn or cancelled appointment.
+   */
+  @Patch(':id/cancel')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Requester)
+  cancelOwnAppointment(
+    @Req() request: Request & { user: AuthenticatedUser },
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    this.logger.log(
+      `Module:appointments, Function:cancelOwnAppointment, result-start: appId-${id}, requesterId-${request.user.personId}`,
+    );
+    return this.appointmentsService.cancelOwnAppointment(
+      id,
+      request.user.personId,
+    );
+  }
+
+  /**
    * Protected endpoint: Lists active psychologists for the assignment selector.
    * @returns A promise resolving to the list of available psychologists.
    */
@@ -106,6 +141,23 @@ export class AppointmentsController {
       `Module:appointments, Function:markAsCompleted, result-start: appId-${id}, psychologistId-${request.user.personId}`,
     );
     return this.appointmentsService.markAsCompleted(id, request.user.personId);
+  }
+
+  /**
+   * Protected endpoint: Psychologist gets their assigned appointments.
+   * Only returns accepted (confirmada) appointments by default, unless filtered by state.
+   * @param request The HTTP request object.
+   * @param state Optional state filter (confirmada, realizada, cancelada).
+   * @returns A promise resolving to the list of appointments.
+   */
+  @Get('my-appointments')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Psychologist)
+  findMyAppointments(
+    @Req() request: Request & { user: AuthenticatedUser },
+    @Query('state') state?: 'confirmada' | 'realizada' | 'cancelada',
+  ) {
+    return this.appointmentsService.findByPsychologist(request.user.personId, state);
   }
 
   /**
@@ -218,23 +270,6 @@ export class AppointmentsController {
   @Roles(UserRole.Secretary)
   findPatientPsychologistHistory(@Param('id', ParseIntPipe) id: number) {
     return this.appointmentsService.findPatientPsychologistHistory(id);
-  }
-
-  /**
-   * Protected endpoint: Psychologist gets their assigned appointments.
-   * Only returns accepted (confirmada) appointments by default, unless filtered by state.
-   * @param request The HTTP request object.
-   * @param state Optional state filter (confirmada, realizada, cancelada).
-   * @returns A promise resolving to the list of appointments.
-   */
-  @Get('my-appointments')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.Psychologist)
-  findMyAppointments(
-    @Req() request: Request & { user: AuthenticatedUser },
-    @Query('state') state?: 'confirmada' | 'realizada' | 'cancelada',
-  ) {
-    return this.appointmentsService.findByPsychologist(request.user.personId, state);
   }
 
   /**

@@ -49,6 +49,18 @@ export interface AppointmentRow {
   relationshipDescription: string | null;
 }
 
+export interface RequesterAppointmentRow {
+  appId: number;
+  appState: string;
+  appType: string;
+  appDate: string | null;
+  appDuration: number | null;
+  appCreatedAt: string;
+  patientType: 'self' | 'dependent';
+  patientName: string;
+  psychologistName: string | null;
+}
+
 export interface RelationshipRow {
   relId: number;
   relDescription: string;
@@ -127,6 +139,36 @@ export class AppointmentsRepository {
         ${whereClause}
         ORDER BY a.app_created_at DESC`,
       params,
+    );
+  }
+
+  /**
+   * Finds appointments requested by a specific requester.
+   * @param requesterId The ID of the requester.
+   * @returns A promise resolving to the list of requested appointments.
+   */
+  findByRequester(requesterId: number): Promise<RequesterAppointmentRow[]> {
+    return this.dataSource.query<RequesterAppointmentRow[]>(
+      `SELECT
+          a.app_id AS "appId",
+          a.app_state AS "appState",
+          a.app_type AS "appType",
+          a.app_date AS "appDate",
+          a.app_duration AS "appDuration",
+          a.app_created_at AS "appCreatedAt",
+          CASE
+            WHEN a.app_patient_dependent_id IS NOT NULL THEN 'dependent'
+            ELSE 'self'
+          END AS "patientType",
+          COALESCE(dep.dep_name, req.per_name) AS "patientName",
+          psy.per_name AS "psychologistName"
+        FROM appointments a
+        JOIN person req ON req.per_id = a.req_id
+        LEFT JOIN dependents dep ON dep.dep_id = a.app_patient_dependent_id
+        LEFT JOIN person psy ON psy.per_id = a.psy_id
+        WHERE a.req_id = $1
+        ORDER BY a.app_created_at DESC`,
+      [requesterId],
     );
   }
 
@@ -589,6 +631,61 @@ export class AppointmentsRepository {
         );
       }
 
+      return true;
+    });
+  }
+
+  /**
+   * Cancels a confirmed appointment only when it belongs to the requester, and removes its schedule occupancy.
+   * @param appId The ID of the appointment to cancel.
+   * @param requesterId The ID of the person requesting the cancellation.
+   * @returns A promise resolving to a boolean indicating whether the cancellation was successful.
+   */
+  cancelByRequester(appId: number, requesterId: number): Promise<boolean> {
+    return this.dataSource.transaction(async (manager) => {
+      const updated = await manager.query<{ app_id: number }[]>(
+        `UPDATE appointments
+         SET app_state = 'cancelada'
+         WHERE app_id = $1
+           AND req_id = $2
+           AND app_state = 'confirmada'
+         RETURNING app_id`,
+        [appId, requesterId],
+      );
+      if (updated.length === 0) return false;
+
+      await manager.query(
+        `DELETE FROM schedule_occupancy WHERE app_id = $1`,
+        [appId],
+      );
+      return true;
+    });
+  }
+
+  /**
+   * Discards a request that has not yet been confirmed by the secretary.
+   * @param appId The ID of the appointment to discard.
+   * @param requesterId The ID of the person requesting the discard.
+   * @returns A promise resolving to a boolean indicating whether the discard was successful.
+   */
+  discardByRequester(appId: number, requesterId: number): Promise<boolean> {
+    return this.dataSource.transaction(async (manager) => {
+      const updated = await manager.query<{ app_id: number }[]>(
+        `UPDATE appointments
+         SET app_state = 'descartada',
+             app_discard_reason = 'Solicitud retirada por el consultante'
+         WHERE app_id = $1
+           AND req_id = $2
+           AND app_state IN ('pendiente', 'asignada')
+         RETURNING app_id`,
+        [appId, requesterId],
+      );
+      if (updated.length === 0) return false;
+
+      await manager.query(
+        `DELETE FROM schedule_occupancy WHERE app_id = $1`,
+        [appId],
+      );
       return true;
     });
   }

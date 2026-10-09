@@ -6,12 +6,13 @@ import {
   Users,
   CalendarCheck,
 } from "lucide-react";
-import { PawPrint, Star, Cloud, Wave } from "@/components/ui/shapes";
+import { Wave } from "@/components/ui/shapes";
+import CurveShape from "@/components/ui/curve-shape";
 import PublicHeader from "@/components/navigation/public-header";
 import PublicFooter from "@/components/navigation/public-footer";
 import PendingContentNotice from "@/components/feedback/pending-content-notice";
 import { HOME_CONTENT } from "@/content/home";
-import BannerCarousel from "@/features/content/components/banner-carousel";
+import HeroCarousel from "@/features/content/components/hero-carousel";
 import NewsCard from "@/features/content/components/news-card";
 import {
   getPublicBanners,
@@ -23,8 +24,17 @@ import {
 const { hero, about, programs, services, team, news, gallery, donation } =
   HOME_CONTENT;
 
-/** Iconos de cada programa, en el mismo orden que el contenido. */
 const PROGRAM_ICONS = [HeartHandshake, ShieldCheck, Users];
+
+const COLORS = {
+  pink: "#eb5886",
+  pinkSoft: "#fbeaf0",
+  pinkDark: "#993556",
+  teal: "#43acb6",
+  tealSoft: "#e1f5ee",
+  navy: "#134176",
+  navySoft: "#b5d4f4",
+};
 
 export default async function HomePage() {
   const [content, latestNews, galleryImages, banners] = await Promise.all([
@@ -39,75 +49,60 @@ export default async function HomePage() {
       <PublicHeader />
 
       <main className="flex-1">
-        {/* HERO */}
-        <section className="relative overflow-hidden">
+        {/* HERO — rosa */}
+        <HeroCarousel
+          slides={banners.map((banner) => ({
+            key: String(banner.id),
+            src: banner.imageUrl,
+            alt: banner.imageAlt,
+          }))}
+        >
+
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 overflow-hidden"
           >
-            <span className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-accent-soft opacity-70" />
-            <span className="absolute right-0 top-24 h-72 w-72 rounded-full bg-highlight opacity-60" />
-
-            <Cloud className="absolute left-1/4 top-6 w-28 text-white opacity-90" />
-            <Cloud className="absolute right-1/3 top-16 w-20 text-white opacity-70" />
-
-            <Star className="absolute left-8 top-40 w-6 text-highlight" />
-            <Star className="absolute left-1/3 top-24 w-4 text-accent opacity-60" />
-            <Star className="absolute bottom-24 right-10 w-7 text-accent-soft" />
-
-            <PawPrint className="absolute -left-4 bottom-10 w-16 -rotate-12 text-primary-soft" />
-            <PawPrint className="absolute bottom-24 left-20 w-10 rotate-12 text-primary-soft opacity-70" />
-            <PawPrint className="absolute right-1/4 top-8 w-12 rotate-45 text-accent-soft" />
+            <CurveShape
+              className="absolute -left-10 top-0 h-full w-32 sm:w-48"
+              style={{ color: COLORS.pink }}
+            />
+            <CurveShape
+              flip
+              className="absolute -right-10 top-0 h-full w-32 sm:w-48"
+              style={{ color: COLORS.pink }}
+            />
           </div>
 
-          <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-6 py-20 lg:grid-cols-2">
-            <div>
-              <span className="inline-block rounded-full bg-primary-soft px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-primary">
+          <div
+            className="absolute inset-x-0 top-1/2 -translate-y-1/2 px-6 py-5 text-center sm:py-7"
+            style={{ backgroundColor: `${COLORS.navy}b3` }}
+          >
+            <div className="mx-auto max-w-3xl">
+              <p className="font-display text-sm font-bold uppercase tracking-wide text-white sm:text-lg">
                 {hero.eyebrow}
-              </span>
+              </p>
 
-              <h1 className="mt-6 font-display text-4xl font-extrabold leading-tight text-primary-dark sm:text-5xl">
+              <h1 className="mt-1 font-display text-3xl font-extrabold uppercase leading-tight text-white sm:text-5xl">
                 {hero.title}
               </h1>
 
-              <p className="mt-6 max-w-lg leading-relaxed text-text-muted">
+              <p className="mx-auto mt-2 max-w-xl text-xs leading-relaxed text-white sm:text-sm">
                 {hero.description}
               </p>
 
-              <div className="mt-9 flex flex-wrap gap-4">
-                                <Link
-                  href="/solicitar-cita"
-                  className="flex cursor-pointer items-center gap-2 rounded-full bg-primary px-7 py-3.5 font-bold text-white transition hover:bg-primary-dark"
-                >
-                  <CalendarCheck size={18} aria-hidden />
-                  {hero.primaryAction}
-                </Link>
-
-                <Link
-                  href="#about"
-                  className="rounded-full border border-border bg-surface px-7 py-3.5 font-bold text-text-muted transition hover:border-primary hover:text-primary"
-                >
-                  {hero.secondaryAction}
-                </Link>
-              </div>
-            </div>
-
-            <div className="relative aspect-[4/3] overflow-hidden rounded-3xl">
-              <Image
-                src={hero.image.src}
-                alt={hero.image.alt}
-                fill
-                priority
-                sizes="(max-width: 1024px) 100vw, 50vw"
-                className="object-cover"
-              />
+              <Link
+                href="/solicitar-cita"
+                className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-white px-6 py-2 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white"
+                style={{ color: "white" }}
+              >
+                <CalendarCheck size={16} aria-hidden />
+                {hero.primaryAction}
+              </Link>
             </div>
           </div>
+        </HeroCarousel>
 
-          <BannerCarousel banners={banners} />
-        </section>
-
-        {/* QUIÉNES SOMOS */}
+        {/* QUIÉNES SOMOS — blanco, acentos rosa */}
         <section id="about" className="mx-auto max-w-6xl px-6 py-20">
           <div className="grid gap-12 lg:grid-cols-2">
             <div className="relative aspect-[4/3] overflow-hidden rounded-3xl">
@@ -121,7 +116,10 @@ export default async function HomePage() {
             </div>
 
             <div className="flex flex-col justify-center">
-              <h2 className="font-display text-4xl font-extrabold text-primary-dark">
+              <h2
+                className="font-display text-4xl font-extrabold"
+                style={{ color: COLORS.pink }}
+              >
                 {about.title}
               </h2>
 
@@ -146,7 +144,10 @@ export default async function HomePage() {
           </div>
 
           <div className="mt-14">
-            <h3 className="font-display text-2xl font-bold text-primary-dark">
+            <h3
+              className="font-display text-2xl font-bold"
+              style={{ color: COLORS.pink }}
+            >
               {about.valuesTitle}
             </h3>
 
@@ -172,10 +173,11 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* PROGRAMAS */}
+        {/* PROGRAMAS — turquesa */}
         <section
           id="programs"
-          className="relative overflow-hidden bg-sidebar py-24"
+          className="relative overflow-hidden py-24"
+          style={{ backgroundColor: COLORS.teal }}
         >
           <Wave
             aria-hidden
@@ -183,7 +185,7 @@ export default async function HomePage() {
           />
 
           <div className="relative mx-auto max-w-6xl px-6">
-            <h2 className="text-center font-display text-4xl font-extrabold text-primary-dark">
+            <h2 className="text-center font-display text-4xl font-extrabold text-white">
               {programs.title}
             </h2>
 
@@ -199,9 +201,12 @@ export default async function HomePage() {
                 return (
                   <article
                     key={program.id}
-                    className="rounded-2xl border border-border bg-surface p-7"
+                    className="rounded-2xl bg-white p-7"
                   >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-soft text-accent-strong">
+                    <div
+                      className="flex h-12 w-12 items-center justify-center rounded-2xl"
+                      style={{ backgroundColor: COLORS.tealSoft, color: COLORS.teal }}
+                    >
                       <Icon size={22} aria-hidden />
                     </div>
 
@@ -224,8 +229,12 @@ export default async function HomePage() {
           />
         </section>
 
+        {/* SERVICIOS — blanco */}
         <section id="services" className="mx-auto max-w-6xl px-6 py-20">
-          <h2 className="font-display text-4xl font-extrabold text-primary-dark">
+          <h2
+            className="font-display text-4xl font-extrabold"
+            style={{ color: COLORS.pink }}
+          >
             {services.title}
           </h2>
 
@@ -250,9 +259,10 @@ export default async function HomePage() {
           )}
         </section>
 
-        <section id="team" className="bg-sidebar py-20">
+        {/* EQUIPO — azul marino */}
+        <section className="py-20" style={{ backgroundColor: COLORS.navy }}>
           <div className="mx-auto max-w-6xl px-6">
-            <h2 className="font-display text-4xl font-extrabold text-primary-dark">
+            <h2 className="font-display text-4xl font-extrabold text-white">
               {team.title}
             </h2>
 
@@ -261,9 +271,12 @@ export default async function HomePage() {
                 {content.team.map((member) => (
                   <article
                     key={member.id}
-                    className="rounded-2xl border border-border bg-surface p-6 text-center"
+                    className="rounded-2xl bg-white p-6 text-center"
                   >
-                    <div className="relative mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-primary-soft font-display text-2xl font-bold text-primary">
+                    <div
+                      className="relative mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-full font-display text-2xl font-bold"
+                      style={{ backgroundColor: COLORS.navySoft, color: COLORS.navy }}
+                    >
                       {member.imageUrl ? (
                         <Image
                           src={member.imageUrl}
@@ -279,7 +292,10 @@ export default async function HomePage() {
                     <h3 className="mt-4 font-semibold text-text">
                       {member.title}
                     </h3>
-                    <p className="mt-1 text-sm text-accent-strong">
+                    <p
+                      className="mt-1 text-sm font-semibold"
+                      style={{ color: COLORS.pink }}
+                    >
                       {member.subtitle}
                     </p>
                     {member.description && (
@@ -296,9 +312,12 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* NOTICIAS */}
+        {/* NOTICIAS — blanco */}
         <section id="news" className="mx-auto max-w-6xl px-6 py-20">
-          <h2 className="font-display text-4xl font-extrabold text-primary-dark">
+          <h2
+            className="font-display text-4xl font-extrabold"
+            style={{ color: COLORS.pink }}
+          >
             {news.title}
           </h2>
 
@@ -312,7 +331,8 @@ export default async function HomePage() {
               {latestNews.total > latestNews.items.length && (
                 <Link
                   href="/noticias"
-                  className="mt-8 inline-block font-semibold text-primary hover:text-primary-dark"
+                  className="mt-8 inline-block font-semibold transition"
+                  style={{ color: COLORS.pink }}
                 >
                   {news.seeAll}
                 </Link>
@@ -323,9 +343,13 @@ export default async function HomePage() {
           )}
         </section>
 
-        <section id="gallery" className="bg-sidebar py-20">
+        {/* GALERÍA — rosa suave */}
+        <section className="py-20" style={{ backgroundColor: COLORS.pinkSoft }}>
           <div className="mx-auto max-w-6xl px-6">
-            <h2 className="font-display text-4xl font-extrabold text-primary-dark">
+            <h2
+              className="font-display text-4xl font-extrabold"
+              style={{ color: COLORS.pinkDark }}
+            >
               {gallery.title}
             </h2>
 
@@ -334,7 +358,7 @@ export default async function HomePage() {
                 {galleryImages.map((image) => (
                   <figure
                     key={image.id}
-                    className="overflow-hidden rounded-2xl border border-border bg-surface"
+                    className="overflow-hidden rounded-2xl bg-white"
                   >
                     <div className="relative aspect-[4/3]">
                       <Image
@@ -359,8 +383,8 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* DONACIONES */}
-        <section className="mx-auto max-w-6xl px-6 pb-20">
+        {/* DONACIONES — rosa */}
+        <section className="mx-auto max-w-6xl px-6 pb-20 pt-20">
           <div className="relative overflow-hidden rounded-3xl">
             <Image
               src={donation.image.src}
@@ -370,8 +394,10 @@ export default async function HomePage() {
               className="object-cover"
             />
 
-            {/* Capa turquesa para que el texto se lea sobre la foto. */}
-            <div className="absolute inset-0 bg-primary/85" />
+            <div
+              className="absolute inset-0"
+              style={{ backgroundColor: `${COLORS.pink}d9` }}
+            />
 
             <div className="relative px-8 py-16 text-center">
               <h2 className="font-display text-4xl font-extrabold text-white">
@@ -384,7 +410,8 @@ export default async function HomePage() {
 
               <button
                 type="button"
-                className="mt-8 cursor-pointer rounded-full bg-accent px-8 py-3.5 font-bold text-white transition hover:bg-accent-strong"
+                className="mt-8 cursor-pointer rounded-full bg-white px-8 py-3.5 font-bold transition"
+                style={{ color: COLORS.pink }}
               >
                 {donation.action}
               </button>

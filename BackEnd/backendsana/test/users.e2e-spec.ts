@@ -8,7 +8,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module.js';
-import { Auth0IdentityService } from '../src/services/auth0-identity.service.js';
+import { Auth0IdentityService } from '../src/auth/auth0-identity.service.js';
 
 /**
  * Pruebas de HU-1.2 (creacion directa) y HU-1.3 (editar/bloquear/desactivar/

@@ -14,6 +14,7 @@ export default async function PanelHome() {
     redirect("/consultantes");
   }
   if (user.roles.includes("marketing")) redirect("/contenido/institucional");
+  if (user.roles.includes("consultante")) redirect("/mi-cuenta");
 
   redirect("/acceso-restringido");
 }

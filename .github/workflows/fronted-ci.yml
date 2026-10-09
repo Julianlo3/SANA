@@ -49,9 +49,13 @@ jobs:
       - name: Check TypeScript
         run: npx tsc --noEmit
 
-      # Auditoría de dependencias
+      # Auditoría de dependencias (solo producción: lo que corre en el
+      # sitio en vivo). braces@3.0.3 (GHSA-vfj7-8cjw-p6xm), vulnerabilidad
+      # de alta severidad sin fix disponible todavía, vive únicamente en
+      # la cadena de devDependencies de eslint-config-next (el linter) y
+      # nunca llega a producción ni procesa entrada externa.
       - name: Audit dependencies
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=high --omit=dev
 
       # Verifica que Next.js pueda compilarse
       - name: Build Next.js

@@ -17,6 +17,7 @@ import {
   type AppointmentRow,
   type PsychologistHistoryRow,
   type PsychologistOptionRow,
+  type RequesterAppointmentRow,
   type RelationshipRow,
 } from './appointments.repository.js';
 import { ScheduleService } from '../schedule/schedule.service.js';
@@ -450,12 +451,82 @@ export class AppointmentsService {
   }
 
   /**
+   * Cancels an appointment requested by the authenticated user.
+   * @param appId The ID of the appointment to cancel.
+   * @param requesterPersonId The ID of the person requesting the cancellation.
+   * @returns A promise resolving to the cancelled appointment.
+   */
+  async cancelOwnAppointment(
+    appId: number,
+    requesterPersonId: number,
+  ): Promise<AppointmentRow> {
+    const appointment = await this.findByIdOrFail(appId);
+    if (appointment.requesterId !== requesterPersonId) {
+      throw new ForbiddenException({
+        error: 'APPOINTMENT_NOT_REQUESTED_BY_USER',
+        message: 'Solo puede cancelar citas solicitadas por su cuenta',
+      });
+    }
+
+    let transitioned: boolean;
+    const isConfirmed = appointment.appState === 'confirmada';
+    if (isConfirmed) {
+      transitioned = await this.repo.cancelByRequester(
+        appId,
+        requesterPersonId,
+      );
+    } else if (['pendiente', 'asignada'].includes(appointment.appState)) {
+      transitioned = await this.repo.discardByRequester(
+        appId,
+        requesterPersonId,
+      );
+    } else if (['cancelada', 'realizada', 'descartada'].includes(appointment.appState)) {
+      throw new BadRequestException({
+        error: 'APPOINTMENT_ALREADY_CLOSED',
+        message: `La cita ya se encuentra en estado '${appointment.appState}' y no puede modificarse`,
+      });
+    } else {
+      throw new BadRequestException({
+        error: 'APPOINTMENT_NOT_CANCELLABLE',
+        message: 'Solo puede retirar solicitudes pendientes o asignadas, o cancelar citas confirmadas',
+      });
+    }
+
+    if (!transitioned) {
+      throw new ConflictException({
+        error: 'APPOINTMENT_STATE_CHANGED',
+        message: 'La cita cambió de estado y ya no puede retirarse o cancelarse',
+      });
+    }
+
+    const updated = await this.findByIdOrFail(appId);
+    this.logger.log(
+      `Module:appointments, Function:cancelOwnAppointment, result-success: appId-${appId}, requesterId-${requesterPersonId}`,
+    );
+    if (isConfirmed) {
+      await this.sendCancellationNotification(updated);
+    }
+    return updated;
+  }
+
+  /**
    * Finds all appointments with an optional state filter.
    * @param state The state to filter appointments by.
    * @returns A promise resolving to the list of appointments.
    */
   async findAll(state?: string): Promise<AppointmentRow[]> {
     return this.repo.findAll(state);
+  }
+
+  /**
+   * Finds appointments requested by a specific requester.
+   * @param requesterId The ID of the requester.
+   * @returns A promise resolving to the list of requested appointments.
+   */
+  async findByRequester(
+    requesterId: number,
+  ): Promise<RequesterAppointmentRow[]> {
+    return await this.repo.findByRequester(requesterId);
   }
 
   /**

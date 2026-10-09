@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { AuthenticatedUser } from '../interfaces/auth.interface.js';
+import type { AuthenticatedUser } from '../auth/auth.interface.js';
 import { ScheduleRepository } from './schedule.repository.js';
 import { PolicyService } from '../policy/policy.service.js';
 import type { CreateScheduleBlockDto } from './dto/create-schedule-block.dto.js';
@@ -13,6 +13,7 @@ import type { CreateRecurringScheduleBlockDto } from './dto/create-recurring-sch
 import type { RecurringScheduleBlockResponse } from './dto/recurring-schedule-block-response.dto.js';
 import type { ScheduleAvailabilityQueryDto } from './dto/schedule-availability-query.dto.js';
 import type { ScheduleAvailabilitySlot } from './dto/schedule-availability-response.dto.js';
+import type { ScheduleCalendarResponse } from './dto/schedule-calendar-response.dto.js';
 
 /**
  * Service for managing schedule blocks and recurring schedule blocks for psychologists.
@@ -32,6 +33,30 @@ export class ScheduleService {
   async findMyBlocks(user: AuthenticatedUser): Promise<ScheduleBlockResponse[]> {
     this.ensurePsychologist(user);
     return this.repository.findBlocks(user.personId);
+  }
+
+  /**
+   * Finds all schedule blocks for a psychologist selected by a secretary.
+   * @param psychologistId The ID of the psychologist.
+   * @returns A promise that resolves to the list of schedule blocks.
+   */
+  async findPsychologistBlocks(
+    psychologistId: number,
+  ): Promise<ScheduleBlockResponse[]> {
+    this.validatePsychologistId(psychologistId);
+    return this.repository.findBlocks(psychologistId);
+  }
+
+  /**
+   * Finds availability and occupied intervals for a psychologist's calendar.
+   * @param psychologistId The ID of the psychologist.
+   * @returns The calendar split into availability and occupancy.
+   */
+  async findPsychologistCalendar(
+    psychologistId: number,
+  ): Promise<ScheduleCalendarResponse> {
+    this.validatePsychologistId(psychologistId);
+    return this.repository.findCalendar(psychologistId);
   }
 
   /**
@@ -272,6 +297,15 @@ export class ScheduleService {
       throw new BadRequestException({
         error: 'PSYCHOLOGIST_REQUIRED',
         message: 'Solo un psicólogo puede gestionar su propio schedule',
+      });
+    }
+  }
+
+  private validatePsychologistId(psychologistId: number): void {
+    if (!Number.isInteger(psychologistId) || psychologistId <= 0) {
+      throw new BadRequestException({
+        error: 'INVALID_PSYCHOLOGIST_ID',
+        message: 'El ID del psicólogo debe ser un entero positivo',
       });
     }
   }

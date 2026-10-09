@@ -7,11 +7,14 @@ import { PersonRol } from '../users/entities/person-rol.entity.js';
 import { Rol } from '../users/entities/rol.entity.js';
 import { Appointment } from '../users/entities/appointment.entity.js';
 import { Psychologist } from '../users/entities/psychologist.entity.js';
-import { AuthModule } from '../modules/auth.module.js';
+import { AuthModule } from '../auth/auth.module.js';
+import { RolesGuard } from '../guards/roles.guard.js';
+import { SecurityLogModule } from '../security-logs/security-log.module.js';
 
 @Module({
   imports: [
     AuthModule,
+    SecurityLogModule,
     TypeOrmModule.forFeature([
       Person,
       PersonRol,
@@ -21,7 +24,7 @@ import { AuthModule } from '../modules/auth.module.js';
     ]),
   ],
   controllers: [ConsultantsController],
-  providers: [ConsultantsService],
+  providers: [ConsultantsService, RolesGuard],
   exports: [ConsultantsService],
 })
 export class ConsultantsModule {}

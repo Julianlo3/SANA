@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuthModule } from '../modules/auth.module.js';
+import { AuthModule } from '../auth/auth.module.js';
+import { RolesGuard } from '../guards/roles.guard.js';
+import { SecurityLogModule } from '../security-logs/security-log.module.js';
 import { BannersController } from './banners/banners.controller.js';
 import { BannersRepository } from './banners/banners.repository.js';
 import { BannersService } from './banners/banners.service.js';
@@ -30,6 +32,7 @@ import { PublicContentController } from './public-content.controller.js';
 @Module({
   imports: [
     AuthModule,
+    SecurityLogModule,
     TypeOrmModule.forFeature([
       ContentItem,
       ContentCard,
@@ -61,6 +64,7 @@ import { PublicContentController } from './public-content.controller.js';
     BannersRepository,
     BannersService,
     CloudinaryService,
+    RolesGuard,
   ],
 })
 export class ContentModule {}

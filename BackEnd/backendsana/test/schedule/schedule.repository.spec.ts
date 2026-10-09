@@ -58,5 +58,29 @@ describe('ScheduleRepository.findAvailability', () => {
     expect(sql).toContain('b.sch_end_time >= (s.start_at + ($3 ||');
     expect(sql).toContain('r.srb_start_time <= s.start_at::time');
     expect(sql).toContain('r.srb_end_time >= (s.start_at + ($3 ||');
+    expect(sql).toContain('FROM schedule_occupancy o');
+    expect(sql).toContain("a.app_state IN ('asignada', 'confirmada')");
+    expect(sql).toContain('a.app_date < s.start_at + ($3 ||');
+    expect(sql).toContain(
+      "a.app_date + (a.app_duration || ' minutes')::interval > s.start_at",
+    );
+  });
+});
+
+describe('ScheduleRepository.findCalendar', () => {
+  it('returns availability and occupancy separately in a single query', async () => {
+    const calendar = { availability: [], occupancy: [] };
+    const dataSource = { query: vi.fn().mockResolvedValue([calendar]) };
+    const repository = new ScheduleRepository(dataSource as never);
+
+    await expect(repository.findCalendar(5)).resolves.toBe(calendar);
+
+    const [sql, params] = dataSource.query.mock.calls[0] as [string, number[]];
+    expect(params).toEqual([5]);
+    expect(sql).toContain('FROM schedule');
+    expect(sql).toContain('AS availability');
+    expect(sql).toContain('FROM schedule_occupancy');
+    expect(sql).toContain("'sourceType', source_type");
+    expect(sql).toContain('AS occupancy');
   });
 });

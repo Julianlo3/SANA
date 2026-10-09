@@ -64,11 +64,11 @@ CREATE TABLE public.users (
 	CONSTRAINT "User_provider_uq" UNIQUE (user_provider_id,user_provider_name)
 );
 -- ddl-end --
-COMMENT ON TABLE public.users IS E'Representa a la persona con cuenta dentro del sistema';
+COMMENT ON TABLE public.users IS E'Cuenta OAuth vinculada a una persona. Se crea cuando una persona con correo verificado inicia sesion por primera vez';
 -- ddl-end --
 COMMENT ON COLUMN public.users.use_id IS E'Index identificador del usuario (proviende de persona)';
 -- ddl-end --
-COMMENT ON COLUMN public.users.user_provider_id IS E'El identificador que fue dado/asignado por OAuth';
+COMMENT ON COLUMN public.users.user_provider_id IS E'Identificador de identidad (sub) asignado por Auth0 y vinculado a la persona';
 -- ddl-end --
 COMMENT ON COLUMN public.users.user_provider_name IS E'El nombre del proovedor con el cual se hizo el inicio de sesion';
 -- ddl-end --
@@ -825,6 +825,9 @@ COMMENT ON CONSTRAINT "User_provider_uq" ON public.users
 ALTER TABLE public.users
     ADD COLUMN IF NOT EXISTS user_email_verified boolean NOT NULL DEFAULT false;
 
+COMMENT ON COLUMN public.users.user_email_verified
+    IS E'Indica que la identidad Auth0 vinculada se autentico con un correo verificado';
+
 -- Changes 21/09/2026 --- QA ok
 
 ALTER TABLE public.dependents
@@ -908,7 +911,9 @@ CREATE INDEX IF NOT EXISTS "Content_Items_key_idx" ON public.content_items (ci_k
 
 -- ========================= MIGRATION 21/09/2026 =========================
 -- Módulo de citas psicológicas (appointments)
--- La cita nace de la solicitud pública del consultante (sin sesión).
+-- La cita nace de la solicitud pública del consultante. Este puede reclamar
+-- posteriormente su cuenta con Auth0; users.use_id mantiene la relacion con
+-- la persona que ya fue registrada al solicitar la cita.
 -- El secretario es quien, al confirmar, asigna psicólogo, fecha y queda
 -- registrado como sec_id. Por eso ambas FK son nullable en la creación.
 -- ========================================================================
@@ -979,7 +984,7 @@ ALTER TABLE public.appointments
 COMMENT ON COLUMN public.appointments.app_reason
     IS E'Motivo de consulta opcional indicado por el consultante al hacer la solicitud';
 COMMENT ON COLUMN public.appointments.app_discard_reason
-    IS E'Motivo interno indicado por la asistente al descartar una solicitud';
+    IS E'Motivo interno indicado por la asistente, o motivo automatico cuando el consultante retira una solicitud no confirmada';
 COMMENT ON COLUMN public.appointments.app_created_at
     IS E'Fecha y hora en que el consultante registró la solicitud de cita';
 COMMENT ON CONSTRAINT "Appointment_state_ck" ON public.appointments
@@ -1390,14 +1395,12 @@ COMMENT ON INDEX public."Policy_Acceptance_own_version_uq"
 
 
 -- ========================= 6. CONTEXTO DE SOLICITUD (APP_ID) EN POLICY_ACCEPTANCE =========================
--- El consultante no tiene cuenta ni sesion persistente, por lo que no hay
--- forma de reconocer que ya acepto una version anteriormente: cada vez que
--- llena el formulario de solicitud de cita -sea para si mismo o para un
--- dependiente- debe volver a aceptar los terminos vigentes en ese momento.
--- Por eso su aceptacion se ata a la solicitud (app_id) y no se restringe a
--- una sola vez por version, a diferencia del psicologo, que si tiene
--- cuenta/sesion y por tanto solo debe aceptar una vez por version los
--- permisos de trazabilidad y uso de su agenda.
+-- La aceptacion realizada en el formulario se conserva ligada a cada
+-- solicitud (app_id), incluso cuando el consultante reclame despues su
+-- cuenta Auth0. Asi queda la evidencia del consentimiento para cada cita
+-- propia o de un dependiente. Los consentimientos generales de cuenta
+-- permanecen asociados a la persona y los permisos de agenda del psicologo
+-- se aceptan una vez por version.
 
 -------------------------------------------------------------------
 -- MIGRACIÓN: nueva semántica de disponibilidad/ocupación de agenda
@@ -1522,7 +1525,7 @@ ALTER TABLE public.policy_acceptance
         ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 COMMENT ON COLUMN public.policy_acceptance.app_id
-    IS E'Identificador de la solicitud de cita a la que corresponde esta aceptacion. El consultante no tiene cuenta persistente, por lo que cada solicitud (para si mismo o para un dependiente) exige una nueva aceptacion de los terminos vigentes en ese momento';
+    IS E'Identificador de la solicitud de cita a la que corresponde esta aceptacion. Cada solicitud (para si mismo o para un dependiente) exige una nueva aceptacion de los terminos vigentes en ese momento, independientemente de que el consultante tenga una cuenta Auth0';
 COMMENT ON CONSTRAINT "Policy_Acceptance_Appointment_fk" ON public.policy_acceptance
     IS E'Identificador proveniente de la cita/solicitud que origino la aceptacion, cuando aplica';
 
@@ -1824,3 +1827,24 @@ CREATE INDEX IF NOT EXISTS "Email_Outbox_pending_idx"
 CREATE INDEX IF NOT EXISTS "Email_Outbox_stale_lock_idx"
     ON public.email_outbox (email_locked_at)
     WHERE email_status = 'sending';
+-- ========================= MIGRATION 06/10/2026 =========================
+-- Los banners dejan de tener vigencia: se muestran mientras esten activos.
+-- ========================================================================
+
+ALTER TABLE public.banners
+    DROP CONSTRAINT IF EXISTS "Banners_period_ck",
+    DROP CONSTRAINT IF EXISTS "Banners_active_requires_ck";
+
+DROP INDEX IF EXISTS public."Banners_active_ends_idx";
+
+ALTER TABLE public.banners
+    DROP COLUMN IF EXISTS ban_starts_at,
+    DROP COLUMN IF EXISTS ban_ends_at;
+
+ALTER TABLE public.banners
+    ADD CONSTRAINT "Banners_active_requires_ck" CHECK (NOT ban_is_active OR ban_image_url IS NOT NULL);
+
+COMMENT ON TABLE public.banners
+    IS E'Banners de la pagina de inicio; los activos rotan en la primera pantalla';
+COMMENT ON COLUMN public.banners.ban_is_active
+    IS E'Activado por el usuario. Requiere imagen';

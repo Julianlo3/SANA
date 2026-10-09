@@ -17,6 +17,7 @@ function user(overrides: Record<string, unknown> = {}) {
 function setup() {
   const repository = {
     findBlocks: vi.fn().mockResolvedValue([]),
+    findCalendar: vi.fn().mockResolvedValue({ availability: [], occupancy: [] }),
     hasOverlap: vi.fn().mockResolvedValue(false),
     createBlock: vi.fn().mockResolvedValue({ id: 1 }),
     deleteBlock: vi.fn().mockResolvedValue(true),
@@ -55,6 +56,52 @@ describe('ScheduleService', () => {
       endTime: '12:00',
       reason: 'Trabajo externo',
     });
+  });
+
+  it('lists schedule blocks for the requested psychologist', async () => {
+    const { service, repository } = setup();
+    const blocks = [{ id: 5, date: '2026-10-15' }];
+    repository.findBlocks.mockResolvedValue(blocks);
+
+    await expect(service.findPsychologistBlocks(5)).resolves.toBe(blocks);
+    expect(repository.findBlocks).toHaveBeenCalledWith(5);
+  });
+
+  it('rejects a non-positive psychologist ID when listing their blocks', async () => {
+    const { service, repository } = setup();
+
+    await expect(service.findPsychologistBlocks(0)).rejects.toMatchObject({
+      response: expect.objectContaining({ error: 'INVALID_PSYCHOLOGIST_ID' }),
+    });
+    expect(repository.findBlocks).not.toHaveBeenCalled();
+  });
+
+  it('returns availability and occupancy together for the requested psychologist calendar', async () => {
+    const { service, repository } = setup();
+    const calendar = {
+      availability: [{ id: 3, date: '2026-10-15', startTime: '09:00:00', endTime: '12:00:00' }],
+      occupancy: [{
+        id: 8,
+        date: '2026-10-15',
+        startTime: '10:00:00',
+        endTime: '11:00:00',
+        sourceType: 'appointment',
+        appointmentId: 42,
+      }],
+    };
+    repository.findCalendar.mockResolvedValue(calendar);
+
+    await expect(service.findPsychologistCalendar(5)).resolves.toBe(calendar);
+    expect(repository.findCalendar).toHaveBeenCalledWith(5);
+  });
+
+  it('rejects an invalid psychologist ID when requesting their calendar', async () => {
+    const { service, repository } = setup();
+
+    await expect(service.findPsychologistCalendar(-1)).rejects.toMatchObject({
+      response: expect.objectContaining({ error: 'INVALID_PSYCHOLOGIST_ID' }),
+    });
+    expect(repository.findCalendar).not.toHaveBeenCalled();
   });
 
   it('rejects non-psychologists', async () => {

@@ -84,6 +84,7 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
 
   const isPending = appointment.appState === "pendiente";
   const isAssigned = appointment.appState === "asignada";
+  const isConfirmed = appointment.appState === "confirmada";
   const canAssign = isPending || (isAssigned && detail.isChangingSlot);
   const canDiscard = isPending || isAssigned;
   const ModeIcon = appointment.appType === "virtual" ? Video : MapPin;
@@ -120,18 +121,6 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
 
         <AppointmentStateBadge state={appointment.appState} />
       </div>
-
-      {detail.notice && (
-        <div className="mt-6 rounded-xl border border-primary/30 bg-primary-soft/50 px-4 py-3 text-sm text-text">
-          {detail.notice}
-        </div>
-      )}
-
-      {detail.actionError && (
-        <div className="mt-6">
-          <InlineMessage tone="error">{detail.actionError}</InlineMessage>
-        </div>
-      )}
 
       <div className="mt-6 space-y-6">
         <section className={CARD_CLASS}>
@@ -203,7 +192,6 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
           <h2 className="font-display text-lg font-bold text-text">Cita</h2>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          
             <Field label="Psicólogo asignado">
               {appointment.psychologistName ?? "Sin asignar"}
             </Field>
@@ -386,6 +374,71 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
               </div>
             )}
           </section>
+        )}
+
+        {isConfirmed && (
+          <section className={CARD_CLASS}>
+            <h2 className="font-display text-lg font-bold text-text">
+              Cancelar cita
+            </h2>
+
+            {detail.isCancelling ? (
+              <div className="mt-3 space-y-4">
+                <p className="text-sm text-text-muted">
+                  Vas a cancelar la cita de{" "}
+                  <strong className="text-text">{appointment.patientName}</strong>
+                  {appointment.appDate
+                    ? ` del ${formatDateTime(appointment.appDate)}`
+                    : ""}
+                  . Esta acción no se puede deshacer, y el sistema intenta
+                  avisar por correo a la persona y al psicólogo.
+                </p>
+
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <Button
+                    variant="danger"
+                    onClick={detail.cancel}
+                    disabled={detail.isWorking}
+                  >
+                    {detail.isWorking ? "Cancelando…" : "Sí, cancelar cita"}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={detail.stopCancelling}
+                    disabled={detail.isWorking}
+                  >
+                    Volver
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-3">
+                <p className="text-sm text-text-muted">
+                  Si la persona no puede asistir, puedes cancelar la cita
+                  confirmada.
+                </p>
+                <div className="mt-4">
+                  <Button
+                    variant="secondary"
+                    onClick={detail.startCancelling}
+                    disabled={detail.isWorking}
+                  >
+                    Cancelar cita
+                  </Button>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {detail.notice && (
+          <div className="rounded-xl border border-primary/30 bg-primary-soft/50 px-4 py-3 text-sm text-text">
+            {detail.notice}
+          </div>
+        )}
+
+        {detail.actionError && (
+          <InlineMessage tone="error">{detail.actionError}</InlineMessage>
         )}
       </div>
     </div>

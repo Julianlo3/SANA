@@ -18,10 +18,39 @@ function requester() {
   };
 }
 
+function createTransactionalRepository() {
+  const manager = { query: vi.fn() };
+  const dataSource = { query: vi.fn(), transaction: vi.fn() };
+  dataSource.transaction.mockImplementation(async (callback) => callback(manager));
+
+  return {
+    repository: new AppointmentsRepository(dataSource as never),
+    manager,
+    dataSource,
+  };
+}
+
+describe('AppointmentsRepository.findByRequester', () => {
+  it('limits consultant appointment results to their person ID', async () => {
+    const query = vi.fn().mockResolvedValue([]);
+    const repository = new AppointmentsRepository({
+      query,
+    } as never);
+
+    await expect(repository.findByRequester(42)).resolves.toEqual([]);
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('WHERE a.req_id = $1'),
+      [42],
+    );
+    expect(query.mock.calls[0][0]).not.toContain('app_reason');
+    expect(query.mock.calls[0][0]).not.toContain('WHERE a.app_state');
+  });
+});
+
 describe('AppointmentsRepository.createRequest', () => {
   it('persists the complete request in one transaction', async () => {
-    const manager = { query: vi.fn() };
-    const dataSource = { query: vi.fn(), transaction: vi.fn() };
+    const { repository, manager, dataSource } = createTransactionalRepository();
     manager.query
       .mockResolvedValueOnce([{ per_id: 7 }])
       .mockResolvedValueOnce([])
@@ -29,9 +58,7 @@ describe('AppointmentsRepository.createRequest', () => {
       .mockResolvedValueOnce([{ app_id: 42 }])
       .mockResolvedValueOnce([{ pd_id: 1 }]) // data_treatment policy
       .mockResolvedValueOnce([{ pd_id: 2 }]); // dependent_consent policy (not used for self)
-    dataSource.transaction.mockImplementation(async (callback) => callback(manager));
 
-    const repository = new AppointmentsRepository(dataSource as never);
     await expect(
       repository.createRequest({
         requester: requester(),
@@ -88,12 +115,8 @@ describe('AppointmentsRepository.findActiveSecretaryEmails', () => {
 
 describe('AppointmentsRepository.updateState', () => {
   it('cancels the appointment and releases its occupancy in one transaction', async () => {
-    const manager = {
-      query: vi.fn().mockResolvedValueOnce([{ app_id: 42 }]).mockResolvedValueOnce([]),
-    };
-    const dataSource = { query: vi.fn(), transaction: vi.fn() };
-    dataSource.transaction.mockImplementation(async (callback) => callback(manager));
-    const repository = new AppointmentsRepository(dataSource as never);
+    const { repository, manager, dataSource } = createTransactionalRepository();
+    manager.query.mockResolvedValueOnce([{ app_id: 42 }]).mockResolvedValueOnce([]);
 
     await expect(repository.updateState(42, 'cancelada')).resolves.toBe(true);
 
@@ -109,10 +132,8 @@ describe('AppointmentsRepository.updateState', () => {
   });
 
   it('keeps occupancy when the appointment is marked as completed', async () => {
-    const manager = { query: vi.fn().mockResolvedValue([{ app_id: 42 }]) };
-    const dataSource = { query: vi.fn(), transaction: vi.fn() };
-    dataSource.transaction.mockImplementation(async (callback) => callback(manager));
-    const repository = new AppointmentsRepository(dataSource as never);
+    const { repository, manager } = createTransactionalRepository();
+    manager.query.mockResolvedValue([{ app_id: 42 }]);
 
     await expect(repository.updateState(42, 'realizada')).resolves.toBe(true);
 
@@ -121,22 +142,76 @@ describe('AppointmentsRepository.updateState', () => {
   });
 
   it('does not release occupancy if the appointment is no longer confirmed', async () => {
-    const manager = { query: vi.fn().mockResolvedValue([]) };
-    const dataSource = { query: vi.fn(), transaction: vi.fn() };
-    dataSource.transaction.mockImplementation(async (callback) => callback(manager));
-    const repository = new AppointmentsRepository(dataSource as never);
+    const { repository, manager } = createTransactionalRepository();
+    manager.query.mockResolvedValue([]);
 
     await expect(repository.updateState(42, 'cancelada')).resolves.toBe(false);
     expect(manager.query).toHaveBeenCalledOnce();
   });
 });
 
+describe('AppointmentsRepository.cancelByRequester', () => {
+  it("cancels only the requester's confirmed appointment and releases occupancy in one transaction", async () => {
+    const { repository, manager, dataSource } = createTransactionalRepository();
+    manager.query.mockResolvedValueOnce([{ app_id: 42 }]).mockResolvedValueOnce([]);
+
+    await expect(repository.cancelByRequester(42, 7)).resolves.toBe(true);
+
+    expect(dataSource.transaction).toHaveBeenCalledOnce();
+    expect(manager.query).toHaveBeenCalledTimes(2);
+    expect(manager.query.mock.calls[0][0]).toContain('req_id = $2');
+    expect(manager.query.mock.calls[0][0]).toContain("app_state = 'confirmada'");
+    expect(manager.query.mock.calls[0][1]).toEqual([42, 7]);
+    expect(manager.query.mock.calls[1][0]).toContain(
+      'DELETE FROM schedule_occupancy WHERE app_id = $1',
+    );
+    expect(manager.query.mock.calls[1][1]).toEqual([42]);
+  });
+
+  it('does not release occupancy when the appointment was not transitioned', async () => {
+    const { repository, manager } = createTransactionalRepository();
+    manager.query.mockResolvedValue([]);
+
+    await expect(repository.cancelByRequester(42, 7)).resolves.toBe(false);
+    expect(manager.query).toHaveBeenCalledOnce();
+  });
+});
+
+describe('AppointmentsRepository.discardByRequester', () => {
+  it('discards only the requester’s unconfirmed appointment and releases occupancy transactionally', async () => {
+    const { repository, manager } = createTransactionalRepository();
+    manager.query.mockResolvedValueOnce([{ app_id: 42 }]).mockResolvedValueOnce([]);
+
+    await expect(repository.discardByRequester(42, 7)).resolves.toBe(true);
+
+    expect(manager.query).toHaveBeenCalledTimes(2);
+    expect(manager.query.mock.calls[0][0]).toContain('req_id = $2');
+    expect(manager.query.mock.calls[0][0]).toContain(
+      "app_state IN ('pendiente', 'asignada')",
+    );
+    expect(manager.query.mock.calls[0][0]).toContain(
+      "app_discard_reason = 'Solicitud retirada por el consultante'",
+    );
+    expect(manager.query.mock.calls[0][1]).toEqual([42, 7]);
+    expect(manager.query.mock.calls[1][0]).toContain(
+      'DELETE FROM schedule_occupancy WHERE app_id = $1',
+    );
+    expect(manager.query.mock.calls[1][1]).toEqual([42]);
+  });
+
+  it('does not release occupancy if the unconfirmed request was not withdrawn', async () => {
+    const { repository, manager } = createTransactionalRepository();
+    manager.query.mockResolvedValue([]);
+
+    await expect(repository.discardByRequester(42, 7)).resolves.toBe(false);
+    expect(manager.query).toHaveBeenCalledOnce();
+  });
+});
+
 describe('AppointmentsRepository.discard', () => {
   it('discards the request and releases its occupancy in one transaction', async () => {
-    const manager = { query: vi.fn().mockResolvedValue({ rowCount: 1 }) };
-    const dataSource = { query: vi.fn(), transaction: vi.fn() };
-    dataSource.transaction.mockImplementation(async (callback) => callback(manager));
-    const repository = new AppointmentsRepository(dataSource as never);
+    const { repository, manager, dataSource } = createTransactionalRepository();
+    manager.query.mockResolvedValue({ rowCount: 1 });
 
     await repository.discard(42, 'Duplicada');
 
@@ -150,4 +225,3 @@ describe('AppointmentsRepository.discard', () => {
     expect(manager.query.mock.calls[1][1]).toEqual([42]);
   });
 });
-

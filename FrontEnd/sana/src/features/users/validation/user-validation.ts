@@ -1,4 +1,4 @@
-import { requiresProfessionalData } from "@/config/roles";
+import { requiresProfessionalData } from "../../../config/roles";
 
 /**
  * Reglas de validación de usuarios.
