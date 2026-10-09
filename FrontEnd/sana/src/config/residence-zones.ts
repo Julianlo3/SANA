@@ -2,10 +2,8 @@
  * Ubicación de residencia (HU-2.2.5 y HU-2.1.6).
  *
  * El departamento sale del listado oficial del DANE, es una lista estable.
- * El municipio queda como texto libre: un catálogo completo de los más de
- * 1.100 municipios de Colombia no existe todavía en el proyecto: se
- * reemplaza este campo por un selector cuando haya esa fuente de datos.
- * Huila es la única excepción (ver HUILA_MUNICIPALITIES en huila-municipalities.ts).
+ * Los municipios de cada departamento están en colombia-municipalities.ts,
+ * generado desde DIVIPOLA (DANE).
  */
 
 export const COLOMBIA_DEPARTMENTS = [

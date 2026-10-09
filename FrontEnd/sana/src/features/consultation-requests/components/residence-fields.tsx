@@ -1,7 +1,7 @@
 "use client";
 
 import TextField from "@/components/forms/text-field";
-import { HUILA_MUNICIPALITIES } from "@/config/huila-municipalities";
+import { municipalitiesFor } from "@/config/colombia-municipalities";
 import {
   COLOMBIA_DEPARTMENTS,
   NO_ZONE_REPORTED_LABEL,
@@ -20,8 +20,9 @@ type Props = {
 
 /**
  * Departamento + municipio, compartido entre los dos formularios públicos
- * de solicitud. Huila tiene selector real de municipios; el resto de
- * Colombia usa texto libre, porque no existe todavía un catálogo nacional.
+ * de solicitud. Todos los departamentos tienen selector de municipios
+ * (catálogo DIVIPOLA del DANE). Si algún nombre de departamento no coincide
+ * con el catálogo, el municipio queda como texto libre.
  */
 export default function ResidenceFields({
   department,
@@ -32,6 +33,8 @@ export default function ResidenceFields({
   onMunicipalityChange,
   onMunicipalityBlur,
 }: Props) {
+  const municipalities = department ? municipalitiesFor(department) : null;
+
   return (
     <div className="grid gap-5 sm:grid-cols-2">
       <label className="block">
@@ -55,7 +58,7 @@ export default function ResidenceFields({
         </span>
       </label>
 
-      {department === "Huila" ? (
+      {municipalities ? (
         <label className="block">
           <span className="text-sm font-medium text-text">Municipio</span>
           <select
@@ -65,7 +68,7 @@ export default function ResidenceFields({
             className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
             <option value="">Selecciona</option>
-            {HUILA_MUNICIPALITIES.map((option) => (
+            {municipalities.map((option) => (
               <option key={option} value={option}>
                 {option}
               </option>
