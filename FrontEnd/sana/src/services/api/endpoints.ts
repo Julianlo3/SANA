@@ -18,10 +18,7 @@ export const ENDPOINTS = {
   // Consultantes (HU-2.1 y HU-2.4)
   consultants: "/consultants",
   consultantSummary: (id: number) => `/consultants/${id}`,
-  clinicalNotesByConsultant: (id: number) =>
-    `/clinical-notes/consultant/${id}/history`,
-  clinicalNotesByAppointment: (id: number) =>
-    `/clinical-notes/appointment/${id}`,
+  consultantFullRecord: (id: number) => `/consultants/${id}/full`,
   consultantsForPsychologist: "/consultants/mine",
   consultantAccessLog: (id: number) => `/consultants/${id}/access-log`,
 

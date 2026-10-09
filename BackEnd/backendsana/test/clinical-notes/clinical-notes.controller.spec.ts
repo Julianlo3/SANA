@@ -31,7 +31,7 @@ describe('ClinicalNotesController', () => {
 
       await expect(
         controller.registerAttention(
-          { user: { userId: 900, personId: 100 } } as never,
+          { user: { userId: 100 } } as never,
           { appId: 10, termsAccepted: true, observation: 'Test' },
         ),
       ).resolves.toMatchObject({ cnId: 1 });
@@ -57,7 +57,7 @@ describe('ClinicalNotesController', () => {
       });
 
       await expect(
-        controller.findOne({ user: { userId: 900, personId: 100 } } as never, 1),
+        controller.findOne({ user: { userId: 100 } } as never, 1),
       ).resolves.toMatchObject({ cnId: 1 });
 
       expect(service.findById).toHaveBeenCalledWith(1, 100);
@@ -79,7 +79,7 @@ describe('ClinicalNotesController', () => {
       ]);
 
       await expect(
-        controller.findByAppointment({ user: { userId: 900, personId: 100 } } as never, 10),
+        controller.findByAppointment({ user: { userId: 100 } } as never, 10),
       ).resolves.toHaveLength(1);
 
       expect(service.findByAppointment).toHaveBeenCalledWith(10, 100);
@@ -96,7 +96,7 @@ describe('ClinicalNotesController', () => {
       });
 
       await expect(
-        controller.findConsultantHistory({ user: { userId: 900, personId: 100 } } as never, 50),
+        controller.findConsultantHistory({ user: { userId: 100 } } as never, 50),
       ).resolves.toMatchObject({ requesterId: 50 });
 
       expect(service.findConsultantHistory).toHaveBeenCalledWith(50, 100);
@@ -117,7 +117,7 @@ describe('ClinicalNotesController', () => {
       ]);
 
       await expect(
-        controller.findAuditHistory({ user: { userId: 900, personId: 100 } } as never, 1),
+        controller.findAuditHistory({ user: { userId: 100 } } as never, 1),
       ).resolves.toHaveLength(1);
 
       expect(service.findAuditHistory).toHaveBeenCalledWith(1, 100);
