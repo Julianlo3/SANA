@@ -3,6 +3,7 @@ import { httpClient } from "@/services/api/http-client";
 
 import type {
   CareRecordReceipt,
+  ClinicalNote,
   PsychologistAppointment,
   RecordCarePayload,
 } from "../types/care-record-types";
@@ -87,6 +88,40 @@ export async function listPsychologistAppointments(): Promise<
 
   return httpClient.get<PsychologistAppointment[]>(
     ENDPOINTS.psychologistAppointments,
+  );
+}
+
+/**
+ * Get the clinical notes for a specific appointment.
+ * @param appointmentId - The ID of the appointment for which to retrieve clinical notes.
+ * @param signal - An optional AbortSignal to cancel the request if needed.
+ * @returns A promise that resolves to an array of ClinicalNote objects associated with the appointment.
+ */
+export async function getClinicalNotesForAppointment(
+  appointmentId: number,
+  signal?: AbortSignal,
+): Promise<ClinicalNote[]> {
+  if (USE_MOCKS) {
+    const appointment = MOCK_APPOINTMENTS.find(
+      (item) => item.id === appointmentId,
+    );
+    if (!appointment?.careRecord) return delay([]);
+
+    return delay([
+      {
+        cnId: appointmentId,
+        appId: appointmentId,
+        psyId: 5,
+        cnObservation: appointment.careRecord.observation ?? "",
+        cnTermsAccepted: true,
+        cnCreatedAt: appointment.careRecord.recordedAt,
+      },
+    ]);
+  }
+
+  return httpClient.get<ClinicalNote[]>(
+    ENDPOINTS.clinicalNotesByAppointment(appointmentId),
+    signal,
   );
 }
 

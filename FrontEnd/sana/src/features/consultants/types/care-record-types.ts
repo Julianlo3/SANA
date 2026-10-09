@@ -25,6 +25,18 @@ export type CareRecordReceipt = {
 };
 
 /**
+ * Clinical note associated with a specific appointment, as returned by the backend.
+ */
+export type ClinicalNote = {
+  cnId: number;
+  appId: number;
+  psyId: number;
+  cnObservation: string;
+  cnTermsAccepted: boolean;
+  cnCreatedAt: string;
+};
+
+/**
  * Una cita en la agenda del psicólogo, con lo necesario para decidir si
  * puede registrarle la atención (HU-2.5.1 y HU-2.5.7).
  */

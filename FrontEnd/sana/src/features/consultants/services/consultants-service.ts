@@ -1,6 +1,7 @@
 import { ENDPOINTS } from "@/services/api/endpoints";
 import { httpClient } from "@/services/api/http-client";
 import type {
+  ConsultantAttentionHistory,
   ConsultantAccessLogEntry,
   ConsultantFullRecord,
   ConsultantSummary,
@@ -96,28 +97,30 @@ export async function getConsultantForAssistant(
 }
 
 /**
- * HU-2.4.2
- *
- * Obtiene la ficha completa del consultante
- * para el psicólogo tratante.
- *
- * HU-2.4.3
- *
- * El backend debe verificar que el psicólogo
- * sea el profesional asignado.
- *
- * Si no tiene autorización, el backend debe
- * responder 403 Forbidden.
+ * Get the clinical notes for a specific consultant.
+ * @param id - The ID of the consultant for which to retrieve clinical notes.
+ * @returns A promise that resolves to the consultant's clinical notes.
  */
-export async function getConsultantForPsychologist(
+export async function getConsultantClinicalNotes(
   id: number,
-): Promise<ConsultantFullRecord> {
+): Promise<ConsultantAttentionHistory> {
   if (USE_MOCKS) {
-    return delay(MOCK_FULL_RECORD);
+    return delay({
+      requesterId: id,
+      requesterName: MOCK_FULL_RECORD.fullName,
+      notes: MOCK_FULL_RECORD.careRecords.map((record) => ({
+        cnId: record.id,
+        appId: record.appointmentId,
+        appDate: record.attendedAt,
+        psychologistName: record.recordedByPsychologistName,
+        cnObservation: record.observation ?? "",
+        cnCreatedAt: record.attendedAt,
+      })),
+    });
   }
 
-  return httpClient.get<ConsultantFullRecord>(
-    ENDPOINTS.consultantFullRecord(id),
+  return httpClient.get<ConsultantAttentionHistory>(
+    ENDPOINTS.clinicalNotesByConsultant(id),
   );
 }
 

@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { ClipboardCheck, Clock, Lock, MapPin, Video } from "lucide-react";
+import {
+  ClipboardCheck,
+  Clock,
+  FileText,
+  Lock,
+  MapPin,
+  Video,
+} from "lucide-react";
 import AppointmentStateBadge from "@/features/appointments/components/appointment-state-badge";
 import {
   APPOINTMENT_MODE_LABELS,
@@ -64,6 +71,16 @@ export default function MyAppointmentCard({ appointment }: Props) {
         >
           <ClipboardCheck size={14} aria-hidden />
           Registrar atención
+        </Link>
+      )}
+
+      {appointment.appState === "realizada" && (
+        <Link
+          href={`/notas-clinicas/${appointment.appId}`}
+          className="mt-3 inline-flex items-center justify-center gap-2 rounded-full border border-primary px-5 py-2.5 text-xs font-bold text-primary transition hover:bg-primary-soft"
+        >
+          <FileText size={14} aria-hidden />
+          Ver nota clínica
         </Link>
       )}
     </article>

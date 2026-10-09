@@ -46,9 +46,9 @@ export class ClinicalNotesController {
     @Body() dto: RegisterAttentionDto,
   ) {
     this.logger.log(
-      `Module:clinical-notes, Function:registerAttention, result-start: appId-${dto.appId}, psychologistId-${request.user.userId}`,
+      `Module:clinical-notes, Function:registerAttention, result-start: appId-${dto.appId}, psychologistId-${request.user.personId}`,
     );
-    return this.clinicalNotesService.registerAttention(dto, request.user.userId, request);
+    return this.clinicalNotesService.registerAttention(dto, request.user.personId, request);
   }
 
   /**
@@ -62,7 +62,7 @@ export class ClinicalNotesController {
     @Req() request: Request & { user: AuthenticatedUser },
     @Param('appId', ParseIntPipe) appId: number,
   ) {
-    return this.clinicalNotesService.findByAppointment(appId, request.user.userId);
+    return this.clinicalNotesService.findByAppointment(appId, request.user.personId);
   }
 
   /**
@@ -76,7 +76,7 @@ export class ClinicalNotesController {
     @Req() request: Request & { user: AuthenticatedUser },
     @Param('requesterId', ParseIntPipe) requesterId: number,
   ) {
-    return this.clinicalNotesService.findConsultantHistory(requesterId, request.user.userId);
+    return this.clinicalNotesService.findConsultantHistory(requesterId, request.user.personId);
   }
 
   /**
@@ -90,7 +90,7 @@ export class ClinicalNotesController {
     @Req() request: Request & { user: AuthenticatedUser },
     @Param('cnId', ParseIntPipe) cnId: number,
   ) {
-    return this.clinicalNotesService.findById(cnId, request.user.userId);
+    return this.clinicalNotesService.findById(cnId, request.user.personId);
   }
 
   /**
@@ -104,6 +104,6 @@ export class ClinicalNotesController {
     @Req() request: Request & { user: AuthenticatedUser },
     @Param('cnId', ParseIntPipe) cnId: number,
   ) {
-    return this.clinicalNotesService.findAuditHistory(cnId, request.user.userId);
+    return this.clinicalNotesService.findAuditHistory(cnId, request.user.personId);
   }
 }

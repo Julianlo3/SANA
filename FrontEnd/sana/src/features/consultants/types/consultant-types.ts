@@ -41,6 +41,27 @@ export type ConsultantFullRecord = ConsultantSummary & {
   careRecords: CareRecordEntry[];
 };
 
+/**
+ * Attention history of a consultant, as returned by the backend.
+ */
+export type ConsultantAttentionHistory = {
+  requesterId: number;
+  requesterName: string;
+  notes: ClinicalNoteHistoryEntry[];
+};
+
+/**
+ * Access log entry for a consultant, as returned by the backend.
+ */
+export type ClinicalNoteHistoryEntry = {
+  cnId: number;
+  appId: number;
+  appDate: string;
+  psychologistName: string;
+  cnObservation: string;
+  cnCreatedAt: string;
+};
+
 /** Una atención registrada, dentro del historial del consultante. */
 export type CareRecordEntry = {
   id: number;

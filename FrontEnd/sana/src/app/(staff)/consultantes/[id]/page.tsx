@@ -1,20 +1,27 @@
 import type { Metadata } from "next";
-import { getCurrentUser } from "@/lib/auth-guard";
-import ConsultantsListPage from "@/features/consultants/pages/consultants-list-page";
+import { notFound } from "next/navigation";
+import ConsultantFullRecordPage from "@/features/consultants/pages/consultant-full-record-page";
+import { requireAnyRole } from "@/lib/auth-guard";
 
-export const metadata: Metadata = { title: "Consultantes | SANA" };
+export const metadata: Metadata = { title: "Notas clínicas | SANA" };
 
 /**
- * Decide qué listado mostrar según el rol de quien pregunta (HU-2.4):
- * el psicólogo ve la lista completa de sus consultantes asignados, con
- * motivo de consulta incluido; la asistente y el administrador ven la
- * versión sin datos clínicos.
+ * Renders the clinical notes page for a specific consultant.
+ * @param param0 - An object containing the route parameters.
+ * @returns A React component that displays the consultant's full record page.
  */
-export default async function Consultants() {
-  const user = await getCurrentUser();
-  const viewerRole = user.roles.includes("psicologo")
-    ? "psychologist"
-    : "assistant";
+export default async function ConsultantClinicalNotes({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  await requireAnyRole(["psicologo"]);
+  const { id } = await params;
+  const consultantId = Number(id);
 
-  return <ConsultantsListPage viewerRole={viewerRole} />;
+  if (!Number.isInteger(consultantId) || consultantId < 1) {
+    notFound();
+  }
+
+  return <ConsultantFullRecordPage consultantId={consultantId} />;
 }

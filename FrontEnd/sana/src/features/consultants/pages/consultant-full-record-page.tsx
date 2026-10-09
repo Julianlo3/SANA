@@ -1,34 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, FileText } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import InlineMessage from "@/components/feedback/inline-message";
 import { formatRelativeDate } from "@/lib/format/date-time";
-import ConsultantHeader from "../components/consultant-header";
 import { useConsultantRecord } from "../hooks/use-consultant-record";
-import { getConsultantForPsychologist } from "../services/consultants-service";
-import type { ConsultantFullRecord } from "../types/consultant-types";
+import { getConsultantClinicalNotes } from "../services/consultants-service";
+import type { ConsultantAttentionHistory } from "../types/consultant-types";
 
 type Props = {
   consultantId: number;
 };
 
 /**
- * HU-2.4.2: ficha completa del consultante, tal como la ve su psicólogo
- * tratante. Incluye motivo de consulta e historial de observaciones.
+ * Historial de notas clínicas tal como lo ve el psicólogo tratante.
  *
- * HU-2.4.3: si el backend determina que quien pregunta no es el tratante,
- * responde con un error que aquí se traduce en el mensaje de "permisos
- * insuficientes" — esta pantalla no decide nada sobre permisos, solo
- * refleja lo que el backend permitió o negó.
+ * El backend aplica el control de acceso y esta pantalla refleja el
+ * resultado permitido o denegado.
  */
 export default function ConsultantFullRecordPage({ consultantId }: Props) {
-  const { record: consultant, isLoading, loadError } = useConsultantRecord<
-    ConsultantFullRecord
+  const { record: history, isLoading, loadError } = useConsultantRecord<
+    ConsultantAttentionHistory
   >(
     consultantId,
-    getConsultantForPsychologist,
-    "No tienes permisos para ver esta ficha, o no pudimos cargarla.",
+    getConsultantClinicalNotes,
+    "No tienes permisos para ver estas notas, o no pudimos cargarlas.",
   );
 
   return (
@@ -42,7 +38,9 @@ export default function ConsultantFullRecordPage({ consultantId }: Props) {
       </Link>
 
       {isLoading && (
-        <p className="mt-8 text-sm text-text-subtle">Cargando ficha…</p>
+        <p className="mt-8 text-sm text-text-subtle">
+          Cargando notas clínicas…
+        </p>
       )}
 
       {loadError && (
@@ -51,59 +49,38 @@ export default function ConsultantFullRecordPage({ consultantId }: Props) {
         </div>
       )}
 
-      {consultant && (
+      {history && (
         <div className="mt-6 space-y-6">
-          <ConsultantHeader
-            fullName={consultant.fullName}
-            identityDocument={consultant.identityDocument}
-          />
-
-          <div className="grid gap-4 rounded-2xl border border-border bg-surface p-6 sm:grid-cols-2">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-text-subtle">
-                Correo
-              </p>
-              <p className="mt-1 text-sm text-text">{consultant.email}</p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-text-subtle">
-                Teléfono
-              </p>
-              <p className="mt-1 text-sm text-text">{consultant.phone}</p>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-accent-soft bg-accent-soft/40 p-6">
-            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-accent-strong">
-              <FileText size={14} aria-hidden />
-              Motivo de consulta
-            </p>
-            <p className="mt-2 text-sm text-text">
-              {consultant.consultationReason || "Sin registrar."}
-            </p>
-          </div>
+          <h1 className="font-display text-2xl font-bold text-text">
+            Notas clínicas de {history.requesterName}
+          </h1>
 
           <div>
             <h2 className="font-display text-lg font-bold text-text">
-              Historial de atenciones
+              Notas clínicas
             </h2>
 
-            {consultant.careRecords.length === 0 ? (
+            {history.notes.length === 0 ? (
               <p className="mt-3 text-sm text-text-subtle">
-                Todavía no hay atenciones registradas.
+                No hay notas clínicas registradas para este consultante.
               </p>
             ) : (
               <div className="mt-3 space-y-3">
-                {consultant.careRecords.map((record) => (
+                {history.notes.map((note) => (
                   <div
-                    key={record.id}
+                    key={note.cnId}
                     className="rounded-xl border border-border bg-surface p-4"
                   >
-                    <p className="text-xs font-semibold text-text-subtle">
-                      {formatRelativeDate(record.attendedAt)}
-                    </p>
+                    <div className="flex flex-wrap justify-between gap-2">
+                      <p className="text-xs font-semibold text-text-subtle">
+                        Atención {formatRelativeDate(note.appDate)}
+                      </p>
+                      <p className="text-xs text-text-subtle">
+                        Registrada por {note.psychologistName}
+                      </p>
+                    </div>
                     <p className="mt-1 text-sm text-text">
-                      {record.observation || "Sin observación registrada."}
+                      {note.cnObservation || "Sin observación registrada."}
                     </p>
                   </div>
                 ))}
