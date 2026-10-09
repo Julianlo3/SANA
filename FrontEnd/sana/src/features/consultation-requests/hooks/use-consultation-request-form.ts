@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "@/hooks/use-form";
 import { ApiError } from "@/types/api-types";
+import { scrollToFirstError } from "../lib/scroll-to-first-error";
 import { submitConsultationRequest } from "../services/consultation-requests-service";
 import type {
   AppointmentMode,
@@ -122,21 +123,6 @@ function mapServerErrors(error: ApiError): RequestFormErrors {
   return mapped;
 }
 
-/** Lleva la pantalla al primer campo con error y le da el foco. */
-function scrollToFirstError() {
-  const target = document.querySelector<HTMLElement>(
-    '[aria-invalid="true"], [role="alert"]',
-  );
-  if (!target) return;
-
-  target.scrollIntoView({ behavior: "smooth", block: "center" });
-
-  const field = target
-    .closest("label, div")
-    ?.querySelector<HTMLElement>("input, select, textarea");
-  field?.focus({ preventScroll: true });
-}
-
 /**
  * El backend guarda la residencia como un solo texto (residenceZone),
  * hasta 255 caracteres, opcional. Se arma como "Municipio, Departamento".
@@ -170,7 +156,8 @@ function buildResidenceZone(
  *
  * Errores: se muestran debajo de cada campo y en un resumen que dice cuáles
  * están mal. Si el backend rechaza un campo que la validación local no
- * detectó, también queda marcado en ese campo.
+ * detectó, también queda marcado en ese campo, y `send` devuelve cuáles
+ * fueron para que la pantalla pueda volver al paso donde están.
  */
 export function useConsultationRequestForm(patientType: PatientType) {
   const router = useRouter();
@@ -330,12 +317,18 @@ export function useConsultationRequestForm(patientType: PatientType) {
     [patientType],
   );
 
-  const send = useCallback(async () => {
+  /**
+   * Envía la solicitud. Devuelve los campos que el backend rechazó (vacío si
+   * todo salió bien o si el fallo no es de un campo concreto).
+   */
+  const send = useCallback(async (): Promise<
+    (keyof RequestFormValues)[]
+  > => {
     const submitted = submit();
 
     if (!submitted) {
       window.setTimeout(scrollToFirstError, 50);
-      return;
+      return [];
     }
 
     setIsSaving(true);
@@ -350,23 +343,28 @@ export function useConsultationRequestForm(patientType: PatientType) {
       });
 
       router.push(`/solicitar-cita/confirmacion?${params.toString()}`);
+      return [];
     } catch (error: unknown) {
       if (!(error instanceof ApiError)) {
         setSubmitError(
           "No pudimos enviar tu solicitud. Intenta de nuevo en unos minutos.",
         );
-      } else {
-        const mapped = mapServerErrors(error);
-
-        if (Object.keys(mapped).length > 0) {
-          setServerErrors(mapped);
-          window.setTimeout(scrollToFirstError, 50);
-        } else if (error.code === ALREADY_REGISTERED_CODE) {
-          setSubmitError(ALREADY_REGISTERED_MESSAGE);
-        } else {
-          setSubmitError(error.message);
-        }
+        return [];
       }
+
+      const mapped = mapServerErrors(error);
+      const fields = Object.keys(mapped) as (keyof RequestFormValues)[];
+
+      if (fields.length > 0) {
+        setServerErrors(mapped);
+        window.setTimeout(scrollToFirstError, 50);
+      } else if (error.code === ALREADY_REGISTERED_CODE) {
+        setSubmitError(ALREADY_REGISTERED_MESSAGE);
+      } else {
+        setSubmitError(error.message);
+      }
+
+      return fields;
     } finally {
       setIsSaving(false);
     }
