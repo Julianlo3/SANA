@@ -78,6 +78,16 @@ describe('ScheduleService', () => {
 
   it('returns availability and occupancy together for the requested psychologist calendar', async () => {
     const { service, repository } = setup();
+    const recurring = [{
+      id: 12,
+      dayOfWeek: 2,
+      startTime: '09:00:00',
+      endTime: '12:00:00',
+      validFrom: '2026-10-01',
+      validUntil: null,
+      reason: 'Disponibilidad semanal',
+      active: true,
+    }];
     const calendar = {
       availability: [{ id: 3, date: '2026-10-15', startTime: '09:00:00', endTime: '12:00:00' }],
       occupancy: [{
@@ -88,11 +98,13 @@ describe('ScheduleService', () => {
         sourceType: 'appointment',
         appointmentId: 42,
       }],
+      recurring,
     };
     repository.findCalendar.mockResolvedValue(calendar);
 
     await expect(service.findPsychologistCalendar(5)).resolves.toBe(calendar);
     expect(repository.findCalendar).toHaveBeenCalledWith(5);
+    expect(calendar.recurring).toEqual(recurring);
   });
 
   it('rejects an invalid psychologist ID when requesting their calendar', async () => {

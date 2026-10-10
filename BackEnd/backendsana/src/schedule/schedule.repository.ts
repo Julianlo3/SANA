@@ -34,9 +34,10 @@ export class ScheduleRepository {
   }
 
   /**
-   * Finds availability blocks and occupied intervals for a psychologist.
+   * Finds the calendar and availability view for the specified psychologist.
+   * inculdes schedule blocks, occupancy, and recurring blocks.
    * @param psychologistId The ID of the psychologist.
-   * @returns The psychologist's availability and occupancy as separate collections.
+   * @returns A promise that resolves to the calendar view.
    */
   async findCalendar(
     psychologistId: number,
@@ -78,7 +79,27 @@ export class ScheduleRepository {
              WHERE psy_id = $1
            ),
            '[]'::jsonb
-         ) AS occupancy`,
+         ) AS occupancy,
+         COALESCE(
+           (
+             SELECT jsonb_agg(
+               jsonb_build_object(
+                 'id', srb_id,
+                 'dayOfWeek', srb_day_of_week,
+                 'startTime', srb_start_time::text,
+                 'endTime', srb_end_time::text,
+                 'validFrom', srb_valid_from::text,
+                 'validUntil', srb_valid_until::text,
+                 'reason', srb_reason,
+                 'active', srb_active
+               )
+               ORDER BY srb_day_of_week, srb_start_time
+             )
+             FROM schedule_recurring_blocks
+             WHERE psy_id = $1
+           ),
+           '[]'::jsonb
+         ) AS recurring`,
       [psychologistId],
     );
     return rows[0];
