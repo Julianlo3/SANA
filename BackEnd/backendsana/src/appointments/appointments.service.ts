@@ -7,6 +7,7 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
+import { QueryFailedError } from 'typeorm';
 import type { CreateAppointmentDto } from './dto/create-appointment.dto.js';
 import type { ConfirmAppointmentDto } from './dto/confirm-appointment.dto.js';
 import type { AssignAppointmentDto } from './dto/assign-appointment.dto.js';
@@ -22,6 +23,13 @@ import {
 } from './appointments.repository.js';
 import { ScheduleService } from '../schedule/schedule.service.js';
 import { EmailService } from '../email/email.service.js';
+
+const REQUESTER_ALREADY_REGISTERED_MESSAGE =
+  'La información ingresada ya está asociada a una persona registrada. Verifique los datos e intente nuevamente.';
+const REQUESTER_UNIQUE_CONSTRAINTS = new Set([
+  'Person_email_uq',
+  'Person_idocument_uq',
+]);
 
 /**
  * Calculates the age of a person based on their birthdate.
@@ -121,31 +129,42 @@ export class AppointmentsService {
       }
     }
 
-    const appId = await this.repo.createRequest({
-      requester: {
-        name: dto.requesterName.trim(),
-        cardType: dto.requesterCardType,
-        identityDocument: dto.requesterIdentityDocument,
-        contactNumber: dto.requesterContactNumber.trim(),
-        email: dto.requesterEmail?.trim(),
-        birthdate: dto.requesterBirthdate,
-        gender: dto.requesterGender,
-        termsAccepted: dto.requesterTermsAccepted,
-        residenceZone: dto.residenceZone?.trim() ?? null,
-      },
-      dependent: dto.patientType === 'dependent'
-        ? {
-          name: dto.dependentName!,
-          identityDocument: dto.dependentIdentityDocument!,
-          birthdate: dto.dependentBirthdate!,
-          gender: dto.dependentGender,
-          termsAccepted: dto.dependentTermsAccepted!,
-          relationshipId: dto.relationshipId!,
-        }
-        : null,
-      appType: dto.appType,
-      appReason: dto.appReason?.trim() ?? null,
-    });
+    let appId: number;
+    try {
+      appId = await this.repo.createRequest({
+        requester: {
+          name: dto.requesterName.trim(),
+          cardType: dto.requesterCardType,
+          identityDocument: dto.requesterIdentityDocument,
+          contactNumber: dto.requesterContactNumber.trim(),
+          email: dto.requesterEmail?.trim(),
+          birthdate: dto.requesterBirthdate,
+          gender: dto.requesterGender,
+          termsAccepted: dto.requesterTermsAccepted,
+          residenceZone: dto.residenceZone?.trim() ?? null,
+        },
+        dependent: dto.patientType === 'dependent'
+          ? {
+            name: dto.dependentName!,
+            identityDocument: dto.dependentIdentityDocument!,
+            birthdate: dto.dependentBirthdate!,
+            gender: dto.dependentGender,
+            termsAccepted: dto.dependentTermsAccepted!,
+            relationshipId: dto.relationshipId!,
+          }
+          : null,
+        appType: dto.appType,
+        appReason: dto.appReason?.trim() ?? null,
+      });
+    } catch (error) {
+      if (isRequesterUniqueConstraintViolation(error)) {
+        throw new ConflictException({
+          error: 'REQUESTER_ALREADY_REGISTERED',
+          message: REQUESTER_ALREADY_REGISTERED_MESSAGE,
+        });
+      }
+      throw error;
+    }
 
     this.logger.log(
       `Module:appointments, Function:requestAppointment, result-success: appId-${appId}, requesterDoc-${dto.requesterIdentityDocument}, patientType-${dto.patientType}, type-${dto.appType}`,
@@ -840,4 +859,19 @@ export class AppointmentsService {
     }
     return 'NOTIFICATION_ERROR';
   }
+}
+
+/**
+ * Checks if an error is a unique constraint violation for the requester.
+ * @param error The error to check.
+ * @returns A boolean indicating whether the error is a unique constraint violation.
+ */
+function isRequesterUniqueConstraintViolation(error: unknown): boolean {
+  if (!(error instanceof QueryFailedError)) return false;
+  const driverError = error.driverError as {
+    code?: string;
+    constraint?: string;
+  } | undefined;
+  return driverError?.code === '23505'
+    && REQUESTER_UNIQUE_CONSTRAINTS.has(driverError.constraint ?? '');
 }
