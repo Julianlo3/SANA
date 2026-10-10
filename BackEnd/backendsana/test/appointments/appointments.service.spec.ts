@@ -161,8 +161,10 @@ describe('AppointmentsService.requestAppointment', () => {
       const { service, repository } = setup();
       repository.createRequest.mockRejectedValue(
         new QueryFailedError('INSERT INTO person', [], {
-          code: '23505',
-          constraint,
+          ...Object.assign(new Error('duplicate requester'), {
+            code: '23505',
+            constraint,
+          }),
         }),
       );
 
@@ -178,8 +180,10 @@ describe('AppointmentsService.requestAppointment', () => {
   it('does not translate unrelated database errors into requester conflicts', async () => {
     const { service, repository } = setup();
     const databaseError = new QueryFailedError('INSERT INTO person', [], {
-      code: '23505',
-      constraint: 'Some_other_unique_constraint',
+      ...Object.assign(new Error('duplicate unrelated value'), {
+        code: '23505',
+        constraint: 'Some_other_unique_constraint',
+      }),
     });
     repository.createRequest.mockRejectedValue(databaseError);
 
