@@ -70,63 +70,9 @@ export class AppointmentsService {
   async requestAppointment(
     dto: CreateAppointmentDto,
   ): Promise<{ appId: number; message: string }> {
-    if (!dto.requesterTermsAccepted) {
-      throw new BadRequestException({
-        error: 'TERMS_NOT_ACCEPTED',
-        message: 'Debe aceptar los términos y la política de tratamiento de datos personales para continuar',
-      });
-    }
-
-    if (!dto.requesterBirthdate) {
-      throw new BadRequestException({
-        error: 'REQUESTER_BIRTHDATE_REQUIRED',
-        message: 'La fecha de nacimiento del solicitante es obligatoria',
-      });
-    }
-
-    if (calculateAge(dto.requesterBirthdate) < 18) {
-      throw new BadRequestException({
-        error: 'REQUESTER_MUST_BE_ADULT',
-        message: 'La persona solicitante o acudiente debe ser mayor de edad',
-      });
-    }
-
+    this.validateRequester(dto);
     if (dto.patientType === 'dependent') {
-      if (!dto.dependentName || !dto.dependentIdentityDocument || !dto.dependentBirthdate) {
-        throw new BadRequestException({
-          error: 'DEPENDENT_DATA_REQUIRED',
-          message: 'Se requieren nombre, documento de identidad y fecha de nacimiento del menor',
-        });
-      }
-
-      if (!dto.relationshipId) {
-        throw new BadRequestException({
-          error: 'DEPENDENT_RELATIONSHIP_REQUIRED',
-          message: 'Debe indicar el parentesco entre el consultante y el dependiente',
-        });
-      }
-
-      if (calculateAge(dto.dependentBirthdate) >= 18) {
-        throw new BadRequestException({
-          error: 'DEPENDENT_MUST_BE_MINOR',
-          message: 'El dependiente debe ser menor de edad',
-        });
-      }
-
-      const relationshipExists = await this.repo.relationshipExists(dto.relationshipId);
-      if (!relationshipExists) {
-        throw new BadRequestException({
-          error: 'INVALID_RELATIONSHIP',
-          message: 'El parentesco indicado no es válido',
-        });
-      }
-
-      if (!dto.dependentTermsAccepted) {
-        throw new BadRequestException({
-          error: 'DEPENDENT_TERMS_NOT_ACCEPTED',
-          message: 'Debe aceptar la política de tratamiento de datos personales de menores de edad',
-        });
-      }
+      await this.validateDependent(dto);
     }
 
     let appId: number;
@@ -175,6 +121,67 @@ export class AppointmentsService {
       appId,
       message: 'Solicitud de cita registrada con éxito. Un secretario revisará la solicitud y te contactará para confirmar la fecha.',
     };
+  }
+
+  private validateRequester(dto: CreateAppointmentDto): void {
+    if (!dto.requesterTermsAccepted) {
+      throw new BadRequestException({
+        error: 'TERMS_NOT_ACCEPTED',
+        message: 'Debe aceptar los términos y la política de tratamiento de datos personales para continuar',
+      });
+    }
+
+    if (!dto.requesterBirthdate) {
+      throw new BadRequestException({
+        error: 'REQUESTER_BIRTHDATE_REQUIRED',
+        message: 'La fecha de nacimiento del solicitante es obligatoria',
+      });
+    }
+
+    if (calculateAge(dto.requesterBirthdate) < 18) {
+      throw new BadRequestException({
+        error: 'REQUESTER_MUST_BE_ADULT',
+        message: 'La persona solicitante o acudiente debe ser mayor de edad',
+      });
+    }
+  }
+
+  private async validateDependent(dto: CreateAppointmentDto): Promise<void> {
+    if (!dto.dependentName || !dto.dependentIdentityDocument || !dto.dependentBirthdate) {
+      throw new BadRequestException({
+        error: 'DEPENDENT_DATA_REQUIRED',
+        message: 'Se requieren nombre, documento de identidad y fecha de nacimiento del menor',
+      });
+    }
+
+    if (!dto.relationshipId) {
+      throw new BadRequestException({
+        error: 'DEPENDENT_RELATIONSHIP_REQUIRED',
+        message: 'Debe indicar el parentesco entre el consultante y el dependiente',
+      });
+    }
+
+    if (calculateAge(dto.dependentBirthdate) >= 18) {
+      throw new BadRequestException({
+        error: 'DEPENDENT_MUST_BE_MINOR',
+        message: 'El dependiente debe ser menor de edad',
+      });
+    }
+
+    const relationshipExists = await this.repo.relationshipExists(dto.relationshipId);
+    if (!relationshipExists) {
+      throw new BadRequestException({
+        error: 'INVALID_RELATIONSHIP',
+        message: 'El parentesco indicado no es válido',
+      });
+    }
+
+    if (!dto.dependentTermsAccepted) {
+      throw new BadRequestException({
+        error: 'DEPENDENT_TERMS_NOT_ACCEPTED',
+        message: 'Debe aceptar la política de tratamiento de datos personales de menores de edad',
+      });
+    }
   }
 
   /**
