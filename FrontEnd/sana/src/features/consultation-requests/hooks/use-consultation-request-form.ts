@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "@/hooks/use-form";
 import { ApiError } from "@/types/api-types";
+import { scrollToFirstError } from "../lib/scroll-to-first-error";
 import { submitConsultationRequest } from "../services/consultation-requests-service";
 import type {
   AppointmentMode,
@@ -16,6 +17,7 @@ import type {
 import {
   validateGuardianRequest,
   validateSelfRequest,
+  type RequestFormErrors,
   type RequestFormValues,
 } from "../validation/consultation-request-validation";
 
@@ -34,7 +36,7 @@ const EMPTY_FORM: RequestFormValues = {
   minorFullName: "",
   minorBirthDate: "",
   minorGender: "",
-    minorIdentityDocument: "",
+  minorIdentityDocument: "",
   confirmMinorIdentityDocument: "",
   department: "",
   municipality: "",
@@ -43,6 +45,99 @@ const EMPTY_FORM: RequestFormValues = {
   hasAcceptedGuardianDataPolicy: false,
   hasAcceptedMinorDataPolicy: false,
 };
+
+/** Nombre de cada campo, para decirle a la persona cuáles tiene mal. */
+const FIELD_LABELS: Record<keyof RequestFormValues, string> = {
+  fullName: "Nombre completo",
+  documentType: "Tipo de documento",
+  identityDocument: "Número de documento",
+  confirmIdentityDocument: "Confirmación del documento",
+  birthDate: "Fecha de nacimiento",
+  gender: "Género",
+  email: "Correo",
+  confirmEmail: "Confirmación del correo",
+  phone: "Teléfono",
+  appType: "Modalidad de la cita",
+  relationship: "Parentesco",
+  minorFullName: "Nombre del menor",
+  minorBirthDate: "Fecha de nacimiento del menor",
+  minorGender: "Género del menor",
+  minorIdentityDocument: "Documento del menor",
+  confirmMinorIdentityDocument: "Confirmación del documento del menor",
+  department: "Departamento",
+  municipality: "Municipio",
+  consultationReason: "Motivo de la consulta",
+  hasAcceptedDataPolicy: "Autorización de datos",
+  hasAcceptedGuardianDataPolicy: "Autorización de datos del acudiente",
+  hasAcceptedMinorDataPolicy: "Autorización de datos del menor",
+};
+
+/** Campo del backend (DTO) → campo del formulario. */
+const BACKEND_FIELDS: Record<string, keyof RequestFormValues> = {
+  requesterName: "fullName",
+  requesterCardType: "documentType",
+  requesterIdentityDocument: "identityDocument",
+  requesterContactNumber: "phone",
+  requesterEmail: "email",
+  requesterBirthdate: "birthDate",
+  requesterGender: "gender",
+  dependentName: "minorFullName",
+  dependentIdentityDocument: "minorIdentityDocument",
+  dependentBirthdate: "minorBirthDate",
+  dependentGender: "minorGender",
+  relationshipId: "relationship",
+  appType: "appType",
+  appReason: "consultationReason",
+  residenceZone: "municipality",
+};
+
+/** Error de negocio del backend → campo del formulario donde se muestra. */
+const ERROR_CODE_FIELDS: Record<string, keyof RequestFormValues> = {
+  REQUESTER_BIRTHDATE_REQUIRED: "birthDate",
+  REQUESTER_MUST_BE_ADULT: "birthDate",
+  DEPENDENT_MUST_BE_MINOR: "minorBirthDate",
+  DEPENDENT_RELATIONSHIP_REQUIRED: "relationship",
+  INVALID_RELATIONSHIP: "relationship",
+};
+
+/**
+ * Código que el backend enviará cuando el documento o el correo ya estén
+ * registrados. Hoy no existe: queda listo para cuando lo agreguen.
+ */
+const ALREADY_REGISTERED_CODE = "REQUESTER_ALREADY_REGISTERED";
+const ALREADY_REGISTERED_MESSAGE =
+  "Estos datos ya están registrados. Si ya pediste una cita antes, entra con tu cuenta en Ingresar → Consultantes.";
+
+/** Mensaje para errores del servidor, sin afirmar cuál fue la causa. */
+const SERVER_ERROR_MESSAGE =
+  "No pudimos registrar tu solicitud. Si ya pediste una cita antes con estos datos, entra por Ingresar → Consultantes. Si el problema continúa, intenta más tarde o comunícate con la fundación.";
+/** Pasa los errores del backend a los campos del formulario. */
+function mapServerErrors(error: ApiError): RequestFormErrors {
+  const mapped: RequestFormErrors = {};
+
+  for (const [property, message] of Object.entries(error.fieldErrors)) {
+    const field = BACKEND_FIELDS[property];
+    if (field) mapped[field] = message;
+  }
+
+  const codeField = error.code ? ERROR_CODE_FIELDS[error.code] : undefined;
+  if (codeField) mapped[codeField] = error.message;
+
+  return mapped;
+}
+
+/**
+ * El backend guarda la residencia como un solo texto (residenceZone),
+ * hasta 255 caracteres, opcional. Se arma como "Municipio, Departamento".
+ * Si la persona no indicó nada, se manda undefined (el campo es opcional).
+ */
+function buildResidenceZone(
+  department: string,
+  municipality: string,
+): string | undefined {
+  if (!department || !municipality.trim()) return undefined;
+  return `${municipality.trim()}, ${department}`;
+}
 
 /**
  * Lógica del formulario público de solicitud (HU-2.2).
@@ -61,6 +156,11 @@ const EMPTY_FORM: RequestFormValues = {
  * del formulario. appDateIdeal ya no se pide a la persona; se manda null
  * siempre, y la pantalla muestra un mensaje fijo de que la asistente
  * asignará la cita en el menor tiempo posible.
+ *
+ * Errores: se muestran debajo de cada campo y en un resumen que dice cuáles
+ * están mal. Si el backend rechaza un campo que la validación local no
+ * detectó, también queda marcado en ese campo, y `send` devuelve cuáles
+ * fueron para que la pantalla pueda volver al paso donde están.
  */
 export function useConsultationRequestForm(patientType: PatientType) {
   const router = useRouter();
@@ -73,8 +173,45 @@ export function useConsultationRequestForm(patientType: PatientType) {
 
   const [isSaving, setIsSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [serverErrors, setServerErrors] = useState<RequestFormErrors>({});
 
-    const { setValue, submit } = form;
+  const { setValue: baseSetValue, submit } = form;
+
+  /** Al editar un campo, se quita el error que le había puesto el backend. */
+  const setValue = useCallback(
+    <K extends keyof RequestFormValues>(
+      field: K,
+      value: RequestFormValues[K],
+    ) => {
+      setServerErrors((current) => {
+        if (!current[field]) return current;
+        const next = { ...current };
+        delete next[field];
+        return next;
+      });
+      baseSetValue(field, value);
+    },
+    [baseSetValue],
+  );
+
+  const errors = useMemo<RequestFormErrors>(
+    () => ({ ...form.errors, ...serverErrors }),
+    [form.errors, serverErrors],
+  );
+
+  const showSummary =
+    form.wasSubmitted || Object.keys(serverErrors).length > 0;
+
+  /** Nombres de los campos que están mal, para el resumen. */
+  const errorSummary = useMemo(
+    () =>
+      showSummary
+        ? (Object.keys(errors) as (keyof RequestFormValues)[]).map(
+            (key) => FIELD_LABELS[key],
+          )
+        : [],
+    [errors, showSummary],
+  );
 
   const setRelationship = useCallback(
     (relationship: GuardianRelationshipId | "") => {
@@ -132,19 +269,6 @@ export function useConsultationRequestForm(patientType: PatientType) {
     [setValue],
   );
 
-  /**
-   * El backend guarda la residencia como un solo texto (residenceZone),
-   * hasta 255 caracteres, opcional. Se arma como "Municipio, Departamento".
-   * Si la persona no indicó nada, se manda undefined (el campo es opcional).
-   */
-  function buildResidenceZone(
-    department: string,
-    municipality: string,
-  ): string | undefined {
-    if (!department || !municipality.trim()) return undefined;
-    return `${municipality.trim()}, ${department}`;
-  }
-
   const buildPayload = useCallback(
     (submitted: RequestFormValues): ConsultationRequestPayload => {
       const residenceZone = buildResidenceZone(
@@ -196,12 +320,23 @@ export function useConsultationRequestForm(patientType: PatientType) {
     [patientType],
   );
 
-  const send = useCallback(async () => {
+  /**
+   * Envía la solicitud. Devuelve los campos que el backend rechazó (vacío si
+   * todo salió bien o si el fallo no es de un campo concreto).
+   */
+  const send = useCallback(async (): Promise<
+    (keyof RequestFormValues)[]
+  > => {
     const submitted = submit();
-    if (!submitted) return;
+
+    if (!submitted) {
+      window.setTimeout(scrollToFirstError, 50);
+      return [];
+    }
 
     setIsSaving(true);
     setSubmitError(null);
+    setServerErrors({});
 
     try {
       const result = await submitConsultationRequest(buildPayload(submitted));
@@ -211,12 +346,30 @@ export function useConsultationRequestForm(patientType: PatientType) {
       });
 
       router.push(`/solicitar-cita/confirmacion?${params.toString()}`);
+      return [];
     } catch (error: unknown) {
-      setSubmitError(
-        error instanceof ApiError
-          ? error.message
-          : "No pudimos enviar tu solicitud. Intenta de nuevo en unos minutos.",
-      );
+      if (!(error instanceof ApiError)) {
+        setSubmitError(
+          "No pudimos enviar tu solicitud. Intenta de nuevo en unos minutos.",
+        );
+        return [];
+      }
+
+      const mapped = mapServerErrors(error);
+      const fields = Object.keys(mapped) as (keyof RequestFormValues)[];
+
+      if (fields.length > 0) {
+        setServerErrors(mapped);
+        window.setTimeout(scrollToFirstError, 50);
+      } else if (error.code === ALREADY_REGISTERED_CODE) {
+        setSubmitError(ALREADY_REGISTERED_MESSAGE);
+      } else if (error.status >= 500) {
+        setSubmitError(SERVER_ERROR_MESSAGE);
+      } else {
+        setSubmitError(error.message);
+      }
+
+      return fields;
     } finally {
       setIsSaving(false);
     }
@@ -224,6 +377,9 @@ export function useConsultationRequestForm(patientType: PatientType) {
 
   return {
     ...form,
+    errors,
+    errorSummary,
+    setValue,
     setRelationship,
     setDocumentType,
     setGender,
