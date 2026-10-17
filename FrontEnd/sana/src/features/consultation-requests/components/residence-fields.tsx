@@ -39,28 +39,29 @@ export default function ResidenceFields({
   const [isLoadingDepartments, setIsLoadingDepartments] = useState(true);
   const [departmentsError, setDepartmentsError] = useState<string | null>(null);
 
-  const [municipalities, setMunicipalities] = useState<ColombiaCity[]>([]);
-  const [isLoadingMunicipalities, setIsLoadingMunicipalities] = useState(false);
-  const [municipalitiesError, setMunicipalitiesError] = useState<string | null>(null);
+  const [municipalitiesState, setMunicipalitiesState] = useState<{
+    department: string;
+    cities: ColombiaCity[];
+    error: string | null;
+  }>({
+    department: "",
+    cities: [],
+    error: null,
+  });
 
   useEffect(() => {
     let isMounted = true;
-    setIsLoadingDepartments(true);
-    setDepartmentsError(null);
 
     getColombiaDepartments()
       .then((data) => {
         if (isMounted) {
           setDepartments(data);
+          setIsLoadingDepartments(false);
         }
       })
       .catch(() => {
         if (isMounted) {
           setDepartmentsError("No se pudieron cargar los departamentos.");
-        }
-      })
-      .finally(() => {
-        if (isMounted) {
           setIsLoadingDepartments(false);
         }
       });
@@ -71,31 +72,27 @@ export default function ResidenceFields({
   }, []);
 
   useEffect(() => {
-    if (!department) {
-      setMunicipalities([]);
-      setIsLoadingMunicipalities(false);
-      setMunicipalitiesError(null);
-      return;
-    }
+    if (!department) return;
 
     let isMounted = true;
-    setIsLoadingMunicipalities(true);
-    setMunicipalitiesError(null);
 
     getColombiaCitiesByDepartmentName(department)
       .then((data) => {
         if (isMounted) {
-          setMunicipalities(data);
+          setMunicipalitiesState({
+            department,
+            cities: data,
+            error: null,
+          });
         }
       })
       .catch(() => {
         if (isMounted) {
-          setMunicipalitiesError("No se pudieron cargar los municipios.");
-        }
-      })
-      .finally(() => {
-        if (isMounted) {
-          setIsLoadingMunicipalities(false);
+          setMunicipalitiesState({
+            department,
+            cities: [],
+            error: "No se pudieron cargar los municipios.",
+          });
         }
       });
 
@@ -104,11 +101,18 @@ export default function ResidenceFields({
     };
   }, [department]);
 
+  const isCurrentDept = municipalitiesState.department === department;
+  const municipalities =
+    department && isCurrentDept ? municipalitiesState.cities : [];
+  const isLoadingMunicipalities = Boolean(department && !isCurrentDept);
+  const municipalitiesError =
+    department && isCurrentDept ? municipalitiesState.error : null;
+
   const hasSelectedMunicipalityInList = Boolean(
     municipality &&
-    municipalities.some(
-      (city) => city.name.toLowerCase() === municipality.toLowerCase(),
-    ),
+      municipalities.some(
+        (city) => city.name.toLowerCase() === municipality.toLowerCase(),
+      ),
   );
 
   return (
