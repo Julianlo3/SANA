@@ -8,11 +8,11 @@ import { ConfigService } from '@nestjs/config';
 import type { Request } from 'express';
 
 /**
- * Guard that checks if the request's origin is allowed based on the configured CORS origins.
+ * Guard that checks if the request's origin is allowed based on the ORIGIN environment variable.
  */
 @Injectable()
 export class OriginGuard implements CanActivate {
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly configService: ConfigService) { }
 
   /**
    * Checks if the request's origin is allowed.

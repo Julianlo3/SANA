@@ -234,12 +234,18 @@ export function validateRelationship(value: number | ""): string | undefined {
   return undefined;
 }
 
+/**
+ * Validate municipality field
+ * @param department Department selected
+ * @param municipality Municipality selected
+ * @returns Error message or undefined
+ */
 export function validateMunicipality(
   department: string,
   municipality: string,
 ): string | undefined {
   if (department && !municipality.trim()) {
-    return "Escribe el municipio, o deja el departamento sin seleccionar.";
+    return "Selecciona el municipio, o deja el departamento sin seleccionar.";
   }
 
   return undefined;
@@ -302,7 +308,7 @@ export function validateGuardianRequest(values: RequestFormValues): RequestFormE
     phone: validatePhone(values.phone),
     appType: validateAppointmentMode(values.appType),
 
-      minorFullName: validateFullName(values.minorFullName),
+    minorFullName: validateFullName(values.minorFullName),
     minorBirthDate: validateMinorBirthDate(values.minorBirthDate),
     minorGender: validateGender(values.minorGender),
     minorIdentityDocument: validateMinorIdentityDocument(
