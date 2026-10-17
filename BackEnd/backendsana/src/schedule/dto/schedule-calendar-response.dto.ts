@@ -1,4 +1,5 @@
 import type { ScheduleBlockResponse } from './schedule-block-response.dto.js';
+import type { RecurringScheduleBlockResponse } from './recurring-schedule-block-response.dto.js';
 
 export interface ScheduleOccupancyResponse {
   id: number;
@@ -12,4 +13,5 @@ export interface ScheduleOccupancyResponse {
 export interface ScheduleCalendarResponse {
   availability: ScheduleBlockResponse[];
   occupancy: ScheduleOccupancyResponse[];
+  recurring: RecurringScheduleBlockResponse[];
 }

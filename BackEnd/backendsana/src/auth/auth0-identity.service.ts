@@ -36,9 +36,9 @@ export class Auth0IdentityService {
   }
 
   /**
-   * Verifies an Auth0 access token and extracts the user profile.
-   * @param accessToken 
-   * @returns 
+   * Verify Auth0 access token and extract user profile.
+   * @param accessToken Auth0 access token.
+   * @returns Auth0Profile with the user profile information.
    */
   async verifyAccessToken(accessToken: string): Promise<Auth0Profile> {
     try {

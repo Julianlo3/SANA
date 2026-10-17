@@ -18,8 +18,7 @@ interface RequestBucket {
 }
 
 /**
- * Bounded in-memory rate limiter for brute-force attacks, credential stuffing,
- * and resource exhaustion.
+ * Guard that rate limits requests to prevent brute-force attacks, credential stuffing, and resource exhaustion.
  */
 @Injectable()
 export class RateLimitGuard implements CanActivate {

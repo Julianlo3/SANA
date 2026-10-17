@@ -1,63 +1,22 @@
 /**
- * Ubicación de residencia (HU-2.2.5 y HU-2.1.6).
- *
- * El departamento sale del listado oficial del DANE, es una lista estable.
- * El municipio queda como texto libre: un catálogo completo de los más de
- * 1.100 municipios de Colombia no existe todavía en el proyecto: se
- * reemplaza este campo por un selector cuando haya esa fuente de datos.
- * Huila es la única excepción (ver HUILA_MUNICIPALITIES en huila-municipalities.ts).
+ * Departments and municipalities are loaded dynamically from the public API
+ * https://api-colombia.com (see colombia-service.ts).
  */
 
-export const COLOMBIA_DEPARTMENTS = [
-  "Amazonas",
-  "Antioquia",
-  "Arauca",
-  "Atlántico",
-  "Bogotá D.C.",
-  "Bolívar",
-  "Boyacá",
-  "Caldas",
-  "Caquetá",
-  "Casanare",
-  "Cauca",
-  "Cesar",
-  "Chocó",
-  "Córdoba",
-  "Cundinamarca",
-  "Guainía",
-  "Guaviare",
-  "Huila",
-  "La Guajira",
-  "Magdalena",
-  "Meta",
-  "Nariño",
-  "Norte de Santander",
-  "Putumayo",
-  "Quindío",
-  "Risaralda",
-  "San Andrés y Providencia",
-  "Santander",
-  "Sucre",
-  "Tolima",
-  "Valle del Cauca",
-  "Vaupés",
-  "Vichada",
-] as const;
+/**
+ * Default department where the foundation mainly operates.
+ */
+export const DEFAULT_DEPARTMENT = "Huila";
 
-export type ColombiaDepartment = (typeof COLOMBIA_DEPARTMENTS)[number];
-
-/** Departamento donde opera principalmente la fundación, para preseleccionar. */
-export const DEFAULT_DEPARTMENT: ColombiaDepartment = "Huila";
-
-/** Texto de la opción cuando la persona prefiere no indicar su zona. */
+/**
+ * Option text when the person prefers not to indicate their zone.
+ */
 export const NO_ZONE_REPORTED_LABEL = "No reporta";
 
 /**
- * Ubicación de residencia de una persona. Vive aquí, no en un feature
- * concreto, porque tanto la solicitud de cita como la ficha del
- * consultante la necesitan.
+ * Type for the residence location of a person.
  */
 export type ResidenceLocation = {
-  department: ColombiaDepartment | string;
+  department: string;
   municipality: string;
 };

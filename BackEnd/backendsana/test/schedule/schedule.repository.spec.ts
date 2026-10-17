@@ -68,8 +68,8 @@ describe('ScheduleRepository.findAvailability', () => {
 });
 
 describe('ScheduleRepository.findCalendar', () => {
-  it('returns availability and occupancy separately in a single query', async () => {
-    const calendar = { availability: [], occupancy: [] };
+  it('returns availability, occupancy, and recurring rules separately in a single query', async () => {
+    const calendar = { availability: [], occupancy: [], recurring: [] };
     const dataSource = { query: vi.fn().mockResolvedValue([calendar]) };
     const repository = new ScheduleRepository(dataSource as never);
 
@@ -82,5 +82,12 @@ describe('ScheduleRepository.findCalendar', () => {
     expect(sql).toContain('FROM schedule_occupancy');
     expect(sql).toContain("'sourceType', source_type");
     expect(sql).toContain('AS occupancy');
+    expect(sql).toContain('FROM schedule_recurring_blocks');
+    expect(sql).toContain("'dayOfWeek', srb_day_of_week");
+    expect(sql).toContain("'validFrom', srb_valid_from::text");
+    expect(sql).toContain("'validUntil', srb_valid_until::text");
+    expect(sql).toContain("'active', srb_active");
+    expect(sql).toContain('AS recurring');
+    expect(sql).not.toContain('generate_series');
   });
 });
