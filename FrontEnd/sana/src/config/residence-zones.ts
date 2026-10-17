@@ -13,8 +13,6 @@ export const DEFAULT_DEPARTMENT = "Huila";
  */
 export const NO_ZONE_REPORTED_LABEL = "No reporta";
 
-export type ColombiaDepartment = string;
-
 /**
  * Type for the residence location of a person.
  */

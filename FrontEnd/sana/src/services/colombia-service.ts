@@ -36,22 +36,20 @@ const citiesPromiseCache = new Map<number, Promise<ColombiaCity[]>>();
  * It uses caching to avoid unnecessary repeated requests.
  */
 export async function getColombiaDepartments(): Promise<ColombiaDepartment[]> {
-  if (!departmentsPromise) {
-    departmentsPromise = fetch(`${BASE_URL}/Department`)
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error(
-            `Error ${response.status}: No se pudieron obtener los departamentos.`,
-          );
-        }
-        const data: ColombiaDepartment[] = await response.json();
-        return data.sort((a, b) => a.name.localeCompare(b.name, "es"));
-      })
-      .catch((error) => {
-        departmentsPromise = null;
-        throw error;
-      });
-  }
+  departmentsPromise ??= fetch(`${BASE_URL}/Department`)
+    .then(async (response) => {
+      if (!response.ok) {
+        throw new Error(
+          `Error ${response.status}: No se pudieron obtener los departamentos.`,
+        );
+      }
+      const data: ColombiaDepartment[] = await response.json();
+      return data.sort((a, b) => a.name.localeCompare(b.name, "es"));
+    })
+    .catch((error) => {
+      departmentsPromise = null;
+      throw error;
+    });
 
   return departmentsPromise;
 }
