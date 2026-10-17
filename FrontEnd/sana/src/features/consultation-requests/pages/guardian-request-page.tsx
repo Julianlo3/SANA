@@ -17,7 +17,9 @@ import ConfirmedField from "../components/confirmed-field";
 import DataPolicyConsent from "../components/data-policy-consent";
 import ResidenceFields from "../components/residence-fields";
 import { useConsultationRequestForm } from "../hooks/use-consultation-request-form";
+import { scrollToFirstError } from "../lib/scroll-to-first-error";
 import {
+  calculateAge,
   validateFullName,
   validateIdentityDocument,
   validateConfirmIdentityDocument,
@@ -31,6 +33,7 @@ import {
   validateMinorBirthDate,
   validateMinorIdentityDocument,
   validateConfirmMinorIdentityDocument,
+  type RequestFormValues,
 } from "../validation/consultation-request-validation";
 import type {
   CardType,
@@ -64,12 +67,77 @@ const GENDER_OPTIONS: { value: Gender; label: string }[] = [
   { value: "P", label: "No quiero especificar" },
 ];
 
+/** Campos del paso 1: los del acudiente y los del menor. */
+const STEP1_FIELDS: (keyof RequestFormValues)[] = [
+  "fullName",
+  "documentType",
+  "identityDocument",
+  "confirmIdentityDocument",
+  "birthDate",
+  "gender",
+  "relationship",
+  "email",
+  "confirmEmail",
+  "phone",
+  "minorFullName",
+  "minorBirthDate",
+  "minorIdentityDocument",
+  "confirmMinorIdentityDocument",
+  "minorGender",
+];
+
+/** Nombres de los campos del paso 1 que hoy tienen error, para el resumen. */
+function getStep1Failed(values: RequestFormValues): string[] {
+  const checks: [string, string | undefined][] = [
+    ["Nombre completo", validateFullName(values.fullName)],
+    ["Tipo de documento", validateDocumentType(values.documentType)],
+    ["Número de documento", validateIdentityDocument(values.identityDocument)],
+    [
+      "Confirmación del documento",
+      validateConfirmIdentityDocument(
+        values.identityDocument,
+        values.confirmIdentityDocument,
+      ),
+    ],
+    ["Tu fecha de nacimiento", validateAdultBirthDate(values.birthDate)],
+    ["Tu género", validateGender(values.gender)],
+    ["Parentesco", validateRelationship(values.relationship)],
+    ["Correo", validateEmail(values.email)],
+    [
+      "Confirmación del correo",
+      validateConfirmEmail(values.email, values.confirmEmail),
+    ],
+    ["Teléfono", validatePhone(values.phone)],
+    ["Nombre del menor", validateFullName(values.minorFullName)],
+    [
+      "Fecha de nacimiento del menor",
+      validateMinorBirthDate(values.minorBirthDate),
+    ],
+    [
+      "Documento del menor",
+      validateMinorIdentityDocument(values.minorIdentityDocument),
+    ],
+    [
+      "Confirmación del documento del menor",
+      validateConfirmMinorIdentityDocument(
+        values.minorIdentityDocument,
+        values.confirmMinorIdentityDocument,
+      ),
+    ],
+    ["Género del menor", validateGender(values.minorGender)],
+  ];
+
+  return checks.filter(([, error]) => error).map(([label]) => label);
+}
+
 export default function GuardianRequestPage() {
   const [step, setStep] = useState<1 | 2>(1);
+  const [step1Attempted, setStep1Attempted] = useState(false);
 
   const {
     values,
     errors,
+    errorSummary,
     isSaving,
     submitError,
     setValue,
@@ -84,54 +152,30 @@ export default function GuardianRequestPage() {
     send,
   } = useConsultationRequestForm("dependent");
 
+  const step1Failed = step1Attempted ? getStep1Failed(values) : [];
+  const summary =
+    step === 1 && step1Failed.length > 0 ? step1Failed : errorSummary;
+
   function goToStep2() {
-    const step1Errors = [
-      validateFullName(values.fullName),
-      validateDocumentType(values.documentType),
-      validateIdentityDocument(values.identityDocument),
-      validateConfirmIdentityDocument(
-        values.identityDocument,
-        values.confirmIdentityDocument,
-      ),
-      validateAdultBirthDate(values.birthDate),
-      validateGender(values.gender),
-      validateRelationship(values.relationship),
-      validateEmail(values.email),
-      validateConfirmEmail(values.email, values.confirmEmail),
-      validatePhone(values.phone),
-      validateFullName(values.minorFullName),
-      validateMinorBirthDate(values.minorBirthDate),
-      validateMinorIdentityDocument(values.minorIdentityDocument),
-      validateConfirmMinorIdentityDocument(
-        values.minorIdentityDocument,
-        values.confirmMinorIdentityDocument,
-      ),
-      validateGender(values.minorGender),
-    ];
+    STEP1_FIELDS.forEach((field) => setFieldTouched(field));
+    setStep1Attempted(true);
 
-    setFieldTouched("fullName");
-    setFieldTouched("documentType");
-    setFieldTouched("identityDocument");
-    setFieldTouched("confirmIdentityDocument");
-    setFieldTouched("birthDate");
-    setFieldTouched("gender");
-    setFieldTouched("relationship");
-    setFieldTouched("email");
-    setFieldTouched("confirmEmail");
-    setFieldTouched("phone");
-    setFieldTouched("minorFullName");
-    setFieldTouched("minorBirthDate");
-    setFieldTouched("minorIdentityDocument");
-    setFieldTouched("confirmMinorIdentityDocument");
-    setFieldTouched("minorGender");
-
-    if (step1Errors.every((error) => !error)) {
+    if (getStep1Failed(values).length === 0) {
       setStep(2);
+      return;
     }
+
+    window.setTimeout(scrollToFirstError, 50);
   }
 
-  const canSubmit =
-    values.hasAcceptedGuardianDataPolicy && values.hasAcceptedMinorDataPolicy;
+  /** Envía y, si el backend rechaza un dato del paso 1, vuelve a ese paso. */
+  async function handleSend() {
+    const rejected = await send();
+
+    if (rejected.some((field) => STEP1_FIELDS.includes(field))) {
+      setStep(1);
+    }
+  }
 
   return (
     <div className="flex min-h-full flex-col">
@@ -220,6 +264,7 @@ export default function GuardianRequestPage() {
                         setDocumentType(event.target.value as CardType | "")
                       }
                       onBlur={() => setFieldTouched("documentType")}
+                      aria-invalid={errors.documentType ? true : undefined}
                       className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
                     >
                       <option value="">Selecciona</option>
@@ -264,6 +309,11 @@ export default function GuardianRequestPage() {
                   onBlur={() => setFieldTouched("confirmIdentityDocument")}
                 />
 
+                <p className="rounded-xl bg-primary-soft/40 px-4 py-3 text-xs text-text-muted">
+                  ¿Ya pediste una cita antes? Entra por Ingresar → Consultantes
+                  con tu cuenta de Google para ver cómo va.
+                </p>
+
                 <div className="grid gap-5 sm:grid-cols-2">
                   <label className="block">
                     <span className="text-sm font-semibold text-text">
@@ -280,6 +330,7 @@ export default function GuardianRequestPage() {
                         setValue("birthDate", event.target.value)
                       }
                       onBlur={() => setFieldTouched("birthDate")}
+                      aria-invalid={errors.birthDate ? true : undefined}
                       className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
                     />
                     <span className="mt-1.5 block text-xs text-text-subtle">
@@ -305,6 +356,7 @@ export default function GuardianRequestPage() {
                         setGender(event.target.value as Gender | "")
                       }
                       onBlur={() => setFieldTouched("gender")}
+                      aria-invalid={errors.gender ? true : undefined}
                       className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
                     >
                       <option value="">Selecciona</option>
@@ -354,6 +406,7 @@ export default function GuardianRequestPage() {
                         )
                       }
                       onBlur={() => setFieldTouched("relationship")}
+                      aria-invalid={errors.relationship ? true : undefined}
                       className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
                     >
                       <option value="">Selecciona una opción</option>
@@ -418,6 +471,7 @@ export default function GuardianRequestPage() {
                         setValue("minorBirthDate", event.target.value)
                       }
                       onBlur={() => setFieldTouched("minorBirthDate")}
+                      aria-invalid={errors.minorBirthDate ? true : undefined}
                       className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
                     />
                     {errors.minorBirthDate && (
@@ -442,6 +496,7 @@ export default function GuardianRequestPage() {
                         setMinorGender(event.target.value as Gender | "")
                       }
                       onBlur={() => setFieldTouched("minorGender")}
+                      aria-invalid={errors.minorGender ? true : undefined}
                       className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
                     >
                       <option value="">Selecciona</option>
@@ -479,6 +534,7 @@ export default function GuardianRequestPage() {
                         )
                       }
                       onBlur={() => setFieldTouched("minorIdentityDocument")}
+                      aria-invalid={errors.minorIdentityDocument ? true : undefined}
                       maxLength={12}
                       placeholder="Solo números"
                       className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text placeholder:text-text-subtle focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -532,6 +588,12 @@ export default function GuardianRequestPage() {
                 <ShieldCheck size={16} className="mt-0.5 shrink-0" aria-hidden />
                 {guardianForm.privacyNote}
               </p>
+
+              {summary.length > 0 && (
+                <InlineMessage tone="error">
+                  Revisa estos campos: {summary.join(", ")}.
+                </InlineMessage>
+              )}
             </div>
           ) : (
             <div className="mt-8 space-y-8 rounded-2xl border border-border bg-surface p-6">
@@ -571,9 +633,15 @@ export default function GuardianRequestPage() {
                     }
                     rows={4}
                     maxLength={1000}
+                    aria-invalid={errors.consultationReason ? true : undefined}
                     placeholder="Opcional. Esta información nos ayuda a orientar al profesional más adecuado."
                     className="mt-2 w-full resize-none rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text placeholder:text-text-subtle focus:outline-none focus:ring-2 focus:ring-primary/40"
                   />
+                  {errors.consultationReason && (
+                    <span role="alert" className="mt-1.5 block text-xs text-danger">
+                      {errors.consultationReason}
+                    </span>
+                  )}
                 </label>
 
                 <p className="rounded-xl bg-primary-soft/40 p-4 text-sm text-text-muted">
@@ -601,6 +669,12 @@ export default function GuardianRequestPage() {
                 />
               </div>
 
+              {summary.length > 0 && (
+                <InlineMessage tone="error">
+                  Revisa estos campos: {summary.join(", ")}.
+                </InlineMessage>
+              )}
+
               {submitError && (
                 <InlineMessage tone="error">{submitError}</InlineMessage>
               )}
@@ -615,7 +689,7 @@ export default function GuardianRequestPage() {
                 <Button variant="secondary" onClick={() => setStep(1)}>
                   {guardianForm.previousStep}
                 </Button>
-                <Button onClick={send} disabled={isSaving || !canSubmit}>
+                <Button onClick={handleSend} disabled={isSaving}>
                   {isSaving ? "Enviando…" : guardianForm.submit}
                 </Button>
               </>
@@ -627,15 +701,4 @@ export default function GuardianRequestPage() {
       <PublicFooter />
     </div>
   );
-}
-
-function calculateAge(birthDate: string): number {
-  const birth = new Date(birthDate);
-  const today = new Date();
-  let age = today.getFullYear() - birth.getFullYear();
-  const monthDiff = today.getMonth() - birth.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-    age -= 1;
-  }
-  return age;
 }

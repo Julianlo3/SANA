@@ -43,6 +43,13 @@ export function useMyRequests() {
     return () => controller.abort();
   }, [reloadKey]);
 
+  /** Recarga la lista y deja un aviso de éxito debajo. */
+  const reload = useCallback((message: string) => {
+    setNotice(message);
+    setActionError(null);
+    setReloadKey((current) => current + 1);
+  }, []);
+
   /** Cancela o retira la solicitud y recarga la lista. Devuelve si salió bien. */
   const cancel = useCallback(async (request: MyRequest): Promise<boolean> => {
     setCancelingId(request.appId);
@@ -78,5 +85,6 @@ export function useMyRequests() {
     notice,
     actionError,
     cancel,
+    reload,
   };
 }

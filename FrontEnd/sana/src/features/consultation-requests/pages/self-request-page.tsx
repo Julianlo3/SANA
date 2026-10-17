@@ -37,9 +37,9 @@ export default function SelfRequestPage() {
   const {
     values,
     errors,
+    errorSummary,
     isSaving,
     submitError,
-    isValid,
     setValue,
     setFieldTouched,
     setDocumentType,
@@ -107,6 +107,7 @@ export default function SelfRequestPage() {
                       setDocumentType(event.target.value as CardType | "")
                     }
                     onBlur={() => setFieldTouched("documentType")}
+                    aria-invalid={errors.documentType ? true : undefined}
                     className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
                   >
                     <option value="">Selecciona</option>
@@ -151,6 +152,11 @@ export default function SelfRequestPage() {
                 onBlur={() => setFieldTouched("confirmIdentityDocument")}
               />
 
+              <p className="rounded-xl bg-primary-soft/40 px-4 py-3 text-xs text-text-muted">
+                ¿Ya pediste una cita antes? Entra por Ingresar → Consultantes
+                con tu cuenta de Google para ver cómo va.
+              </p>
+
               <div className="grid gap-5 sm:grid-cols-2">
                 <label className="block">
                   <span className="text-sm font-semibold text-text">
@@ -165,6 +171,7 @@ export default function SelfRequestPage() {
                     max={new Date().toISOString().split("T")[0]}
                     onChange={(event) => setValue("birthDate", event.target.value)}
                     onBlur={() => setFieldTouched("birthDate")}
+                    aria-invalid={errors.birthDate ? true : undefined}
                     className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
                   />
                   {errors.birthDate && (
@@ -187,6 +194,7 @@ export default function SelfRequestPage() {
                       setGender(event.target.value as Gender | "")
                     }
                     onBlur={() => setFieldTouched("gender")}
+                    aria-invalid={errors.gender ? true : undefined}
                     className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
                   >
                     <option value="">Selecciona</option>
@@ -296,8 +304,14 @@ export default function SelfRequestPage() {
                   rows={4}
                   maxLength={1000}
                   placeholder={selfForm.reasonHint}
+                  aria-invalid={errors.consultationReason ? true : undefined}
                   className="mt-2 w-full resize-none rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text placeholder:text-text-subtle focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
+                {errors.consultationReason && (
+                  <span role="alert" className="mt-1.5 block text-xs text-danger">
+                    {errors.consultationReason}
+                  </span>
+                )}
               </label>
 
               <p className="mt-4 rounded-xl bg-primary-soft/40 p-4 text-sm text-text-muted">
@@ -314,6 +328,12 @@ export default function SelfRequestPage() {
               policyType="data_treatment"
             />
 
+            {errorSummary.length > 0 && (
+              <InlineMessage tone="error">
+                Revisa estos campos: {errorSummary.join(", ")}.
+              </InlineMessage>
+            )}
+
             {submitError && (
               <InlineMessage tone="error">{submitError}</InlineMessage>
             )}
@@ -327,10 +347,7 @@ export default function SelfRequestPage() {
               {selfForm.cancel}
             </Link>
 
-            <Button
-              onClick={send}
-              disabled={isSaving || !values.hasAcceptedDataPolicy || !isValid}
-            >
+            <Button onClick={send} disabled={isSaving}>
               {isSaving ? "Enviando…" : selfForm.submit}
             </Button>
           </div>
