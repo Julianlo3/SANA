@@ -160,13 +160,17 @@ export function useOwnProfile() {
       phone: values.phone.trim(),
     };
     if (profile?.canEditConsultantFields) {
+      const municipality = values.municipality.trim();
+      let residenceZone: string | null = null;
+      if (municipality) {
+        residenceZone = values.department
+          ? `${municipality}, ${values.department}`
+          : municipality;
+      }
+
       payload.birthdate = values.birthdate || null;
       payload.gender = values.gender || null;
-      payload.residenceZone = values.department
-        ? values.municipality.trim()
-          ? `${values.municipality.trim()}, ${values.department}`
-          : null
-        : values.municipality.trim() || null;
+      payload.residenceZone = residenceZone;
     }
 
     setIsSaving(true);

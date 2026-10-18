@@ -11,7 +11,7 @@ import { useMyRequests } from "../hooks/use-my-requests";
 import { useOwnProfile } from "../hooks/use-own-profile";
 import type { MyRequest } from "../types/my-account-types";
 
-const ACTIVE_STATES = ["pendiente", "asignada", "confirmada"];
+const ACTIVE_STATES = new Set(["pendiente", "asignada", "confirmada"]);
 
 /**
  * Helper function to generate an active summary message based on the number of active appointments.
@@ -39,7 +39,7 @@ export default function MyRequestsSection() {
 
   const firstName = profile.profile?.fullName.trim().split(" ")[0] ?? "";
   const activeCount = requests.requests.filter((r) =>
-    ACTIVE_STATES.includes(r.appState),
+    ACTIVE_STATES.has(r.appState),
   ).length;
 
   /**
