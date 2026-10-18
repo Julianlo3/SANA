@@ -12,7 +12,7 @@ export async function testBackendAuthMe() {
 
   // 2. Armamos la URL usando nuestra variable de entorno (hacia NestJS)
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
-  
+
   // 3. Hacemos el fetch enviando el token en los headers
   const response = await fetch(`${apiUrl}/auth/me`, {
     method: "GET",
@@ -30,3 +30,26 @@ export async function testBackendAuthMe() {
   // 4. Retornamos los datos que nos devuelve tu backend (NestJS)
   return await response.json();
 }
+
+/**
+ * Genera la firma de integridad SHA-256 requerida por Wompi
+ * Fórmula: sha256(reference + amountInCents + currency + integritySecret)
+ */
+export async function generateWompiSignatureAction(
+  reference: string,
+  amountInCents: number,
+  currency: string = 'COP',
+  integritySecret?: string
+) {
+  const crypto = await import('crypto');
+  const secret = (
+    integritySecret ||
+    process.env.WOMPI_INTEGRITY_SECRET ||
+    'test_integrity_HJ7pf5UAHw8CQnWXIA7pLf8p8iLR9auS'
+  ).trim();
+  if (!secret) return null;
+
+  const rawString = `${reference}${amountInCents}${currency}${secret}`;
+  return crypto.createHash('sha256').update(rawString).digest('hex');
+}
+
