@@ -37,4 +37,5 @@ export interface OwnProfileResponse {
   gender: string | null;
   residenceZone: string | null;
   vulnerabilities: string[] | null;
+  canEditConsultantFields: boolean;
 }

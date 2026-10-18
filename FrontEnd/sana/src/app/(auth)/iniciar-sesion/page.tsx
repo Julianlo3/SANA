@@ -1,37 +1,11 @@
 import Image from "next/image";
-import Link from "next/link";
 import PageDecor from "@/components/ui/page-decor";
 
-type Props = {
-  readonly searchParams: Promise<{ tipo?: string }>;
-};
-
-const COPY = {
-  staff: {
-    title: "Acceso seguro",
-    description:
-      "Área reservada para el equipo de la Fundación Dejando Huellas Felices.",
-    note: "Solo pueden ingresar cuentas aprobadas por la administración de la fundación.",
-    returnTo: "%2Fpanel",
-    switchLabel: "¿Eres consultante?",
-    switchAction: "Entra aquí",
-    switchHref: "/iniciar-sesion?tipo=consultante",
-  },
-  requester: {
-    title: "Mi cuenta",
-    description: "Consulta el estado de tus citas y tus datos.",
-    note: "Entra con la cuenta de Google que usaste al pedir tu cita.",
-    returnTo: "%2Fmi-cuenta",
-    switchLabel: "¿Eres parte del equipo?",
-    switchAction: "Acceso personal autorizado",
-    switchHref: "/iniciar-sesion",
-  },
-} as const;
-
-export default async function LoginPage({ searchParams }: Props) {
-  const { tipo } = await searchParams;
-  const copy = tipo === "consultante" ? COPY.requester : COPY.staff;
-
+/**
+ * Page for logging in to the application.
+ * @returns The login page.
+ */
+export default function LoginPage() {
   return (
     <main className="relative flex flex-1 items-center justify-center overflow-hidden px-6 py-16">
       <PageDecor variant="auth" />
@@ -47,16 +21,16 @@ export default async function LoginPage({ searchParams }: Props) {
         />
 
         <h1 className="mt-6 font-display text-4xl font-extrabold tracking-tight text-primary-dark">
-          {copy.title}
+          Iniciar sesión
         </h1>
 
-        <p className="mx-auto mt-4 max-w-xs leading-relaxed text-text-muted">
-          {copy.description}
+        <p className="mx-auto mt-4 max-w-sm leading-relaxed text-text-muted">
+          Accede a tus citas, gestiona la atención o administra la plataforma según tu rol autorizado.
         </p>
 
         <div className="mt-10 rounded-2xl border border-border bg-surface p-6 shadow-sm">
           <a
-            href={`/auth/login?connection=google-oauth2&returnTo=${copy.returnTo}`}
+            href="/auth/login?connection=google-oauth2&returnTo=%2Fpanel"
             className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-xl border border-border bg-surface py-4 font-semibold text-text transition hover:bg-surface-muted"
           >
             <Image
@@ -66,27 +40,16 @@ export default async function LoginPage({ searchParams }: Props) {
               height={20}
               className="h-5 w-5"
             />
-
             Iniciar sesión con Google
           </a>
 
           <p className="mt-4 text-xs leading-relaxed text-text-subtle">
-            {copy.note}
+            Usa la cuenta de Google vinculada a tu cita o autorizada por la administración de la fundación.
           </p>
         </div>
 
-        <p className="mt-6 text-sm text-text-muted">
-          {copy.switchLabel}{" "}
-          <Link
-            href={copy.switchHref}
-            className="font-semibold text-primary transition hover:text-primary-dark"
-          >
-            {copy.switchAction}
-          </Link>
-        </p>
-
         <p className="mt-10 text-xs text-text-subtle">
-          Privacidad · Términos
+          Privacidad · Términos y Condiciones
         </p>
       </div>
     </main>
