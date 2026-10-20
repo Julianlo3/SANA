@@ -6,6 +6,32 @@ import type { ScheduleAvailabilitySlot } from './dto/schedule-availability-respo
 import type { ScheduleCalendarResponse } from './dto/schedule-calendar-response.dto.js';
 
 /**
+ * Fecha (YYYY-MM-DD) y hora (HH:MM:SS) de un instante en hora de Colombia.
+ * Los bloques de disponibilidad se guardan en hora local, así que toda
+ * comparación debe hacerse con este reloj y no con UTC (toISOString).
+ */
+function toBogotaParts(date: Date): { dateStr: string; timeStr: string } {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Bogota',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    })
+      .formatToParts(date)
+      .map((part) => [part.type, part.value]),
+  );
+  return {
+    dateStr: `${parts.year}-${parts.month}-${parts.day}`,
+    timeStr: `${parts.hour}:${parts.minute}:${parts.second}`,
+  };
+}
+
+/**
  * Repository for handling schedule-related database operations, including schedule blocks and recurring schedule blocks for psychologists.
  */
 @Injectable()
@@ -331,8 +357,8 @@ export class ScheduleRepository {
          ) AS start_at
          FROM availability_window
        )
-       SELECT s.start_at::date AS "date", s.start_at::time AS "startTime",
-         (s.start_at + ($3 || ' minutes')::interval)::time AS "endTime",
+       SELECT (s.start_at AT TIME ZONE 'America/Bogota')::date AS "date", (s.start_at AT TIME ZONE 'America/Bogota')::time AS "startTime",
+         ((s.start_at + ($3 || ' minutes')::interval) AT TIME ZONE 'America/Bogota')::time AS "endTime",
          p.psy_id AS "psychologistId", per.per_name AS "psychologistName",
          p.psy_speciality AS speciality
        FROM slots s
@@ -343,26 +369,26 @@ export class ScheduleRepository {
          AND (
            EXISTS (
              SELECT 1 FROM schedule b
-             WHERE b.psy_id = p.psy_id AND b.sch_date = s.start_at::date
-               AND b.sch_start_time <= s.start_at::time
-               AND b.sch_end_time >= (s.start_at + ($3 || ' minutes')::interval)::time
+             WHERE b.psy_id = p.psy_id AND b.sch_date = (s.start_at AT TIME ZONE 'America/Bogota')::date
+               AND b.sch_start_time <= (s.start_at AT TIME ZONE 'America/Bogota')::time
+               AND b.sch_end_time >= ((s.start_at + ($3 || ' minutes')::interval) AT TIME ZONE 'America/Bogota')::time
            )
            OR EXISTS (
              SELECT 1 FROM schedule_recurring_blocks r
              WHERE r.psy_id = p.psy_id AND r.srb_active = true
-               AND r.srb_day_of_week = EXTRACT(ISODOW FROM s.start_at::date)
-               AND r.srb_valid_from <= s.start_at::date
-               AND (r.srb_valid_until IS NULL OR r.srb_valid_until >= s.start_at::date)
-               AND r.srb_start_time <= s.start_at::time
-               AND r.srb_end_time >= (s.start_at + ($3 || ' minutes')::interval)::time
+               AND r.srb_day_of_week = EXTRACT(ISODOW FROM (s.start_at AT TIME ZONE 'America/Bogota')::date)
+               AND r.srb_valid_from <= (s.start_at AT TIME ZONE 'America/Bogota')::date
+               AND (r.srb_valid_until IS NULL OR r.srb_valid_until >= (s.start_at AT TIME ZONE 'America/Bogota')::date)
+               AND r.srb_start_time <= (s.start_at AT TIME ZONE 'America/Bogota')::time
+               AND r.srb_end_time >= ((s.start_at + ($3 || ' minutes')::interval) AT TIME ZONE 'America/Bogota')::time
            )
          )
          AND NOT EXISTS (
            SELECT 1 FROM schedule_occupancy o
            WHERE o.psy_id = p.psy_id
-             AND o.occ_date = s.start_at::date
-             AND o.occ_start_time < (s.start_at + ($3 || ' minutes')::interval)::time
-             AND o.occ_end_time > s.start_at::time
+             AND o.occ_date = (s.start_at AT TIME ZONE 'America/Bogota')::date
+             AND o.occ_start_time < ((s.start_at + ($3 || ' minutes')::interval) AT TIME ZONE 'America/Bogota')::time
+             AND o.occ_end_time > (s.start_at AT TIME ZONE 'America/Bogota')::time
          )
          AND NOT EXISTS (
            SELECT 1 FROM appointments a
@@ -407,8 +433,9 @@ export class ScheduleRepository {
         return 'not_assignable';
       }
 
-      const appDateStr = params.appDate.toISOString().slice(0, 10);
-      const appTimeStr = params.appDate.toISOString().slice(11, 19);
+      const { dateStr: appDateStr, timeStr: appTimeStr } = toBogotaParts(
+        params.appDate,
+      );
 
       await manager.query(
         `SELECT pg_advisory_xact_lock($1, hashtext($2::text))`,
@@ -458,9 +485,9 @@ export class ScheduleRepository {
              AND psy_id = $2
              AND app_state IN ('asignada', 'confirmada')
              AND app_date IS NOT NULL
-             AND app_date::date = $3::date
-             AND app_date::time < ($4::time + ($5 || ' minutes')::interval)::time
-             AND (app_date + (app_duration || ' minutes')::interval)::time > $4::time
+             AND (app_date AT TIME ZONE 'America/Bogota')::date = $3::date
+             AND (app_date AT TIME ZONE 'America/Bogota')::time < ($4::time + ($5 || ' minutes')::interval)::time
+             AND ((app_date + (app_duration || ' minutes')::interval) AT TIME ZONE 'America/Bogota')::time > $4::time
          ) AS exists`,
         [params.appId, params.psyId, appDateStr, appTimeStr, params.appDuration],
       );
@@ -539,8 +566,9 @@ export class ScheduleRepository {
         return 'slot_taken';
       }
 
-      const appDateStr = params.appDate.toISOString().slice(0, 10);
-      const appTimeStr = params.appDate.toISOString().slice(11, 19);
+      const { dateStr: appDateStr, timeStr: appTimeStr } = toBogotaParts(
+        params.appDate,
+      );
 
       await manager.query(
         `SELECT pg_advisory_xact_lock($1, hashtext($2::text))`,
@@ -604,9 +632,9 @@ export class ScheduleRepository {
              AND psy_id = $2
              AND app_state IN ('asignada', 'confirmada')
              AND app_date IS NOT NULL
-             AND app_date::date = $3::date
-             AND app_date::time < ($4::time + ($5 || ' minutes')::interval)::time
-             AND (app_date + (app_duration || ' minutes')::interval)::time > $4::time
+             AND (app_date AT TIME ZONE 'America/Bogota')::date = $3::date
+             AND (app_date AT TIME ZONE 'America/Bogota')::time < ($4::time + ($5 || ' minutes')::interval)::time
+             AND ((app_date + (app_duration || ' minutes')::interval) AT TIME ZONE 'America/Bogota')::time > $4::time
          ) AS exists`,
         [params.appId, params.psyId, appDateStr, appTimeStr, params.appDuration],
       );
