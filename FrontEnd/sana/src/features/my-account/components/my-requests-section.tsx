@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarPlus } from "lucide-react";
-import InlineMessage from "@/components/feedback/inline-message";
+import { CalendarPlus, UserPlus } from "lucide-react";
 import Button from "@/components/ui/button";
+import InlineMessage from "@/components/feedback/inline-message";
 import CancelRequestDialog from "../components/cancel-request-dialog";
+import NewDependentRequestDialog from "../components/new-dependent-request-dialog";
 import NewRequestDialog from "../components/new-request-dialog";
 import RequestCard from "../components/request-card";
 import { useMyRequests } from "../hooks/use-my-requests";
@@ -36,6 +37,8 @@ export default function MyRequestsSection() {
     null,
   );
   const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
+  const [isNewDependentRequestOpen, setIsNewDependentRequestOpen] =
+    useState(false);
 
   const firstName = profile.profile?.fullName.trim().split(" ")[0] ?? "";
   const activeCount = requests.requests.filter((r) =>
@@ -58,6 +61,7 @@ export default function MyRequestsSection() {
    */
   function handleCreated() {
     setIsNewRequestOpen(false);
+    setIsNewDependentRequestOpen(false);
     requests.reload(
       "Tu solicitud fue enviada. Una asistente te contactará para confirmar la cita.",
     );
@@ -82,7 +86,7 @@ export default function MyRequestsSection() {
             : activeSummary(activeCount)}
         </p>
 
-        <div className="mt-6">
+        <div className="mt-6 flex flex-wrap gap-3">
           <Button
             onClick={() => setIsNewRequestOpen(true)}
             disabled={!profile.profile}
@@ -92,11 +96,21 @@ export default function MyRequestsSection() {
               Solicitar una nueva cita
             </span>
           </Button>
+          <Button
+            variant="secondary"
+            onClick={() => setIsNewDependentRequestOpen(true)}
+            disabled={!profile.profile}
+          >
+            <span className="inline-flex items-center gap-2">
+              <UserPlus size={16} aria-hidden />
+              Solicitar cita para un dependiente
+            </span>
+          </Button>
         </div>
       </section>
 
       {/* Lista de solicitudes */}
-      <section>
+      <section id="mis-citas">
         <h2 className="font-display text-2xl font-bold text-primary-dark">
           Mis citas
         </h2>
@@ -158,6 +172,13 @@ export default function MyRequestsSection() {
           profile={profile.profile}
           onCreated={handleCreated}
           onClose={() => setIsNewRequestOpen(false)}
+        />
+      )}
+      {isNewDependentRequestOpen && profile.profile && (
+        <NewDependentRequestDialog
+          profile={profile.profile}
+          onCreated={handleCreated}
+          onClose={() => setIsNewDependentRequestOpen(false)}
         />
       )}
     </>

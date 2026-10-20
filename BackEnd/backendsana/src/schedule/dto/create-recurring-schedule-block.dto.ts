@@ -2,9 +2,7 @@ import {
   IsDateString,
   IsInt,
   IsOptional,
-  IsString,
   Max,
-  MaxLength,
   Matches,
   Min,
 } from 'class-validator';
@@ -12,7 +10,7 @@ import {
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
 
 /**
- * DTO for creating a recurring schedule block, containing the day of the week, start and end times, validity period, and reason.
+ * DTO for creating a recurring schedule block, containing the day of the week, time range, and validity period.
  */
 export class CreateRecurringScheduleBlockDto {
   @IsInt()
@@ -32,8 +30,4 @@ export class CreateRecurringScheduleBlockDto {
   @IsOptional()
   @IsDateString()
   validUntil?: string;
-
-  @IsString()
-  @MaxLength(255)
-  reason!: string;
 }

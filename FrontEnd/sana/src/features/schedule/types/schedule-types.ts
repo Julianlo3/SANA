@@ -14,7 +14,6 @@ export type ScheduleBlock = {
   date: string;
   startTime: string;
   endTime: string;
-  reason: string | null;
   appointmentId: number | null;
 };
 
@@ -26,15 +25,14 @@ export type RecurringScheduleBlock = {
   endTime: string;
   validFrom: string;
   validUntil: string | null;
-  reason: string | null;
   active: boolean;
+  hasAppointments: boolean;
 };
 
 export type CreateScheduleBlockPayload = {
   date: string;
   startTime: string;
   endTime: string;
-  reason: string;
 };
 
 export type CreateRecurringScheduleBlockPayload = {
@@ -43,5 +41,4 @@ export type CreateRecurringScheduleBlockPayload = {
   endTime: string;
   validFrom: string;
   validUntil?: string;
-  reason: string;
 };

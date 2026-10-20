@@ -61,8 +61,7 @@ export default function NewRequestDialog({
         <div className="space-y-5">
           <p>
             Usaremos los datos de tu cuenta. Solo cuéntanos cómo prefieres la
-            cita. Es para ti: si necesitas una para un menor, envía el
-            formulario desde el inicio.
+            cita.
           </p>
 
           <AppointmentModeField

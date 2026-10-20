@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Montserrat } from "next/font/google";
+import { Auth0Provider } from "@auth0/nextjs-auth0/client";
+import { auth0 } from "@/lib/auth0";
 import "@/styles/globals.css";
 
 /*
@@ -18,11 +20,17 @@ export const metadata: Metadata = {
   description: "Plataforma de gestión de la fundación",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const session = await auth0.getSession();
+
   return (
     <html lang="es" className={`${montserrat.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-background text-text">
-        {children}
+        <Auth0Provider user={session?.user}>{children}</Auth0Provider>
       </body>
     </html>
   );

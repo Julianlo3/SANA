@@ -20,11 +20,11 @@ function setup() {
     findCalendar: vi.fn().mockResolvedValue({ availability: [], occupancy: [] }),
     hasOverlap: vi.fn().mockResolvedValue(false),
     createBlock: vi.fn().mockResolvedValue({ id: 1 }),
-    deleteBlock: vi.fn().mockResolvedValue(true),
+    deleteBlock: vi.fn().mockResolvedValue('deleted'),
     findRecurringBlocks: vi.fn().mockResolvedValue([]),
     hasRecurringOverlap: vi.fn().mockResolvedValue(false),
     createRecurringBlock: vi.fn().mockResolvedValue({ id: 2 }),
-    deleteRecurringBlock: vi.fn().mockResolvedValue(true),
+    deleteRecurringBlock: vi.fn().mockResolvedValue('deleted'),
     findAvailability: vi.fn().mockResolvedValue([]),
     assignAppointmentSlot: vi.fn().mockResolvedValue('assigned'),
   };
@@ -44,7 +44,6 @@ describe('ScheduleService', () => {
       date: '2026-10-15',
       startTime: '09:00',
       endTime: '12:00',
-      reason: 'Trabajo externo',
     });
 
     expect(repository.findBlocks).toHaveBeenCalledWith(10);
@@ -54,7 +53,6 @@ describe('ScheduleService', () => {
       date: '2026-10-15',
       startTime: '09:00',
       endTime: '12:00',
-      reason: 'Trabajo externo',
     });
   });
 
@@ -85,7 +83,6 @@ describe('ScheduleService', () => {
       endTime: '12:00:00',
       validFrom: '2026-10-01',
       validUntil: null,
-      reason: 'Disponibilidad semanal',
       active: true,
     }];
     const calendar = {
@@ -133,7 +130,6 @@ describe('ScheduleService', () => {
         date: '2026-10-15',
         startTime: '12:00',
         endTime: '09:00',
-        reason: 'Trabajo externo',
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(policyService.hasPsychologistAcceptedScheduleTerms).not.toHaveBeenCalled();
@@ -149,7 +145,6 @@ describe('ScheduleService', () => {
         date: '2026-10-15',
         startTime: '09:00',
         endTime: '12:00',
-        reason: 'Trabajo externo',
       }),
     ).rejects.toBeInstanceOf(ConflictException);
     expect(repository.createBlock).not.toHaveBeenCalled();
@@ -157,12 +152,38 @@ describe('ScheduleService', () => {
 
   it('reports a missing or appointment-owned block on delete', async () => {
     const { service, repository } = setup();
-    repository.deleteBlock.mockResolvedValue(false);
+    repository.deleteBlock.mockResolvedValue('not_found');
 
     await expect(
       service.deleteMyBlock(user() as never, 20),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(repository.deleteBlock).toHaveBeenCalledWith(10, 20);
+  });
+
+  it('rejects deleting a block that overlaps an assigned appointment', async () => {
+    const { service, repository } = setup();
+    repository.deleteBlock.mockResolvedValue('occupied');
+
+    await expect(
+      service.deleteMyBlock(user() as never, 20),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        error: 'SCHEDULE_BLOCK_HAS_APPOINTMENT',
+      }),
+    });
+  });
+
+  it('rejects deleting a recurring rule that overlaps an assigned appointment', async () => {
+    const { service, repository } = setup();
+    repository.deleteRecurringBlock.mockResolvedValue('occupied');
+
+    await expect(
+      service.deleteMyRecurringBlock(user() as never, 21),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        error: 'RECURRING_SCHEDULE_BLOCK_HAS_APPOINTMENT',
+      }),
+    });
   });
 
   it('creates a weekly recurring block', async () => {
@@ -174,7 +195,6 @@ describe('ScheduleService', () => {
       endTime: '12:00',
       validFrom: '2026-10-01',
       validUntil: '2026-12-31',
-      reason: 'Trabajo externo',
     });
 
     expect(policyService.hasPsychologistAcceptedScheduleTerms).toHaveBeenCalledWith(10);
@@ -185,7 +205,6 @@ describe('ScheduleService', () => {
       endTime: '12:00',
       validFrom: '2026-10-01',
       validUntil: '2026-12-31',
-      reason: 'Trabajo externo',
     });
   });
 
@@ -199,7 +218,6 @@ describe('ScheduleService', () => {
         endTime: '12:00',
         validFrom: '2026-12-31',
         validUntil: '2026-10-01',
-        reason: 'Trabajo externo',
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(policyService.hasPsychologistAcceptedScheduleTerms).not.toHaveBeenCalled();
@@ -216,7 +234,6 @@ describe('ScheduleService', () => {
         startTime: '08:00',
         endTime: '12:00',
         validFrom: '2026-10-01',
-        reason: 'Trabajo externo',
       }),
     ).rejects.toBeInstanceOf(ConflictException);
     expect(repository.createRecurringBlock).not.toHaveBeenCalled();

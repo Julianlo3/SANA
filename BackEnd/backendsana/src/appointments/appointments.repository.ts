@@ -8,11 +8,18 @@ export interface AppointmentRequesterParams {
   cardType: string;
   identityDocument: string;
   contactNumber: string;
-  email?: string;
+  email: string;
   birthdate?: string;
   gender?: string;
   termsAccepted: boolean;
   residenceZone?: string | null;
+}
+
+export class RequesterIdentityConflictError extends Error {
+  constructor() {
+    super('The requester email and identity document belong to different people');
+    this.name = 'RequesterIdentityConflictError';
+  }
 }
 
 export interface AppointmentDependentParams {
@@ -326,9 +333,16 @@ export class AppointmentsRepository {
     dependent: (AppointmentDependentParams & { relationshipId: number }) | null;
     appType: string;
     appReason: string | null;
+    authenticatedPersonId?: number;
   }): Promise<number> {
     return this.dataSource.transaction(async (manager) => {
-      const requesterId = await this.upsertRequester(params.requester, manager);
+      const requesterId = params.authenticatedPersonId
+        ? await this.upsertAuthenticatedRequester(
+          params.authenticatedPersonId,
+          params.requester,
+          manager,
+        )
+        : await this.upsertRequester(params.requester, manager);
       let patientPersonId: number | null = requesterId;
       let patientDependentId: number | null = null;
 
@@ -438,24 +452,44 @@ export class AppointmentsRepository {
     params: AppointmentRequesterParams,
     executor: QueryExecutor = this.dataSource,
   ): Promise<number> {
-    const existing = await executor.query<{ per_id: number }[]>(
-      `SELECT per_id FROM person WHERE per_identity_document = $1`,
-      [params.identityDocument],
+    const email = params.email.trim().toLowerCase();
+    const existing = await executor.query<{
+      per_id: number;
+      identity_document: string | null;
+      matches_identity_document: boolean | null;
+      matches_email: boolean | null;
+      has_user: boolean;
+    }[]>(
+      `SELECT
+         p.per_id,
+         p.per_identity_document::text AS identity_document,
+         p.per_identity_document = $1::bigint AS matches_identity_document,
+         lower(p.per_email) = lower($2) AS matches_email,
+         u.use_id IS NOT NULL AS has_user
+       FROM person p
+       LEFT JOIN users u ON u.use_id = p.per_id
+       WHERE p.per_identity_document = $1::bigint
+          OR lower(p.per_email) = lower($2)
+       FOR UPDATE OF p`,
+      [params.identityDocument, email],
     );
 
-    let personId: number;
+    const documentMatch = existing.find((person) => person.matches_identity_document);
+    const emailMatch = existing.find((person) => person.matches_email);
+    if (
+      (documentMatch || emailMatch) &&
+      (!documentMatch ||
+        !emailMatch ||
+        documentMatch.per_id !== emailMatch.per_id ||
+        documentMatch.has_user)
+    ) {
+      throw new RequesterIdentityConflictError();
+    }
 
-    if (existing[0]) {
-      personId = existing[0].per_id;
-      await executor.query(
-        `UPDATE person
-             SET per_residence_zone = COALESCE($2, per_residence_zone),
-               per_update_date = now()
-               WHERE per_id = $1`,
-        [personId, params.residenceZone],
-      );
+    let personId: number;
+    if (documentMatch && emailMatch) {
+      personId = documentMatch.per_id;
     } else {
-      const email = params.email || `doc_${params.identityDocument}@sana.org`;
       const created = await executor.query<{ per_id: number }[]>(
         `INSERT INTO person (
            per_name, per_card_type, per_identity_document, per_contact_number,
@@ -477,15 +511,92 @@ export class AppointmentsRepository {
       personId = created[0].per_id;
     }
 
-    // Asegurar que tenga el rol 'consultante' (rol_id = 3)
+    await this.ensureRequesterRole(personId, executor);
+    return personId;
+  }
+
+  /**
+   * Updates details of a requester if they are missing
+   * @param personId The ID of the person to update
+   * @param params The parameters containing the details to update
+   * @param executor The query executor to use for the database operation
+   * @returns The ID of the requester after upsert
+   */
+  private async upsertAuthenticatedRequester(
+    personId: number,
+    params: AppointmentRequesterParams,
+    executor: QueryExecutor,
+  ): Promise<number> {
+    const rows = await executor.query<{
+      identity_document: string | null;
+      matches_identity_document: boolean | null;
+    }[]>(
+      `SELECT
+         per_identity_document::text AS identity_document,
+         per_identity_document = $2::bigint AS matches_identity_document
+       FROM person
+       WHERE per_id = $1
+       FOR UPDATE`,
+      [personId, params.identityDocument],
+    );
+    const person = rows[0];
+    if (
+      !person ||
+      (person.identity_document !== null &&
+        !person.matches_identity_document)
+    ) {
+      throw new RequesterIdentityConflictError();
+    }
+
+    await this.updateMissingRequesterDetails(personId, params, executor);
+    await this.ensureRequesterRole(personId, executor);
+    return personId;
+  }
+
+  /**
+   * Updates details of a requester if they are missing
+   * @param personId The ID of the person to update
+   * @param params The parameters containing the details to update
+   * @param executor The query executor to use for the database operation
+   */
+  private async updateMissingRequesterDetails(
+    personId: number,
+    params: AppointmentRequesterParams,
+    executor: QueryExecutor,
+  ): Promise<void> {
+    await executor.query(
+      `UPDATE person
+       SET per_identity_document = COALESCE(per_identity_document, $2::bigint),
+           per_card_type = COALESCE(per_card_type, $3),
+           per_contact_number = COALESCE(per_contact_number, $4::bigint),
+           per_birthdate = COALESCE(per_birthdate, $5::date),
+           per_gender = COALESCE(per_gender, $6),
+           per_residence_zone = COALESCE(per_residence_zone, $7),
+           per_update_date = now()
+       WHERE per_id = $1`,
+      [
+        personId,
+        params.identityDocument,
+        params.cardType,
+        params.contactNumber,
+        params.birthdate ?? null,
+        params.gender ?? null,
+        params.residenceZone ?? null,
+      ],
+    );
+  }
+
+  private async ensureRequesterRole(
+    personId: number,
+    executor: QueryExecutor,
+  ): Promise<void> {
     await executor.query(
       `INSERT INTO person_rol (per_id, rol_id, pr_assigned_at)
        VALUES ($1, 3, now())
-       ON CONFLICT (per_id, rol_id) DO NOTHING`,
+       ON CONFLICT (per_id, rol_id) DO UPDATE
+       SET pr_active = true`,
       [personId],
     );
-
-    return personId;
   }
 
   /**

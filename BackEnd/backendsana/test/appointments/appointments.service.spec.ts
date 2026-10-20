@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
 import { describe, expect, it, vi } from 'vitest';
 import { AppointmentsService } from '../../src/appointments/appointments.service.js';
+import { RequesterIdentityConflictError } from '../../src/appointments/appointments.repository.js';
 
 function baseRequest(overrides: Record<string, unknown> = {}) {
   return {
@@ -9,6 +10,7 @@ function baseRequest(overrides: Record<string, unknown> = {}) {
     requesterCardType: 'CC',
     requesterIdentityDocument: '10212265698',
     requesterContactNumber: '3001234567',
+    requesterEmail: 'ana@example.com',
     requesterBirthdate: '1990-01-01',
     requesterTermsAccepted: true,
     patientType: 'self',
@@ -154,7 +156,7 @@ describe('AppointmentsService.requestAppointment', () => {
   it('returns the same generic conflict for duplicate requester email or document', async () => {
     const expectedResponse = {
       error: 'REQUESTER_ALREADY_REGISTERED',
-      message: 'La información ingresada ya está asociada a una persona registrada. Verifique los datos e intente nuevamente.',
+      message: 'No se pudo asociar la solicitud con esos datos. Verifique el correo y documento, o inicie sesión si ya tiene una cuenta.',
     };
 
     for (const constraint of ['Person_email_uq', 'Person_idocument_uq']) {
@@ -175,6 +177,45 @@ describe('AppointmentsService.requestAppointment', () => {
         status: 409,
       });
     }
+  });
+
+  it('returns a registration conflict when email and identity document resolve to different people', async () => {
+    const { service, repository } = setup();
+    repository.createRequest.mockRejectedValue(
+      new RequesterIdentityConflictError(),
+    );
+
+    await expect(
+      service.requestAppointment(baseRequest() as never),
+    ).rejects.toMatchObject({
+      response: {
+        error: 'REQUESTER_ALREADY_REGISTERED',
+      },
+      status: 409,
+    });
+  });
+
+  it('passes the authenticated person ID to associate a request with the signed-in account', async () => {
+    const { service, repository } = setup();
+    const authenticatedUser = {
+      userId: 10,
+      personId: 10,
+      email: 'employee@example.com',
+      name: 'Empleado',
+      roles: ['secretario'],
+      auth0Subject: 'auth0|employee',
+      state: 'activo',
+      termsAccepted: true,
+    };
+
+    await service.requestAppointment(
+      baseRequest() as never,
+      authenticatedUser,
+    );
+
+    expect(repository.createRequest).toHaveBeenCalledWith(
+      expect.objectContaining({ authenticatedPersonId: 10 }),
+    );
   });
 
   it('does not translate unrelated database errors into requester conflicts', async () => {

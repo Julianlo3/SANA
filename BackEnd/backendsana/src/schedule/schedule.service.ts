@@ -99,7 +99,6 @@ export class ScheduleService {
       date: dto.date,
       startTime: dto.startTime,
       endTime: dto.endTime,
-      reason: dto.reason.trim(),
     });
   }
 
@@ -110,8 +109,14 @@ export class ScheduleService {
    */
   async deleteMyBlock(user: AuthenticatedUser, blockId: number): Promise<void> {
     this.ensurePsychologist(user);
-    const deleted = await this.repository.deleteBlock(user.personId, blockId);
-    if (!deleted) {
+    const result = await this.repository.deleteBlock(user.personId, blockId);
+    if (result === 'occupied') {
+      throw new ConflictException({
+        error: 'SCHEDULE_BLOCK_HAS_APPOINTMENT',
+        message: 'No se puede borrar el bloque porque contiene una cita asignada o confirmada',
+      });
+    }
+    if (result === 'not_found') {
       throw new NotFoundException('El bloqueo no existe, no pertenece al psicólogo o ya está ocupado por una cita');
     }
   }
@@ -185,7 +190,6 @@ export class ScheduleService {
       endTime: dto.endTime,
       validFrom: dto.validFrom,
       validUntil: dto.validUntil,
-      reason: dto.reason.trim(),
     });
   }
 
@@ -199,7 +203,14 @@ export class ScheduleService {
     blockId: number,
   ): Promise<void> {
     this.ensurePsychologist(user);
-    if (!(await this.repository.deleteRecurringBlock(user.personId, blockId))) {
+    const result = await this.repository.deleteRecurringBlock(user.personId, blockId);
+    if (result === 'occupied') {
+      throw new ConflictException({
+        error: 'RECURRING_SCHEDULE_BLOCK_HAS_APPOINTMENT',
+        message: 'No se puede borrar la regla porque tiene una cita asignada o confirmada',
+      });
+    }
+    if (result === 'not_found') {
       throw new NotFoundException('La regla recurrente no existe o no pertenece al psicólogo');
     }
   }
