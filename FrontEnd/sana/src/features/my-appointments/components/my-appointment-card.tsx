@@ -17,8 +17,10 @@ import {
 } from "@/features/appointments/lib/appointment-format";
 import { ApiError } from "@/types/api-types";
 import { getAppointmentClinicalNotes } from "../services/my-appointments-service";
-import type { AppointmentClinicalNote } from "../types/my-appointments-types";
-import type { MyAppointment } from "../types/my-appointments-types";
+import type {
+  AppointmentClinicalNote,
+  MyAppointment,
+} from "../types/my-appointments-types";
 
 type Props = {
   readonly appointment: MyAppointment;
@@ -38,6 +40,14 @@ export default function MyAppointmentCard({ appointment }: Props) {
   const [areNotesVisible, setAreNotesVisible] = useState(false);
   const [isLoadingNotes, setIsLoadingNotes] = useState(false);
   const [notesError, setNotesError] = useState<string | null>(null);
+  let clinicalNotesButtonLabel: string;
+  if (isLoadingNotes) {
+    clinicalNotesButtonLabel = "Cargando nota…";
+  } else if (areNotesVisible) {
+    clinicalNotesButtonLabel = "Ocultar nota clínica";
+  } else {
+    clinicalNotesButtonLabel = "Ver nota clínica";
+  }
 
   async function toggleClinicalNotes() {
     if (areNotesVisible) {
@@ -127,11 +137,7 @@ export default function MyAppointmentCard({ appointment }: Props) {
             className="inline-flex items-center gap-2 rounded-full border border-primary px-5 py-2.5 text-xs font-bold text-primary transition hover:bg-primary-soft disabled:cursor-wait disabled:opacity-60"
           >
             <FileText size={14} aria-hidden />
-            {isLoadingNotes
-              ? "Cargando nota…"
-              : areNotesVisible
-                ? "Ocultar nota clínica"
-                : "Ver nota clínica"}
+            {clinicalNotesButtonLabel}
           </button>
 
           {notesError && (

@@ -16,7 +16,7 @@ import type {
 } from "../types/consultant-types";
 
 type Props = {
-  consultantId: number;
+  readonly consultantId: number;
 };
 
 /**

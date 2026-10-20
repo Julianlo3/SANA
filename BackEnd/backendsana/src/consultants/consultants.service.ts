@@ -181,7 +181,7 @@ export class ConsultantsService {
    * @param psychologistId The id of the authenticated psychologist.
    * @returns A list of consultants with appointments assigned to the authenticated psychologist.
    */
-  async findMineForPsychologist(
+  findMineForPsychologist(
     psychologistId: number,
   ): Promise<PsychologistConsultantSummaryResponse[]> {
     return this.dataSource.query<PsychologistConsultantSummaryResponse[]>(

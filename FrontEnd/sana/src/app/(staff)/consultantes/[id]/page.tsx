@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Ficha del consultante | SANA" };
 export default async function ConsultantFullRecord({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  readonly params: Promise<{ readonly id: string }>;
 }) {
   const { id } = await params;
   const consultantId = Number(id);
