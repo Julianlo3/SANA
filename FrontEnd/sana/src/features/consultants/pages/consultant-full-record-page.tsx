@@ -110,9 +110,9 @@ function AppointmentSection({
   appointments,
   emptyMessage,
 }: {
-  title: string;
-  appointments: ConsultantAppointment[];
-  emptyMessage: string;
+  readonly title: string;
+  readonly appointments: ConsultantAppointment[];
+  readonly emptyMessage: string;
 }) {
   return (
     <section>
