@@ -16,6 +16,8 @@ import AppointmentModeField from "../components/appointment-mode-field";
 import ConfirmedField from "../components/confirmed-field";
 import DataPolicyConsent from "../components/data-policy-consent";
 import ResidenceFields from "../components/residence-fields";
+import ValidatedDateField from "../components/validated-date-field";
+import ValidatedSelectField from "../components/validated-select-field";
 import { useConsultationRequestForm } from "../hooks/use-consultation-request-form";
 import { scrollToFirstError } from "../lib/scroll-to-first-error";
 import {
@@ -387,41 +389,21 @@ export default function GuardianRequestPage() {
                     onBlur={() => setFieldTouched("phone")}
                   />
 
-                  <label className="block">
-                    <span className="text-sm font-semibold text-text">
-                      {guardianForm.fields.relationship}{" "}
-                      <span className="text-danger" aria-hidden>
-                        *
-                      </span>
-                    </span>
-                    <select
-                      value={values.relationship}
-                      onChange={(event) =>
-                        setRelationship(
-                          event.target.value === ""
-                            ? ""
-                            : (Number(
-                                event.target.value,
-                              ) as GuardianRelationshipId),
-                        )
-                      }
-                      onBlur={() => setFieldTouched("relationship")}
-                      aria-invalid={errors.relationship ? true : undefined}
-                      className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
-                    >
-                      <option value="">Selecciona una opción</option>
-                      {RELATIONSHIP_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.relationship && (
-                      <span role="alert" className="mt-1.5 block text-xs text-danger">
-                        {errors.relationship}
-                      </span>
-                    )}
-                  </label>
+                  <ValidatedSelectField
+                    label={guardianForm.fields.relationship}
+                    value={values.relationship}
+                    options={RELATIONSHIP_OPTIONS}
+                    emptyLabel="Selecciona una opción"
+                    error={errors.relationship}
+                    onChange={(relationship) =>
+                      setRelationship(
+                        relationship
+                          ? (Number(relationship) as GuardianRelationshipId)
+                          : "",
+                      )
+                    }
+                    onBlur={() => setFieldTouched("relationship")}
+                  />
                 </div>
 
                 <ConfirmedField
@@ -456,62 +438,27 @@ export default function GuardianRequestPage() {
                     onBlur={() => setFieldTouched("minorFullName")}
                   />
 
-                  <label className="block">
-                    <span className="text-sm font-semibold text-text">
-                      {guardianForm.fields.minorBirthDate}{" "}
-                      <span className="text-danger" aria-hidden>
-                        *
-                      </span>
-                    </span>
-                    <input
-                      type="date"
-                      value={values.minorBirthDate}
-                      max={new Date().toISOString().split("T")[0]}
-                      onChange={(event) =>
-                        setValue("minorBirthDate", event.target.value)
-                      }
-                      onBlur={() => setFieldTouched("minorBirthDate")}
-                      aria-invalid={errors.minorBirthDate ? true : undefined}
-                      className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
-                    />
-                    {errors.minorBirthDate && (
-                      <span role="alert" className="mt-1.5 block text-xs text-danger">
-                        {errors.minorBirthDate}
-                      </span>
-                    )}
-                  </label>
+                  <ValidatedDateField
+                    label={guardianForm.fields.minorBirthDate}
+                    value={values.minorBirthDate}
+                    max={new Date().toISOString().split("T")[0]}
+                    error={errors.minorBirthDate}
+                    onChange={(birthdate) =>
+                      setValue("minorBirthDate", birthdate)
+                    }
+                    onBlur={() => setFieldTouched("minorBirthDate")}
+                  />
                 </div>
 
                 <div className="grid gap-5 sm:grid-cols-2">
-                  <label className="block">
-                    <span className="text-sm font-semibold text-text">
-                      Género del menor{" "}
-                      <span className="text-danger" aria-hidden>
-                        *
-                      </span>
-                    </span>
-                    <select
-                      value={values.minorGender}
-                      onChange={(event) =>
-                        setMinorGender(event.target.value as Gender | "")
-                      }
-                      onBlur={() => setFieldTouched("minorGender")}
-                      aria-invalid={errors.minorGender ? true : undefined}
-                      className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
-                    >
-                      <option value="">Selecciona</option>
-                      {GENDER_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.minorGender && (
-                      <span role="alert" className="mt-1.5 block text-xs text-danger">
-                        {errors.minorGender}
-                      </span>
-                    )}
-                  </label>
+                  <ValidatedSelectField
+                    label="Género del menor"
+                    value={values.minorGender}
+                    options={GENDER_OPTIONS}
+                    error={errors.minorGender}
+                    onChange={(gender) => setMinorGender(gender as Gender | "")}
+                    onBlur={() => setFieldTouched("minorGender")}
+                  />
 
                   <div>
                     <span className="flex items-center gap-2 text-sm font-medium text-text">

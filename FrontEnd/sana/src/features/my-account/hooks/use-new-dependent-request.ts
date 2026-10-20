@@ -27,17 +27,17 @@ import {
 import { ApiError } from "@/types/api-types";
 import type { OwnProfile } from "../types/my-account-types";
 
-const CARD_TYPES: readonly string[] = ["CC", "TI", "CE"];
-const GENDERS: readonly string[] = ["F", "M", "O", "P"];
+const CARD_TYPES = new Set(["CC", "TI", "CE"]);
+const GENDERS = new Set(["F", "M", "O", "P"]);
 
 const RELATIONSHIPS: readonly {
-  id: GuardianRelationshipId;
+  value: GuardianRelationshipId;
   label: string;
 }[] = [
-  { id: 1, label: "Madre" },
-  { id: 2, label: "Padre" },
-  { id: 3, label: "Tío/a" },
-  { id: 4, label: "Abuelo/a" },
+  { value: 1, label: "Madre" },
+  { value: 2, label: "Padre" },
+  { value: 3, label: "Tío/a" },
+  { value: 4, label: "Abuelo/a" },
 ];
 
 type DependentRequestValues = {
@@ -58,10 +58,9 @@ function getMissingProfileData(profile: OwnProfile): string[] {
   const missing: string[] = [];
 
   if (validateFullName(profile.fullName)) missing.push("nombre completo");
-  if (validateFullName(profile.fullName)) missing.push("nombre completo");
   if (
     validateIdentityDocument(profile.identityDocument ?? "") ||
-    !CARD_TYPES.includes(profile.cardType ?? "")
+    !CARD_TYPES.has(profile.cardType ?? "")
   ) {
     missing.push("tipo y número de documento");
   }
@@ -72,7 +71,7 @@ function getMissingProfileData(profile: OwnProfile): string[] {
   if (
     !profile.gender ||
     validateGender(profile.gender) ||
-    !GENDERS.includes(profile.gender)
+    !GENDERS.has(profile.gender)
   ) {
     missing.push("género");
   }

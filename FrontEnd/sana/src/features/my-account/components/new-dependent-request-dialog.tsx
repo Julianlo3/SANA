@@ -7,6 +7,8 @@ import Button from "@/components/ui/button";
 import Modal from "@/components/ui/modal";
 import AppointmentModeField from "@/features/consultation-requests/components/appointment-mode-field";
 import DataPolicyConsent from "@/features/consultation-requests/components/data-policy-consent";
+import ValidatedDateField from "@/features/consultation-requests/components/validated-date-field";
+import ValidatedSelectField from "@/features/consultation-requests/components/validated-select-field";
 import type { Gender } from "@/features/consultation-requests/types/consultation-request-types";
 import { keepDigits } from "@/lib/format/text";
 import { useNewDependentRequest } from "../hooks/use-new-dependent-request";
@@ -18,15 +20,12 @@ type Props = {
   readonly onClose: () => void;
 };
 
-const GENDER_OPTIONS: { value: Gender; label: string }[] = [
+const GENDER_OPTIONS = [
   { value: "M", label: "Hombre" },
   { value: "F", label: "Mujer" },
   { value: "O", label: "Otro" },
   { value: "P", label: "No quiero especificar" },
 ];
-
-const INPUT_CLASS =
-  "mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 /**
  * Component for creating a new dependent request. It displays a modal dialog where the user can fill in the details of the dependent and submit the request.
@@ -116,82 +115,36 @@ export default function NewDependentRequestDialog({
                 request.setField("confirmIdentityDocument", keepDigits(value))
               }
             />
-            <label className="block">
-              <span className="text-sm font-semibold text-text">
-                Fecha de nacimiento <span className="text-danger" aria-hidden>*</span>
-              </span>
-              <input
-                type="date"
-                value={request.values.birthdate}
-                max={new Date().toISOString().split("T")[0]}
-                onChange={(event) =>
-                  request.setField("birthdate", event.target.value)
-                }
-                aria-invalid={Boolean(request.errors.birthdate)}
-                className={INPUT_CLASS}
-              />
-              {request.errors.birthdate && (
-                <span role="alert" className="mt-1.5 block text-xs text-danger">
-                  {request.errors.birthdate}
-                </span>
-              )}
-            </label>
-            <label className="block">
-              <span className="text-sm font-semibold text-text">
-                Género <span className="text-danger" aria-hidden>*</span>
-              </span>
-              <select
-                value={request.values.gender}
-                onChange={(event) =>
-                  request.setField("gender", event.target.value as Gender | "")
-                }
-                aria-invalid={Boolean(request.errors.gender)}
-                className={`${INPUT_CLASS} cursor-pointer`}
-              >
-                <option value="">Selecciona</option>
-                {GENDER_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              {request.errors.gender && (
-                <span role="alert" className="mt-1.5 block text-xs text-danger">
-                  {request.errors.gender}
-                </span>
-              )}
-            </label>
-            <label className="block">
-              <span className="text-sm font-semibold text-text">
-                Parentesco con el menor{" "}
-                <span className="text-danger" aria-hidden>*</span>
-              </span>
-              <select
-                value={request.values.relationship}
-                onChange={(event) =>
-                  request.setField(
-                    "relationship",
-                    event.target.value
-                      ? (Number(event.target.value) as 1 | 2 | 3 | 4)
-                      : "",
-                  )
-                }
-                aria-invalid={Boolean(request.errors.relationship)}
-                className={`${INPUT_CLASS} cursor-pointer`}
-              >
-                <option value="">Selecciona</option>
-                {request.relationships.map((relationship) => (
-                  <option key={relationship.id} value={relationship.id}>
-                    {relationship.label}
-                  </option>
-                ))}
-              </select>
-              {request.errors.relationship && (
-                <span role="alert" className="mt-1.5 block text-xs text-danger">
-                  {request.errors.relationship}
-                </span>
-              )}
-            </label>
+            <ValidatedDateField
+              label="Fecha de nacimiento"
+              value={request.values.birthdate}
+              max={new Date().toISOString().split("T")[0]}
+              error={request.errors.birthdate}
+              onChange={(birthdate) => request.setField("birthdate", birthdate)}
+            />
+            <ValidatedSelectField
+              label="Género"
+              value={request.values.gender}
+              options={GENDER_OPTIONS}
+              error={request.errors.gender}
+              onChange={(gender) =>
+                request.setField("gender", gender as Gender | "")
+              }
+            />
+            <ValidatedSelectField
+              label="Parentesco con el menor"
+              value={request.values.relationship}
+              options={request.relationships}
+              error={request.errors.relationship}
+              onChange={(relationship) =>
+                request.setField(
+                  "relationship",
+                  relationship
+                    ? (Number(relationship) as 1 | 2 | 3 | 4)
+                    : "",
+                )
+              }
+            />
           </fieldset>
 
           <AppointmentModeField
