@@ -3,24 +3,26 @@
 import Link from "next/link";
 import { ArrowLeft, FileText } from "lucide-react";
 import InlineMessage from "@/components/feedback/inline-message";
-import { formatRelativeDate } from "@/lib/format/date-time";
+import {
+  APPOINTMENT_STATE_LABELS,
+  formatDateTime,
+} from "@/features/appointments/lib/appointment-format";
 import ConsultantHeader from "../components/consultant-header";
 import { useConsultantRecord } from "../hooks/use-consultant-record";
 import { getConsultantForPsychologist } from "../services/consultants-service";
-import type { ConsultantFullRecord } from "../types/consultant-types";
+import type {
+  ConsultantAppointment,
+  ConsultantFullRecord,
+} from "../types/consultant-types";
 
 type Props = {
-  consultantId: number;
+  readonly consultantId: number;
 };
 
 /**
- * HU-2.4.2: ficha completa del consultante, tal como la ve su psicólogo
- * tratante. Incluye motivo de consulta e historial de observaciones.
- *
- * HU-2.4.3: si el backend determina que quien pregunta no es el tratante,
- * responde con un error que aquí se traduce en el mensaje de "permisos
- * insuficientes" — esta pantalla no decide nada sobre permisos, solo
- * refleja lo que el backend permitió o negó.
+ * Displays the full record of a consultant for the authenticated psychologist.
+ * @param param0 The props containing the consultant id.
+ * @returns The consultant full record page.
  */
 export default function ConsultantFullRecordPage({ consultantId }: Props) {
   const { record: consultant, isLoading, loadError } = useConsultantRecord<
@@ -30,6 +32,14 @@ export default function ConsultantFullRecordPage({ consultantId }: Props) {
     getConsultantForPsychologist,
     "No tienes permisos para ver esta ficha, o no pudimos cargarla.",
   );
+  const completedAppointments =
+    consultant?.appointments.filter(
+      (appointment) => appointment.state === "realizada",
+    ) ?? [];
+  const waitingAppointments =
+    consultant?.appointments.filter(
+      (appointment) => appointment.state !== "realizada",
+    ) ?? [];
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -73,45 +83,102 @@ export default function ConsultantFullRecordPage({ consultantId }: Props) {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-accent-soft bg-accent-soft/40 p-6">
-            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-accent-strong">
-              <FileText size={14} aria-hidden />
-              Motivo de consulta
-            </p>
-            <p className="mt-2 text-sm text-text">
-              {consultant.consultationReason || "Sin registrar."}
-            </p>
-          </div>
+          <AppointmentSection
+            title="Citas realizadas"
+            appointments={completedAppointments}
+            emptyMessage="Todavía no hay citas realizadas."
+          />
 
-          <div>
-            <h2 className="font-display text-lg font-bold text-text">
-              Historial de atenciones
-            </h2>
-
-            {consultant.careRecords.length === 0 ? (
-              <p className="mt-3 text-sm text-text-subtle">
-                Todavía no hay atenciones registradas.
-              </p>
-            ) : (
-              <div className="mt-3 space-y-3">
-                {consultant.careRecords.map((record) => (
-                  <div
-                    key={record.id}
-                    className="rounded-xl border border-border bg-surface p-4"
-                  >
-                    <p className="text-xs font-semibold text-text-subtle">
-                      {formatRelativeDate(record.attendedAt)}
-                    </p>
-                    <p className="mt-1 text-sm text-text">
-                      {record.observation || "Sin observación registrada."}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <AppointmentSection
+            title="Citas en espera"
+            appointments={waitingAppointments}
+            emptyMessage="No hay citas pendientes o confirmadas."
+          />
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Renders a section displaying a list of appointments for a consultant.
+ * @param param0 The props containing the title, appointments, and empty message.
+ * @returns The appointment section component.
+ */
+function AppointmentSection({
+  title,
+  appointments,
+  emptyMessage,
+}: {
+  readonly title: string;
+  readonly appointments: ConsultantAppointment[];
+  readonly emptyMessage: string;
+}) {
+  return (
+    <section>
+      <h2 className="font-display text-lg font-bold text-text">{title}</h2>
+      {appointments.length === 0 ? (
+        <p className="mt-3 text-sm text-text-subtle">{emptyMessage}</p>
+      ) : (
+        <div className="mt-3 space-y-3">
+          {appointments.map((appointment) => (
+            <article
+              key={appointment.id}
+              className="rounded-xl border border-border bg-surface p-4"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-semibold text-text">
+                  {appointment.appDate
+                    ? formatDateTime(appointment.appDate)
+                    : "Fecha por definir"}
+                </p>
+                <span className="rounded-full bg-primary-soft px-3 py-1 text-xs font-medium text-primary">
+                  {APPOINTMENT_STATE_LABELS[appointment.state]}
+                </span>
+              </div>
+              {appointment.duration && (
+                <p className="mt-1 text-xs text-text-subtle">
+                  Duración: {appointment.duration} minutos
+                </p>
+              )}
+              {appointment.reason && (
+                <div className="mt-3 rounded-lg bg-surface-muted p-3">
+                  <p className="flex items-center gap-2 text-xs font-semibold text-text-subtle">
+                    <FileText size={14} aria-hidden />
+                    Motivo de esta cita
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-text">
+                    {appointment.reason}
+                  </p>
+                </div>
+              )}
+              {appointment.state === "realizada" &&
+                (appointment.clinicalNotes.length > 0 ? (
+                  <div className="mt-3 space-y-2">
+                    {appointment.clinicalNotes.map((note) => (
+                      <details
+                        key={note.id}
+                        className="rounded-lg border border-border bg-surface-muted px-3 py-2"
+                      >
+                        <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium text-primary">
+                          <FileText size={14} aria-hidden />
+                          Ver nota clínica
+                        </summary>
+                        <p className="mt-2 whitespace-pre-wrap text-sm text-text">
+                          {note.observation || "Sin observación registrada."}
+                        </p>
+                      </details>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-text-subtle">
+                    No hay nota clínica registrada para esta cita.
+                  </p>
+                ))}
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }

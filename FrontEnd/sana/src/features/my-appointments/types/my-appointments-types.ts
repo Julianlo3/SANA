@@ -20,3 +20,12 @@ export type MyAppointment = {
   patientName: string;
   appReason?: string | null;
 };
+
+export type AppointmentClinicalNote = {
+  cnId: number;
+  appId: number;
+  psyId: number;
+  cnObservation: string;
+  cnTermsAccepted: boolean;
+  cnCreatedAt: string;
+};

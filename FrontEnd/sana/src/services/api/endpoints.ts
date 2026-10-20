@@ -21,6 +21,8 @@ export const ENDPOINTS = {
   consultantFullRecord: (id: number) => `/consultants/${id}/full`,
   consultantsForPsychologist: "/consultants/mine",
   consultantAccessLog: (id: number) => `/consultants/${id}/access-log`,
+  clinicalNotesForAppointment: (id: number) =>
+    `/clinical-notes/appointment/${id}`,
 
   // Registro de atención (HU-2.5)
   psychologistAppointments: "/appointments/mine",
