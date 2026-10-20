@@ -42,6 +42,37 @@ export class ConsultantsController {
   }
 
   /**
+   * Finds consultants with appointments assigned to the authenticated psychologist.
+   * @param request The request containing the authenticated user.
+   * @returns A list of consultants with appointments assigned to the authenticated psychologist.
+   */
+  @Get('mine')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Psychologist)
+  findMine(@Req() request: Request & { user: AuthenticatedUser }) {
+    return this.consultantsService.findMineForPsychologist(request.user.personId);
+  }
+
+  /**
+   * Finds a consultant with full details for the authenticated psychologist.
+   * @param request The request containing the authenticated user.
+   * @param id The id of the consultant to find.
+   * @returns The consultant with full details for the authenticated psychologist.
+   */
+  @Get(':id/full')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Psychologist)
+  findFullForPsychologist(
+    @Req() request: Request & { user: AuthenticatedUser },
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.consultantsService.findFullForPsychologist(
+      id,
+      request.user.personId,
+    );
+  }
+
+  /**
    * Finds a consultant by id.
    * @param id The id of the consultant to find.
    * @returns The consultant with the specified id.
