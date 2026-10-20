@@ -22,7 +22,7 @@ describe('ScheduleRepository.confirmWithSchedule', () => {
         appId: 42,
         secretaryUserId: 3,
         psyId: 8,
-        appDate: new Date('2026-10-06T09:00:00.000Z'),
+        appDate: new Date('2026-10-06T14:00:00.000Z'),
         appDuration: 60,
       }),
     ).resolves.toBe('confirmed');
@@ -54,10 +54,21 @@ describe('ScheduleRepository.findAvailability', () => {
     });
 
     const sql = dataSource.query.mock.calls[0][0] as string;
-    expect(sql).toContain('b.sch_start_time <= s.start_at::time');
-    expect(sql).toContain('b.sch_end_time >= (s.start_at + ($3 ||');
-    expect(sql).toContain('r.srb_start_time <= s.start_at::time');
-    expect(sql).toContain('r.srb_end_time >= (s.start_at + ($3 ||');
+    expect(sql).toContain(
+      "b.sch_start_time <= (s.start_at AT TIME ZONE 'America/Bogota')::time",
+    );
+    expect(sql).toContain(
+      "b.sch_end_time >= ((s.start_at + ($3 || ' minutes')::interval) AT TIME ZONE 'America/Bogota')::time",
+    );
+    expect(sql).toContain(
+      "r.srb_start_time <= (s.start_at AT TIME ZONE 'America/Bogota')::time",
+    );
+    expect(sql).toContain(
+      "r.srb_end_time >= ((s.start_at + ($3 || ' minutes')::interval) AT TIME ZONE 'America/Bogota')::time",
+    );
+    expect(sql).toContain(
+      "(s.start_at AT TIME ZONE 'America/Bogota')::date AS \"date\"",
+    );
     expect(sql).toContain('FROM schedule_occupancy o');
     expect(sql).toContain("a.app_state IN ('asignada', 'confirmada')");
     expect(sql).toContain('a.app_date < s.start_at + ($3 ||');
