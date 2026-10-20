@@ -70,6 +70,17 @@ const CONSULTANT_PROFILE_FIELDS = new Set([
 const EMPLOYEE_PROFILE_FIELDS = new Set(['fullName', 'phone']);
 
 /**
+ * Gets the defined fields from the DTO.
+ * @param dto The DTO to extract fields from.
+ * @returns An array of field names.
+ */
+function getDefinedDtoFields(dto: UpdateOwnProfileDto): string[] {
+  return Object.entries(dto)
+    .filter(([, value]) => value !== undefined)
+    .map(([field]) => field);
+}
+
+/**
  * Service for users management.
  */
 @Injectable()
@@ -130,7 +141,7 @@ export class UsersService {
     const allowedFields = isConsultant
       ? CONSULTANT_PROFILE_FIELDS
       : EMPLOYEE_PROFILE_FIELDS;
-    const submittedFields = Object.keys(dto);
+    const submittedFields = getDefinedDtoFields(dto);
 
     this.validateOwnProfileUpdate(dto, allowedFields);
 
@@ -142,11 +153,16 @@ export class UsersService {
     );
   }
 
+  /**
+   * Validates the profile update data.
+   * @param dto The update data.
+   * @param allowedFields Allowed fields for update.
+   */
   private validateOwnProfileUpdate(
     dto: UpdateOwnProfileDto,
     allowedFields: Set<string>,
   ): void {
-    const submittedFields = Object.keys(dto);
+    const submittedFields = getDefinedDtoFields(dto);
 
     if (submittedFields.length === 0) {
       throw new BadRequestException({
@@ -167,6 +183,14 @@ export class UsersService {
     }
   }
 
+  /**
+   * Persist own profile update.
+   * @param personId The ID of the person whose profile to update.
+   * @param isConsultant A boolean indicating if the person is a consultant.
+   * @param dto The update data.
+   * @param submittedFields Fields that were submitted for update.
+   * @returns A promise resolving to the updated user's profile.
+   */
   private persistOwnProfileUpdate(
     personId: number,
     isConsultant: boolean,
@@ -188,6 +212,12 @@ export class UsersService {
     });
   }
 
+  /**
+   * Apply own profile update.
+   * @param person Person entity.
+   * @param dto Update data.
+   * @param isConsultant A boolean indicating if the person is a consultant.
+   */
   private applyOwnProfileUpdate(
     person: Person,
     dto: UpdateOwnProfileDto,
@@ -207,6 +237,11 @@ export class UsersService {
     if (isConsultant) this.applyConsultantProfileUpdate(person, dto);
   }
 
+  /**
+   * Apply consultant profile update.
+   * @param person Person entity.
+   * @param dto Update data.
+   */
   private applyConsultantProfileUpdate(
     person: Person,
     dto: UpdateOwnProfileDto,
@@ -222,6 +257,11 @@ export class UsersService {
     }
   }
 
+  /**
+   * Normalize vulnerabilities array removing empty strings and null values.
+   * @param vulnerabilities Array of vulnerabilities.
+   * @returns Normalized array of vulnerabilities.
+   */
   private normalizeVulnerabilities(
     vulnerabilities: string[] | null | undefined,
   ): string[] | null {
@@ -268,6 +308,7 @@ export class UsersService {
       gender: person.perGender,
       residenceZone: isConsultant ? person.perResidenceZone : null,
       vulnerabilities: isConsultant ? person.perVulnerabilities : null,
+      canEditConsultantFields: isConsultant,
     };
   }
 

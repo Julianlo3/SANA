@@ -55,7 +55,7 @@ export default function RequestConfirmationPage() {
 
           <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Link
-              href="/iniciar-sesion?tipo=consultante"
+              href="/iniciar-sesion"
               className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-white transition hover:bg-primary-dark"
             >
               <UserRound size={16} aria-hidden />

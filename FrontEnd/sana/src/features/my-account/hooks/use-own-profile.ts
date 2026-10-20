@@ -21,7 +21,8 @@ export type ProfileFormValues = {
   phone: string;
   birthdate: string;
   gender: Gender | "";
-  residenceZone: string;
+  department: string;
+  municipality: string;
 };
 
 export type ProfileFormErrors = Partial<Record<keyof ProfileFormValues, string>>;
@@ -31,28 +32,61 @@ const EMPTY_VALUES: ProfileFormValues = {
   phone: "",
   birthdate: "",
   gender: "",
-  residenceZone: "",
+  department: "",
+  municipality: "",
 };
 
 const GENDERS: readonly string[] = ["F", "M", "O", "P"];
 
+/**
+ * Converts a gender value to the expected format.
+ * @param value The gender value to convert.
+ * @returns The converted gender value.
+ */
 function toGender(value: string | null): Gender | "" {
   return value !== null && GENDERS.includes(value) ? (value as Gender) : "";
 }
 
+/**
+ * Splits the residence zone into department and municipality.
+ * @param residenceZone The residence zone to split.
+ * @returns The department and municipality.
+ */
+function splitResidenceZone(residenceZone: string | null): {
+  department: string;
+  municipality: string;
+} {
+  if (!residenceZone) return { department: "", municipality: "" };
+
+  const separatorIndex = residenceZone.lastIndexOf(",");
+  if (separatorIndex < 0) {
+    return { department: "", municipality: residenceZone.trim() };
+  }
+
+  return {
+    municipality: residenceZone.slice(0, separatorIndex).trim(),
+    department: residenceZone.slice(separatorIndex + 1).trim(),
+  };
+}
+
+/**
+ * Converts the profile data to form values.
+ * @param profile The profile data.
+ * @returns The form values.
+ */
 function toFormValues(profile: OwnProfile): ProfileFormValues {
   return {
     fullName: profile.fullName,
     phone: profile.phone ?? "",
     birthdate: profile.birthdate ? profile.birthdate.slice(0, 10) : "",
     gender: toGender(profile.gender),
-    residenceZone: profile.residenceZone ?? "",
+    ...splitResidenceZone(profile.residenceZone),
   };
 }
 
 /**
- * Perfil propio del consultante: se ve siempre, y se edita solo si lo
- * habilita. El correo y el documento no se editan: el backend los fija.
+ * Hook to get and manage the current user's profile.
+ * @returns The profile data and management functions.
  */
 export function useOwnProfile() {
   const [profile, setProfile] = useState<OwnProfile | null>(null);
@@ -124,10 +158,20 @@ export function useOwnProfile() {
     const payload: UpdateOwnProfilePayload = {
       fullName: values.fullName.trim(),
       phone: values.phone.trim(),
-      birthdate: values.birthdate || null,
-      gender: values.gender || null,
-      residenceZone: values.residenceZone.trim() || null,
     };
+    if (profile?.canEditConsultantFields) {
+      const municipality = values.municipality.trim();
+      let residenceZone: string | null = null;
+      if (municipality) {
+        residenceZone = values.department
+          ? `${municipality}, ${values.department}`
+          : municipality;
+      }
+
+      payload.birthdate = values.birthdate || null;
+      payload.gender = values.gender || null;
+      payload.residenceZone = residenceZone;
+    }
 
     setIsSaving(true);
     setSaveError(null);
@@ -148,7 +192,7 @@ export function useOwnProfile() {
     } finally {
       setIsSaving(false);
     }
-  }, [values]);
+  }, [profile, values]);
 
   return {
     profile,
