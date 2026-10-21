@@ -2,15 +2,12 @@
 
 import { UserPlus } from "lucide-react";
 import InlineMessage from "@/components/feedback/inline-message";
-import TextField from "@/components/forms/text-field";
-import Button from "@/components/ui/button";
-import Modal from "@/components/ui/modal";
 import AppointmentModeField from "@/features/consultation-requests/components/appointment-mode-field";
+import ConsultationReasonField from "@/features/consultation-requests/components/consultation-reason-field";
 import DataPolicyConsent from "@/features/consultation-requests/components/data-policy-consent";
-import ValidatedDateField from "@/features/consultation-requests/components/validated-date-field";
+import DependentPersonFields from "@/features/consultation-requests/components/dependent-person-fields";
 import ValidatedSelectField from "@/features/consultation-requests/components/validated-select-field";
-import type { Gender } from "@/features/consultation-requests/types/consultation-request-types";
-import { keepDigits } from "@/lib/format/text";
+import AppointmentRequestDialog from "./appointment-request-dialog";
 import { useNewDependentRequest } from "../hooks/use-new-dependent-request";
 import type { OwnProfile } from "../types/my-account-types";
 
@@ -19,13 +16,6 @@ type Props = {
   readonly onCreated: () => void;
   readonly onClose: () => void;
 };
-
-const GENDER_OPTIONS = [
-  { value: "M", label: "Hombre" },
-  { value: "F", label: "Mujer" },
-  { value: "O", label: "Otro" },
-  { value: "P", label: "No quiero especificar" },
-];
 
 /**
  * Component for creating a new dependent request. It displays a modal dialog where the user can fill in the details of the dependent and submit the request.
@@ -38,158 +28,103 @@ export default function NewDependentRequestDialog({
   onClose,
 }: Props) {
   const request = useNewDependentRequest(profile, onCreated);
-  const isBlocked = request.missing.length > 0;
 
   return (
-    <Modal
+    <AppointmentRequestDialog
       title="Solicitar cita para un dependiente"
       icon={
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
           <UserPlus size={20} aria-hidden />
         </div>
       }
+      missing={request.missing}
+      isSaving={request.isSaving}
+      onSubmit={request.submit}
       onClose={onClose}
-      footer={
-        isBlocked ? (
-          <Button variant="secondary" onClick={onClose}>
-            Entendido
-          </Button>
-        ) : (
-          <>
-            <Button
-              variant="secondary"
-              onClick={onClose}
-              disabled={request.isSaving}
-            >
-              Cancelar
-            </Button>
-            <Button onClick={request.submit} disabled={request.isSaving}>
-              {request.isSaving ? "Enviando…" : "Enviar solicitud"}
-            </Button>
-          </>
-        )
-      }
     >
-      {isBlocked ? (
+      <div className="max-h-[65vh] space-y-5 overflow-y-auto pr-1">
         <p>
-          Antes de solicitar la cita completa en «Editar mis datos»:{" "}
-          {request.missing.join(", ")}.
+          Usaremos los datos de tu cuenta como acudiente. Completa los datos
+          del menor; el teléfono y la residencia serán los de tu perfil.
         </p>
-      ) : (
-        <div className="max-h-[65vh] space-y-5 overflow-y-auto pr-1">
-          <p>
-            Usaremos los datos de tu cuenta como acudiente. Completa los datos
-            del menor; el teléfono y la residencia serán los de tu perfil.
-          </p>
 
-          <fieldset className="space-y-4">
-            <legend className="font-semibold text-text">Datos del dependiente</legend>
-            <TextField
-              label="Nombre completo"
-              required
-              value={request.values.name}
-              error={request.errors.name}
-              maxLength={100}
-              onChange={(value) => request.setField("name", value)}
-            />
-            <TextField
-              label="Documento de identidad"
-              required
-              value={request.values.identityDocument}
-              error={request.errors.identityDocument}
-              hint="Escribe el número del registro civil o de la tarjeta de identidad."
-              inputMode="numeric"
-              maxLength={12}
-              onChange={(value) =>
-                request.setField("identityDocument", keepDigits(value))
-              }
-            />
-            <TextField
-              label="Confirma el documento"
-              required
-              value={request.values.confirmIdentityDocument}
-              error={request.errors.confirmIdentityDocument}
-              inputMode="numeric"
-              maxLength={12}
-              onChange={(value) =>
-                request.setField("confirmIdentityDocument", keepDigits(value))
-              }
-            />
-            <ValidatedDateField
-              label="Fecha de nacimiento"
-              value={request.values.birthdate}
-              max={new Date().toISOString().split("T")[0]}
-              error={request.errors.birthdate}
-              onChange={(birthdate) => request.setField("birthdate", birthdate)}
-            />
-            <ValidatedSelectField
-              label="Género"
-              value={request.values.gender}
-              options={GENDER_OPTIONS}
-              error={request.errors.gender}
-              onChange={(gender) =>
-                request.setField("gender", gender as Gender | "")
-              }
-            />
-            <ValidatedSelectField
-              label="Parentesco con el menor"
-              value={request.values.relationship}
-              options={request.relationships}
-              error={request.errors.relationship}
-              onChange={(relationship) =>
-                request.setField(
-                  "relationship",
-                  relationship
-                    ? (Number(relationship) as 1 | 2 | 3 | 4)
-                    : "",
-                )
-              }
-            />
-          </fieldset>
-
-          <AppointmentModeField
-            value={request.appType}
-            error={request.errors.appType}
-            onChange={request.setAppType}
-            onBlur={() => undefined}
+        <fieldset className="space-y-4">
+          <legend className="font-semibold text-text">Datos del dependiente</legend>
+          <DependentPersonFields
+            fullName={request.values.name}
+            birthdate={request.values.birthdate}
+            gender={request.values.gender}
+            identityDocument={request.values.identityDocument}
+            confirmIdentityDocument={request.values.confirmIdentityDocument}
+            errors={{
+              fullName: request.errors.name,
+              birthdate: request.errors.birthdate,
+              gender: request.errors.gender,
+              identityDocument: request.errors.identityDocument,
+              confirmIdentityDocument: request.errors.confirmIdentityDocument,
+            }}
+            onFullNameChange={(value) => request.setField("name", value)}
+            onBirthdateChange={(value) => request.setField("birthdate", value)}
+            onGenderChange={(value) => request.setField("gender", value)}
+            onIdentityDocumentChange={(value) =>
+              request.setField("identityDocument", value)
+            }
+            onConfirmIdentityDocumentChange={(value) =>
+              request.setField("confirmIdentityDocument", value)
+            }
+            nameLabel="Nombre completo"
+            genderLabel="Género"
+            identityDocumentLabel="Documento de identidad"
+            confirmIdentityDocumentLabel="Confirma el documento"
+            identityDocumentHint="Escribe el número del registro civil o de la tarjeta de identidad."
+            layout="stacked"
           />
-
-          <label className="block">
-            <span className="text-sm font-medium text-text">
-              Motivo de la consulta (opcional)
-            </span>
-            <textarea
-              value={request.reason}
-              onChange={(event) => request.setReason(event.target.value)}
-              rows={3}
-              maxLength={1000}
-              className="mt-2 w-full resize-none rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
-            />
-            {request.errors.reason && (
-              <span role="alert" className="mt-1.5 block text-xs text-danger">
-                {request.errors.reason}
-              </span>
-            )}
-          </label>
-
-          <DataPolicyConsent
-            checked={request.requesterAccepted}
-            onChange={request.setRequesterAccepted}
-            error={request.errors.requesterAccepted}
-            policyType="data_treatment"
+          <ValidatedSelectField
+            label="Parentesco con el menor"
+            value={request.values.relationship}
+            options={request.relationships}
+            error={request.errors.relationship}
+            onChange={(relationship) =>
+              request.setField(
+                "relationship",
+                relationship
+                  ? (Number(relationship) as 1 | 2 | 3 | 4)
+                  : "",
+              )
+            }
           />
-          <DataPolicyConsent
-            checked={request.dependentAccepted}
-            onChange={request.setDependentAccepted}
-            error={request.errors.dependentAccepted}
-            policyType="dependent_consent"
-          />
+        </fieldset>
 
-          {request.submitError && (
-            <InlineMessage tone="error">{request.submitError}</InlineMessage>
-          )}
-        </div>
-      )}
-    </Modal>
+        <AppointmentModeField
+          value={request.appType}
+          error={request.errors.appType}
+          onChange={request.setAppType}
+          onBlur={() => undefined}
+        />
+
+        <ConsultationReasonField
+          value={request.reason}
+          error={request.errors.reason}
+          onChange={request.setReason}
+        />
+
+        <DataPolicyConsent
+          checked={request.requesterAccepted}
+          onChange={request.setRequesterAccepted}
+          error={request.errors.requesterAccepted}
+          policyType="data_treatment"
+        />
+        <DataPolicyConsent
+          checked={request.dependentAccepted}
+          onChange={request.setDependentAccepted}
+          error={request.errors.dependentAccepted}
+          policyType="dependent_consent"
+        />
+
+        {request.submitError && (
+          <InlineMessage tone="error">{request.submitError}</InlineMessage>
+        )}
+      </div>
+    </AppointmentRequestDialog>
   );
 }

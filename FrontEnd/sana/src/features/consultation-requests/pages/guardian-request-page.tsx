@@ -14,14 +14,14 @@ import { keepDigits } from "@/lib/format/text";
 import { VULNERABLE_POPULATION_OPTIONS } from "@/config/vulnerable-population";
 import AppointmentModeField from "../components/appointment-mode-field";
 import ConfirmedField from "../components/confirmed-field";
+import ConsultationReasonField from "../components/consultation-reason-field";
 import DataPolicyConsent from "../components/data-policy-consent";
+import DependentPersonFields from "../components/dependent-person-fields";
 import ResidenceFields from "../components/residence-fields";
-import ValidatedDateField from "../components/validated-date-field";
 import ValidatedSelectField from "../components/validated-select-field";
 import { useConsultationRequestForm } from "../hooks/use-consultation-request-form";
 import { scrollToFirstError } from "../lib/scroll-to-first-error";
 import {
-  calculateAge,
   validateFullName,
   validateIdentityDocument,
   validateConfirmIdentityDocument,
@@ -427,85 +427,45 @@ export default function GuardianRequestPage() {
                   {guardianForm.sections.minor}
                 </legend>
 
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <TextField
-                    label={guardianForm.fields.minorFullName}
-                    required
-                    value={values.minorFullName}
-                    error={errors.minorFullName}
-                    maxLength={100}
-                    onChange={(value) => setValue("minorFullName", value)}
-                    onBlur={() => setFieldTouched("minorFullName")}
-                  />
-
-                  <ValidatedDateField
-                    label={guardianForm.fields.minorBirthDate}
-                    value={values.minorBirthDate}
-                    max={new Date().toISOString().split("T")[0]}
-                    error={errors.minorBirthDate}
-                    onChange={(birthdate) =>
-                      setValue("minorBirthDate", birthdate)
-                    }
-                    onBlur={() => setFieldTouched("minorBirthDate")}
-                  />
-                </div>
-
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <ValidatedSelectField
-                    label="Género del menor"
-                    value={values.minorGender}
-                    options={GENDER_OPTIONS}
-                    error={errors.minorGender}
-                    onChange={(gender) => setMinorGender(gender as Gender | "")}
-                    onBlur={() => setFieldTouched("minorGender")}
-                  />
-
-                  <div>
-                    <span className="flex items-center gap-2 text-sm font-medium text-text">
-                      {values.minorBirthDate &&
-                      calculateAge(values.minorBirthDate) >= 7
-                        ? "Tarjeta de identidad"
-                        : "Registro civil de nacimiento (NUIP)"}
-                      <span className="text-danger" aria-hidden>
-                        *
-                      </span>
-                    </span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={values.minorIdentityDocument}
-                      onChange={(event) =>
-                        setValue(
-                          "minorIdentityDocument",
-                          keepDigits(event.target.value),
-                        )
-                      }
-                      onBlur={() => setFieldTouched("minorIdentityDocument")}
-                      aria-invalid={errors.minorIdentityDocument ? true : undefined}
-                      maxLength={12}
-                      placeholder="Solo números"
-                      className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text placeholder:text-text-subtle focus:outline-none focus:ring-2 focus:ring-primary/40"
-                    />
-                    {errors.minorIdentityDocument && (
-                      <span role="alert" className="mt-1.5 block text-xs text-danger">
-                        {errors.minorIdentityDocument}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <TextField
-                  label="Confirma el documento del menor"
-                  required
-                  inputMode="numeric"
-                  value={values.confirmMinorIdentityDocument}
-                  error={errors.confirmMinorIdentityDocument}
-                  maxLength={12}
-                  placeholder="Escríbelo de nuevo"
-                  onChange={(value) =>
-                    setValue("confirmMinorIdentityDocument", keepDigits(value))
+                <DependentPersonFields
+                  fullName={values.minorFullName}
+                  birthdate={values.minorBirthDate}
+                  gender={values.minorGender}
+                  identityDocument={values.minorIdentityDocument}
+                  confirmIdentityDocument={values.confirmMinorIdentityDocument}
+                  errors={{
+                    fullName: errors.minorFullName,
+                    birthdate: errors.minorBirthDate,
+                    gender: errors.minorGender,
+                    identityDocument: errors.minorIdentityDocument,
+                    confirmIdentityDocument:
+                      errors.confirmMinorIdentityDocument,
+                  }}
+                  onFullNameChange={(value) =>
+                    setValue("minorFullName", value)
                   }
-                  onBlur={() => setFieldTouched("confirmMinorIdentityDocument")}
+                  onBirthdateChange={(value) =>
+                    setValue("minorBirthDate", value)
+                  }
+                  onGenderChange={setMinorGender}
+                  onIdentityDocumentChange={(value) =>
+                    setValue("minorIdentityDocument", value)
+                  }
+                  onConfirmIdentityDocumentChange={(value) =>
+                    setValue("confirmMinorIdentityDocument", value)
+                  }
+                  onFullNameBlur={() => setFieldTouched("minorFullName")}
+                  onBirthdateBlur={() => setFieldTouched("minorBirthDate")}
+                  onGenderBlur={() => setFieldTouched("minorGender")}
+                  onIdentityDocumentBlur={() =>
+                    setFieldTouched("minorIdentityDocument")
+                  }
+                  onConfirmIdentityDocumentBlur={() =>
+                    setFieldTouched("confirmMinorIdentityDocument")
+                  }
+                  nameLabel={guardianForm.fields.minorFullName}
+                  birthdateLabel={guardianForm.fields.minorBirthDate}
+                  genderLabel="Género del menor"
                 />
 
                 <label className="block">
@@ -569,27 +529,15 @@ export default function GuardianRequestPage() {
                   onBlur={() => setFieldTouched("appType")}
                 />
 
-                <label className="block">
-                  <span className="text-sm font-medium text-text">
-                    {guardianForm.fields.consultationReason}
-                  </span>
-                  <textarea
-                    value={values.consultationReason}
-                    onChange={(event) =>
-                      setValue("consultationReason", event.target.value)
-                    }
-                    rows={4}
-                    maxLength={1000}
-                    aria-invalid={errors.consultationReason ? true : undefined}
-                    placeholder="Opcional. Esta información nos ayuda a orientar al profesional más adecuado."
-                    className="mt-2 w-full resize-none rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text placeholder:text-text-subtle focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  />
-                  {errors.consultationReason && (
-                    <span role="alert" className="mt-1.5 block text-xs text-danger">
-                      {errors.consultationReason}
-                    </span>
-                  )}
-                </label>
+                <ConsultationReasonField
+                  value={values.consultationReason}
+                  error={errors.consultationReason}
+                  rows={4}
+                  placeholder="Opcional. Esta información nos ayuda a orientar al profesional más adecuado."
+                  onChange={(value) =>
+                    setValue("consultationReason", value)
+                  }
+                />
 
                 <p className="rounded-xl bg-primary-soft/40 p-4 text-sm text-text-muted">
                   Una vez enviada la solicitud, se asignará una cita en el
