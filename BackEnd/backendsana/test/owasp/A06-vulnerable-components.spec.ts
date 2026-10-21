@@ -33,7 +33,7 @@ describe('OWASP A06 – Vulnerable and Outdated Components', () => {
 
   describe('A06.2 – Archivos de lock presentes', () => {
     it('DEBE existir package-lock.json para garantizar builds reproducibles y evitar inyección de dependencias maliciosas', () => {
-      const lockPath = path.resolve(__dirname, '../../../package-lock.json');
+      const lockPath = path.resolve(__dirname, '../../package-lock.json');
       expect(fs.existsSync(lockPath)).toBe(true);
     });
   });
