@@ -5,6 +5,6 @@ export interface RecurringScheduleBlockResponse {
   endTime: string;
   validFrom: string;
   validUntil: string | null;
-  reason: string | null;
   active: boolean;
+  hasAppointments: boolean;
 }

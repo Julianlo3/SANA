@@ -99,6 +99,78 @@ describe('ScheduleRepository.findCalendar', () => {
     expect(sql).toContain("'validUntil', srb_valid_until::text");
     expect(sql).toContain("'active', srb_active");
     expect(sql).toContain('AS recurring');
+    expect(sql).not.toContain('sch_reason');
+    expect(sql).not.toContain('srb_reason');
     expect(sql).not.toContain('generate_series');
+  });
+});
+
+describe('ScheduleRepository.deleteBlock', () => {
+  it('deletes an unoccupied block based on the returned row', async () => {
+    const dataSource = {
+      query: vi.fn().mockResolvedValueOnce([{ sch_id: 12 }]),
+    };
+    const repository = new ScheduleRepository(dataSource as never);
+
+    await expect(repository.deleteBlock(5, 12)).resolves.toBe('deleted');
+    expect(dataSource.query).toHaveBeenCalledOnce();
+    expect(dataSource.query.mock.calls[0][0]).toContain('NOT EXISTS');
+    expect(dataSource.query.mock.calls[0][0]).toContain('RETURNING s.sch_id');
+    expect(dataSource.query.mock.calls[0][1]).toEqual([12, 5]);
+  });
+
+  it('reports an appointment overlap without deleting the block', async () => {
+    const dataSource = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ exists: true, occupied: true }]),
+    };
+    const repository = new ScheduleRepository(dataSource as never);
+
+    await expect(repository.deleteBlock(5, 12)).resolves.toBe('occupied');
+    expect(dataSource.query).toHaveBeenCalledTimes(2);
+    expect(dataSource.query.mock.calls[1][0]).toContain(
+      "a.app_state IN ('asignada', 'confirmada')",
+    );
+  });
+
+  it('reports a block that does not belong to the psychologist as missing', async () => {
+    const dataSource = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ exists: false, occupied: false }]),
+    };
+    const repository = new ScheduleRepository(dataSource as never);
+
+    await expect(repository.deleteBlock(5, 12)).resolves.toBe('not_found');
+  });
+});
+
+describe('ScheduleRepository.deleteRecurringBlock', () => {
+  it('deletes an unoccupied recurring rule using the returned row', async () => {
+    const dataSource = {
+      query: vi.fn().mockResolvedValueOnce([{ srb_id: 12 }]),
+    };
+    const repository = new ScheduleRepository(dataSource as never);
+
+    await expect(repository.deleteRecurringBlock(5, 12)).resolves.toBe('deleted');
+    expect(dataSource.query).toHaveBeenCalledOnce();
+    expect(dataSource.query.mock.calls[0][0]).toContain('NOT EXISTS');
+    expect(dataSource.query.mock.calls[0][0]).toContain('RETURNING r.srb_id');
+  });
+
+  it('reports an appointment overlapping a recurring rule', async () => {
+    const dataSource = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ exists: true, occupied: true }]),
+    };
+    const repository = new ScheduleRepository(dataSource as never);
+
+    await expect(repository.deleteRecurringBlock(5, 12)).resolves.toBe('occupied');
+    expect(dataSource.query.mock.calls[0][0]).toContain('srb_day_of_week');
   });
 });

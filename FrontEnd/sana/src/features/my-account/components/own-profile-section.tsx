@@ -32,7 +32,7 @@ export default function OwnProfileSection() {
       : "—";
 
   return (
-    <section>
+    <section id="mis-datos">
       <h2 className="flex items-center gap-2 font-display text-2xl font-bold text-primary-dark">
         <UserRound size={22} aria-hidden />
         Mis datos

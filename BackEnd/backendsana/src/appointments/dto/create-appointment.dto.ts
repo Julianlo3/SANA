@@ -1,6 +1,7 @@
 import {
   IsBoolean,
   IsDateString,
+  IsEmail,
   IsEnum,
   IsInt,
   IsOptional,
@@ -45,10 +46,9 @@ export class CreateAppointmentDto {
   })
   requesterContactNumber!: string;
 
-  @IsOptional()
-  @IsString()
+  @IsEmail()
   @MaxLength(100)
-  requesterEmail?: string;
+  requesterEmail!: string;
 
   @IsOptional()
   @IsDateString({}, { message: 'requesterBirthdate debe ser una fecha válida (YYYY-MM-DD)' })

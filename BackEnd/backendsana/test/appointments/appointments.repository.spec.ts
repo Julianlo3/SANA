@@ -52,12 +52,18 @@ describe('AppointmentsRepository.createRequest', () => {
   it('persists the complete request in one transaction', async () => {
     const { repository, manager, dataSource } = createTransactionalRepository();
     manager.query
-      .mockResolvedValueOnce([{ per_id: 7 }])
-      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{
+        per_id: 7,
+        identity_document: '10212265698',
+        matches_identity_document: true,
+        matches_email: true,
+        has_user: false,
+      }])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ app_id: 42 }])
       .mockResolvedValueOnce([{ pd_id: 1 }]) // data_treatment policy
-      .mockResolvedValueOnce([{ pd_id: 2 }]); // dependent_consent policy (not used for self)
+      .mockResolvedValueOnce([{ pd_id: 2 }]) // dependent_consent policy (not used for self)
+      .mockResolvedValueOnce([]);
 
     await expect(
       repository.createRequest({
@@ -69,9 +75,117 @@ describe('AppointmentsRepository.createRequest', () => {
     ).resolves.toBe(42);
 
     expect(dataSource.transaction).toHaveBeenCalledOnce();
-    expect(manager.query).toHaveBeenCalledTimes(7);
-    expect(manager.query.mock.calls[1][0]).not.toContain('per_name =');
-    expect(manager.query.mock.calls[3][0]).toContain("'pendiente'");
+    expect(manager.query).toHaveBeenCalledTimes(6);
+    expect(manager.query.mock.calls[2][0]).toContain("'pendiente'");
+  });
+});
+
+describe('AppointmentsRepository.upsertRequester', () => {
+  it('rejects an anonymous request that only matches an existing email', async () => {
+    const { repository, manager } = createTransactionalRepository();
+    manager.query
+      .mockResolvedValueOnce([{
+        per_id: 7,
+        identity_document: null,
+        matches_identity_document: false,
+        matches_email: true,
+        has_user: false,
+      }]);
+
+    await expect(
+      repository.upsertRequester(requester(), manager as never),
+    ).rejects.toMatchObject({ name: 'RequesterIdentityConflictError' });
+
+    expect(manager.query.mock.calls[0][0]).toContain('lower(p.per_email) = lower($2)');
+    expect(manager.query).toHaveBeenCalledOnce();
+  });
+
+  it('reuses an unclaimed person only when both email and document match', async () => {
+    const { repository, manager } = createTransactionalRepository();
+    manager.query
+      .mockResolvedValueOnce([{
+        per_id: 7,
+        identity_document: '10212265698',
+        matches_identity_document: true,
+        matches_email: true,
+        has_user: false,
+      }])
+      .mockResolvedValueOnce([]);
+
+    await expect(
+      repository.upsertRequester(requester(), manager as never),
+    ).resolves.toBe(7);
+    expect(manager.query).toHaveBeenCalledTimes(2);
+    expect(manager.query.mock.calls[1][0]).toContain('SET pr_active = true');
+  });
+
+  it('does not associate an email with a different existing identity document', async () => {
+    const { repository, manager } = createTransactionalRepository();
+    manager.query.mockResolvedValueOnce([{
+      per_id: 7,
+      identity_document: '9988776655',
+      matches_identity_document: false,
+      matches_email: true,
+      has_user: false,
+    }]);
+
+    await expect(
+      repository.upsertRequester(requester(), manager as never),
+    ).rejects.toMatchObject({
+      name: 'RequesterIdentityConflictError',
+    });
+    expect(manager.query).toHaveBeenCalledOnce();
+  });
+
+  it('rejects anonymous requests that match an Auth0-linked person', async () => {
+    const { repository, manager } = createTransactionalRepository();
+    manager.query.mockResolvedValueOnce([{
+      per_id: 7,
+      identity_document: '10212265698',
+      matches_identity_document: true,
+      matches_email: true,
+      has_user: true,
+    }]);
+
+    await expect(
+      repository.upsertRequester(requester(), manager as never),
+    ).rejects.toMatchObject({
+      name: 'RequesterIdentityConflictError',
+    });
+    expect(manager.query).toHaveBeenCalledOnce();
+  });
+
+  it('uses the authenticated person instead of looking up the submitted email', async () => {
+    const { repository, manager } = createTransactionalRepository();
+    manager.query
+      .mockResolvedValueOnce([{
+        identity_document: null,
+        matches_identity_document: null,
+      }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ app_id: 42 }])
+      .mockResolvedValueOnce([{ pd_id: 1 }])
+      .mockResolvedValueOnce([{ pd_id: 2 }])
+      .mockResolvedValueOnce([]);
+
+    await expect(
+      repository.createRequest({
+        requester: requester(),
+        dependent: null,
+        appType: 'virtual',
+        appReason: null,
+        authenticatedPersonId: 7,
+      }),
+    ).resolves.toBe(42);
+
+    expect(manager.query.mock.calls[0][0]).toContain('WHERE per_id = $1');
+    expect(manager.query.mock.calls[0][1]).toEqual([7, '10212265698']);
+    expect(manager.query.mock.calls[1][0]).toContain(
+      'per_identity_document = COALESCE(per_identity_document, $2::bigint)',
+    );
+    expect(manager.query.mock.calls[2][0]).toContain('SET pr_active = true');
+    expect(manager.query.mock.calls[3][0]).toContain('INSERT INTO appointments');
   });
 });
 

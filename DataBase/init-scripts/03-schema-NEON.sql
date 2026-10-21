@@ -1848,3 +1848,6 @@ COMMENT ON TABLE public.banners
     IS E'Banners de la pagina de inicio; los activos rotan en la primera pantalla';
 COMMENT ON COLUMN public.banners.ban_is_active
     IS E'Activado por el usuario. Requiere imagen';
+
+ALTER TABLE public.schedule DROP COLUMN IF EXISTS sch_reason;
+ALTER TABLE public.schedule_recurring_blocks DROP COLUMN IF EXISTS srb_reason;

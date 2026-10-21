@@ -15,6 +15,7 @@ import type { DiscardAppointmentDto } from './dto/discard-appointment.dto.js';
 import type { UpdateAppointmentStatusDto } from './dto/update-appointment-status.dto.js';
 import {
   AppointmentsRepository,
+  RequesterIdentityConflictError,
   type AppointmentRow,
   type PsychologistHistoryRow,
   type PsychologistOptionRow,
@@ -23,12 +24,21 @@ import {
 } from './appointments.repository.js';
 import { ScheduleService } from '../schedule/schedule.service.js';
 import { EmailService } from '../email/email.service.js';
+import type { AuthenticatedUser } from '../auth/auth.interface.js';
+import { UserRole } from '../models/user-role.enum.js';
 
 const REQUESTER_ALREADY_REGISTERED_MESSAGE =
-  'La información ingresada ya está asociada a una persona registrada. Verifique los datos e intente nuevamente.';
+  'No se pudo asociar la solicitud con esos datos. Verifique el correo y documento, o inicie sesión si ya tiene una cuenta.';
 const REQUESTER_UNIQUE_CONSTRAINTS = new Set([
   'Person_email_uq',
   'Person_idocument_uq',
+]);
+const APPOINTMENT_REQUEST_ROLES = new Set<UserRole>([
+  UserRole.Administrator,
+  UserRole.Secretary,
+  UserRole.Psychologist,
+  UserRole.Marketing,
+  UserRole.Requester,
 ]);
 
 /**
@@ -69,7 +79,17 @@ export class AppointmentsService {
    */
   async requestAppointment(
     dto: CreateAppointmentDto,
+    authenticatedUser?: AuthenticatedUser,
   ): Promise<{ appId: number; message: string }> {
+    if (
+      authenticatedUser &&
+      !authenticatedUser.roles.some((role) =>
+        APPOINTMENT_REQUEST_ROLES.has(role as UserRole),
+      )
+    ) {
+      throw new ForbiddenException('Account role is not authorized');
+    }
+
     this.validateRequester(dto);
     if (dto.patientType === 'dependent') {
       await this.validateDependent(dto);
@@ -83,7 +103,7 @@ export class AppointmentsService {
           cardType: dto.requesterCardType,
           identityDocument: dto.requesterIdentityDocument,
           contactNumber: dto.requesterContactNumber.trim(),
-          email: dto.requesterEmail?.trim(),
+          email: dto.requesterEmail.trim().toLowerCase(),
           birthdate: dto.requesterBirthdate,
           gender: dto.requesterGender,
           termsAccepted: dto.requesterTermsAccepted,
@@ -101,9 +121,13 @@ export class AppointmentsService {
           : null,
         appType: dto.appType,
         appReason: dto.appReason?.trim() ?? null,
+        authenticatedPersonId: authenticatedUser?.personId,
       });
     } catch (error) {
-      if (isRequesterUniqueConstraintViolation(error)) {
+      if (
+        error instanceof RequesterIdentityConflictError ||
+        isRequesterUniqueConstraintViolation(error)
+      ) {
         throw new ConflictException({
           error: 'REQUESTER_ALREADY_REGISTERED',
           message: REQUESTER_ALREADY_REGISTERED_MESSAGE,
@@ -113,7 +137,7 @@ export class AppointmentsService {
     }
 
     this.logger.log(
-      `Module:appointments, Function:requestAppointment, result-success: appId-${appId}, requesterDoc-${dto.requesterIdentityDocument}, patientType-${dto.patientType}, type-${dto.appType}`,
+      `Module:appointments, Function:requestAppointment, result-success: appId-${appId}, authenticated-${Boolean(authenticatedUser)}, patientType-${dto.patientType}, type-${dto.appType}`,
     );
     await this.notifySecretaryOfNewRequest(dto, appId);
 

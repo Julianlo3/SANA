@@ -17,6 +17,7 @@ import {
   X,
   ChevronDown,
   UserCircle2,
+  Home,
 } from "lucide-react";
 import { getInitials } from "@/lib/format/text";
 import { formatRoleLabels, findRoleByName } from "@/config/roles";
@@ -144,6 +145,10 @@ export default function Sidebar({ roles, fullName }: Props) {
         </div>
 
         <nav className="mt-6 flex flex-col gap-1 overflow-y-auto">
+          <div className="flex flex-col gap-1 border-b border-border pb-4">
+            {renderLink({ label: "Inicio", href: "/", icon: Home })}
+          </div>
+
           {rolesWithLinks.length === 1 ? (
             // Un solo rol con acceso: sin acordeón, opciones directas.
             <div className="flex flex-col gap-1">
@@ -202,9 +207,13 @@ export default function Sidebar({ roles, fullName }: Props) {
               {formatRoleLabels(roles)}
             </p>
           </div>
-          <button className="cursor-pointer text-text-subtle hover:text-text">
+          <a
+            href="/auth/logout"
+            aria-label="Cerrar sesión"
+            className="cursor-pointer text-text-subtle hover:text-text"
+          >
             <LogOut size={18} />
-          </button>
+          </a>
         </div>
       </aside>
     </>

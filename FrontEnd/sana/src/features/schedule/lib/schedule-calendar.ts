@@ -14,17 +14,10 @@ function toDate(date: string, time: string): Date {
 /** Convierte los bloqueos puntuales a eventos del calendario. */
 export function blocksToEvents(blocks: ScheduleBlock[]): CalendarEvent[] {
   return blocks.map((block) => ({
-    title:
-      block.appointmentId !== null
-        ? "Cita asignada"
-        : (block.reason ?? "Disponible"),
+    title: block.appointmentId !== null ? "Cita asignada" : "Disponible",
     start: toDate(block.date, block.startTime),
     end: toDate(block.date, block.endTime),
-    resource: {
-      kind: block.appointmentId !== null ? "appointment" : "block",
-      id: block.id,
-      reason: block.reason,
-    },
+    resource: { kind: block.appointmentId !== null ? "appointment" : "block", id: block.id },
   }));
 }
 
@@ -61,10 +54,10 @@ export function recurringBlocksToEvents(
       ) {
         const dateStr = cursor.toISOString().slice(0, 10);
         events.push({
-          title: rule.reason ?? "Disponible (recurrente)",
+          title: "Disponible (recurrente)",
           start: toDate(dateStr, rule.startTime),
           end: toDate(dateStr, rule.endTime),
-          resource: { kind: "recurring", id: rule.id, reason: rule.reason },
+          resource: { kind: "recurring", id: rule.id },
         });
       }
 
