@@ -56,6 +56,10 @@ jobs:
       # nunca llega a producción ni procesa entrada externa.
       - name: Audit dependencies
         run: npm audit --audit-level=high --omit=dev
+        
+      # Ejecuta las pruebas unitarias
+      - name: Run tests
+        run: npx vitest run
 
       # Verifica que Next.js pueda compilarse
       - name: Build Next.js
