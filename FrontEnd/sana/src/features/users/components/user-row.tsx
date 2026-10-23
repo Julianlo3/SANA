@@ -26,17 +26,30 @@ export default function UserRow({
   onCloseMenu,
   onAction,
 }: Props) {
+  const avatarClass =
+    user.status === "blocked"
+      ? "bg-danger text-white"
+      : user.status === "inactive"
+        ? "bg-surface-muted text-text-subtle"
+        : "bg-primary text-white";
+  const nameClass =
+    user.status === "blocked"
+      ? "text-danger"
+      : user.status === "inactive"
+        ? "text-text-subtle"
+        : "text-text";
+
   return (
     <tr className="border-b border-border last:border-0">
       <td className="py-4 pl-5 pr-3">
         <div className="flex items-center gap-3">
           <span
             aria-hidden
-               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-white"
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${avatarClass}`}
           >
             {getInitials(user.fullName)}
           </span>
-          <span className="font-medium text-text">{user.fullName}</span>
+          <span className={`font-medium ${nameClass}`}>{user.fullName}</span>
         </div>
       </td>
 

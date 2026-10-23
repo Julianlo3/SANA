@@ -1,5 +1,6 @@
 /** Estados de public.person.per_state. */
 export type UserStatus = "active" | "inactive" | "blocked" | "pending";
+export type EditableUserStatus = Extract<UserStatus, "active" | "inactive">;
 
 export type AssignedRole = {
   id: number;
@@ -43,9 +44,4 @@ export type UpdateUserPayload = Partial<
   roles?: AssignedRole[];
 };
 
-export type UserAction =
-  | "edit"
-  | "block"
-  | "deactivate"
-  | "reactivate"
-  | "delete";
+export type UserAction = "edit" | "deactivate" | "enable" | "delete";

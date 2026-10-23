@@ -158,17 +158,18 @@ describe('OWASP A04 – Insecure Design', () => {
     });
   });
 
-  // ─── A04.5 – Usuarios no pueden eliminar si hay registros ──────────────
+  // ─── A04.5 – Baja lógica preserva historiales y bitácora ───────────────
 
-  describe('A04.5 – Prevención de eliminación de usuarios con registros asociados', () => {
-    it('UsersService DEBE impedir eliminación de usuario con citas, horarios o dependientes', async () => {
+  describe('A04.5 – Baja lógica de usuarios preserva registros asociados', () => {
+    it('UsersService DEBE bloquear la cuenta y auditar la baja sin borrar registros', async () => {
       const fs = await import('fs');
       const servicePath = new URL('../../src/users/users.service.ts', import.meta.url);
       const content = fs.readFileSync(servicePath, 'utf-8');
 
-      expect(content).toContain('USER_HAS_RECORDS');
-      expect(content).toContain('findAssociatedRecords');
-      expect(content).toContain('ConflictException');
+      expect(content).toContain("person.perState = 'bloqueado'");
+      expect(content).toContain('INSERT INTO security_access_log');
+      expect(content).toContain('dataSource.transaction');
+      expect(content).not.toContain('findAssociatedRecords');
     });
   });
 

@@ -2,9 +2,9 @@ import { ENDPOINTS } from "@/services/api/endpoints";
 import { httpClient } from "@/services/api/http-client";
 import type {
   CreateUserPayload,
+  EditableUserStatus,
   UpdateUserPayload,
   User,
-  UserStatus,
 } from "../types/user-types";
 
 type ApiUserRole = { id: number; name: string; active: boolean };
@@ -70,7 +70,7 @@ export async function updateUser(
 
 export async function changeUserStatus(
   id: number,
-  status: UserStatus,
+  status: EditableUserStatus,
   reason?: string,
 ): Promise<void> {
   await httpClient.patch<void>(ENDPOINTS.userStatus(id), { status, reason });

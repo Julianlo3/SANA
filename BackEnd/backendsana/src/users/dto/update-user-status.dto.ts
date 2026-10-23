@@ -1,6 +1,6 @@
 import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
-export const USER_STATUSES = ['active', 'inactive', 'blocked'] as const;
+export const USER_STATUSES = ['active', 'inactive'] as const;
 export type UserStatus = (typeof USER_STATUSES)[number];
 
 export class UpdateUserStatusDto {

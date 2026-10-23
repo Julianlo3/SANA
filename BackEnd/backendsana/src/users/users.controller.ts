@@ -73,7 +73,7 @@ export class UsersController {
 
   @Get()
   findAll(
-    @Query('status') status?: 'active' | 'inactive' | 'blocked',
+    @Query('status') status?: 'active' | 'inactive',
     @Query('search') search?: string,
   ) {
     return this.usersService.findAll({ status, search });
@@ -100,7 +100,10 @@ export class UsersController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.usersService.remove(id);
+  remove(
+    @Req() request: Request & { user: AuthenticatedUser },
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.usersService.remove(id, request.user.userId);
   }
 }

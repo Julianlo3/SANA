@@ -25,17 +25,30 @@ export default function UserCard({
   onCloseMenu,
   onAction,
 }: Props) {
+  const avatarClass =
+    user.status === "blocked"
+      ? "bg-danger text-white"
+      : user.status === "inactive"
+        ? "bg-surface-muted text-text-subtle"
+        : "bg-accent text-white";
+  const nameClass =
+    user.status === "blocked"
+      ? "text-danger"
+      : user.status === "inactive"
+        ? "text-text-subtle"
+        : "text-text";
+
   return (
     <li className="flex items-start gap-3 border-b border-border p-4 last:border-0">
       <span
         aria-hidden
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-white"
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${avatarClass}`}
       >
         {getInitials(user.fullName)}
       </span>
 
       <div className="min-w-0 flex-1">
-        <p className="font-semibold text-text">{user.fullName}</p>
+        <p className={`font-semibold ${nameClass}`}>{user.fullName}</p>
         <p className="truncate text-xs text-text-muted">{user.email}</p>
 
         <div className="mt-3">

@@ -2,11 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { requiresProfessionalData } from "@/config/roles";
+import { findRoleById, requiresProfessionalData } from "@/config/roles";
 import { useForm } from "@/hooks/use-form";
 import { ApiError } from "@/types/api-types";
 import { getUserById, updateUser } from "../services/users-service";
-import type { AssignedRole, UpdateUserPayload, User } from "../types/user-types";
+import type {
+  AssignedRole,
+  UpdateUserPayload,
+  User,
+} from "../types/user-types";
 import {
   validateUserEditForm,
   type UserFormValues,
@@ -41,6 +45,8 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 function toFormValues(user: User): EditableFormValues {
+  const editableRoles = user.roles.filter((role) => findRoleById(role.id));
+
   return {
     fullName: user.fullName,
     identityDocument: user.identityDocument,
@@ -48,8 +54,8 @@ function toFormValues(user: User): EditableFormValues {
     email: user.email,
     confirmEmail: user.email,
     contactNumber: user.contactNumber,
-    roleIds: user.roles.map((role) => role.id),
-    inactiveRoleIds: user.roles
+    roleIds: editableRoles.map((role) => role.id),
+    inactiveRoleIds: editableRoles
       .filter((role) => !role.isActive)
       .map((role) => role.id),
     licenseNumber: user.professionalData?.licenseNumber ?? "",
@@ -210,23 +216,7 @@ export function useUserEditForm(userId: number) {
     }
 
     try {
-      await updateUser(user.id, payload);
-
-      const updated: User = {
-        ...user,
-        fullName: submitted.fullName.trim(),
-        contactNumber: submitted.contactNumber.trim(),
-        roles: submitted.roleIds.map((id) => ({
-          id,
-          isActive: !submitted.inactiveRoleIds.includes(id),
-        })),
-        professionalData: needsProfessionalData
-          ? {
-              licenseNumber: submitted.licenseNumber.trim(),
-              speciality: submitted.speciality.trim(),
-            }
-          : undefined,
-      };
+      const updated = await updateUser(user.id, payload);
 
       setUser(updated);
       reset(toFormValues(updated));

@@ -46,7 +46,12 @@ describe('UsersController (e2e, real Postgres)', () => {
     const [{ per_id: personId }] = await dataSource.query(
       `INSERT INTO person (per_name, per_identity_document, per_email, per_contact_number, per_state)
        VALUES ($1, $2, $3, $4, 'activo') RETURNING per_id`,
-      ['Seed User', 900000000 + Number(unique().slice(-6)), options.email, '3000000000'],
+      [
+        'Seed User',
+        900000000 + Number(unique().slice(-6)),
+        options.email,
+        '3000000000',
+      ],
     );
     await dataSource.query(
       `INSERT INTO person_rol (per_id, rol_id, pr_assigned_at, pr_active)
@@ -125,6 +130,10 @@ describe('UsersController (e2e, real Postgres)', () => {
     await dataSource.query('DELETE FROM psychologist WHERE psy_id = ANY($1)', [
       createdPersonIds,
     ]);
+    await dataSource.query(
+      'DELETE FROM security_access_log WHERE use_id = ANY($1)',
+      [createdPersonIds],
+    );
     await dataSource.query('DELETE FROM users WHERE use_id = ANY($1)', [
       createdPersonIds,
     ]);
@@ -139,7 +148,9 @@ describe('UsersController (e2e, real Postgres)', () => {
 
   /** Adjunta el Origin permitido y el Bearer stub al request. */
   function authed(req: request.Test) {
-    return req.set('Origin', origin).set('Authorization', `Bearer ${ADMIN_BEARER}`);
+    return req
+      .set('Origin', origin)
+      .set('Authorization', `Bearer ${ADMIN_BEARER}`);
   }
 
   describe('auth boundary', () => {
@@ -247,7 +258,11 @@ describe('UsersController (e2e, real Postgres)', () => {
 
     it('rejects an email that already belongs to a claimed account', async () => {
       const existingEmail = `already-active-${unique()}@gmail.com`;
-      await seedPerson({ email: existingEmail, roleDescription: 'marketing', withAccount: true });
+      await seedPerson({
+        email: existingEmail,
+        roleDescription: 'marketing',
+        withAccount: true,
+      });
 
       await authed(request(app.getHttpServer()).post('/api/v1/users'))
         .send({
@@ -293,14 +308,42 @@ describe('UsersController (e2e, real Postgres)', () => {
       const email = `list-user-${unique()}@gmail.com`;
       const id = await seedPerson({ email, roleDescription: 'secretario' });
 
-      const all = await authed(request(app.getHttpServer()).get('/api/v1/users')).expect(200);
-      expect(all.body.some((user: { id: number }) => user.id === id)).toBe(true);
+      const all = await authed(
+        request(app.getHttpServer()).get('/api/v1/users'),
+      ).expect(200);
+      expect(all.body.some((user: { id: number }) => user.id === id)).toBe(
+        true,
+      );
 
       const filtered = await authed(
-        request(app.getHttpServer()).get('/api/v1/users').query({ search: email }),
+        request(app.getHttpServer())
+          .get('/api/v1/users')
+          .query({ search: email }),
       ).expect(200);
       expect(filtered.body).toHaveLength(1);
       expect(filtered.body[0].id).toBe(id);
+    });
+
+    it('keeps an employee visible when their assigned role is turned off', async () => {
+      const email = `inactive-role-${unique()}@gmail.com`;
+      const id = await seedPerson({ email, roleDescription: 'marketing' });
+
+      await authed(request(app.getHttpServer()).patch(`/api/v1/users/${id}`))
+        .send({ roles: [{ roleId: 2, active: false }] })
+        .expect(200);
+
+      const response = await authed(
+        request(app.getHttpServer())
+          .get('/api/v1/users')
+          .query({ search: email }),
+      ).expect(200);
+
+      expect(response.body).toEqual([
+        expect.objectContaining({
+          id,
+          roles: [{ id: 2, name: 'marketing', active: false }],
+        }),
+      ]);
     });
   });
 
@@ -332,24 +375,84 @@ describe('UsersController (e2e, real Postgres)', () => {
           { id: 2, name: 'marketing', active: false },
         ]),
       );
+
+      const replaced = await authed(
+        request(app.getHttpServer()).patch(`/api/v1/users/${id}`),
+      )
+        .send({ roles: [{ roleId: 2, active: true }] })
+        .expect(200);
+
+      expect(replaced.body.roles).toEqual([
+        { id: 2, name: 'marketing', active: true },
+      ]);
+    });
+
+    it('preserves a consultant role while employee roles are edited', async () => {
+      const email = `dual-role-${unique()}@gmail.com`;
+      const id = await seedPerson({
+        email,
+        roleDescription: 'marketing',
+      });
+      await dataSource.query(
+        `INSERT INTO person_rol (per_id, rol_id, pr_assigned_at, pr_active)
+         SELECT $1, rol_id, now(), true FROM rol WHERE rol_description = 'consultante'`,
+        [id],
+      );
+
+      const response = await authed(
+        request(app.getHttpServer()).patch(`/api/v1/users/${id}`),
+      )
+        .send({ roles: [{ roleId: 2, active: false }] })
+        .expect(200);
+
+      expect(response.body.roles).toEqual(
+        expect.arrayContaining([
+          { id: 2, name: 'marketing', active: false },
+          { id: 3, name: 'consultante', active: true },
+        ]),
+      );
+
+      const listed = await authed(
+        request(app.getHttpServer())
+          .get('/api/v1/users')
+          .query({ search: email }),
+      ).expect(200);
+      expect(listed.body).toEqual([
+        expect.objectContaining({ id, status: 'active' }),
+      ]);
     });
   });
 
-  describe('PATCH /users/:id/status (HU-1.3, bloquear/desactivar/reactivar)', () => {
-    it('blocks a user and rejects their Auth0 identity', async () => {
+  describe('PATCH /users/:id/status (HU-1.3, desactivar/habilitar)', () => {
+    it('rejects blocked as a directly assignable status', async () => {
+      const id = await seedPerson({
+        email: `status-blocked-${unique()}@gmail.com`,
+        roleDescription: 'secretario',
+      });
+
+      await authed(
+        request(app.getHttpServer()).patch(`/api/v1/users/${id}/status`),
+      )
+        .send({ status: 'blocked' })
+        .expect(422);
+    });
+
+    it('archives a user and rejects employee-only login', async () => {
       const id = await seedPerson({
         email: `block-user-${unique()}@gmail.com`,
         roleDescription: 'secretario',
         withAccount: true,
       });
 
-      const response = await authed(
-        request(app.getHttpServer()).patch(`/api/v1/users/${id}/status`),
-      )
-        .send({ status: 'blocked', reason: 'Licencia temporal' })
-        .expect(200);
+      await authed(
+        request(app.getHttpServer()).delete(`/api/v1/users/${id}`),
+      ).expect(204);
 
-      expect(response.body.status).toBe('blocked');
+      const [archivedPerson] = await dataSource.query(
+        'SELECT per_state FROM person WHERE per_id = $1',
+        [id],
+      );
+      expect(archivedPerson.per_state).toBe('bloqueado');
 
       const logs = await dataSource.query(
         `SELECT security_access_log_section, security_access_log_message
@@ -361,7 +464,7 @@ describe('UsersController (e2e, real Postgres)', () => {
       );
       expect(logs[0]?.security_access_log_section).toBe('User Management');
       expect(logs[0]?.security_access_log_message).toContain(`person ${id}`);
-      expect(logs[0]?.security_access_log_message).toContain('Licencia temporal');
+      expect(logs[0]?.security_access_log_message).toContain('Baja lógica');
 
       const [blockedUser] = await dataSource.query(
         'SELECT user_provider_id, per_email FROM users JOIN person ON use_id = per_id WHERE use_id = $1',
@@ -394,7 +497,10 @@ describe('UsersController (e2e, real Postgres)', () => {
         email: `reactivate-user-${unique()}@gmail.com`,
         roleDescription: 'marketing',
       });
-      await dataSource.query("UPDATE person SET per_state = 'inactivo' WHERE per_id = $1", [id]);
+      await dataSource.query(
+        "UPDATE person SET per_state = 'inactivo' WHERE per_id = $1",
+        [id],
+      );
 
       const response = await authed(
         request(app.getHttpServer()).patch(`/api/v1/users/${id}/status`),
@@ -403,25 +509,59 @@ describe('UsersController (e2e, real Postgres)', () => {
         .expect(200);
 
       expect(response.body.status).toBe('active');
-      expect(response.body.roles).toEqual([{ id: 2, name: 'marketing', active: true }]);
+      expect(response.body.roles).toEqual([
+        { id: 2, name: 'marketing', active: true },
+      ]);
     });
   });
 
   describe('DELETE /users/:id (HU-1.3)', () => {
-    it('deletes a person with no associated records', async () => {
+    it('archives the person and hides it from the user-management list', async () => {
+      const email = `delete-user-${unique()}@gmail.com`;
       const id = await seedPerson({
-        email: `delete-user-${unique()}@gmail.com`,
+        email,
         roleDescription: 'marketing',
       });
 
-      await authed(request(app.getHttpServer()).delete(`/api/v1/users/${id}`)).expect(204);
+      await authed(
+        request(app.getHttpServer()).delete(`/api/v1/users/${id}`),
+      ).expect(204);
 
-      const rows = await dataSource.query('SELECT 1 FROM person WHERE per_id = $1', [id]);
-      expect(rows).toHaveLength(0);
-      createdPersonIds.splice(createdPersonIds.indexOf(id), 1);
+      const [person] = await dataSource.query(
+        'SELECT per_state FROM person WHERE per_id = $1',
+        [id],
+      );
+      expect(person.per_state).toBe('bloqueado');
+
+      const listed = await authed(
+        request(app.getHttpServer())
+          .get('/api/v1/users')
+          .query({ search: email }),
+      ).expect(200);
+      expect(listed.body.some((user: { id: number }) => user.id === id)).toBe(
+        false,
+      );
     });
 
-    it('refuses to delete a person with an appointment on record', async () => {
+    it('preserves the linked login account for audit', async () => {
+      const id = await seedPerson({
+        email: `delete-account-${unique()}@gmail.com`,
+        roleDescription: 'marketing',
+        withAccount: true,
+      });
+
+      await authed(
+        request(app.getHttpServer()).delete(`/api/v1/users/${id}`),
+      ).expect(204);
+
+      const rows = await dataSource.query(
+        'SELECT 1 FROM users WHERE use_id = $1',
+        [id],
+      );
+      expect(rows).toHaveLength(1);
+    });
+
+    it('archives a person with appointments and preserves appointment history', async () => {
       const id = await seedPerson({
         email: `has-appointments-${unique()}@gmail.com`,
         roleDescription: 'marketing',
@@ -443,12 +583,15 @@ describe('UsersController (e2e, real Postgres)', () => {
         [psychologistId, secretaryId, id],
       );
 
-      const response = await authed(
+      await authed(
         request(app.getHttpServer()).delete(`/api/v1/users/${id}`),
-      ).expect(409);
+      ).expect(204);
 
-      expect(response.body.error).toBe('USER_HAS_RECORDS');
-      expect(response.body.details.appointments).toBeGreaterThan(0);
+      const appointmentRows = await dataSource.query(
+        'SELECT 1 FROM appointments WHERE req_id = $1',
+        [id],
+      );
+      expect(appointmentRows).toHaveLength(1);
     });
   });
 });
