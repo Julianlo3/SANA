@@ -43,8 +43,13 @@ export class EmailRepository {
    * @param staleLockSeconds The number of seconds after which a locked email is considered stale.
    * @returns A promise resolving to the list of claimed email rows.
    */
-  claimDue(batchSize: number, staleLockSeconds: number): Promise<EmailOutboxRow[]> {
-    return this.dataSource.query<EmailOutboxRow[]>(
+  async claimDue(
+    batchSize: number,
+    staleLockSeconds: number,
+  ): Promise<EmailOutboxRow[]> {
+    const result = await this.dataSource.query<
+      EmailOutboxRow[] | [EmailOutboxRow[], number]
+    >(
       `WITH candidates AS (
          SELECT email_id
          FROM email_outbox
@@ -65,6 +70,9 @@ export class EmailRepository {
                  queued.email_text, queued.email_html, queued.email_attempts`,
       [batchSize, staleLockSeconds],
     );
+    // TypeORM 1.x exposes UPDATE ... RETURNING as [rows, affectedCount], while
+    // a SELECT-like driver response is just rows. Normalize both forms.
+    return Array.isArray(result[0]) ? result[0] : (result as EmailOutboxRow[]);
   }
 
   /**
@@ -98,9 +106,9 @@ export class EmailRepository {
     delayMilliseconds: number,
     errorCode: string,
     maxAttempts: number,
-    ): Promise<void> {
-        await this.dataSource.query(
-        `UPDATE email_outbox
+  ): Promise<void> {
+    await this.dataSource.query(
+      `UPDATE email_outbox
         SET email_status = CASE WHEN email_attempts >= $4 THEN 'failed' ELSE 'pending' END,
             email_to = CASE WHEN email_attempts >= $4 THEN NULL ELSE email_to END,
             email_subject = CASE WHEN email_attempts >= $4 THEN NULL ELSE email_subject END,
@@ -110,7 +118,7 @@ export class EmailRepository {
             email_next_attempt_at = now() + ($2 * interval '1 millisecond'),
             email_last_error_code = $3
         WHERE email_id = $1`,
-    [emailId, delayMilliseconds, errorCode, maxAttempts],
-  );
-}
+      [emailId, delayMilliseconds, errorCode, maxAttempts],
+    );
+  }
 }
