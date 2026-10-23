@@ -14,7 +14,9 @@ describe('EmailRepository', () => {
       }),
     ).resolves.toBe(9);
 
-    expect(dataSource.query.mock.calls[0][0]).toContain('INSERT INTO email_outbox');
+    expect(dataSource.query.mock.calls[0][0]).toContain(
+      'INSERT INTO email_outbox',
+    );
     expect(dataSource.query.mock.calls[0][1]).toEqual([
       'person@example.com',
       'Aviso',
@@ -29,9 +31,28 @@ describe('EmailRepository', () => {
 
     await repository.claimDue(10, 300);
 
-    expect(dataSource.query.mock.calls[0][0]).toContain('FOR UPDATE SKIP LOCKED');
-    expect(dataSource.query.mock.calls[0][0]).toContain("email_status = 'sending'");
+    expect(dataSource.query.mock.calls[0][0]).toContain(
+      'FOR UPDATE SKIP LOCKED',
+    );
+    expect(dataSource.query.mock.calls[0][0]).toContain(
+      "email_status = 'sending'",
+    );
     expect(dataSource.query.mock.calls[0][1]).toEqual([10, 300]);
+  });
+
+  it('normalizes TypeORM UPDATE ... RETURNING results before delivery', async () => {
+    const row = {
+      email_id: 12,
+      email_to: 'person@example.com',
+      email_subject: 'Aviso',
+      email_text: 'Mensaje',
+      email_html: null,
+      email_attempts: 1,
+    };
+    const dataSource = { query: vi.fn().mockResolvedValue([[row], 1]) };
+    const repository = new EmailRepository(dataSource as never);
+
+    await expect(repository.claimDue(10, 300)).resolves.toEqual([row]);
   });
 
   it('scrubs recipient and body after delivery', async () => {
@@ -40,11 +61,13 @@ describe('EmailRepository', () => {
 
     await repository.markSent(9);
 
-    expect(dataSource.query.mock.calls[0][0]).toContain("email_status = 'sent'");
+    expect(dataSource.query.mock.calls[0][0]).toContain(
+      "email_status = 'sent'",
+    );
     expect(dataSource.query.mock.calls[0][0]).toContain('email_text = NULL');
     expect(dataSource.query.mock.calls[0][0]).toContain('email_to = NULL');
   });
-    it('passes the attempt limit and fails the row, scrubbing its content, when reached', async () => {
+  it('passes the attempt limit and fails the row, scrubbing its content, when reached', async () => {
     const dataSource = { query: vi.fn().mockResolvedValue([]) };
     const repository = new EmailRepository(dataSource as never);
 
@@ -55,6 +78,8 @@ describe('EmailRepository', () => {
     expect(sql).toContain("'failed'");
     expect(sql).toContain('email_attempts >= $4');
     expect(sql).toMatch(/email_to = CASE WHEN email_attempts >= \$4 THEN NULL/);
-    expect(sql).toMatch(/email_text = CASE WHEN email_attempts >= \$4 THEN NULL/);
+    expect(sql).toMatch(
+      /email_text = CASE WHEN email_attempts >= \$4 THEN NULL/,
+    );
   });
 });
