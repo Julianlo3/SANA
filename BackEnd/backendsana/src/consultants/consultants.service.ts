@@ -262,6 +262,9 @@ export class ConsultantsService {
         appDate: Date | null;
         appDuration: number | null;
         appReason: string | null;
+        patientType: 'self' | 'dependent';
+        patientName: string;
+        patientDependentId: number | null;
         psychologistName: string;
         cnId: number | null;
         cnObservation: string | null;
@@ -274,11 +277,19 @@ export class ConsultantsService {
           a.app_date AS "appDate",
           a.app_duration AS "appDuration",
           a.app_reason AS "appReason",
+          CASE
+            WHEN a.app_patient_dependent_id IS NOT NULL THEN 'dependent'
+            ELSE 'self'
+          END AS "patientType",
+          COALESCE(dep.dep_name, req.per_name) AS "patientName",
+          a.app_patient_dependent_id AS "patientDependentId",
           psy.per_name AS "psychologistName",
           cn.cn_id AS "cnId",
           cn.cn_observation AS "cnObservation",
           cn.cn_created_at AS "cnCreatedAt"
        FROM appointments a
+       JOIN person req ON req.per_id = a.req_id
+       LEFT JOIN dependents dep ON dep.dep_id = a.app_patient_dependent_id
        JOIN person psy ON psy.per_id = a.psy_id
        LEFT JOIN clinical_notes cn
          ON cn.app_id = a.app_id AND cn.psy_id = a.psy_id
@@ -304,6 +315,9 @@ export class ConsultantsService {
           appDate: row.appDate,
           duration: row.appDuration,
           reason: row.appReason,
+          patientType: row.patientType,
+          patientName: row.patientName,
+          patientDependentId: row.patientDependentId,
           clinicalNotes: [],
         };
         appointments.set(row.appId, appointment);
@@ -324,6 +338,9 @@ export class ConsultantsService {
           appointmentId: row.appId,
           attendedAt: row.appDate,
           observation: row.cnObservation,
+          patientType: row.patientType,
+          patientName: row.patientName,
+          patientDependentId: row.patientDependentId,
           recordedByPsychologistId: psychologistId,
           recordedByPsychologistName: row.psychologistName,
         });

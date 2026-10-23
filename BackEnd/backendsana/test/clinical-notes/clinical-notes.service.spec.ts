@@ -234,6 +234,9 @@ describe('ClinicalNotesService.findConsultantHistory', () => {
         psychologistName: 'Dr. Test',
         cnObservation: 'Test observation',
         cnCreatedAt: new Date(),
+        patientType: 'dependent',
+        patientName: 'Menor',
+        patientDependentId: 93,
       },
     ]);
     appointmentsRepo.findById.mockResolvedValue({
@@ -246,6 +249,9 @@ describe('ClinicalNotesService.findConsultantHistory', () => {
       notes: expect.arrayContaining([
         expect.objectContaining({
           psychologistName: 'Dr. Test',
+          patientType: 'dependent',
+          patientName: 'Menor',
+          patientDependentId: 93,
         }),
       ]),
     });
