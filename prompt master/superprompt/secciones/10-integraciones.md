@@ -6,11 +6,13 @@
 | Servicio | Uso actual | Estado y límite |
 |---|---|---|
 | Auth0 | Autenticación web y emisión de access token; NestJS lo valida mediante JWKS/claims. | Implementado. El frontend usa `@auth0/nextjs-auth0`; el backend valida Bearer, no una cookie de aplicación. |
+| Vercel | Despliegue de la aplicación web Next.js. | Implementado y activo. La configuración de proyecto/variables se administra en Vercel. |
+| Render | Despliegue de la API NestJS. | Implementado y activo. La configuración de servicio/variables se administra en Render. |
 | PostgreSQL en Neon | Persistencia transaccional. | Implementado mediante TypeORM/`pg`; esquema en `03-schema-NEON.sql`. |
 | Cloudinary | Carga y alojamiento de imágenes institucionales. | Implementado con REST: firma backend, carga directa navegador, verificación backend. |
 | SMTP/Nodemailer | Correo transaccional. | Implementado de forma configurable; sin credenciales válidas se desactiva. No hay proveedor fijado. |
 
-Vercel/Render figuran como intención de despliegue en material previo, pero no hay configuración de infraestructura versionada que los confirme como despliegues activos. Wompi, WhatsApp, Resend y SendGrid no están integrados en el código actual.
+Vercel, Render y Neon son los proveedores activos de despliegue/persistencia. Sus configuraciones operativas no están versionadas en este repositorio. Wompi, WhatsApp, Resend y SendGrid no están integrados en el código actual.
 
 ## 10.2 Auth0
 
@@ -49,7 +51,7 @@ El backend lee `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` y `SMTP_FR
 TypeORM se conecta con `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `DATABASE_NAME` y `DATABASE_SSL`. En Neon, habilitar `DATABASE_SSL=true`; la configuración actual usa `rejectUnauthorized: false`, decisión que debe revisarse si el proveedor permite cadena/certificado validable.
 
 - `synchronize` permanece en `false`; el cambio de esquema se entrega por migración SQL revisada y probada.
-- Usar pool/timeout adecuado al entorno serverless y cerrar/conservar conexiones conforme al modelo de despliegue elegido. Esto es pendiente de infraestructura, no está configurado en el repositorio.
+- Usar pool/timeout adecuado a la conexión Render–Neon y revisar límites de conexión del plan contratado. La configuración concreta se administra fuera del repositorio.
 - Hacer backups, restauración y rotación de contraseña desde Neon/proveedor; no hay automatización de backup declarada aquí.
 
 ## 10.6 Integraciones planeadas, no implementadas
@@ -57,7 +59,7 @@ TypeORM se conecta con `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USERNAME`, `D
 | Integración | Necesidad de producto | Precondiciones para implementar |
 |---|---|---|
 | Wompi | Donaciones y webhook de transacción. | Definir merchant, firma/verificación, idempotencia por transacción, estados, conciliación, datos de donante, retención y endpoints/roles. |
-| WhatsApp Business/BSP | Recordatorios y notificaciones. | Aprobación de plantillas, consentimiento/opt-out, proveedor, límites, webhooks y auditoría. |
+| WhatsApp Business/BSP | No existe aún y no se manejará según la decisión vigente. | No implementar integración, plantillas, webhooks ni flujos de notificación por WhatsApp. |
 | Resend/SendGrid | Alternativa de correo. | Decisión de proveedor y migración del adapter SMTP/outbox. |
 | Exportación PDF/Excel | Reportes. | Módulo de reportes, criterios agregados, autorización, formato, retención y prueba de que no exporta PII innecesaria. |
 

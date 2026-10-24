@@ -87,12 +87,14 @@ export default function ConsultantFullRecordPage({ consultantId }: Props) {
             title="Citas realizadas"
             appointments={completedAppointments}
             emptyMessage="Todavía no hay citas realizadas."
+            consultantName={consultant.fullName}
           />
 
           <AppointmentSection
             title="Citas en espera"
             appointments={waitingAppointments}
             emptyMessage="No hay citas pendientes o confirmadas."
+            consultantName={consultant.fullName}
           />
         </div>
       )}
@@ -109,11 +111,34 @@ function AppointmentSection({
   title,
   appointments,
   emptyMessage,
+  consultantName,
 }: {
   readonly title: string;
   readonly appointments: ConsultantAppointment[];
   readonly emptyMessage: string;
+  readonly consultantName: string;
 }) {
+  const appointmentsByPatient = new Map<
+    string,
+    { patientName: string; patientType: "self" | "dependent"; appointments: ConsultantAppointment[] }
+  >();
+  for (const appointment of appointments) {
+    const key =
+      appointment.patientType === "dependent"
+        ? `dependent-${appointment.patientDependentId ?? appointment.id}`
+        : "self";
+    const group = appointmentsByPatient.get(key) ?? {
+      patientName:
+        appointment.patientType === "dependent"
+          ? appointment.patientName
+          : consultantName,
+      patientType: appointment.patientType,
+      appointments: [],
+    };
+    group.appointments.push(appointment);
+    appointmentsByPatient.set(key, group);
+  }
+
   return (
     <section>
       <h2 className="font-display text-lg font-bold text-text">{title}</h2>
@@ -121,61 +146,73 @@ function AppointmentSection({
         <p className="mt-3 text-sm text-text-subtle">{emptyMessage}</p>
       ) : (
         <div className="mt-3 space-y-3">
-          {appointments.map((appointment) => (
-            <article
-              key={appointment.id}
-              className="rounded-xl border border-border bg-surface p-4"
+          {[...appointmentsByPatient.entries()].map(([patientKey, group]) => (
+            <div
+              key={patientKey}
+              className="space-y-3 rounded-xl border border-border p-4"
             >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="font-semibold text-text">
-                  {appointment.appDate
-                    ? formatDateTime(appointment.appDate)
-                    : "Fecha por definir"}
-                </p>
-                <span className="rounded-full bg-primary-soft px-3 py-1 text-xs font-medium text-primary">
-                  {APPOINTMENT_STATE_LABELS[appointment.state]}
-                </span>
-              </div>
-              {appointment.duration && (
-                <p className="mt-1 text-xs text-text-subtle">
-                  Duración: {appointment.duration} minutos
-                </p>
-              )}
-              {appointment.reason && (
-                <div className="mt-3 rounded-lg bg-surface-muted p-3">
-                  <p className="flex items-center gap-2 text-xs font-semibold text-text-subtle">
-                    <FileText size={14} aria-hidden />
-                    Motivo de esta cita
-                  </p>
-                  <p className="mt-1 whitespace-pre-wrap text-sm text-text">
-                    {appointment.reason}
-                  </p>
-                </div>
-              )}
-              {appointment.state === "realizada" &&
-                (appointment.clinicalNotes.length > 0 ? (
-                  <div className="mt-3 space-y-2">
-                    {appointment.clinicalNotes.map((note) => (
-                      <details
-                        key={note.id}
-                        className="rounded-lg border border-border bg-surface-muted px-3 py-2"
-                      >
-                        <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium text-primary">
-                          <FileText size={14} aria-hidden />
-                          Ver nota clínica
-                        </summary>
-                        <p className="mt-2 whitespace-pre-wrap text-sm text-text">
-                          {note.observation || "Sin observación registrada."}
-                        </p>
-                      </details>
-                    ))}
+              <h3 className="text-sm font-semibold text-text">
+                {group.patientType === "dependent"
+                  ? `Dependiente: ${group.patientName}`
+                  : `Consultante: ${group.patientName}`}
+              </h3>
+              {group.appointments.map((appointment) => (
+                <article
+                  key={appointment.id}
+                  className="rounded-xl border border-border bg-surface p-4"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-semibold text-text">
+                      {appointment.appDate
+                        ? formatDateTime(appointment.appDate)
+                        : "Fecha por definir"}
+                    </p>
+                    <span className="rounded-full bg-primary-soft px-3 py-1 text-xs font-medium text-primary">
+                      {APPOINTMENT_STATE_LABELS[appointment.state]}
+                    </span>
                   </div>
-                ) : (
-                  <p className="mt-3 text-sm text-text-subtle">
-                    No hay nota clínica registrada para esta cita.
-                  </p>
-                ))}
-            </article>
+                  {appointment.duration && (
+                    <p className="mt-1 text-xs text-text-subtle">
+                      Duración: {appointment.duration} minutos
+                    </p>
+                  )}
+                  {appointment.reason && (
+                    <div className="mt-3 rounded-lg bg-surface-muted p-3">
+                      <p className="flex items-center gap-2 text-xs font-semibold text-text-subtle">
+                        <FileText size={14} aria-hidden />
+                        Motivo de esta cita
+                      </p>
+                      <p className="mt-1 whitespace-pre-wrap text-sm text-text">
+                        {appointment.reason}
+                      </p>
+                    </div>
+                  )}
+                  {appointment.state === "realizada" &&
+                    (appointment.clinicalNotes.length > 0 ? (
+                      <div className="mt-3 space-y-2">
+                        {appointment.clinicalNotes.map((note) => (
+                          <details
+                            key={note.id}
+                            className="rounded-lg border border-border bg-surface-muted px-3 py-2"
+                          >
+                            <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium text-primary">
+                              <FileText size={14} aria-hidden />
+                              Ver nota clínica
+                            </summary>
+                            <p className="mt-2 whitespace-pre-wrap text-sm text-text">
+                              {note.observation || "Sin observación registrada."}
+                            </p>
+                          </details>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-sm text-text-subtle">
+                        No hay nota clínica registrada para esta cita.
+                      </p>
+                    ))}
+                </article>
+              ))}
+            </div>
           ))}
         </div>
       )}

@@ -280,6 +280,8 @@ Esta sección describe el stack **realmente instalado**. No inferir dependencias
 | Autenticación web | `@auth0/nextjs-auth0` `4.30.0` | Sesión Next.js y access token reenviado a la API. |
 | Backend | Node.js, NestJS `12.1.x`, TypeScript `6.0.2`, Express | API REST modular; puerto `3000` por defecto. |
 | Persistencia | PostgreSQL/Neon, `pg` `8.23.0`, TypeORM `1.1.1` | Entidades y esquema SQL versionado. |
+| Despliegue frontend | Vercel | Aplicación Next.js desplegada. |
+| Despliegue backend | Render | API NestJS desplegada. |
 | Seguridad | `jose`, Helmet, cookie-parser, bcrypt, Joi, class-validator/transformer | JWT Auth0, cabeceras, ambiente y DTOs. |
 | Correo | Nodemailer `10.0.13` sobre SMTP | Cola durable `email_outbox`, reintentos y limpieza de payload enviado. |
 | Imágenes | Cloudinary REST API, sin SDK | Firma de carga directa y verificación previa a persistir. |
@@ -291,10 +293,10 @@ No se declara versión de Node mediante `.nvmrc`, `engines` ni `.tool-versions`.
 ## 4.3 Topología y rutas técnicas
 
 ```text
-Navegador -> Next.js (:5173 en desarrollo)
+Navegador -> Next.js en Vercel (:5173 en desarrollo)
               /api/backend/* -> route handler BFF
                                 -> BACKEND_API_URL/api/v1/* + Bearer JWT + Origin
-           NestJS (:3000 por defecto) -> TypeORM -> PostgreSQL/Neon
+           NestJS en Render (:3000 por defecto) -> TypeORM -> PostgreSQL/Neon
                                       -> Auth0, Cloudinary, SMTP/email_outbox
 ```
 
@@ -329,6 +331,8 @@ En frontend, una capacidad vive en `features/<dominio>`; las rutas de `app` solo
 | Correo | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | TLS mínimo 1.2. Sin configuración válida, el envío se desactiva de forma segura. |
 
 Los `.env` y secretos nunca se versionan. `.env.example` contiene plantillas, no credenciales.
+
+Vercel, Render y Neon son los despliegues activos. La ausencia de manifiestos de infraestructura como código en este repositorio no implica que el sistema no esté desplegado; las variables y dominios productivos se administran en cada proveedor.
 
 ## 4.6 Convenciones de código
 
@@ -366,9 +370,9 @@ SANA es una aplicación cliente-servidor. Next.js implementa experiencia, sesió
 
 ```mermaid
 flowchart LR
-  U[Visitante o usuario] --> FE[Next.js App Router]
+  U[Visitante o usuario] --> FE[Next.js App Router en Vercel]
   FE -->|/api/backend/*| BFF[Route handler proxy]
-  BFF -->|Bearer JWT, Origin| API[NestJS /api/v1]
+  BFF -->|Bearer JWT, Origin| API[NestJS /api/v1 en Render]
   API --> AUTH[Auth0]
   API --> DB[(PostgreSQL / Neon)]
   API --> CLD[Cloudinary]
@@ -1401,11 +1405,13 @@ La fecha, duración, conflicto de agenda, estado previo y pertenencia al psicól
 | Servicio | Uso actual | Estado y límite |
 |---|---|---|
 | Auth0 | Autenticación web y emisión de access token; NestJS lo valida mediante JWKS/claims. | Implementado. El frontend usa `@auth0/nextjs-auth0`; el backend valida Bearer, no una cookie de aplicación. |
+| Vercel | Despliegue de la aplicación web Next.js. | Implementado y activo. La configuración de proyecto/variables se administra en Vercel. |
+| Render | Despliegue de la API NestJS. | Implementado y activo. La configuración de servicio/variables se administra en Render. |
 | PostgreSQL en Neon | Persistencia transaccional. | Implementado mediante TypeORM/`pg`; esquema en `03-schema-NEON.sql`. |
 | Cloudinary | Carga y alojamiento de imágenes institucionales. | Implementado con REST: firma backend, carga directa navegador, verificación backend. |
 | SMTP/Nodemailer | Correo transaccional. | Implementado de forma configurable; sin credenciales válidas se desactiva. No hay proveedor fijado. |
 
-Vercel/Render figuran como intención de despliegue en material previo, pero no hay configuración de infraestructura versionada que los confirme como despliegues activos. Wompi, WhatsApp, Resend y SendGrid no están integrados en el código actual.
+Vercel, Render y Neon son los proveedores activos de despliegue/persistencia. Sus configuraciones operativas no están versionadas en este repositorio. Wompi, WhatsApp, Resend y SendGrid no están integrados en el código actual.
 
 ## 10.2 Auth0
 
@@ -1444,7 +1450,7 @@ El backend lee `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` y `SMTP_FR
 TypeORM se conecta con `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `DATABASE_NAME` y `DATABASE_SSL`. En Neon, habilitar `DATABASE_SSL=true`; la configuración actual usa `rejectUnauthorized: false`, decisión que debe revisarse si el proveedor permite cadena/certificado validable.
 
 - `synchronize` permanece en `false`; el cambio de esquema se entrega por migración SQL revisada y probada.
-- Usar pool/timeout adecuado al entorno serverless y cerrar/conservar conexiones conforme al modelo de despliegue elegido. Esto es pendiente de infraestructura, no está configurado en el repositorio.
+- Usar pool/timeout adecuado a la conexión Render–Neon y revisar límites de conexión del plan contratado. La configuración concreta se administra fuera del repositorio.
 - Hacer backups, restauración y rotación de contraseña desde Neon/proveedor; no hay automatización de backup declarada aquí.
 
 ## 10.6 Integraciones planeadas, no implementadas
@@ -1452,7 +1458,7 @@ TypeORM se conecta con `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USERNAME`, `D
 | Integración | Necesidad de producto | Precondiciones para implementar |
 |---|---|---|
 | Wompi | Donaciones y webhook de transacción. | Definir merchant, firma/verificación, idempotencia por transacción, estados, conciliación, datos de donante, retención y endpoints/roles. |
-| WhatsApp Business/BSP | Recordatorios y notificaciones. | Aprobación de plantillas, consentimiento/opt-out, proveedor, límites, webhooks y auditoría. |
+| WhatsApp Business/BSP | No existe aún y no se manejará según la decisión vigente. | No implementar integración, plantillas, webhooks ni flujos de notificación por WhatsApp. |
 | Resend/SendGrid | Alternativa de correo. | Decisión de proveedor y migración del adapter SMTP/outbox. |
 | Exportación PDF/Excel | Reportes. | Módulo de reportes, criterios agregados, autorización, formato, retención y prueba de que no exporta PII innecesaria. |
 

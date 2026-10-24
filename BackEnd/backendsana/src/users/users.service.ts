@@ -447,7 +447,31 @@ export class UsersService {
   }): Promise<UserResponse[]> {
     const query = this.personRepository
       .createQueryBuilder('person')
-      .where('person.per_state != :pending', { pending: 'pendiente' });
+      .where('person.per_state != :pending', { pending: 'pendiente' })
+      .andWhere(
+        `EXISTS (
+           SELECT 1
+           FROM person_rol employee_role
+           JOIN rol employee_role_definition
+             ON employee_role_definition.rol_id = employee_role.rol_id
+           WHERE employee_role.per_id = person.per_id
+             AND employee_role.pr_active = true
+             AND employee_role_definition.rol_description IN (:...employeeRoles)
+         )`,
+        { employeeRoles: ASSIGNABLE_ROLES },
+      )
+      .andWhere(
+         `NOT EXISTS (
+            SELECT 1
+            FROM person_rol requester_role
+            JOIN rol requester_role_definition
+              ON requester_role_definition.rol_id = requester_role.rol_id
+            WHERE requester_role.per_id = person.per_id
+              AND requester_role.pr_active = true
+              AND requester_role_definition.rol_description = :requesterRole
+          )`,
+         { requesterRole: UserRole.Requester },
+      );
 
     if (filters.status) {
       query.andWhere('person.per_state = :state', {

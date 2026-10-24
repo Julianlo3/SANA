@@ -100,6 +100,9 @@ describe('ClinicalNotesRepository', () => {
           psychologistName: 'Dr. Test',
           cnObservation: 'Test',
           cnCreatedAt: new Date(),
+          patientType: 'dependent',
+          patientName: 'Menor',
+          patientDependentId: 93,
         },
       ]);
 
@@ -110,6 +113,10 @@ describe('ClinicalNotesRepository', () => {
         expect.stringContaining('WHERE a.req_id = $1 AND cn.psy_id = $2'),
         [50, 100],
       );
+      const query = dataSource.query.mock.calls[0][0] as string;
+      expect(query).toContain('a.app_patient_dependent_id AS "patientDependentId"');
+      expect(query).toContain('COALESCE(dep.dep_name, req.per_name) AS "patientName"');
+      expect(query).toContain('LEFT JOIN dependents dep ON dep.dep_id = a.app_patient_dependent_id');
     });
   });
 
