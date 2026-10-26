@@ -13,7 +13,7 @@ flowchart LR
   API --> AUTH[Auth0]
   API --> DB[(PostgreSQL / Neon)]
   API --> CLD[Cloudinary]
-  API --> SMTP[SMTP / email_outbox]
+  API --> GMAIL[Gmail API / OAuth2 / email_outbox]
 ```
 
 El BFF no reproduce autorización ni reglas de negocio: reenvía token cuando hay sesión y NestJS decide. Un enlace o layout de Next no sustituye guards ni autorización a nivel de registro.
@@ -43,7 +43,7 @@ La identidad sensible se deriva de `request.user` validado, nunca de un `userId`
 | `policy` | Documento vigente y evidencia de aceptación por solicitud, agenda o nota. |
 | `content` | Institucional, tarjetas, noticias, banners, galería y Cloudinary. |
 | `security-logs` | Rechazos por rol. |
-| `email` | Outbox SMTP, locks, reintentos y borrado de payload enviado. |
+| `email` | Outbox Gmail API, OAuth2 de preparación, locks, reintentos y borrado de payload enviado. |
 
 No existen módulos implementados de donaciones, reportes ni WhatsApp. No inventar rutas o tablas sin contrato y decisión funcional aprobados.
 
@@ -57,7 +57,7 @@ No existen módulos implementados de donaciones, reportes ni WhatsApp. No invent
 | Guards/decoradores | `JwtAuthGuard`, `RolesGuard`, `OriginGuard`, `@Roles`, `@RateLimit`. | La protección de servidor es obligatoria; rol de método prevalece sobre clase. |
 | BFF | `app/api/backend/[...path]/route.ts`. | Delgado: sin dominio ni secretos de terceros en cliente. |
 | Feature-first | `pages`, `components`, `hooks`, `services`, `types`, `validation`. | La ruta compone; la feature implementa. |
-| Outbox | `email_outbox`. | Encolar con el evento cuando la notificación sea indispensable. |
+| Outbox | `email_outbox`. | Encolar con el evento cuando la notificación sea indispensable; normalizar la respuesta de `UPDATE ... RETURNING` de TypeORM antes de entregarla al transport. |
 | Auditoría | Logs de seguridad, notas, contenido y asignaciones. | Actor, instante, recurso y acción mínimos; no datos sensibles completos. |
 
 ## 5.5 Invariantes transversales
