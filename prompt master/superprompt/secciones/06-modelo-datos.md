@@ -102,7 +102,7 @@ La BD guarda URL de Cloudinary, no binarios. Antes de persistir, el backend vali
 
 | Tabla | Uso |
 |---|---|
-| `email_outbox` | Cola SMTP: destinatario/asunto/cuerpo mientras está pendiente; estado (`pending`, `sending`, `sent`), intentos, lock, próximo intento y resultado. Al quedar `sent`, el check exige borrar destinatario y contenido. |
+| `email_outbox` | Cola para Gmail API: destinatario/asunto/cuerpo mientras está pendiente; estado (`pending`, `sending`, `sent`, `failed`), intentos, lock, próximo intento y resultado. Al quedar `sent` o `failed`, el check exige borrar destinatario y contenido. |
 | `donors`, `donations`, `payment_method` | Existen en el SQL heredado para donaciones, pero no tienen módulo/API/frontend implementado actual. No exponer ni extender sin contrato de donaciones aprobado. |
 
 ## 6.9 Reglas de evolución

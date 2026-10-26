@@ -3,7 +3,7 @@
 
 ## 4.1 Fuente de verdad y alcance
 
-Esta sección describe el stack **realmente instalado**. No inferir dependencias, infraestructura ni servicios a partir de las historias de usuario. Donaciones, reportes, WhatsApp y OAuth social directo aparecen en requisitos, pero no tienen módulo, endpoint ni pantalla implementados; son pendientes, no parte del runtime actual.
+Esta sección describe el stack **realmente instalado**. No inferir dependencias, infraestructura ni servicios a partir de las historias de usuario. Donaciones, reportes, WhatsApp y OAuth social directo para inicio de sesión aparecen en requisitos, pero no tienen módulo, endpoint ni pantalla implementados; son pendientes. Gmail OAuth2 existe exclusivamente para que el backend pueda enviar correo, no para autenticar usuarios.
 
 ## 4.2 Tecnologías instaladas
 
@@ -15,7 +15,7 @@ Esta sección describe el stack **realmente instalado**. No inferir dependencias
 | Backend | Node.js, NestJS `12.1.x`, TypeScript `6.0.2`, Express | API REST modular; puerto `3000` por defecto. |
 | Persistencia | PostgreSQL/Neon, `pg` `8.23.0`, TypeORM `1.1.1` | Entidades y esquema SQL versionado. |
 | Seguridad | `jose`, Helmet, cookie-parser, bcrypt, Joi, class-validator/transformer | JWT Auth0, cabeceras, ambiente y DTOs. |
-| Correo | Nodemailer `10.0.13` sobre SMTP | Cola durable `email_outbox`, reintentos y limpieza de payload enviado. |
+| Correo | Gmail API mediante `googleapis` `188.0.0` y OAuth2 | Cola durable `email_outbox`, reintentos y limpieza de payload enviado. La comunicación se realiza por HTTPS con Gmail API. |
 | Imágenes | Cloudinary REST API, sin SDK | Firma de carga directa y verificación previa a persistir. |
 | Pruebas | Vitest, Supertest y cobertura V8 | Unitarias, e2e y OWASP. |
 | Calidad | Oxlint backend; ESLint Next frontend; Prettier backend | `npm run lint`; Prettier tiene script de escritura. |
@@ -29,7 +29,7 @@ Navegador -> Next.js (:5173 en desarrollo)
               /api/backend/* -> route handler BFF
                                 -> BACKEND_API_URL/api/v1/* + Bearer JWT + Origin
            NestJS (:3000 por defecto) -> TypeORM -> PostgreSQL/Neon
-                                      -> Auth0, Cloudinary, SMTP/email_outbox
+                                      -> Auth0, Cloudinary, Gmail API/email_outbox
 ```
 
 - El backend fija `api/v1` con `app.setGlobalPrefix`; su contrato empieza por `/api/v1`, no `/api`.
@@ -60,7 +60,8 @@ En frontend, una capacidad vive en `features/<dominio>`; las rutas de `app` solo
 | Auth0 | `AUTH0_DOMAIN`, `AUTH0_AUDIENCE`, `AUTH0_CLAIM_NAMESPACE`; frontend: `AUTH0_AUDIENCE` | El audience debe coincidir entre emisor, frontend y API. |
 | Proxy | `BACKEND_API_URL`, `APP_BASE_URL` | `BACKEND_API_URL` ya incluye `/api/v1`; no duplicar prefijo. |
 | Cloudinary | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `CLOUDINARY_FOLDER` | El secreto no llega al cliente; el backend firma cargas temporales. |
-| Correo | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | TLS mínimo 1.2. Sin configuración válida, el envío se desactiva de forma segura. |
+| Correo Gmail | `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REDIRECT_URI`, `GMAIL_REFRESH_TOKEN`, `GMAIL_FROM` | OAuth2 server-side. Si falta una variable, el envío se desactiva de forma segura. `GMAIL_FROM` debe ser la cuenta autorizada o un alias de Gmail verificado. |
+| Configuración OAuth temporal | `GMAIL_OAUTH_SETUP_SECRET` | Secreto aleatorio exclusivo para iniciar el consentimiento y firmar `state`; no es un token Gmail. Vaciarlo tras obtener el refresh token deshabilita las rutas de preparación. |
 
 Los `.env` y secretos nunca se versionan. `.env.example` contiene plantillas, no credenciales.
 

@@ -37,6 +37,8 @@ Roles: `Público`, `JWT` (cualquier sesión válida), `ADMIN`, `SECRETARIO`, `PS
 |---|---|---|---|
 | GET | `/`, `/healthz` | Público | Información/estado del servicio. |
 | GET | `/auth/me` | JWT | Identidad autenticada: IDs, email y roles. |
+| GET | `/auth/google?setup_key=...` | Secreto temporal | Inicia la autorización única de Gmail y devuelve `authorizationUrl`. No es el inicio de sesión Auth0 ni una ruta para frontend. Rate limit: 5/5 min. |
+| GET | `/auth/google/callback?code=...&state=...` | Estado OAuth firmado | Google redirige aquí; intercambia el código de un solo uso y responde temporalmente `{ refreshToken }` con `Cache-Control: no-store`. Rate limit: 10/5 min. |
 | PATCH | `/auth/terms`, `/auth/psychologist-terms` | JWT | Registra aceptación; retorna mensaje y bandera. El segundo no restringe rol en controlador: hallazgo a corregir, no permiso de producto. |
 | DELETE | `/auth/sessions/current` | JWT | Logout lógico; `204`. La sesión Auth0 sigue siendo propiedad de Auth0. |
 | GET/PATCH | `/users/me` | Roles internos o consultante | Perfil propio; PATCH permite solo campos de `UpdateOwnProfileDto`. |
