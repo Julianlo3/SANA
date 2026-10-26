@@ -14,6 +14,8 @@ Esta sección describe el stack **realmente instalado**. No inferir dependencias
 | Autenticación web | `@auth0/nextjs-auth0` `4.30.0` | Sesión Next.js y access token reenviado a la API. |
 | Backend | Node.js, NestJS `12.1.x`, TypeScript `6.0.2`, Express | API REST modular; puerto `3000` por defecto. |
 | Persistencia | PostgreSQL/Neon, `pg` `8.23.0`, TypeORM `1.1.1` | Entidades y esquema SQL versionado. |
+| Despliegue frontend | Vercel | Aplicación Next.js desplegada. |
+| Despliegue backend | Render | API NestJS desplegada. |
 | Seguridad | `jose`, Helmet, cookie-parser, bcrypt, Joi, class-validator/transformer | JWT Auth0, cabeceras, ambiente y DTOs. |
 | Correo | Gmail API mediante `googleapis` `188.0.0` y OAuth2 | Cola durable `email_outbox`, reintentos y limpieza de payload enviado. La comunicación se realiza por HTTPS con Gmail API. |
 | Imágenes | Cloudinary REST API, sin SDK | Firma de carga directa y verificación previa a persistir. |
@@ -25,7 +27,7 @@ No se declara versión de Node mediante `.nvmrc`, `engines` ni `.tool-versions`.
 ## 4.3 Topología y rutas técnicas
 
 ```text
-Navegador -> Next.js (:5173 en desarrollo)
+Navegador -> Next.js en Vercel (:5173 en desarrollo)
               /api/backend/* -> route handler BFF
                                 -> BACKEND_API_URL/api/v1/* + Bearer JWT + Origin
            NestJS (:3000 por defecto) -> TypeORM -> PostgreSQL/Neon
@@ -64,6 +66,8 @@ En frontend, una capacidad vive en `features/<dominio>`; las rutas de `app` solo
 | Configuración OAuth temporal | `GMAIL_OAUTH_SETUP_SECRET` | Secreto aleatorio exclusivo para iniciar el consentimiento y firmar `state`; no es un token Gmail. Vaciarlo tras obtener el refresh token deshabilita las rutas de preparación. |
 
 Los `.env` y secretos nunca se versionan. `.env.example` contiene plantillas, no credenciales.
+
+Vercel, Render y Neon son los despliegues activos. La ausencia de manifiestos de infraestructura como código en este repositorio no implica que el sistema no esté desplegado; las variables y dominios productivos se administran en cada proveedor.
 
 ## 4.6 Convenciones de código
 

@@ -167,6 +167,9 @@ export class ClinicalNotesService {
         psychologistName: note.psychologistName,
         cnObservation: note.cnObservation,
         cnCreatedAt: note.cnCreatedAt,
+        patientType: note.patientType,
+        patientName: note.patientName,
+        patientDependentId: note.patientDependentId,
       })),
     };
   }

@@ -60,6 +60,9 @@ describe('ConsultantsService psychologist views', () => {
           appDate: new Date('2026-10-01T15:00:00.000Z'),
           appDuration: 60,
           appReason: 'Motivo específico de esta cita',
+          patientType: 'dependent',
+          patientName: 'Menor',
+          patientDependentId: 93,
           psychologistName: 'Psicólogo tratante',
           cnId: 5,
           cnObservation: 'Primera nota',
@@ -84,8 +87,18 @@ describe('ConsultantsService psychologist views', () => {
     expect(record.appointments[0].reason).toBe(
       'Motivo específico de esta cita',
     );
+    expect(record.appointments[0]).toMatchObject({
+      patientType: 'dependent',
+      patientName: 'Menor',
+      patientDependentId: 93,
+    });
     expect(record.appointments[0].clinicalNotes).toHaveLength(2);
     expect(record.careRecords).toHaveLength(2);
+    expect(record.careRecords[0]).toMatchObject({
+      patientType: 'dependent',
+      patientName: 'Menor',
+      patientDependentId: 93,
+    });
     expect(dataSource.query.mock.calls[0][1]).toEqual([41, 82]);
     expect(dataSource.query.mock.calls[1][1]).toEqual([41, 82]);
     expect(dataSource.query.mock.calls[0][0]).toContain(
@@ -95,6 +108,12 @@ describe('ConsultantsService psychologist views', () => {
       "COALESCE(req.per_contact_number, '')",
     );
     expect(dataSource.query.mock.calls[1][0]).toContain('cn.psy_id = a.psy_id');
+    expect(dataSource.query.mock.calls[1][0]).toContain(
+      'a.app_patient_dependent_id AS "patientDependentId"',
+    );
+    expect(dataSource.query.mock.calls[1][0]).toContain(
+      'LEFT JOIN dependents dep ON dep.dep_id = a.app_patient_dependent_id',
+    );
   });
 
   it('denies access when the consultant has no appointment assigned to the psychologist', async () => {

@@ -47,12 +47,13 @@ function makeExecutionContext(
 
   const handlerMetadata = new Map<string, unknown>();
   if (handlerRoles) handlerMetadata.set('roles', handlerRoles);
+  handlerMetadata.set('section', 'Test Section');
 
   const classMetadata = new Map<string, unknown>();
   if (classRoles) classMetadata.set('roles', classRoles);
 
-  const handler = { name: 'testHandler' };
-  const classRef = { name: 'TestController' };
+  const handler = { name: 'testHandler', metadata: handlerMetadata };
+  const classRef = { name: 'TestController', metadata: classMetadata };
 
   return {
     switchToHttp: () => ({
@@ -83,9 +84,17 @@ describe('OWASP A01 – Broken Access Control', () => {
       vi.clearAllMocks();
       const reflector = {
         getAllAndOverride: vi.fn((key: string, targets: unknown[]) => {
-          // Simula la metadata del handler
-          if (key === 'roles') return ['administrador'];
-          if (key === 'section') return 'Test Section';
+          for (const target of targets) {
+            if (
+              typeof target === 'object' &&
+              target !== null &&
+              'metadata' in target &&
+              target.metadata instanceof Map
+            ) {
+              const value = target.metadata.get(key);
+              if (value !== undefined) return value;
+            }
+          }
           return undefined;
         }),
       };

@@ -46,6 +46,9 @@ export type ConsultantAppointment = {
   appDate: string | null;
   duration: number | null;
   reason: string | null;
+  patientType: "self" | "dependent";
+  patientName: string;
+  patientDependentId: number | null;
   clinicalNotes: {
     id: number;
     observation: string;
@@ -60,6 +63,9 @@ export type CareRecordEntry = {
   attendedAt: string | null;
   /** Opcional (HU-2.5.2 y 2.5.3). */
   observation: string | null;
+  patientType: "self" | "dependent";
+  patientName: string;
+  patientDependentId: number | null;
   recordedByPsychologistId: number;
   recordedByPsychologistName: string;
 };

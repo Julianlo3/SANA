@@ -7,9 +7,9 @@ SANA es una aplicación cliente-servidor. Next.js implementa experiencia, sesió
 
 ```mermaid
 flowchart LR
-  U[Visitante o usuario] --> FE[Next.js App Router]
+  U[Visitante o usuario] --> FE[Next.js App Router en Vercel]
   FE -->|/api/backend/*| BFF[Route handler proxy]
-  BFF -->|Bearer JWT, Origin| API[NestJS /api/v1]
+  BFF -->|Bearer JWT, Origin| API[NestJS /api/v1 en Render]
   API --> AUTH[Auth0]
   API --> DB[(PostgreSQL / Neon)]
   API --> CLD[Cloudinary]

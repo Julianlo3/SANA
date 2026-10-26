@@ -6,6 +6,8 @@
 | Servicio | Uso actual | Estado y límite |
 |---|---|---|
 | Auth0 | Autenticación web y emisión de access token; NestJS lo valida mediante JWKS/claims. | Implementado. El frontend usa `@auth0/nextjs-auth0`; el backend valida Bearer, no una cookie de aplicación. |
+| Vercel | Despliegue de la aplicación web Next.js. | Implementado y activo. La configuración de proyecto/variables se administra en Vercel. |
+| Render | Despliegue de la API NestJS. | Implementado y activo. La configuración de servicio/variables se administra en Render. |
 | PostgreSQL en Neon | Persistencia transaccional. | Implementado mediante TypeORM/`pg`; esquema en `03-schema-NEON.sql`. |
 | Cloudinary | Carga y alojamiento de imágenes institucionales. | Implementado con REST: firma backend, carga directa navegador, verificación backend. |
 | Gmail API | Correo transaccional mediante OAuth2/HTTPS. | Implementado. Sin configuración completa se desactiva de forma segura. |
@@ -81,7 +83,7 @@ Asignar un psicólogo, descartar una solicitud, marcar una cita realizada o edit
 TypeORM se conecta con `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `DATABASE_NAME` y `DATABASE_SSL`. En Neon, habilitar `DATABASE_SSL=true`; la configuración actual usa `rejectUnauthorized: false`, decisión que debe revisarse si el proveedor permite cadena/certificado validable.
 
 - `synchronize` permanece en `false`; el cambio de esquema se entrega por migración SQL revisada y probada.
-- Usar pool/timeout adecuado al entorno serverless y cerrar/conservar conexiones conforme al modelo de despliegue elegido. Esto es pendiente de infraestructura, no está configurado en el repositorio.
+- Usar pool/timeout adecuado a la conexión Render–Neon y revisar límites de conexión del plan contratado. La configuración concreta se administra fuera del repositorio.
 - Hacer backups, restauración y rotación de contraseña desde Neon/proveedor; no hay automatización de backup declarada aquí.
 
 ## 10.6 Integraciones planeadas, no implementadas

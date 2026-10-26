@@ -8,6 +8,9 @@ export class ClinicalNoteHistoryDto {
   psychologistName!: string;
   cnObservation!: string;
   cnCreatedAt!: Date;
+  patientType!: 'self' | 'dependent';
+  patientName!: string;
+  patientDependentId!: number | null;
 }
 
 /**

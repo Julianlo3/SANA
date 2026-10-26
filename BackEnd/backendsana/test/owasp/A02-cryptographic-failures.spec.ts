@@ -9,7 +9,7 @@
  *
  * Referencia: RNF-SEG-02, RNF-SEG-04, RNF-SEG-05
  */
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 describe('OWASP A02 – Cryptographic Failures', () => {
 

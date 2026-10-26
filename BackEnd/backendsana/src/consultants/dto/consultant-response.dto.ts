@@ -39,6 +39,9 @@ export interface PsychologistConsultantAppointmentResponse {
   appDate: Date | null;
   duration: number | null;
   reason: string | null;
+  patientType: 'self' | 'dependent';
+  patientName: string;
+  patientDependentId: number | null;
   clinicalNotes: {
     id: number;
     observation: string;
@@ -54,6 +57,9 @@ export interface PsychologistConsultantRecordResponse
     appointmentId: number;
     attendedAt: Date | null;
     observation: string;
+    patientType: 'self' | 'dependent';
+    patientName: string;
+    patientDependentId: number | null;
     recordedByPsychologistId: number;
     recordedByPsychologistName: string;
   }[];
