@@ -139,7 +139,7 @@ export class AppointmentsService {
     this.logger.log(
       `Module:appointments, Function:requestAppointment, result-success: appId-${appId}, authenticated-${Boolean(authenticatedUser)}, patientType-${dto.patientType}, type-${dto.appType}`,
     );
-    await this.notifySecretaryOfNewRequest(dto, appId);
+    await this.notifyRequesterOfNewRequest(dto, appId);
 
     return {
       appId,
@@ -713,45 +713,37 @@ export class AppointmentsService {
     return updated;
   }
 
-  /**
-   * Notifies the secretary of a new appointment request.
-   * @param dto The DTO containing the appointment request details.
-   * @param appId The ID of the appointment.
-   * @returns A promise resolving when the notification is sent.
-   */
-  private async notifySecretaryOfNewRequest(
+  private async notifyRequesterOfNewRequest(
     dto: CreateAppointmentDto,
     appId: number,
   ): Promise<void> {
     try {
-      const recipients = (await this.repo.findActiveSecretaryEmails())
-        .filter((email) => email && !this.isPlaceholderEmail(email));
-      if (!recipients.length) {
-        this.logger.warn(`Appointment request email skipped: no active secretary email is available (appId-${appId})`);
+      console.log("enviando correo");
+      if (!dto.requesterEmail || this.isPlaceholderEmail(dto.requesterEmail)) {
+        this.logger.warn(`Appointment request confirmation email skipped: requester has no usable email (appId-${appId})`);
         return;
       }
-      const emailService = this.emailService;
-      if (!emailService) {
-        this.logger.warn(`Appointment request email skipped: email service is unavailable (appId-${appId})`);
+      if (!this.emailService) {
+        this.logger.warn(`Appointment request confirmation email skipped: email service is unavailable (appId-${appId})`);
         return;
       }
 
       const patientName = dto.patientType === 'dependent' ? dto.dependentName : dto.requesterName;
-      await Promise.all(recipients.map((recipient) =>
-        emailService.enqueueEmail({
-          to: recipient,
-          subject: `Nueva solicitud de cita #${appId}`,
-          text: [
-            'Se recibió una nueva solicitud de cita.',
-            `Radicado: ${appId}`,
-            `Solicitante: ${dto.requesterName}`,
-            `Paciente: ${patientName}`,
-            `Modalidad: ${dto.appType}`,
-          ].join('\n'),
-        }),
-      ));
+      await this.emailService.enqueueEmail({
+        to: dto.requesterEmail.trim().toLowerCase(),
+        subject: `Recibimos tu solicitud de cita #${appId}`,
+        text: [
+          `Hola ${dto.requesterName},`,
+          'Recibimos tu solicitud de cita correctamente.',
+          `Radicado: ${appId}`,
+          `Paciente: ${patientName}`,
+          `Modalidad: ${dto.appType}`,
+          'Podrá comprobar el estado de su cita desde la plataforma SANA iniciando sesión con el correo registrado',
+          'https://fundacionhuellitas.vercel.app/',
+        ].join('\n'),
+      });
     } catch (error) {
-      this.logger.warn(`Appointment request email recipients could not be resolved (appId-${appId}, code-${this.notificationErrorCode(error)})`);
+      this.logger.warn(`Appointment request confirmation email could not be prepared (appId-${appId}, code-${this.notificationErrorCode(error)})`);
     }
   }
 

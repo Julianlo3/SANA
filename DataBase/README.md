@@ -58,6 +58,47 @@ Los scripts de `init-scripts/` solo se ejecutan la **primera vez** que se
 crea el volumen. Si los editas después de haber levantado el contenedor,
 necesitas `docker compose down -v` para que se vuelvan a ejecutar.
 
+Para conservar en la base el destinatario y contenido de correos enviados,
+aplica esta migración una vez en bases existentes. No borra registros actuales:
+
+```sql
+ALTER TABLE public.email_outbox
+    DROP CONSTRAINT IF EXISTS "Email_Outbox_payload_ck";
+
+ALTER TABLE public.email_outbox
+    ADD CONSTRAINT "Email_Outbox_payload_ck" CHECK (
+        (email_status = 'sent' AND email_to IS NOT NULL AND email_subject IS NOT NULL
+            AND email_text IS NOT NULL)
+        OR (email_status IN ('sent', 'failed') AND email_to IS NULL AND email_subject IS NULL
+            AND email_text IS NULL AND email_html IS NULL)
+        OR (email_status IN ('pending', 'sending') AND email_to IS NOT NULL
+            AND email_subject IS NOT NULL AND email_text IS NOT NULL)
+    );
+```
+
+Los mensajes enviados antes de aplicar este cambio que ya tengan sus campos
+en `NULL` no se pueden recuperar desde `email_outbox`.
+
+Para cancelar notificaciones antiguas de citas que aún siguen en cola, detén el
+backend y ejecuta esta consulta en la base de datos. Solo afecta mensajes de
+solicitudes de cita; conserva intactos otros tipos de correo:
+
+```sql
+UPDATE public.email_outbox
+SET email_status = 'failed',
+    email_to = NULL,
+    email_subject = NULL,
+    email_text = NULL,
+    email_html = NULL,
+    email_locked_at = NULL,
+    email_last_error_code = 'SUPERSEDED_APPOINTMENT_NOTICE'
+WHERE email_status IN ('pending', 'sending')
+  AND (
+      email_subject LIKE 'Nueva solicitud de cita #%'
+      OR email_subject LIKE 'Recibimos tu solicitud de cita #%'
+  );
+```
+
 ## Notas importantes
 
 - **Nombre de la base**: por defecto es `DB_SANA` (mayúsculas incluidas).

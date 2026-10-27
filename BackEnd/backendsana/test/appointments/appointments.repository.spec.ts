@@ -209,24 +209,6 @@ describe('AppointmentsRepository.findPatientPsychologistHistory', () => {
   });
 });
 
-describe('AppointmentsRepository.findActiveSecretaryEmails', () => {
-  it('selects addresses only for active people with the active secretary role', async () => {
-    const dataSource = {
-      query: vi.fn().mockResolvedValue([{ email: 'secretary@example.com' }]),
-    };
-    const repository = new AppointmentsRepository(dataSource as never);
-
-    await expect(repository.findActiveSecretaryEmails()).resolves.toEqual([
-      'secretary@example.com',
-    ]);
-
-    const sql = dataSource.query.mock.calls[0][0] as string;
-    expect(sql).toContain("person.per_state = 'activo'");
-    expect(sql).toContain('person_rol.pr_active = true');
-    expect(sql).toContain("rol.rol_description = 'secretario'");
-  });
-});
-
 describe('AppointmentsRepository.updateState', () => {
   it('cancels the appointment and releases its occupancy in one transaction', async () => {
     const { repository, manager, dataSource } = createTransactionalRepository();
