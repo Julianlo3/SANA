@@ -6,6 +6,7 @@ import { getInitials } from "@/lib/format/text";
 import RoleTags from "./role-tags";
 import UserActionsMenu from "./user-actions-menu";
 import UserStatusBadge from "./user-status-badge";
+import { USER_CARD_AVATAR_CLASSES, USER_NAME_CLASSES } from "./user-item-styles";
 import type { User, UserAction } from "../types/user-types";
 
 type Props = {
@@ -17,20 +18,6 @@ type Props = {
   onAction: (action: UserAction, user: User) => void;
 };
 
-const AVATAR_CLASSES: Record<User["status"], string> = {
-  blocked: "bg-danger text-white",
-  inactive: "bg-surface-muted text-text-subtle",
-  active: "bg-accent text-white",
-  pending: "bg-accent text-white",
-};
-
-const NAME_CLASSES: Record<User["status"], string> = {
-  blocked: "text-danger",
-  inactive: "text-text-subtle",
-  active: "text-text",
-  pending: "text-text",
-};
-
 export default function UserCard({
   user,
   isMenuOpen,
@@ -39,8 +26,8 @@ export default function UserCard({
   onCloseMenu,
   onAction,
 }: Props) {
-  const avatarClass = AVATAR_CLASSES[user.status] ?? "bg-accent text-white";
-  const nameClass = NAME_CLASSES[user.status] ?? "text-text";
+  const avatarClass = USER_CARD_AVATAR_CLASSES[user.status] ?? "bg-accent text-white";
+  const nameClass = USER_NAME_CLASSES[user.status] ?? "text-text";
 
   return (
     <li className="flex items-start gap-3 border-b border-border p-4 last:border-0">
