@@ -18,6 +18,20 @@ type Props = {
   onAction: (action: UserAction, user: User) => void;
 };
 
+const AVATAR_CLASSES: Record<User["status"], string> = {
+  blocked: "bg-danger text-white",
+  inactive: "bg-surface-muted text-text-subtle",
+  active: "bg-primary text-white",
+  pending: "bg-primary text-white",
+};
+
+const NAME_CLASSES: Record<User["status"], string> = {
+  blocked: "text-danger",
+  inactive: "text-text-subtle",
+  active: "text-text",
+  pending: "text-text",
+};
+
 export default function UserRow({
   user,
   isMenuOpen,
@@ -26,18 +40,8 @@ export default function UserRow({
   onCloseMenu,
   onAction,
 }: Props) {
-  const avatarClass =
-    user.status === "blocked"
-      ? "bg-danger text-white"
-      : user.status === "inactive"
-        ? "bg-surface-muted text-text-subtle"
-        : "bg-primary text-white";
-  const nameClass =
-    user.status === "blocked"
-      ? "text-danger"
-      : user.status === "inactive"
-        ? "text-text-subtle"
-        : "text-text";
+  const avatarClass = AVATAR_CLASSES[user.status] ?? "bg-primary text-white";
+  const nameClass = NAME_CLASSES[user.status] ?? "text-text";
 
   return (
     <tr className="border-b border-border last:border-0">

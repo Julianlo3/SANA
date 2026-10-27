@@ -359,43 +359,14 @@ export class UsersService {
 
         // Usuario con cuenta reclamada y bloqueado → re-habilitación.
         if (hasClaimedAccount && existing.perState === 'bloqueado') {
-          existing.perName = dto.fullName;
-          existing.perCardType = dto.cardType ?? existing.perCardType ?? 'CC';
-          existing.perIdentityDocument = dto.identityDocument;
-          existing.perContactNumber = dto.phone;
-          if (dto.birthdate !== undefined) existing.perBirthdate = dto.birthdate;
-          if (dto.gender !== undefined) existing.perGender = dto.gender;
-          existing.perState = 'activo';
-          existing.perUpdateDate = new Date();
-
-          await this.recordTermsAcceptance(
+          return this.reactivateBlockedPerson(
             manager,
-            existing.perId,
-            dto.termsAccepted,
+            existing,
+            dto,
+            role.rolId,
+            createdByUserId,
+            email,
           );
-
-          await manager.save(existing);
-          await this.replaceRoles(manager, existing.perId, [
-            { roleId: role.rolId, active: true },
-          ]);
-          await this.saveProfessionalData(
-            manager,
-            existing.perId,
-            dto.professionalData,
-          );
-          await manager.query(
-            `INSERT INTO security_access_log
-               (use_id, security_access_log_section, security_access_log_message)
-             VALUES ($1, 'User Management', $2)`,
-            [
-              createdByUserId,
-              `Admin reactivated blocked person ${existing.perId} (email: ${email})`,
-            ],
-          );
-          this.logger.log(
-            `Module:users, Function:create, result-reactivated: personId-${existing.perId}, email-${email}, reactivatedBy-${createdByUserId}`,
-          );
-          return { ...(await this.toResponse(manager, existing.perId)), wasReactivated: true };
         }
 
         // Usuario con cuenta reclamada activa/inactiva → conflicto normal.
@@ -408,35 +379,13 @@ export class UsersService {
         }
 
         // Sin cuenta reclamada (pendiente) → promoción al sistema.
-        existing.perName = dto.fullName;
-        existing.perCardType = dto.cardType ?? existing.perCardType ?? 'CC';
-        existing.perIdentityDocument = dto.identityDocument;
-        existing.perContactNumber = dto.phone;
-        if (dto.birthdate !== undefined) existing.perBirthdate = dto.birthdate;
-        if (dto.gender !== undefined) existing.perGender = dto.gender;
-        existing.perState = 'activo';
-        existing.perUpdateDate = new Date();
-        // Promocion de pendiente: atribuye al admin que completa el alta.
-        if (existing.perCreatedBy == null) {
-          existing.perCreatedBy = createdByUserId;
-        }
-
-        await this.recordTermsAcceptance(
+        return this.promotePendingPerson(
           manager,
-          existing.perId,
-          dto.termsAccepted,
+          existing,
+          dto,
+          role.rolId,
+          createdByUserId,
         );
-
-        await manager.save(existing);
-        await this.replaceRoles(manager, existing.perId, [
-          { roleId: role.rolId, active: true },
-        ]);
-        await this.saveProfessionalData(
-          manager,
-          existing.perId,
-          dto.professionalData,
-        );
-        return this.toResponse(manager, existing.perId);
       }
 
       const created = await manager.save(
@@ -484,6 +433,81 @@ export class UsersService {
     });
 
     return user;
+  }
+
+  private applyPersonProfile(person: Person, dto: CreateUserDto): void {
+    person.perName = dto.fullName;
+    person.perCardType = dto.cardType ?? person.perCardType ?? 'CC';
+    person.perIdentityDocument = dto.identityDocument;
+    person.perContactNumber = dto.phone;
+    if (dto.birthdate !== undefined) person.perBirthdate = dto.birthdate;
+    if (dto.gender !== undefined) person.perGender = dto.gender;
+    person.perState = 'activo';
+    person.perUpdateDate = new Date();
+  }
+
+  private async reactivateBlockedPerson(
+    manager: EntityManager,
+    existing: Person,
+    dto: CreateUserDto,
+    roleId: number,
+    createdByUserId: number,
+    email: string,
+  ): Promise<UserResponse> {
+    this.applyPersonProfile(existing, dto);
+
+    await this.recordTermsAcceptance(
+      manager,
+      existing.perId,
+      dto.termsAccepted,
+    );
+    await manager.save(existing);
+    await this.replaceRoles(manager, existing.perId, [{ roleId, active: true }]);
+    await this.saveProfessionalData(
+      manager,
+      existing.perId,
+      dto.professionalData,
+    );
+    await manager.query(
+      `INSERT INTO security_access_log
+         (use_id, security_access_log_section, security_access_log_message)
+       VALUES ($1, 'User Management', $2)`,
+      [
+        createdByUserId,
+        `Admin reactivated blocked person ${existing.perId} (email: ${email})`,
+      ],
+    );
+    this.logger.log(
+      `Module:users, Function:create, result-reactivated: personId-${existing.perId}, email-${email}, reactivatedBy-${createdByUserId}`,
+    );
+    return { ...(await this.toResponse(manager, existing.perId)), wasReactivated: true };
+  }
+
+  private async promotePendingPerson(
+    manager: EntityManager,
+    existing: Person,
+    dto: CreateUserDto,
+    roleId: number,
+    createdByUserId: number,
+  ): Promise<UserResponse> {
+    this.applyPersonProfile(existing, dto);
+    if (existing.perCreatedBy == null) {
+      existing.perCreatedBy = createdByUserId;
+    }
+
+    await this.recordTermsAcceptance(
+      manager,
+      existing.perId,
+      dto.termsAccepted,
+    );
+    await manager.save(existing);
+    await this.replaceRoles(manager, existing.perId, [{ roleId, active: true }]);
+    await this.saveProfessionalData(
+      manager,
+      existing.perId,
+      dto.professionalData,
+    );
+    return this.toResponse(manager, existing.perId);
   }
 
   /**
