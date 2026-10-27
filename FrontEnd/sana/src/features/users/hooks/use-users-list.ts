@@ -8,12 +8,11 @@ import {
   deleteUser,
   getUsers,
 } from "../services/users-service";
-import type { User, UserAction, UserStatus } from "../types/user-types";
+import type { EditableUserStatus, User, UserAction } from "../types/user-types";
 
-const STATUS_BY_ACTION: Partial<Record<UserAction, UserStatus>> = {
-  block: "blocked",
+const STATUS_BY_ACTION: Partial<Record<UserAction, EditableUserStatus>> = {
   deactivate: "inactive",
-  reactivate: "active",
+  enable: "active",
 };
 
 /** Toda la lógica del listado: carga, búsqueda, menús y acciones. */

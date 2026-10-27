@@ -41,10 +41,6 @@ describe('UsersService self-service profile', () => {
       {} as never,
       {} as never,
       {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
       dataSource as unknown as DataSource,
       {} as never,
     );

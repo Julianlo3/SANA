@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Ban, Pencil, Trash2, UserCheck, UserMinus } from "lucide-react";
+import { Archive, Pencil, UserCheck, UserMinus } from "lucide-react";
 import type { User, UserAction } from "../types/user-types";
 
 type Props = {
@@ -44,8 +44,6 @@ export default function UserActionsMenu({
     };
   }, [onClose]);
 
-  const canReactivate = user.status !== "active";
-
   return (
     <div
       ref={menuRef}
@@ -64,47 +62,41 @@ export default function UserActionsMenu({
         Editar información
       </button>
 
-      {canReactivate ? (
+      {user.status === "inactive" && (
         <button
           role="menuitem"
-          onClick={() => onSelect("reactivate")}
+          onClick={() => onSelect("enable")}
           className={`${ITEM_CLASS} font-semibold text-primary hover:bg-primary-soft`}
         >
           <UserCheck size={15} aria-hidden />
-          Reactivar acceso
+          Habilitar cuenta
         </button>
-      ) : (
-        <>
-          <button
-            role="menuitem"
-            onClick={() => onSelect("block")}
-            className={`${ITEM_CLASS} text-text-muted hover:bg-surface-muted hover:text-text`}
-          >
-            <Ban size={15} aria-hidden />
-            Bloquear acceso
-          </button>
+      )}
 
+      {user.status === "active" && (
+        <button
+          role="menuitem"
+          onClick={() => onSelect("deactivate")}
+          className={`${ITEM_CLASS} text-text-muted hover:bg-surface-muted hover:text-text`}
+        >
+          <UserMinus size={15} aria-hidden />
+          Desactivar cuenta
+        </button>
+      )}
+
+      {user.status !== "blocked" && (
+        <>
+          <div className="my-1 h-px bg-border" role="separator" />
           <button
             role="menuitem"
-            onClick={() => onSelect("deactivate")}
-            className={`${ITEM_CLASS} text-text-muted hover:bg-surface-muted hover:text-text`}
+            onClick={() => onSelect("delete")}
+            className={`${ITEM_CLASS} text-danger hover:bg-danger-soft`}
           >
-            <UserMinus size={15} aria-hidden />
-            Desactivar cuenta
+            <Archive size={15} aria-hidden />
+            Dar de baja
           </button>
         </>
       )}
-
-      <div className="my-1 h-px bg-border" role="separator" />
-
-      <button
-        role="menuitem"
-        onClick={() => onSelect("delete")}
-        className={`${ITEM_CLASS} text-danger hover:bg-danger-soft`}
-      >
-        <Trash2 size={15} aria-hidden />
-        Eliminar usuario
-      </button>
     </div>
   );
 }

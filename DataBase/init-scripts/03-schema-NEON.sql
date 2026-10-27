@@ -23,7 +23,7 @@ CREATE TABLE public.person (
 	CONSTRAINT "Person_pk" PRIMARY KEY (per_id),
 	CONSTRAINT "Person_idocument_uq" UNIQUE (per_identity_document),
 	CONSTRAINT "Person_email_uq" UNIQUE (per_email),
-	CONSTRAINT "Person_state_ck" CHECK (per_state IN ('activo','inactivo','bloqueado'))
+	CONSTRAINT "Person_state_ck" CHECK (per_state IN ('activo','inactivo','bloqueado')) -- NOSONAR
 );
 -- ddl-end --
 COMMENT ON TABLE public.person IS E'Representa a la persona corriente';
@@ -1871,3 +1871,5 @@ COMMENT ON COLUMN public.banners.ban_is_active
 
 ALTER TABLE public.schedule DROP COLUMN IF EXISTS sch_reason;
 ALTER TABLE public.schedule_recurring_blocks DROP COLUMN IF EXISTS srb_reason;
+
+CREATE INDEX ON person (per_state) WHERE per_state = 'bloqueado';

@@ -74,7 +74,7 @@ export class SecurityLogService {
   }
 
   /**
-   * Persists an admin-driven account status change (block / deactivate / reactivate)
+   * Persists an admin-driven account status change (archive / deactivate / enable)
    * for security auditing. Auth0 owns browser sessions; local `auth_sessions` no longer exist.
    */
   async logAccountStatusChange(params: {

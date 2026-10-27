@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, Ban, UserCheck, UserMinus } from "lucide-react";
+import { Archive, UserCheck, UserMinus } from "lucide-react";
 import InlineMessage from "@/components/feedback/inline-message";
 import Button from "@/components/ui/button";
 import Modal from "@/components/ui/modal";
@@ -26,40 +26,31 @@ type DialogCopy = {
 };
 
 const COPY: Record<Props["action"], DialogCopy> = {
-  block: {
-    title: "Bloquear acceso",
-    description:
-      "La persona no podrá entrar a SANA hasta que le reactives el acceso. Su información y su historial se conservan.",
-    confirmLabel: "Bloquear acceso",
-    tone: "danger",
-    icon: <Ban size={20} aria-hidden />,
-    asksForReason: true,
-  },
   deactivate: {
     title: "Desactivar cuenta",
     description:
-      "La cuenta queda inactiva y deja de aparecer como personal disponible. Puedes reactivarla cuando quieras.",
+      "La cuenta no podrá usar funciones de empleado; si también tiene el rol consultante, podrá seguir usando las funciones de ese rol. Puedes habilitarla después.",
     confirmLabel: "Desactivar cuenta",
     tone: "accent",
     icon: <UserMinus size={20} aria-hidden />,
     asksForReason: true,
   },
-  reactivate: {
-    title: "Reactivar acceso",
+  enable: {
+    title: "Habilitar cuenta",
     description:
-      "La persona vuelve a entrar con su cuenta de Google y recupera los roles que tenía asignados.",
-    confirmLabel: "Reactivar acceso",
+      "La cuenta volverá a estar activa y podrá acceder con los roles que tiene asignados.",
+    confirmLabel: "Habilitar cuenta",
     tone: "accent",
     icon: <UserCheck size={20} aria-hidden />,
     asksForReason: false,
   },
   delete: {
-    title: "Eliminar usuario",
+    title: "Dar de baja usuario",
     description:
-      "Esta acción no se puede deshacer. Si solo quieres quitarle el acceso por un tiempo, es mejor bloquear la cuenta.",
-    confirmLabel: "Eliminar definitivamente",
+      "La persona se marcará como bloqueada y desaparecerá del listado habitual. No podrá acceder con roles de empleado; si tiene el rol consultante activo, conservará únicamente ese acceso. Su cuenta, roles e historial se conservan para auditoría. Esta baja no se puede revertir desde el listado.",
+    confirmLabel: "Dar de baja y bloquear",
     tone: "danger",
-    icon: <AlertTriangle size={20} aria-hidden />,
+    icon: <Archive size={20} aria-hidden />,
     asksForReason: false,
   },
 };
