@@ -83,10 +83,6 @@ export class EmailRepository {
     await this.dataSource.query(
       `UPDATE email_outbox
        SET email_status = 'sent',
-           email_to = NULL,
-           email_subject = NULL,
-           email_text = NULL,
-           email_html = NULL,
            email_locked_at = NULL,
            email_last_error_code = NULL,
            email_sent_at = now()

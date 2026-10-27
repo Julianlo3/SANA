@@ -886,24 +886,6 @@ export class AppointmentsRepository {
   }
 
   /**
-   * finds active secretary emails for notifications
-   * @returns array of secretary emails
-   */
-  async findActiveSecretaryEmails(): Promise<string[]> {
-    const rows = await this.dataSource.query<{ email: string }[]>(
-      `SELECT DISTINCT person.per_email AS email
-       FROM person
-       JOIN person_rol ON person_rol.per_id = person.per_id
-       JOIN rol ON rol.rol_id = person_rol.rol_id
-       WHERE person.per_state = 'activo'
-         AND person_rol.pr_active = true
-         AND rol.rol_description = 'secretario'
-       ORDER BY person.per_email`,
-    );
-    return rows.map((row) => row.email);
-  }
-
-  /**
    * Records assignment history when a psychologist is assigned or reassigned
    * @param params The parameters for recording the assignment history
    */

@@ -86,7 +86,7 @@ describe('EmailService', () => {
     expect(repository.markSent).not.toHaveBeenCalled();
   });
 
-  it('clears queued message data after a successful Gmail API send', async () => {
+  it('marks the queued message as sent after a successful Gmail API send', async () => {
     const repository = {
       claimDue: vi.fn().mockResolvedValue([
         {
