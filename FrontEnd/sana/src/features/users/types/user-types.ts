@@ -25,6 +25,8 @@ export type User = {
   /** ISO 8601 UTC. El formato para pantalla lo resuelve lib/format. */
   lastLoginAt: string | null;
   professionalData?: ProfessionalData;
+  /** Presente y `true` cuando la creación re-habilitó una cuenta bloqueada. */
+  wasReactivated?: boolean;
 };
 
 /** Cuerpo de POST /users. */

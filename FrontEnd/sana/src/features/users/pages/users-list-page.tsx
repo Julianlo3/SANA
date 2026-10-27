@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Search, UserPlus } from "lucide-react";
 import InlineMessage from "@/components/feedback/inline-message";
 import PageDecor from "@/components/ui/page-decor";
@@ -13,6 +15,19 @@ import { useUsersList } from "../hooks/use-users-list";
  * Solo compone la interfaz: la lógica vive en use-users-list.
  */
 export default function UsersListPage() {
+  const searchParams = useSearchParams();
+  const [reactivatedBanner, setReactivatedBanner] = useState(
+    () => searchParams.get("reactivated") === "1",
+  );
+
+  // Limpiar el query param de la URL sin recargar la página.
+  useEffect(() => {
+    if (!reactivatedBanner) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("reactivated");
+    window.history.replaceState(null, "", url.toString());
+  }, [reactivatedBanner]);
+
   const {
     users,
     filteredUsers,
@@ -80,6 +95,15 @@ export default function UsersListPage() {
             Crear usuario
           </Link>
         </div>
+
+        {reactivatedBanner && (
+          <div className="mt-6">
+            <InlineMessage tone="success" onDismiss={() => setReactivatedBanner(false)}>
+              La cuenta fue re-habilitada exitosamente. Ya aparece activa en el
+              listado.
+            </InlineMessage>
+          </div>
+        )}
 
         {loadError && (
           <div className="mt-6">

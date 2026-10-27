@@ -356,6 +356,49 @@ export class UsersService {
         const hasClaimedAccount = await manager.exists(UserAccount, {
           where: { useId: existing.perId },
         });
+
+        // Usuario con cuenta reclamada y bloqueado → re-habilitación.
+        if (hasClaimedAccount && existing.perState === 'bloqueado') {
+          existing.perName = dto.fullName;
+          existing.perCardType = dto.cardType ?? existing.perCardType ?? 'CC';
+          existing.perIdentityDocument = dto.identityDocument;
+          existing.perContactNumber = dto.phone;
+          if (dto.birthdate !== undefined) existing.perBirthdate = dto.birthdate;
+          if (dto.gender !== undefined) existing.perGender = dto.gender;
+          existing.perState = 'activo';
+          existing.perUpdateDate = new Date();
+
+          await this.recordTermsAcceptance(
+            manager,
+            existing.perId,
+            dto.termsAccepted,
+          );
+
+          await manager.save(existing);
+          await this.replaceRoles(manager, existing.perId, [
+            { roleId: role.rolId, active: true },
+          ]);
+          await this.saveProfessionalData(
+            manager,
+            existing.perId,
+            dto.professionalData,
+          );
+          await manager.query(
+            `INSERT INTO security_access_log
+               (use_id, security_access_log_section, security_access_log_message)
+             VALUES ($1, 'User Management', $2)`,
+            [
+              createdByUserId,
+              `Admin reactivated blocked person ${existing.perId} (email: ${email})`,
+            ],
+          );
+          this.logger.log(
+            `Module:users, Function:create, result-reactivated: personId-${existing.perId}, email-${email}, reactivatedBy-${createdByUserId}`,
+          );
+          return { ...(await this.toResponse(manager, existing.perId)), wasReactivated: true };
+        }
+
+        // Usuario con cuenta reclamada activa/inactiva → conflicto normal.
         if (hasClaimedAccount) {
           throw new ConflictException({
             error: 'EMAIL_ALREADY_REGISTERED',
@@ -364,6 +407,7 @@ export class UsersService {
           });
         }
 
+        // Sin cuenta reclamada (pendiente) → promoción al sistema.
         existing.perName = dto.fullName;
         existing.perCardType = dto.cardType ?? existing.perCardType ?? 'CC';
         existing.perIdentityDocument = dto.identityDocument;
@@ -496,9 +540,13 @@ export class UsersService {
    * Finds a user by ID.
    * @param id The user ID.
    * @returns The user.
+   * @throws NotFoundException if the user is archived (bloqueado).
    */
   async findOne(id: number): Promise<UserResponse> {
-    await this.findByIdOrFail(id);
+    const person = await this.findByIdOrFail(id);
+    if (person.perState === 'bloqueado') {
+      throw new NotFoundException(`No existe una persona con id ${id}`);
+    }
     return this.toResponse(this.dataSource.manager, id);
   }
 
@@ -507,9 +555,16 @@ export class UsersService {
    * @param id The user ID.
    * @param dto The user data.
    * @returns The updated user.
+   * @throws ConflictException if the user is archived (bloqueado).
    */
   async update(id: number, dto: UpdateUserDto): Promise<UserResponse> {
-    await this.findByIdOrFail(id);
+    const personCheck = await this.findByIdOrFail(id);
+    if (personCheck.perState === 'bloqueado') {
+      throw new ConflictException({
+        error: 'USER_ALREADY_ARCHIVED',
+        message: 'No se puede modificar un usuario dado de baja.',
+      });
+    }
 
     return this.dataSource.transaction(async (manager) => {
       const person = await this.findByIdOrFail(id, manager);
@@ -598,6 +653,8 @@ export class UsersService {
 
   /**
    * Archives a user while preserving account and business records for audit.
+   * If the user is a psychologist with active appointments (asignada/confirmada),
+   * a ConflictException is thrown asking the admin to resolve them first.
    * @param id The user ID.
    * @param actorUserId The administrator performing the archive.
    */
@@ -608,6 +665,22 @@ export class UsersService {
         throw new ConflictException({
           error: 'USER_ALREADY_ARCHIVED',
           message: 'La cuenta ya fue dada de baja.',
+        });
+      }
+
+      // Verificar si es psicólogo con citas activas antes de bloquear.
+      const activeAppointments = await manager.query<{ count: string }[]>(
+        `SELECT COUNT(*) AS count
+         FROM appointments
+         WHERE psy_id = $1
+           AND app_state IN ('asignada', 'confirmada')`,
+        [id],
+      );
+      if (Number(activeAppointments?.[0]?.count ?? 0) > 0) {
+        throw new ConflictException({
+          error: 'PSYCHOLOGIST_HAS_ACTIVE_APPOINTMENTS',
+          message:
+            'Cancele o realice las citas confirmadas de este psicólogo antes de darlo de baja.',
         });
       }
 

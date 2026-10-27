@@ -1867,3 +1867,5 @@ COMMENT ON COLUMN public.banners.ban_is_active
 
 ALTER TABLE public.schedule DROP COLUMN IF EXISTS sch_reason;
 ALTER TABLE public.schedule_recurring_blocks DROP COLUMN IF EXISTS srb_reason;
+
+CREATE INDEX ON person (per_state) WHERE per_state = 'bloqueado';
