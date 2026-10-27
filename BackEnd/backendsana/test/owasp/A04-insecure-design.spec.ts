@@ -162,14 +162,16 @@ describe('OWASP A04 – Insecure Design', () => {
 
   describe('A04.5 – Baja lógica de usuarios preserva registros asociados', () => {
     it('UsersService DEBE bloquear la cuenta y auditar la baja sin borrar registros', async () => {
-      const fs = await import('fs');
-      const servicePath = new URL('../../src/users/users.service.ts', import.meta.url);
-      const content = fs.readFileSync(servicePath, 'utf-8');
+      const { readFileSync } = await import('node:fs');
+      const sourceCode = readFileSync(
+        new URL('../../src/users/users.service.ts', import.meta.url),
+        'utf-8',
+      );
 
-      expect(content).toContain("person.perState = 'bloqueado'");
-      expect(content).toContain('INSERT INTO security_access_log');
-      expect(content).toContain('dataSource.transaction');
-      expect(content).not.toContain('findAssociatedRecords');
+      expect(sourceCode).toContain("person.perState = 'bloqueado'");
+      expect(sourceCode).toContain('INSERT INTO security_access_log');
+      expect(sourceCode).toContain('dataSource.transaction');
+      expect(sourceCode).not.toContain('findAssociatedRecords');
     });
   });
 
