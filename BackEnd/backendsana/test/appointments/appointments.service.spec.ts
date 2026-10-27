@@ -25,10 +25,6 @@ function setup() {
     createRequest: vi.fn().mockResolvedValue(42),
     findById: vi.fn(),
     findPsychologists: vi.fn(),
-    findActiveSecretaryEmails: vi.fn().mockResolvedValue([
-      'secretary.one@example.com',
-      'secretary.two@example.com',
-    ]),
     findPsychologistEmail: vi.fn().mockResolvedValue(null),
     discard: vi.fn(),
     cancelByRequester: vi.fn().mockResolvedValue(true),
@@ -123,11 +119,10 @@ describe('AppointmentsService.requestAppointment', () => {
       }),
     );
     expect(repository.relationshipExists).not.toHaveBeenCalled();
-    expect(repository.findActiveSecretaryEmails).toHaveBeenCalledOnce();
-    expect(emailService.enqueueEmail).toHaveBeenCalledTimes(2);
+    expect(emailService.enqueueEmail).toHaveBeenCalledOnce();
     expect(emailService.enqueueEmail).toHaveBeenCalledWith(expect.objectContaining({
-      to: 'secretary.one@example.com',
-      subject: 'Nueva solicitud de cita #42',
+      to: 'ana@example.com',
+      subject: 'Recibimos tu solicitud de cita #42',
     }));
     expect(emailService.enqueueEmail.mock.calls[0][0].text).not.toContain('Motivo reservado');
   });
@@ -141,16 +136,6 @@ describe('AppointmentsService.requestAppointment', () => {
 
     const persistedRequest = repository.createRequest.mock.calls[0][0];
     expect(persistedRequest).not.toHaveProperty('appDateIdeal');
-  });
-
-  it('keeps the request successful if secretary recipients cannot be loaded', async () => {
-    const { service, repository, emailService } = setup();
-    repository.findActiveSecretaryEmails.mockRejectedValue(new Error('database unavailable'));
-
-    await expect(
-      service.requestAppointment(baseRequest() as never),
-    ).resolves.toMatchObject({ appId: 42 });
-    expect(emailService.enqueueEmail).not.toHaveBeenCalled();
   });
 
   it('returns the same generic conflict for duplicate requester email or document', async () => {

@@ -37,6 +37,9 @@ describe('EmailRepository', () => {
     expect(dataSource.query.mock.calls[0][0]).toContain(
       "email_status = 'sending'",
     );
+    expect(dataSource.query.mock.calls[0][0]).not.toContain(
+      "email_status = 'sent'",
+    );
     expect(dataSource.query.mock.calls[0][1]).toEqual([10, 300]);
   });
 
@@ -55,7 +58,7 @@ describe('EmailRepository', () => {
     await expect(repository.claimDue(10, 300)).resolves.toEqual([row]);
   });
 
-  it('scrubs recipient and body after delivery', async () => {
+  it('preserves message content after successful delivery', async () => {
     const dataSource = { query: vi.fn().mockResolvedValue([]) };
     const repository = new EmailRepository(dataSource as never);
 
@@ -64,8 +67,9 @@ describe('EmailRepository', () => {
     expect(dataSource.query.mock.calls[0][0]).toContain(
       "email_status = 'sent'",
     );
-    expect(dataSource.query.mock.calls[0][0]).toContain('email_text = NULL');
-    expect(dataSource.query.mock.calls[0][0]).toContain('email_to = NULL');
+    const sql = dataSource.query.mock.calls[0][0] as string;
+    expect(sql).not.toMatch(/email_(to|subject|text|html)\s*=\s*NULL/);
+    expect(sql).toContain('email_sent_at = now()');
   });
   it('passes the attempt limit and fails the row, scrubbing its content, when reached', async () => {
     const dataSource = { query: vi.fn().mockResolvedValue([]) };
