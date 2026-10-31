@@ -25,6 +25,9 @@ export interface ClinicalNoteHistoryRow {
   psychologistName: string;
   cnObservation: string;
   cnCreatedAt: Date;
+  patientType: 'self' | 'dependent';
+  patientName: string;
+  patientDependentId: number | null;
 }
 
 /**
@@ -136,9 +139,17 @@ export class ClinicalNotesRepository {
           a.app_date AS "appDate",
           per.per_name AS "psychologistName",
           cn.cn_observation AS "cnObservation",
-          cn.cn_created_at AS "cnCreatedAt"
+          cn.cn_created_at AS "cnCreatedAt",
+          CASE
+            WHEN a.app_patient_dependent_id IS NOT NULL THEN 'dependent'
+            ELSE 'self'
+          END AS "patientType",
+          COALESCE(dep.dep_name, req.per_name) AS "patientName",
+          a.app_patient_dependent_id AS "patientDependentId"
        FROM clinical_notes cn
        JOIN appointments a ON a.app_id = cn.app_id
+       JOIN person req ON req.per_id = a.req_id
+       LEFT JOIN dependents dep ON dep.dep_id = a.app_patient_dependent_id
        JOIN person per ON per.per_id = cn.psy_id
        WHERE a.req_id = $1 AND cn.psy_id = $2
        ORDER BY cn.cn_created_at ASC`,

@@ -7,7 +7,6 @@
 export type CalendarEventResource = {
   kind: "block" | "recurring" | "appointment";
   id: number;
-  reason: string | null;
 };
 
 export type CalendarEvent = {

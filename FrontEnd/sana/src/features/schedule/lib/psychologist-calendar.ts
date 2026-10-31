@@ -121,7 +121,7 @@ export function summariesToEvents(
         title: "Con espacio",
         start: toDate(day.date, 0),
         end: toDate(day.date, 60),
-        resource: { kind: "block", id: 0, reason: null },
+        resource: { kind: "block", id: 0 },
       });
     }
 
@@ -131,7 +131,7 @@ export function summariesToEvents(
         title: `${count} ${count === 1 ? "cita" : "citas"}`,
         start: toDate(day.date, 0),
         end: toDate(day.date, 60),
-        resource: { kind: "appointment", id: 0, reason: null },
+        resource: { kind: "appointment", id: 0 },
       });
     }
   }

@@ -30,24 +30,42 @@ export type ConsultantSummary = {
   assignedPsychologistName: string | null;
   /** Fecha de la última cita, si tuvo alguna. */
   lastAppointmentAt: string | null;
+  appointmentCount: number;
+  completedAppointmentCount?: number;
+  waitingAppointmentCount?: number;
 };
 
-/**
- * Lo que ve el psicólogo tratante (HU-2.4.2): la ficha completa, incluido
- * el motivo de consulta y el historial de observaciones de atención.
- */
 export type ConsultantFullRecord = ConsultantSummary & {
-  consultationReason: string;
   careRecords: CareRecordEntry[];
+  appointments: ConsultantAppointment[];
+};
+
+export type ConsultantAppointment = {
+  id: number;
+  state: "asignada" | "confirmada" | "realizada";
+  appDate: string | null;
+  duration: number | null;
+  reason: string | null;
+  patientType: "self" | "dependent";
+  patientName: string;
+  patientDependentId: number | null;
+  clinicalNotes: {
+    id: number;
+    observation: string;
+    createdAt: string;
+  }[];
 };
 
 /** Una atención registrada, dentro del historial del consultante. */
 export type CareRecordEntry = {
   id: number;
   appointmentId: number;
-  attendedAt: string;
+  attendedAt: string | null;
   /** Opcional (HU-2.5.2 y 2.5.3). */
   observation: string | null;
+  patientType: "self" | "dependent";
+  patientName: string;
+  patientDependentId: number | null;
   recordedByPsychologistId: number;
   recordedByPsychologistName: string;
 };

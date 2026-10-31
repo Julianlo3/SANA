@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ApiError } from "@/types/api-types";
 import {
   createMyBlock,
   createMyRecurringBlock,
@@ -17,15 +18,8 @@ import type {
 } from "../types/schedule-types";
 
 /**
- * Lógica de la pantalla de agenda: lista los dos tipos de bloqueo y permite
- * crear/borrar.
- *
- * La carga inicial vive directo dentro del useEffect (patrón isMounted),
- * en vez de llamar a una función compartida: la regla de lint
- * react-hooks/set-state-in-effect no permite que un efecto invoque ninguna
- * función que internamente haga setState, ni siquiera asíncrona. reload()
- * sí es una función aparte, pero solo se usa desde manejadores de eventos
- * (addBlock, removeBlock, etc.), nunca desde un efecto.
+ * Hook to manage schedule blocks and recurring schedule blocks for a user.
+ * @returns An object containing the current blocks, recurring blocks, loading and saving states, error messages, and functions to add or remove blocks.
  */
 export function useScheduleBlocks() {
   const [blocks, setBlocks] = useState<ScheduleBlock[]>([]);
@@ -103,8 +97,12 @@ export function useScheduleBlocks() {
       try {
         await deleteMyBlock(id);
         await reload();
-      } catch {
-        setError("No pudimos borrar el bloqueo.");
+      } catch (error: unknown) {
+        setError(
+          error instanceof ApiError
+            ? error.message
+            : "No pudimos borrar el bloque. Intenta de nuevo.",
+        );
       } finally {
         setIsSaving(false);
       }
@@ -112,6 +110,7 @@ export function useScheduleBlocks() {
     [reload],
   );
 
+  // Agrega un bloque recurrente y recarga la lista de bloques.
   const addRecurringBlock = useCallback(
     async (payload: CreateRecurringScheduleBlockPayload) => {
       setIsSaving(true);
@@ -132,6 +131,7 @@ export function useScheduleBlocks() {
     [reload],
   );
 
+  // Borra un bloque recurrente y recarga la lista de bloques.
   const removeRecurringBlock = useCallback(
     async (id: number) => {
       setIsSaving(true);
@@ -139,8 +139,12 @@ export function useScheduleBlocks() {
       try {
         await deleteMyRecurringBlock(id);
         await reload();
-      } catch {
-        setError("No pudimos borrar la regla recurrente.");
+      } catch (error: unknown) {
+        setError(
+          error instanceof ApiError
+            ? error.message
+            : "No pudimos borrar la regla recurrente. Intenta de nuevo.",
+        );
       } finally {
         setIsSaving(false);
       }

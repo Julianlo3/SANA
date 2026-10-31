@@ -6,6 +6,32 @@ import type { ScheduleAvailabilitySlot } from './dto/schedule-availability-respo
 import type { ScheduleCalendarResponse } from './dto/schedule-calendar-response.dto.js';
 
 /**
+ * Fecha (YYYY-MM-DD) y hora (HH:MM:SS) de un instante en hora de Colombia.
+ * Los bloques de disponibilidad se guardan en hora local, así que toda
+ * comparación debe hacerse con este reloj y no con UTC (toISOString).
+ */
+function toBogotaParts(date: Date): { dateStr: string; timeStr: string } {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Bogota',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    })
+      .formatToParts(date)
+      .map((part) => [part.type, part.value]),
+  );
+  return {
+    dateStr: `${parts.year}-${parts.month}-${parts.day}`,
+    timeStr: `${parts.hour}:${parts.minute}:${parts.second}`,
+  };
+}
+
+/**
  * Repository for handling schedule-related database operations, including schedule blocks and recurring schedule blocks for psychologists.
  */
 @Injectable()
@@ -24,8 +50,20 @@ export class ScheduleRepository {
          sch_date AS "date",
          sch_start_time AS "startTime",
          sch_end_time AS "endTime",
-         sch_reason AS "reason",
-         NULL::integer AS "appointmentId"
+         (
+           SELECT a.app_id
+           FROM appointments a
+           WHERE a.psy_id = schedule.psy_id
+             AND a.app_state IN ('asignada', 'confirmada')
+             AND a.app_date IS NOT NULL
+             AND a.app_duration IS NOT NULL
+             AND (a.app_date AT TIME ZONE 'America/Bogota')::date = schedule.sch_date
+             AND (a.app_date AT TIME ZONE 'America/Bogota')::time < schedule.sch_end_time
+             AND ((a.app_date + (a.app_duration || ' minutes')::interval)
+                  AT TIME ZONE 'America/Bogota')::time > schedule.sch_start_time
+           ORDER BY a.app_date
+           LIMIT 1
+         ) AS "appointmentId"
        FROM schedule
        WHERE psy_id = $1
        ORDER BY sch_date, sch_start_time`,
@@ -52,7 +90,6 @@ export class ScheduleRepository {
                  'date', sch_date::text,
                  'startTime', sch_start_time::text,
                  'endTime', sch_end_time::text,
-                 'reason', sch_reason,
                  'appointmentId', NULL::integer
                )
                ORDER BY sch_date, sch_start_time
@@ -90,7 +127,6 @@ export class ScheduleRepository {
                  'endTime', srb_end_time::text,
                  'validFrom', srb_valid_from::text,
                  'validUntil', srb_valid_until::text,
-                 'reason', srb_reason,
                  'active', srb_active
                )
                ORDER BY srb_day_of_week, srb_start_time
@@ -143,26 +179,23 @@ export class ScheduleRepository {
     date: string;
     startTime: string;
     endTime: string;
-    reason: string;
   }): Promise<ScheduleBlockResponse> {
     const rows = await this.dataSource.query<ScheduleBlockResponse[]>(
       `INSERT INTO schedule (
-         psy_id, sch_date, sch_start_time, sch_end_time, sch_reason
+         psy_id, sch_date, sch_start_time, sch_end_time
        )
-       VALUES ($1, $2::date, $3::time, $4::time, $5)
+       VALUES ($1, $2::date, $3::time, $4::time)
        RETURNING
          sch_id AS "id",
          sch_date AS "date",
          sch_start_time AS "startTime",
          sch_end_time AS "endTime",
-         sch_reason AS "reason",
          NULL::integer AS "appointmentId"`,
       [
         params.psychologistId,
         params.date,
         params.startTime,
         params.endTime,
-        params.reason,
       ],
     );
     return rows[0];
@@ -174,13 +207,58 @@ export class ScheduleRepository {
    * @param blockId The ID of the schedule block to delete.
    * @returns A promise that resolves to a boolean indicating if the block was deleted.
    */
-  async deleteBlock(psychologistId: number, blockId: number): Promise<boolean> {
-    const result = await this.dataSource.query(
-      `DELETE FROM schedule
-       WHERE sch_id = $1 AND psy_id = $2`,
+  async deleteBlock(
+    psychologistId: number,
+    blockId: number,
+  ): Promise<'deleted' | 'occupied' | 'not_found'> {
+    const deleted = await this.dataSource.query<{ sch_id: number }[]>(
+      `DELETE FROM schedule s
+       WHERE s.sch_id = $1
+         AND s.psy_id = $2
+         AND NOT EXISTS (
+           SELECT 1
+           FROM appointments a
+           WHERE a.psy_id = s.psy_id
+             AND a.app_state IN ('asignada', 'confirmada')
+             AND a.app_date IS NOT NULL
+             AND a.app_duration IS NOT NULL
+             AND (a.app_date AT TIME ZONE 'America/Bogota')::date = s.sch_date
+             AND (a.app_date AT TIME ZONE 'America/Bogota')::time < s.sch_end_time
+             AND ((a.app_date + (a.app_duration || ' minutes')::interval)
+                  AT TIME ZONE 'America/Bogota')::time > s.sch_start_time
+         )
+       RETURNING s.sch_id`,
       [blockId, psychologistId],
     );
-    return result.rowCount > 0;
+    if (deleted.length > 0) return 'deleted';
+
+    const rows = await this.dataSource.query<{
+      exists: boolean;
+      occupied: boolean;
+    }[]>(
+      `SELECT
+         EXISTS (
+           SELECT 1 FROM schedule
+           WHERE sch_id = $1 AND psy_id = $2
+         ) AS exists,
+         EXISTS (
+           SELECT 1
+           FROM schedule s
+           JOIN appointments a ON a.psy_id = s.psy_id
+           WHERE s.sch_id = $1
+             AND s.psy_id = $2
+             AND a.app_state IN ('asignada', 'confirmada')
+             AND a.app_date IS NOT NULL
+             AND a.app_duration IS NOT NULL
+             AND (a.app_date AT TIME ZONE 'America/Bogota')::date = s.sch_date
+             AND (a.app_date AT TIME ZONE 'America/Bogota')::time < s.sch_end_time
+             AND ((a.app_date + (a.app_duration || ' minutes')::interval)
+                  AT TIME ZONE 'America/Bogota')::time > s.sch_start_time
+         ) AS occupied`,
+      [blockId, psychologistId],
+    );
+    if (!rows[0]?.exists) return 'not_found';
+    return rows[0].occupied ? 'occupied' : 'not_found';
   }
 
   /**
@@ -199,8 +277,25 @@ export class ScheduleRepository {
          srb_end_time AS "endTime",
          srb_valid_from AS "validFrom",
          srb_valid_until AS "validUntil",
-         srb_reason AS "reason",
-         srb_active AS "active"
+         srb_active AS "active",
+         EXISTS (
+           SELECT 1
+           FROM appointments a
+           WHERE a.psy_id = schedule_recurring_blocks.psy_id
+             AND a.app_state IN ('asignada', 'confirmada')
+             AND a.app_date IS NOT NULL
+             AND a.app_duration IS NOT NULL
+             AND (a.app_date AT TIME ZONE 'America/Bogota')::date
+                 BETWEEN schedule_recurring_blocks.srb_valid_from
+                     AND COALESCE(schedule_recurring_blocks.srb_valid_until, 'infinity'::date)
+             AND EXTRACT(ISODOW FROM (a.app_date AT TIME ZONE 'America/Bogota')::date)
+                 = schedule_recurring_blocks.srb_day_of_week
+             AND (a.app_date AT TIME ZONE 'America/Bogota')::time
+                 < schedule_recurring_blocks.srb_end_time
+             AND ((a.app_date + (a.app_duration || ' minutes')::interval)
+                  AT TIME ZONE 'America/Bogota')::time
+                 > schedule_recurring_blocks.srb_start_time
+         ) AS "hasAppointments"
        FROM schedule_recurring_blocks
        WHERE psy_id = $1
        ORDER BY srb_day_of_week, srb_start_time`,
@@ -257,14 +352,13 @@ export class ScheduleRepository {
     endTime: string;
     validFrom: string;
     validUntil?: string;
-    reason: string;
   }): Promise<RecurringScheduleBlockResponse> {
     const rows = await this.dataSource.query<RecurringScheduleBlockResponse[]>(
       `INSERT INTO schedule_recurring_blocks (
          psy_id, srb_day_of_week, srb_start_time, srb_end_time,
-         srb_valid_from, srb_valid_until, srb_reason
+        srb_valid_from, srb_valid_until
        )
-       VALUES ($1, $2, $3::time, $4::time, $5::date, $6::date, $7)
+      VALUES ($1, $2, $3::time, $4::time, $5::date, $6::date)
        RETURNING
          srb_id AS "id",
          srb_day_of_week AS "dayOfWeek",
@@ -272,8 +366,8 @@ export class ScheduleRepository {
          srb_end_time AS "endTime",
          srb_valid_from AS "validFrom",
          srb_valid_until AS "validUntil",
-         srb_reason AS "reason",
-         srb_active AS "active"`,
+         srb_active AS "active",
+         false AS "hasAppointments"`,
       [
         params.psychologistId,
         params.dayOfWeek,
@@ -281,7 +375,6 @@ export class ScheduleRepository {
         params.endTime,
         params.validFrom,
         params.validUntil ?? null,
-        params.reason,
       ],
     );
     return rows[0];
@@ -296,13 +389,61 @@ export class ScheduleRepository {
   async deleteRecurringBlock(
     psychologistId: number,
     blockId: number,
-  ): Promise<boolean> {
-    const result = await this.dataSource.query(
-      `DELETE FROM schedule_recurring_blocks
-       WHERE srb_id = $1 AND psy_id = $2`,
+  ): Promise<'deleted' | 'occupied' | 'not_found'> {
+    const deleted = await this.dataSource.query<{ srb_id: number }[]>(
+      `DELETE FROM schedule_recurring_blocks r
+       WHERE r.srb_id = $1
+         AND r.psy_id = $2
+         AND NOT EXISTS (
+           SELECT 1
+           FROM appointments a
+           WHERE a.psy_id = r.psy_id
+             AND a.app_state IN ('asignada', 'confirmada')
+             AND a.app_date IS NOT NULL
+             AND a.app_duration IS NOT NULL
+             AND (a.app_date AT TIME ZONE 'America/Bogota')::date
+                 BETWEEN r.srb_valid_from AND COALESCE(r.srb_valid_until, 'infinity'::date)
+             AND EXTRACT(ISODOW FROM (a.app_date AT TIME ZONE 'America/Bogota')::date)
+                 = r.srb_day_of_week
+             AND (a.app_date AT TIME ZONE 'America/Bogota')::time < r.srb_end_time
+             AND ((a.app_date + (a.app_duration || ' minutes')::interval)
+                  AT TIME ZONE 'America/Bogota')::time > r.srb_start_time
+         )
+       RETURNING r.srb_id`,
       [blockId, psychologistId],
     );
-    return result.rowCount > 0;
+    if (deleted.length > 0) return 'deleted';
+
+    const rows = await this.dataSource.query<{
+      exists: boolean;
+      occupied: boolean;
+    }[]>(
+      `SELECT
+         EXISTS (
+           SELECT 1 FROM schedule_recurring_blocks
+           WHERE srb_id = $1 AND psy_id = $2
+         ) AS exists,
+         EXISTS (
+           SELECT 1
+           FROM schedule_recurring_blocks r
+           JOIN appointments a ON a.psy_id = r.psy_id
+           WHERE r.srb_id = $1
+             AND r.psy_id = $2
+             AND a.app_state IN ('asignada', 'confirmada')
+             AND a.app_date IS NOT NULL
+             AND a.app_duration IS NOT NULL
+             AND (a.app_date AT TIME ZONE 'America/Bogota')::date
+                 BETWEEN r.srb_valid_from AND COALESCE(r.srb_valid_until, 'infinity'::date)
+             AND EXTRACT(ISODOW FROM (a.app_date AT TIME ZONE 'America/Bogota')::date)
+                 = r.srb_day_of_week
+             AND (a.app_date AT TIME ZONE 'America/Bogota')::time < r.srb_end_time
+             AND ((a.app_date + (a.app_duration || ' minutes')::interval)
+                  AT TIME ZONE 'America/Bogota')::time > r.srb_start_time
+         ) AS occupied`,
+      [blockId, psychologistId],
+    );
+    if (!rows[0]?.exists) return 'not_found';
+    return rows[0].occupied ? 'occupied' : 'not_found';
   }
 
   /**
@@ -331,8 +472,8 @@ export class ScheduleRepository {
          ) AS start_at
          FROM availability_window
        )
-       SELECT s.start_at::date AS "date", s.start_at::time AS "startTime",
-         (s.start_at + ($3 || ' minutes')::interval)::time AS "endTime",
+       SELECT (s.start_at AT TIME ZONE 'America/Bogota')::date AS "date", (s.start_at AT TIME ZONE 'America/Bogota')::time AS "startTime",
+         ((s.start_at + ($3 || ' minutes')::interval) AT TIME ZONE 'America/Bogota')::time AS "endTime",
          p.psy_id AS "psychologistId", per.per_name AS "psychologistName",
          p.psy_speciality AS speciality
        FROM slots s
@@ -343,26 +484,26 @@ export class ScheduleRepository {
          AND (
            EXISTS (
              SELECT 1 FROM schedule b
-             WHERE b.psy_id = p.psy_id AND b.sch_date = s.start_at::date
-               AND b.sch_start_time <= s.start_at::time
-               AND b.sch_end_time >= (s.start_at + ($3 || ' minutes')::interval)::time
+             WHERE b.psy_id = p.psy_id AND b.sch_date = (s.start_at AT TIME ZONE 'America/Bogota')::date
+               AND b.sch_start_time <= (s.start_at AT TIME ZONE 'America/Bogota')::time
+               AND b.sch_end_time >= ((s.start_at + ($3 || ' minutes')::interval) AT TIME ZONE 'America/Bogota')::time
            )
            OR EXISTS (
              SELECT 1 FROM schedule_recurring_blocks r
              WHERE r.psy_id = p.psy_id AND r.srb_active = true
-               AND r.srb_day_of_week = EXTRACT(ISODOW FROM s.start_at::date)
-               AND r.srb_valid_from <= s.start_at::date
-               AND (r.srb_valid_until IS NULL OR r.srb_valid_until >= s.start_at::date)
-               AND r.srb_start_time <= s.start_at::time
-               AND r.srb_end_time >= (s.start_at + ($3 || ' minutes')::interval)::time
+               AND r.srb_day_of_week = EXTRACT(ISODOW FROM (s.start_at AT TIME ZONE 'America/Bogota')::date)
+               AND r.srb_valid_from <= (s.start_at AT TIME ZONE 'America/Bogota')::date
+               AND (r.srb_valid_until IS NULL OR r.srb_valid_until >= (s.start_at AT TIME ZONE 'America/Bogota')::date)
+               AND r.srb_start_time <= (s.start_at AT TIME ZONE 'America/Bogota')::time
+               AND r.srb_end_time >= ((s.start_at + ($3 || ' minutes')::interval) AT TIME ZONE 'America/Bogota')::time
            )
          )
          AND NOT EXISTS (
            SELECT 1 FROM schedule_occupancy o
            WHERE o.psy_id = p.psy_id
-             AND o.occ_date = s.start_at::date
-             AND o.occ_start_time < (s.start_at + ($3 || ' minutes')::interval)::time
-             AND o.occ_end_time > s.start_at::time
+             AND o.occ_date = (s.start_at AT TIME ZONE 'America/Bogota')::date
+             AND o.occ_start_time < ((s.start_at + ($3 || ' minutes')::interval) AT TIME ZONE 'America/Bogota')::time
+             AND o.occ_end_time > (s.start_at AT TIME ZONE 'America/Bogota')::time
          )
          AND NOT EXISTS (
            SELECT 1 FROM appointments a
@@ -407,8 +548,9 @@ export class ScheduleRepository {
         return 'not_assignable';
       }
 
-      const appDateStr = params.appDate.toISOString().slice(0, 10);
-      const appTimeStr = params.appDate.toISOString().slice(11, 19);
+      const { dateStr: appDateStr, timeStr: appTimeStr } = toBogotaParts(
+        params.appDate,
+      );
 
       await manager.query(
         `SELECT pg_advisory_xact_lock($1, hashtext($2::text))`,
@@ -458,9 +600,9 @@ export class ScheduleRepository {
              AND psy_id = $2
              AND app_state IN ('asignada', 'confirmada')
              AND app_date IS NOT NULL
-             AND app_date::date = $3::date
-             AND app_date::time < ($4::time + ($5 || ' minutes')::interval)::time
-             AND (app_date + (app_duration || ' minutes')::interval)::time > $4::time
+             AND (app_date AT TIME ZONE 'America/Bogota')::date = $3::date
+             AND (app_date AT TIME ZONE 'America/Bogota')::time < ($4::time + ($5 || ' minutes')::interval)::time
+             AND ((app_date + (app_duration || ' minutes')::interval) AT TIME ZONE 'America/Bogota')::time > $4::time
          ) AS exists`,
         [params.appId, params.psyId, appDateStr, appTimeStr, params.appDuration],
       );
@@ -539,8 +681,9 @@ export class ScheduleRepository {
         return 'slot_taken';
       }
 
-      const appDateStr = params.appDate.toISOString().slice(0, 10);
-      const appTimeStr = params.appDate.toISOString().slice(11, 19);
+      const { dateStr: appDateStr, timeStr: appTimeStr } = toBogotaParts(
+        params.appDate,
+      );
 
       await manager.query(
         `SELECT pg_advisory_xact_lock($1, hashtext($2::text))`,
@@ -604,9 +747,9 @@ export class ScheduleRepository {
              AND psy_id = $2
              AND app_state IN ('asignada', 'confirmada')
              AND app_date IS NOT NULL
-             AND app_date::date = $3::date
-             AND app_date::time < ($4::time + ($5 || ' minutes')::interval)::time
-             AND (app_date + (app_duration || ' minutes')::interval)::time > $4::time
+             AND (app_date AT TIME ZONE 'America/Bogota')::date = $3::date
+             AND (app_date AT TIME ZONE 'America/Bogota')::time < ($4::time + ($5 || ' minutes')::interval)::time
+             AND ((app_date + (app_duration || ' minutes')::interval) AT TIME ZONE 'America/Bogota')::time > $4::time
          ) AS exists`,
         [params.appId, params.psyId, appDateStr, appTimeStr, params.appDuration],
       );

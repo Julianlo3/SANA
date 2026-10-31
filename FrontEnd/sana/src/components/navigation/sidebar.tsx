@@ -16,6 +16,8 @@ import {
   Menu,
   X,
   ChevronDown,
+  UserCircle2,
+  Home,
 } from "lucide-react";
 import { getInitials } from "@/lib/format/text";
 import { formatRoleLabels, findRoleByName } from "@/config/roles";
@@ -26,7 +28,9 @@ type NavLink = {
   icon: typeof Users;
 };
 
-/** Qué enlaces ve cada rol dentro de su propio grupo del menú. */
+/**
+ * Navigation links for each role.
+ */
 const LINKS_BY_ROLE: Record<string, NavLink[]> = {
   administrador: [
     { label: "Usuarios", href: "/usuarios", icon: UserCog },
@@ -48,6 +52,7 @@ const LINKS_BY_ROLE: Record<string, NavLink[]> = {
     { label: "Calendario", href: "/calendario", icon: Calendar },
     { label: "Consultantes", href: "/consultantes", icon: Users },
   ],
+
 };
 
 type Props = {
@@ -55,6 +60,11 @@ type Props = {
   fullName: string;
 };
 
+/**
+ * Sidebar component for staff members.
+ * @param param0 The sidebar props.
+ * @returns The sidebar.
+ */
 export default function Sidebar({ roles, fullName }: Props) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -77,11 +87,10 @@ export default function Sidebar({ roles, fullName }: Props) {
         key={link.href}
         href={link.href}
         onClick={() => setOpen(false)}
-        className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm transition ${
-          pathname.startsWith(link.href)
-            ? "bg-primary font-semibold text-white"
-            : "text-text-muted hover:bg-primary-soft"
-        }`}
+        className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm transition ${pathname.startsWith(link.href)
+          ? "bg-primary font-semibold text-white"
+          : "text-text-muted hover:bg-primary-soft"
+          }`}
       >
         <Icon size={18} />
         {link.label}
@@ -107,9 +116,8 @@ export default function Sidebar({ roles, fullName }: Props) {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col bg-sidebar p-4 transition-transform lg:static lg:translate-x-0 ${
-          open ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col bg-sidebar p-4 transition-transform lg:static lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
         <div className="flex items-center gap-3 px-2 py-4">
           <Image
@@ -137,6 +145,10 @@ export default function Sidebar({ roles, fullName }: Props) {
         </div>
 
         <nav className="mt-6 flex flex-col gap-1 overflow-y-auto">
+          <div className="flex flex-col gap-1 border-b border-border pb-4">
+            {renderLink({ label: "Inicio", href: "/", icon: Home })}
+          </div>
+
           {rolesWithLinks.length === 1 ? (
             // Un solo rol con acceso: sin acordeón, opciones directas.
             <div className="flex flex-col gap-1">
@@ -170,6 +182,17 @@ export default function Sidebar({ roles, fullName }: Props) {
               );
             })
           )}
+
+          {/* ── Sección personal: visible para cualquier empleado ─────── */}
+          <div className="mt-4 flex flex-col gap-1 border-t border-border pt-4">
+            {renderLink({ label: "Mi perfil", href: "/mi-perfil", icon: UserCircle2 })}
+            {roles.includes("consultante") &&
+              renderLink({
+                label: "Mis citas (personal)",
+                href: "/mis-citas-personales",
+                icon: CalendarCheck,
+              })}
+          </div>
         </nav>
 
         <div className="mt-auto flex items-center gap-3 rounded-xl bg-surface p-3">
@@ -184,9 +207,13 @@ export default function Sidebar({ roles, fullName }: Props) {
               {formatRoleLabels(roles)}
             </p>
           </div>
-          <button className="cursor-pointer text-text-subtle hover:text-text">
+          <a
+            href="/auth/logout"
+            aria-label="Cerrar sesión"
+            className="cursor-pointer text-text-subtle hover:text-text"
+          >
             <LogOut size={18} />
-          </button>
+          </a>
         </div>
       </aside>
     </>

@@ -79,15 +79,46 @@ describe('AuthService.authorizeAuth0', () => {
     expect(repository.createPending).not.toHaveBeenCalled();
   });
 
-  it.each([
-    { state: AccountState.Inactive },
-    { roles: ['pendiente'] },
-  ])('rejects a local account that is not authorized', async (overrides) => {
-    const { service } = setup(overrides);
-    await expect(service.authorizeAuth0(profile)).rejects.toBeInstanceOf(
-      ForbiddenException,
-    );
-  });
+  it.each([{ state: AccountState.Inactive }, { roles: ['pendiente'] }])(
+    'rejects a local account that is not authorized',
+    async (overrides) => {
+      const { service } = setup(overrides);
+      await expect(service.authorizeAuth0(profile)).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+    },
+  );
+
+  it.each([AccountState.Inactive, AccountState.Blocked])(
+    'limits a %s account with employee and consultant roles to consultant access',
+    async (state) => {
+      const { service, repository } = setup({
+        state,
+        roles: ['administrador', 'consultante'],
+      });
+
+      await expect(service.authorizeAuth0(profile)).resolves.toMatchObject({
+        state,
+        roles: ['consultante'],
+      });
+      expect(repository.updateLastLogin).toHaveBeenCalledWith(10);
+    },
+  );
+
+  it.each([AccountState.Inactive, AccountState.Blocked])(
+    'rejects a %s account without an active consultant role',
+    async (state) => {
+      const { service, repository } = setup({
+        state,
+        roles: ['administrador', 'psicologo'],
+      });
+
+      await expect(service.authorizeAuth0(profile)).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+      expect(repository.updateLastLogin).not.toHaveBeenCalled();
+    },
+  );
 
   it('calls updateEmail when the Auth0 email differs from the stored email', async () => {
     const { service, repository } = setup({ email: 'OLD@EXAMPLE.COM' });
@@ -207,7 +238,7 @@ describe('AuthService.authorizeAuth0', () => {
       .mockResolvedValueOnce({
         personId: 10,
         userId: 10,
-        providerId: profile.subject,   // ← ya actualizado por linkProvider
+        providerId: profile.subject, // ← ya actualizado por linkProvider
         providerName: 'auth0',
         email: profile.email,
         state: AccountState.Active,
@@ -217,7 +248,7 @@ describe('AuthService.authorizeAuth0', () => {
       personId: 10,
       userId: 10,
       providerId: 'google-oauth2|999',
-      providerName: 'google-oauth2',   // distinto de 'auth0' → debe llamar a linkProvider
+      providerName: 'google-oauth2', // distinto de 'auth0' → debe llamar a linkProvider
       email: profile.email,
       state: AccountState.Active,
       roles: ['psicologo'],

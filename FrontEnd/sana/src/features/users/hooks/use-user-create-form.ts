@@ -59,7 +59,7 @@ export function useUserCreateForm() {
     setSubmitError(null);
 
     try {
-      await createUser({
+      const result = await createUser({
         fullName: submitted.fullName.trim(),
         identityDocument: submitted.identityDocument.trim(),
         email: submitted.email.trim().toLowerCase(),
@@ -72,6 +72,13 @@ export function useUserCreateForm() {
             }
           : undefined,
       });
+
+      // Si el backend re-habilitó un usuario bloqueado, redirigimos con
+      // el param reactivated=1 para que la página de listado muestre un banner.
+      if (result.wasReactivated) {
+        router.push("/usuarios?reactivated=1");
+        return;
+      }
 
       router.push("/usuarios");
     } catch (error: unknown) {

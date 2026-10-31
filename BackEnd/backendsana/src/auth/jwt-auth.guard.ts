@@ -35,3 +35,22 @@ export class JwtAuthGuard implements CanActivate {
     return true;
   }
 }
+// Guard that allows requests without a JWT access token, but if a token is present, it validates it.
+@Injectable()
+export class OptionalJwtAuthGuard extends JwtAuthGuard {
+  constructor(
+    authService: AuthService,
+    auth0IdentityService: Auth0IdentityService,
+  ) {
+    super(authService, auth0IdentityService);
+  }
+
+  override async canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context
+      .switchToHttp()
+      .getRequest<Request>();
+
+    if (!request.headers.authorization) return true;
+    return super.canActivate(context);
+  }
+}

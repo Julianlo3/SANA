@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthController } from './auth.controller.js';
-import { JwtAuthGuard } from './jwt-auth.guard.js';
+import { JwtAuthGuard, OptionalJwtAuthGuard } from './jwt-auth.guard.js';
 import { OriginGuard } from '../guards/origin.guard.js';
 import { RateLimitGuard } from '../guards/rate-limit.guard.js';
 import { AuthRepository } from './auth.repository.js';
@@ -19,6 +19,7 @@ import { SecurityLogModule } from '../security-logs/security-log.module.js';
     AuthRepository,
     Auth0IdentityService,
     JwtAuthGuard,
+    OptionalJwtAuthGuard,
     OriginGuard,
     RateLimitGuard,
   ],
@@ -26,6 +27,7 @@ import { SecurityLogModule } from '../security-logs/security-log.module.js';
     AuthService,
     Auth0IdentityService,
     JwtAuthGuard,
+    OptionalJwtAuthGuard,
     OriginGuard,
     RateLimitGuard,
   ],

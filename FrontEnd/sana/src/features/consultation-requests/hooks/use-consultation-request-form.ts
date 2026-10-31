@@ -100,18 +100,20 @@ const ERROR_CODE_FIELDS: Record<string, keyof RequestFormValues> = {
   INVALID_RELATIONSHIP: "relationship",
 };
 
-/**
- * Código que el backend enviará cuando el documento o el correo ya estén
- * registrados. Hoy no existe: queda listo para cuando lo agreguen.
- */
+/** Código que devuelve el backend si correo y documento pertenecen a cuentas distintas. */
 const ALREADY_REGISTERED_CODE = "REQUESTER_ALREADY_REGISTERED";
 const ALREADY_REGISTERED_MESSAGE =
-  "Estos datos ya están registrados. Si ya pediste una cita antes, entra con tu cuenta en Ingresar → Consultantes.";
+  "No pudimos asociar la solicitud con esos datos. Verifica tu correo y documento, o inicia sesión si ya tienes una cuenta.";
 
 /** Mensaje para errores del servidor, sin afirmar cuál fue la causa. */
 const SERVER_ERROR_MESSAGE =
   "No pudimos registrar tu solicitud. Si ya pediste una cita antes con estos datos, entra por Ingresar → Consultantes. Si el problema continúa, intenta más tarde o comunícate con la fundación.";
-/** Pasa los errores del backend a los campos del formulario. */
+
+/**
+ * Map the backend errors to the corresponding form fields.
+ * @param error The ApiError object containing the backend errors.
+ * @returns A RequestFormErrors object mapping the backend errors to the form fields.
+ */
 function mapServerErrors(error: ApiError): RequestFormErrors {
   const mapped: RequestFormErrors = {};
 

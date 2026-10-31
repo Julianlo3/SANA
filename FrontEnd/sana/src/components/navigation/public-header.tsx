@@ -3,35 +3,44 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronDown, Menu, X } from "lucide-react";
+import { LogOut, Menu, X } from "lucide-react";
+import { useUser } from "@auth0/nextjs-auth0/client";
 import { PUBLIC_NAV } from "@/content/navigation";
+import { getInitials } from "@/lib/format/text";
 
+/**
+ * Public header component for the public website (no authentication required).
+ * @returns The public header.
+ */
 export default function PublicHeader() {
   const [isOpen, setIsOpen] = useState(false);
-  const [isLoginOpen, setIsLoginOpen] = useState(false);
-  const loginRef = useRef<HTMLDivElement>(null);
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+  const { user } = useUser();
 
   useEffect(() => {
-    if (!isLoginOpen) return;
+    if (!isAccountMenuOpen) return;
 
-    function handlePointerDown(event: MouseEvent) {
-      if (!loginRef.current?.contains(event.target as Node)) {
-        setIsLoginOpen(false);
+    function handlePointerDown(event: PointerEvent) {
+      if (
+        event.target instanceof Node &&
+        !accountMenuRef.current?.contains(event.target)
+      ) {
+        setIsAccountMenuOpen(false);
       }
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setIsLoginOpen(false);
+      if (event.key === "Escape") setIsAccountMenuOpen(false);
     }
 
-    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("pointerdown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
-
     return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isLoginOpen]);
+  }, [isAccountMenuOpen]);
 
   return (
     <header
@@ -63,57 +72,51 @@ export default function PublicHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-3 md:ml-0">
-          <div ref={loginRef} className="relative hidden md:block">
-            <button
-              type="button"
-              onClick={() => setIsLoginOpen((current) => !current)}
-              aria-expanded={isLoginOpen}
-              aria-haspopup="menu"
-              className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/70 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white/10"
+          {user ? (
+            <div ref={accountMenuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setIsAccountMenuOpen((open) => !open)}
+                aria-label="Abrir menú de cuenta"
+                aria-haspopup="true"
+                aria-controls="public-account-menu"
+                aria-expanded={isAccountMenuOpen}
+                className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-primary text-sm font-semibold text-white shadow-sm transition hover:ring-2 hover:ring-white/40"
+              >
+                {getInitials(user.name ?? user.email ?? "Usuario")}
+              </button>
+
+              {isAccountMenuOpen && (
+                <nav
+                  id="public-account-menu"
+                  aria-label="Opciones de cuenta"
+                  className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-xl border border-border bg-surface py-1 text-text shadow-lg"
+                >
+                  <Link
+                    href="/panel"
+                    onClick={() => setIsAccountMenuOpen(false)}
+                    className="block px-4 py-3 text-sm font-medium transition hover:bg-surface-muted"
+                  >
+                    Mi espacio
+                  </Link>
+                  <a
+                    href="/auth/logout"
+                    className="flex items-center gap-2 border-t border-border px-4 py-3 text-sm font-medium transition hover:bg-surface-muted"
+                  >
+                    <LogOut size={16} aria-hidden />
+                    Cerrar sesión
+                  </a>
+                </nav>
+              )}
+            </div>
+          ) : (
+            <Link
+              href={PUBLIC_NAV.loginHref}
+              className="cursor-pointer rounded-full border border-white/70 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white/10"
             >
               {PUBLIC_NAV.login}
-              <ChevronDown
-                size={14}
-                aria-hidden
-                className={`transition-transform ${isLoginOpen ? "rotate-180" : ""}`}
-              />
-            </button>
-
-            {isLoginOpen && (
-              <div
-                role="menu"
-                className="absolute right-0 mt-2 w-60 overflow-hidden rounded-2xl border border-border bg-surface shadow-lg"
-              >
-                <Link
-                  href={PUBLIC_NAV.requesterHref}
-                  role="menuitem"
-                  onClick={() => setIsLoginOpen(false)}
-                  className="block px-5 py-3 transition hover:bg-primary-soft"
-                >
-                  <span className="block text-sm font-semibold text-text">
-                    {PUBLIC_NAV.requesterAccess}
-                  </span>
-                  <span className="block text-xs text-text-subtle">
-                    {PUBLIC_NAV.requesterHint}
-                  </span>
-                </Link>
-
-                <Link
-                  href={PUBLIC_NAV.staffHref}
-                  role="menuitem"
-                  onClick={() => setIsLoginOpen(false)}
-                  className="block border-t border-border px-5 py-3 transition hover:bg-primary-soft"
-                >
-                  <span className="block text-sm font-semibold text-text">
-                    {PUBLIC_NAV.staffAccess}
-                  </span>
-                  <span className="block text-xs text-text-subtle">
-                    {PUBLIC_NAV.staffHint}
-                  </span>
-                </Link>
-              </div>
-            )}
-          </div>
+            </Link>
+          )}
 
           <button
             type="button"
@@ -152,31 +155,17 @@ export default function PublicHeader() {
               </li>
             ))}
 
-            <li className="mt-1 border-t border-white/20 pt-2">
-              <p className="px-3 pb-1 text-xs font-bold uppercase tracking-wider text-white/70">
-                {PUBLIC_NAV.login}
-              </p>
-            </li>
-
-            <li>
-              <Link
-                href={PUBLIC_NAV.requesterHref}
-                onClick={() => setIsOpen(false)}
-                className="block rounded-xl px-3 py-3 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white/10"
-              >
-                {PUBLIC_NAV.requesterAccess}
-              </Link>
-            </li>
-
-            <li>
-              <Link
-                href={PUBLIC_NAV.staffHref}
-                onClick={() => setIsOpen(false)}
-                className="block rounded-xl px-3 py-3 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white/10"
-              >
-                {PUBLIC_NAV.staffAccess}
-              </Link>
-            </li>
+            {!user && (
+              <li className="mt-1 border-t border-white/20 pt-2">
+                <Link
+                  href={PUBLIC_NAV.loginHref}
+                  onClick={() => setIsOpen(false)}
+                  className="block rounded-xl px-3 py-3 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white/10"
+                >
+                  {PUBLIC_NAV.login}
+                </Link>
+              </li>
+            )}
           </ul>
         </nav>
       )}

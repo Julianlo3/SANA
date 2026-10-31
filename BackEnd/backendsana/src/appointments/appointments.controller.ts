@@ -14,7 +14,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
+import { JwtAuthGuard, OptionalJwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { OriginGuard } from '../guards/origin.guard.js';
 import { RolesGuard } from '../guards/roles.guard.js';
 import type { AuthenticatedUser } from '../auth/auth.interface.js';
@@ -26,6 +26,8 @@ import { ConfirmAppointmentDto } from './dto/confirm-appointment.dto.js';
 import { AssignAppointmentDto } from './dto/assign-appointment.dto.js';
 import { DiscardAppointmentDto } from './dto/discard-appointment.dto.js';
 import { UpdateAppointmentStatusDto } from './dto/update-appointment-status.dto.js';
+import { RateLimit } from '../middlewares/rate-limit.decorator.js';
+import { RateLimitGuard } from '../guards/rate-limit.guard.js';
 
 /**
  * controller for handling appointment-related HTTP requests.
@@ -38,18 +40,24 @@ export class AppointmentsController {
   constructor(private readonly appointmentsService: AppointmentsService) { }
 
   /**
-   * Public endpoint: Consultant requests an appointment without logging in.
+   * Public endpoint: anyone can request an appointment, anonymously or with
+   * an optional authenticated session for safe association with their account.
    * Can be requested for themselves or for a dependent minor.
    * @param dto The DTO containing the appointment request details.
    * @returns A promise resolving to the created appointment.
    */
   @Post('request')
+  @UseGuards(OptionalJwtAuthGuard, RateLimitGuard)
+  @RateLimit({ limit: 10, windowSeconds: 60 })
   @HttpCode(HttpStatus.CREATED)
-  requestAppointment(@Body() dto: CreateAppointmentDto) {
+  requestAppointment(
+    @Body() dto: CreateAppointmentDto,
+    @Req() request: Request & { user?: AuthenticatedUser },
+  ) {
     this.logger.log(
-      `Module:appointments, Function:requestAppointment, result-start: requesterDoc-${dto.requesterIdentityDocument}, cardType-${dto.requesterCardType}, patientType-${dto.patientType}, type-${dto.appType}`,
+      `Module:appointments, Function:requestAppointment, result-start: authenticated-${Boolean(request.user)}, patientType-${dto.patientType}, type-${dto.appType}`,
     );
-    return this.appointmentsService.requestAppointment(dto);
+    return this.appointmentsService.requestAppointment(dto, request.user);
   }
 
   /**

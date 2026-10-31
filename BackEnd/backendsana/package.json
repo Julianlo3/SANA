@@ -22,21 +22,24 @@
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts"
   },
   "dependencies": {
-    "@nestjs/common": "^12.1.0",
+    "@nestjs/common": "^12.2.0",
     "@nestjs/config": "^12.0.1",
-    "@nestjs/core": "^12.1.0",
+    "@nestjs/core": "^12.2.0",
     "@nestjs/observe": "^0.1.8",
-    "@nestjs/platform-express": "^12.1.0",
+    "@nestjs/platform-express": "^12.2.0",
     "@nestjs/typeorm": "^12.0.1",
-    "@types/nodemailer": "^8.0.2",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "cookie-parser": "^1.4.7",
+    "googleapis": "^188.0.0",
     "helmet": "^8.3.0",
     "joi": "^18.2.9",
     "jose": "^6.2.12",
+<<<<<<< HEAD
     "nodemailer": "^10.1.2",
+=======
+>>>>>>> b9291090a13d2353e67fbb487c0e53bb535d7690
     "pg": "^8.23.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
@@ -45,19 +48,22 @@
   "devDependencies": {
     "@nestjs/cli": "^12.0.6",
     "@nestjs/schematics": "^12.0.5",
-    "@nestjs/testing": "^12.1.0",
+    "@nestjs/testing": "^12.2.0",
     "@types/bcrypt": "^6.0.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.0",
     "@types/node": "^24.0.0",
     "@types/supertest": "^7.0.0",
-    "@vitest/coverage-v8": "^4.1.2",
+    "@vitest/coverage-v8": "^5.0.5",
     "oxlint": "^1.58.0",
     "prettier": "^3.4.2",
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
     "typescript": "^6.0.2",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^4.1.2"
+    "vitest": "^5.0.5"
+  },
+  "overrides": {
+    "multer": "^2.5.0"
   }
 }

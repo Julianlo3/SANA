@@ -6,7 +6,8 @@ import { format, parse, startOfWeek, getDay } from "date-fns";
 import { es } from "date-fns/locale";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "../styles/calendar-overrides.css";
-import { CalendarDays, Clock, LayoutList, Lock, Repeat, Trash2 } from "lucide-react";import InlineMessage from "@/components/feedback/inline-message";
+import { CalendarDays, Clock, LayoutList, Lock, Repeat, Trash2 } from "lucide-react";
+import InlineMessage from "@/components/feedback/inline-message";
 import Button from "@/components/ui/button";
 import { useScheduleBlocks } from "../hooks/use-schedule-blocks";
 import { useScheduleTerms } from "../hooks/use-schedule-terms";
@@ -45,6 +46,11 @@ function formatTime(time: string): string {
   return time.slice(0, 5);
 }
 
+/**
+ * Formats a date string into a more readable format.
+ * @param date The date string in the format "YYYY-MM-DD".
+ * @returns A formatted date string in the format "D de MMMM de YYYY" (e.g., "1 de enero de 2024").
+ */
 function formatDate(date: string): string {
   const [year, month, day] = date.slice(0, 10).split("-").map(Number);
   return new Intl.DateTimeFormat("es-CO", {
@@ -58,7 +64,6 @@ const EMPTY_BLOCK_FORM: CreateScheduleBlockPayload = {
   date: "",
   startTime: "",
   endTime: "",
-  reason: "",
 };
 
 const EMPTY_RECURRING_FORM: CreateRecurringScheduleBlockPayload = {
@@ -66,9 +71,14 @@ const EMPTY_RECURRING_FORM: CreateRecurringScheduleBlockPayload = {
   startTime: "",
   endTime: "",
   validFrom: "",
-  reason: "",
 };
 
+/**
+ * Renders a list of schedule blocks.
+ * @param isLoading Indicates whether the blocks are currently being loaded.
+ * @param blocks The list of schedule blocks to display.
+ * @returns The JSX for the blocks list.
+ */
 function renderBlocksList(isLoading: boolean, blocks: ScheduleBlock[]) {
   if (isLoading) {
     return <p className="text-sm text-text-subtle">Cargando…</p>;
@@ -335,28 +345,13 @@ export default function WeeklyAvailabilityPage({ psyTermsAccepted }: Props) {
                   </label>
                 </div>
 
-                <label className="block">
-                  <span className="text-sm font-medium text-text">Motivo</span>
-                  <input
-                    type="text"
-                    value={blockForm.reason}
-                    maxLength={255}
-                    placeholder="Ej. Horario de consulta"
-                    onChange={(event) =>
-                      setBlockForm((form) => ({ ...form, reason: event.target.value }))
-                    }
-                    className="mt-2 w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text"
-                  />
-                </label>
-
                 <Button
                   onClick={submitBlock}
                   disabled={
                     schedule.isSaving ||
                     !blockForm.date ||
                     !blockForm.startTime ||
-                    !blockForm.endTime ||
-                    !blockForm.reason.trim()
+                    !blockForm.endTime
                   }
                 >
                   {schedule.isSaving ? "Guardando…" : "Guardar bloque"}
@@ -376,11 +371,9 @@ export default function WeeklyAvailabilityPage({ psyTermsAccepted }: Props) {
                         {formatDate(block.date)} · {formatTime(block.startTime)} –{" "}
                         {formatTime(block.endTime)}
                       </p>
-                      <p className="text-xs text-text-subtle">
-                        {block.appointmentId !== null
-                          ? "Cita asignada"
-                          : block.reason}
-                      </p>
+                      {block.appointmentId !== null && (
+                        <p className="text-xs text-text-subtle">Cita asignada</p>
+                      )}
                     </div>
 
                     {block.appointmentId === null ? (
@@ -501,31 +494,13 @@ export default function WeeklyAvailabilityPage({ psyTermsAccepted }: Props) {
                   </label>
                 </div>
 
-                <label className="block">
-                  <span className="text-sm font-medium text-text">Motivo</span>
-                  <input
-                    type="text"
-                    value={recurringForm.reason}
-                    maxLength={255}
-                    placeholder="Ej. Horario fijo de consulta"
-                    onChange={(event) =>
-                      setRecurringForm((form) => ({
-                        ...form,
-                        reason: event.target.value,
-                      }))
-                    }
-                    className="mt-2 w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text"
-                  />
-                </label>
-
                 <Button
                   onClick={submitRecurringBlock}
                   disabled={
                     schedule.isSaving ||
                     !recurringForm.startTime ||
                     !recurringForm.endTime ||
-                    !recurringForm.validFrom ||
-                    !recurringForm.reason.trim()
+                    !recurringForm.validFrom
                   }
                 >
                   {schedule.isSaving ? "Guardando…" : "Guardar regla"}
@@ -546,21 +521,29 @@ export default function WeeklyAvailabilityPage({ psyTermsAccepted }: Props) {
                         {formatTime(rule.endTime)}
                       </p>
                       <p className="text-xs text-text-subtle">
-                        {rule.reason} · desde {formatDate(rule.validFrom)}
+                        Desde {formatDate(rule.validFrom)}
                         {rule.validUntil ? ` hasta ${formatDate(rule.validUntil)}` : ""}
                         {!rule.active && " · inactiva"}
                       </p>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => schedule.removeRecurringBlock(rule.id)}
-                      disabled={schedule.isSaving}
-                      aria-label="Borrar regla"
-                      className="cursor-pointer text-text-subtle hover:text-danger disabled:cursor-not-allowed"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    {rule.hasAppointments ? (
+                      <Lock
+                        size={16}
+                        className="text-text-subtle"
+                        aria-label="La regla contiene citas asignadas"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => schedule.removeRecurringBlock(rule.id)}
+                        disabled={schedule.isSaving}
+                        aria-label="Borrar regla"
+                        className="cursor-pointer text-text-subtle hover:text-danger disabled:cursor-not-allowed"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
                   </div>
                 ))}
             </div>

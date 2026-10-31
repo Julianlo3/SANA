@@ -10,7 +10,7 @@
  * Referencia: RNF-SEG-03
  */
 import 'reflect-metadata';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 

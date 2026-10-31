@@ -3,6 +3,5 @@ export interface ScheduleBlockResponse {
   date: string;
   startTime: string;
   endTime: string;
-  reason: string | null;
   appointmentId: number | null;
 }

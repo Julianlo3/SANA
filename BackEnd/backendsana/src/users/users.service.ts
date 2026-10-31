@@ -8,7 +8,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, QueryFailedError, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { SecurityLogService } from '../security-logs/security-log.service.js';
 import { UserRole } from '../models/user-role.enum.js';
 import { AssignedRoleDto } from './dto/assigned-role.dto.js';
@@ -19,13 +19,10 @@ import {
 } from './dto/update-user-status.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 import { UpdateOwnProfileDto } from './dto/update-own-profile.dto.js';
-import { Appointment } from './entities/appointment.entity.js';
 import { Person, PersonState } from './entities/person.entity.js';
 import { PersonRol } from './entities/person-rol.entity.js';
 import { Psychologist } from './entities/psychologist.entity.js';
-import { RequesterDependent } from './entities/requester-dependent.entity.js';
 import { Rol } from './entities/rol.entity.js';
-import { Schedule } from './entities/schedule.entity.js';
 import { UserAccount } from './entities/user-account.entity.js';
 import type {
   OwnProfileResponse,
@@ -34,8 +31,6 @@ import type {
 } from './interfaces/user-response.interface.js';
 import { ASSIGNABLE_ROLES } from './users.constants.js';
 import { EmailService } from '../email/email.service.js';
-
-const FOREIGN_KEY_VIOLATION = '23503';
 
 const STATE_TO_STATUS: Record<PersonState, UserResponse['status']> = {
   activo: 'active',
@@ -47,7 +42,6 @@ const STATE_TO_STATUS: Record<PersonState, UserResponse['status']> = {
 const STATUS_TO_STATE: Record<UserStatus, PersonState> = {
   active: 'activo',
   inactive: 'inactivo',
-  blocked: 'bloqueado',
 };
 
 const SELF_SERVICE_ROLES = new Set<string>([
@@ -70,6 +64,17 @@ const CONSULTANT_PROFILE_FIELDS = new Set([
 const EMPLOYEE_PROFILE_FIELDS = new Set(['fullName', 'phone']);
 
 /**
+ * Gets the defined fields from the DTO.
+ * @param dto The DTO to extract fields from.
+ * @returns An array of field names.
+ */
+function getDefinedDtoFields(dto: UpdateOwnProfileDto): string[] {
+  return Object.entries(dto)
+    .filter(([, value]) => value !== undefined)
+    .map(([field]) => field);
+}
+
+/**
  * Service for users management.
  */
 @Injectable()
@@ -83,18 +88,10 @@ export class UsersService {
     private readonly psychologistRepository: Repository<Psychologist>,
     @InjectRepository(Rol)
     private readonly rolRepository: Repository<Rol>,
-    @InjectRepository(UserAccount)
-    private readonly userAccountRepository: Repository<UserAccount>,
-    @InjectRepository(Appointment)
-    private readonly appointmentRepository: Repository<Appointment>,
-    @InjectRepository(RequesterDependent)
-    private readonly requesterDependentRepository: Repository<RequesterDependent>,
-    @InjectRepository(Schedule)
-    private readonly scheduleRepository: Repository<Schedule>,
     private readonly dataSource: DataSource,
     private readonly securityLogService: SecurityLogService,
     @Optional() private readonly emailService?: EmailService,
-  ) { }
+  ) {}
 
   private readonly logger = new Logger(UsersService.name);
 
@@ -130,7 +127,7 @@ export class UsersService {
     const allowedFields = isConsultant
       ? CONSULTANT_PROFILE_FIELDS
       : EMPLOYEE_PROFILE_FIELDS;
-    const submittedFields = Object.keys(dto);
+    const submittedFields = getDefinedDtoFields(dto);
 
     this.validateOwnProfileUpdate(dto, allowedFields);
 
@@ -142,11 +139,16 @@ export class UsersService {
     );
   }
 
+  /**
+   * Validates the profile update data.
+   * @param dto The update data.
+   * @param allowedFields Allowed fields for update.
+   */
   private validateOwnProfileUpdate(
     dto: UpdateOwnProfileDto,
     allowedFields: Set<string>,
   ): void {
-    const submittedFields = Object.keys(dto);
+    const submittedFields = getDefinedDtoFields(dto);
 
     if (submittedFields.length === 0) {
       throw new BadRequestException({
@@ -167,6 +169,14 @@ export class UsersService {
     }
   }
 
+  /**
+   * Persist own profile update.
+   * @param personId The ID of the person whose profile to update.
+   * @param isConsultant A boolean indicating if the person is a consultant.
+   * @param dto The update data.
+   * @param submittedFields Fields that were submitted for update.
+   * @returns A promise resolving to the updated user's profile.
+   */
   private persistOwnProfileUpdate(
     personId: number,
     isConsultant: boolean,
@@ -188,6 +198,12 @@ export class UsersService {
     });
   }
 
+  /**
+   * Apply own profile update.
+   * @param person Person entity.
+   * @param dto Update data.
+   * @param isConsultant A boolean indicating if the person is a consultant.
+   */
   private applyOwnProfileUpdate(
     person: Person,
     dto: UpdateOwnProfileDto,
@@ -207,6 +223,11 @@ export class UsersService {
     if (isConsultant) this.applyConsultantProfileUpdate(person, dto);
   }
 
+  /**
+   * Apply consultant profile update.
+   * @param person Person entity.
+   * @param dto Update data.
+   */
   private applyConsultantProfileUpdate(
     person: Person,
     dto: UpdateOwnProfileDto,
@@ -217,11 +238,18 @@ export class UsersService {
       person.perResidenceZone = dto.residenceZone?.trim() || null;
     }
     if (dto.vulnerabilities !== undefined) {
-      const vulnerabilities = this.normalizeVulnerabilities(dto.vulnerabilities);
+      const vulnerabilities = this.normalizeVulnerabilities(
+        dto.vulnerabilities,
+      );
       person.perVulnerabilities = vulnerabilities;
     }
   }
 
+  /**
+   * Normalize vulnerabilities array removing empty strings and null values.
+   * @param vulnerabilities Array of vulnerabilities.
+   * @returns Normalized array of vulnerabilities.
+   */
   private normalizeVulnerabilities(
     vulnerabilities: string[] | null | undefined,
   ): string[] | null {
@@ -242,7 +270,9 @@ export class UsersService {
    */
   private isConsultantSelfService(roles: string[]): boolean {
     if (!roles.some((role) => SELF_SERVICE_ROLES.has(role))) {
-      throw new ForbiddenException('Account role is not authorized for profile access');
+      throw new ForbiddenException(
+        'Account role is not authorized for profile access',
+      );
     }
 
     return roles.includes(UserRole.Requester);
@@ -268,6 +298,7 @@ export class UsersService {
       gender: person.perGender,
       residenceZone: isConsultant ? person.perResidenceZone : null,
       vulnerabilities: isConsultant ? person.perVulnerabilities : null,
+      canEditConsultantFields: isConsultant,
     };
   }
 
@@ -325,6 +356,20 @@ export class UsersService {
         const hasClaimedAccount = await manager.exists(UserAccount, {
           where: { useId: existing.perId },
         });
+
+        // Usuario con cuenta reclamada y bloqueado → re-habilitación.
+        if (hasClaimedAccount && existing.perState === 'bloqueado') {
+          return this.reactivateBlockedPerson(
+            manager,
+            existing,
+            dto,
+            role.rolId,
+            createdByUserId,
+            email,
+          );
+        }
+
+        // Usuario con cuenta reclamada activa/inactiva → conflicto normal.
         if (hasClaimedAccount) {
           throw new ConflictException({
             error: 'EMAIL_ALREADY_REGISTERED',
@@ -333,27 +378,14 @@ export class UsersService {
           });
         }
 
-        existing.perName = dto.fullName;
-        existing.perCardType = dto.cardType ?? existing.perCardType ?? 'CC';
-        existing.perIdentityDocument = dto.identityDocument;
-        existing.perContactNumber = dto.phone;
-        if (dto.birthdate !== undefined) existing.perBirthdate = dto.birthdate;
-        if (dto.gender !== undefined) existing.perGender = dto.gender;
-        existing.perState = 'activo';
-        existing.perUpdateDate = new Date();
-        // Promocion de pendiente: atribuye al admin que completa el alta.
-        if (existing.perCreatedBy == null) {
-          existing.perCreatedBy = createdByUserId;
-        }
-
-        await this.recordTermsAcceptance(manager, existing.perId, dto.termsAccepted);
-
-        await manager.save(existing);
-        await this.replaceRoles(manager, existing.perId, [
-          { roleId: role.rolId, active: true },
-        ]);
-        await this.saveProfessionalData(manager, existing.perId, dto.professionalData);
-        return this.toResponse(manager, existing.perId);
+        // Sin cuenta reclamada (pendiente) → promoción al sistema.
+        return this.promotePendingPerson(
+          manager,
+          existing,
+          dto,
+          role.rolId,
+          createdByUserId,
+        );
       }
 
       const created = await manager.save(
@@ -373,9 +405,17 @@ export class UsersService {
       await this.replaceRoles(manager, created.perId, [
         { roleId: role.rolId, active: true },
       ]);
-      await this.saveProfessionalData(manager, created.perId, dto.professionalData);
+      await this.saveProfessionalData(
+        manager,
+        created.perId,
+        dto.professionalData,
+      );
 
-      await this.recordTermsAcceptance(manager, created.perId, dto.termsAccepted);
+      await this.recordTermsAcceptance(
+        manager,
+        created.perId,
+        dto.termsAccepted,
+      );
       this.logger.log(
         `Module:users, Function:create, result-success: personId-${created.perId}, email-${email}, roleId-${dto.roleId}, createdBy-${createdByUserId}`,
       );
@@ -395,6 +435,81 @@ export class UsersService {
     return user;
   }
 
+  private applyPersonProfile(person: Person, dto: CreateUserDto): void {
+    person.perName = dto.fullName;
+    person.perCardType = dto.cardType ?? person.perCardType ?? 'CC';
+    person.perIdentityDocument = dto.identityDocument;
+    person.perContactNumber = dto.phone;
+    if (dto.birthdate !== undefined) person.perBirthdate = dto.birthdate;
+    if (dto.gender !== undefined) person.perGender = dto.gender;
+    person.perState = 'activo';
+    person.perUpdateDate = new Date();
+  }
+
+  private async reactivateBlockedPerson(
+    manager: EntityManager,
+    existing: Person,
+    dto: CreateUserDto,
+    roleId: number,
+    createdByUserId: number,
+    email: string,
+  ): Promise<UserResponse> {
+    this.applyPersonProfile(existing, dto);
+
+    await this.recordTermsAcceptance(
+      manager,
+      existing.perId,
+      dto.termsAccepted,
+    );
+    await manager.save(existing);
+    await this.replaceRoles(manager, existing.perId, [{ roleId, active: true }]);
+    await this.saveProfessionalData(
+      manager,
+      existing.perId,
+      dto.professionalData,
+    );
+    await manager.query(
+      `INSERT INTO security_access_log
+         (use_id, security_access_log_section, security_access_log_message)
+       VALUES ($1, 'User Management', $2)`,
+      [
+        createdByUserId,
+        `Admin reactivated blocked person ${existing.perId} (email: ${email})`,
+      ],
+    );
+    this.logger.log(
+      `Module:users, Function:create, result-reactivated: personId-${existing.perId}, email-${email}, reactivatedBy-${createdByUserId}`,
+    );
+    return { ...(await this.toResponse(manager, existing.perId)), wasReactivated: true };
+  }
+
+  private async promotePendingPerson(
+    manager: EntityManager,
+    existing: Person,
+    dto: CreateUserDto,
+    roleId: number,
+    createdByUserId: number,
+  ): Promise<UserResponse> {
+    this.applyPersonProfile(existing, dto);
+    if (existing.perCreatedBy == null) {
+      existing.perCreatedBy = createdByUserId;
+    }
+
+    await this.recordTermsAcceptance(
+      manager,
+      existing.perId,
+      dto.termsAccepted,
+    );
+    await manager.save(existing);
+    await this.replaceRoles(manager, existing.perId, [{ roleId, active: true }]);
+    await this.saveProfessionalData(
+      manager,
+      existing.perId,
+      dto.professionalData,
+    );
+    return this.toResponse(manager, existing.perId);
+  }
+
   /**
    * Finds all users.
    * @param filters The filters to apply to the users.
@@ -406,11 +521,28 @@ export class UsersService {
   }): Promise<UserResponse[]> {
     const query = this.personRepository
       .createQueryBuilder('person')
-      .where('person.per_state != :pending', { pending: 'pendiente' });
-
-    if (filters.status) {
+      .where('person.per_state != :pending', { pending: 'pendiente' })
+      .andWhere('person.per_state != :blocked', { blocked: 'bloqueado' })
+      .andWhere(
+        `EXISTS (
+           SELECT 1
+           FROM person_rol employee_role
+           JOIN rol employee_role_definition
+             ON employee_role_definition.rol_id = employee_role.rol_id
+           WHERE employee_role.per_id = person.per_id
+             AND employee_role_definition.rol_description IN (:...employeeRoles)
+         )`,
+        { employeeRoles: ASSIGNABLE_ROLES },
+      );
+    const filterState = filters.status
+      ? STATUS_TO_STATE[filters.status]
+      : undefined;
+    if (filters.status && !filterState) {
+      throw new BadRequestException('El filtro de estado no es válido');
+    }
+    if (filterState) {
       query.andWhere('person.per_state = :state', {
-        state: STATUS_TO_STATE[filters.status],
+        state: filterState,
       });
     }
     if (filters.search) {
@@ -432,9 +564,13 @@ export class UsersService {
    * Finds a user by ID.
    * @param id The user ID.
    * @returns The user.
+   * @throws NotFoundException if the user is archived (bloqueado).
    */
   async findOne(id: number): Promise<UserResponse> {
-    await this.findByIdOrFail(id);
+    const person = await this.findByIdOrFail(id);
+    if (person.perState === 'bloqueado') {
+      throw new NotFoundException(`No existe una persona con id ${id}`);
+    }
     return this.toResponse(this.dataSource.manager, id);
   }
 
@@ -443,9 +579,16 @@ export class UsersService {
    * @param id The user ID.
    * @param dto The user data.
    * @returns The updated user.
+   * @throws ConflictException if the user is archived (bloqueado).
    */
   async update(id: number, dto: UpdateUserDto): Promise<UserResponse> {
-    await this.findByIdOrFail(id);
+    const personCheck = await this.findByIdOrFail(id);
+    if (personCheck.perState === 'bloqueado') {
+      throw new ConflictException({
+        error: 'USER_ALREADY_ARCHIVED',
+        message: 'No se puede modificar un usuario dado de baja.',
+      });
+    }
 
     return this.dataSource.transaction(async (manager) => {
       const person = await this.findByIdOrFail(id, manager);
@@ -505,6 +648,13 @@ export class UsersService {
     actorUserId: number,
   ): Promise<UserResponse> {
     const person = await this.findByIdOrFail(id);
+    if (person.perState === 'bloqueado') {
+      throw new ConflictException({
+        error: 'USER_ALREADY_ARCHIVED',
+        message:
+          'La cuenta fue dada de baja y no se puede habilitar desde esta acción.',
+      });
+    }
     person.perState = STATUS_TO_STATE[dto.status];
     person.perUpdateDate = new Date();
     await this.personRepository.save(person);
@@ -526,41 +676,54 @@ export class UsersService {
   }
 
   /**
-   * Removes a user.
+   * Archives a user while preserving account and business records for audit.
+   * If the user is a psychologist with active appointments (asignada/confirmada),
+   * a ConflictException is thrown asking the admin to resolve them first.
    * @param id The user ID.
+   * @param actorUserId The administrator performing the archive.
    */
-  async remove(id: number): Promise<void> {
-    await this.findByIdOrFail(id);
-
-    const associated = await this.findAssociatedRecords(id);
-    if (Object.keys(associated).length > 0) {
-      throw new ConflictException({
-        error: 'USER_HAS_RECORDS',
-        message:
-          'No se puede eliminar: el usuario tiene registros asociados. Use la desactivacion en su lugar.',
-        details: associated,
-      });
-    }
-
-    try {
-      await this.dataSource.transaction(async (manager) => {
-        await manager.delete(PersonRol, { perId: id });
-        await manager.delete(Person, { perId: id });
-      });
-      this.logger.log(
-        `Module:users, Function:remove, result-success: personId-${id}`,
-      );
-    } catch (error) {
-      if (isForeignKeyViolation(error)) {
+  async remove(id: number, actorUserId: number): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      const person = await this.findByIdOrFail(id, manager);
+      if (person.perState === 'bloqueado') {
         throw new ConflictException({
-          error: 'USER_HAS_RECORDS',
-          message:
-            'No se puede eliminar: el usuario tiene registros asociados. Use la desactivacion en su lugar.',
-          details: {},
+          error: 'USER_ALREADY_ARCHIVED',
+          message: 'La cuenta ya fue dada de baja.',
         });
       }
-      throw error;
-    }
+
+      // Verificar si es psicólogo con citas activas antes de bloquear.
+      const activeAppointments = await manager.query<{ count: string }[]>(
+        `SELECT COUNT(*) AS count
+         FROM appointments
+         WHERE psy_id = $1
+           AND app_state IN ('asignada', 'confirmada')`,
+        [id],
+      );
+      if (Number(activeAppointments?.[0]?.count ?? 0) > 0) {
+        throw new ConflictException({
+          error: 'PSYCHOLOGIST_HAS_ACTIVE_APPOINTMENTS',
+          message:
+            'Cancele o realice las citas confirmadas de este psicólogo antes de darlo de baja.',
+        });
+      }
+
+      person.perState = 'bloqueado';
+      person.perUpdateDate = new Date();
+      await manager.save(person);
+      await manager.query(
+        `INSERT INTO security_access_log
+           (use_id, security_access_log_section, security_access_log_message)
+         VALUES ($1, 'User Management', $2)`,
+        [
+          actorUserId,
+          `Admin changed person ${id} status to 'blocked': Baja lógica desde gestión de usuarios`,
+        ],
+      );
+    });
+    this.logger.log(
+      `Module:users, Function:remove, result-success: personId-${id}, archived:true`,
+    );
   }
 
   /**
@@ -604,7 +767,9 @@ export class UsersService {
   private async validateAssignableRoles(
     roles: AssignedRoleDto[],
   ): Promise<void> {
-    await Promise.all(roles.map((role) => this.findAssignableRoleOrFail(role.roleId)));
+    await Promise.all(
+      roles.map((role) => this.findAssignableRoleOrFail(role.roleId)),
+    );
   }
 
   /**
@@ -627,6 +792,12 @@ export class UsersService {
       .andWhere(keepIds.length > 0 ? 'rol_id NOT IN (:...keepIds)' : '1=1', {
         keepIds,
       })
+      .andWhere(
+        `rol_id NOT IN (
+           SELECT rol_id FROM rol WHERE rol_description = :requesterRole
+         )`,
+        { requesterRole: UserRole.Requester },
+      )
       .execute();
 
     for (const role of roles) {
@@ -651,42 +822,6 @@ export class UsersService {
   }
 
   /**
-   * Finds the associated records of a user.
-   * @param personId The user ID.
-   * @returns The associated records.
-   */
-  private async findAssociatedRecords(
-    personId: number,
-  ): Promise<Record<string, number | boolean>> {
-    const [appointments, schedule, dependents, hasAccount, createdPersons] =
-      await Promise.all([
-        this.appointmentRepository
-          .createQueryBuilder('appointment')
-          .where('appointment.req_id = :id', { id: personId })
-          .orWhere('appointment.app_patient_person_id = :id', { id: personId })
-          .orWhere('appointment.psy_id = :id', { id: personId })
-          .orWhere('appointment.sec_id = :id', { id: personId })
-          .getCount(),
-        this.scheduleRepository.count({
-          where: { psychologistUserId: personId },
-        }),
-        this.requesterDependentRepository.count({
-          where: { requesterPersonId: personId },
-        }),
-        this.userAccountRepository.exists({ where: { useId: personId } }),
-        this.personRepository.count({ where: { perCreatedBy: personId } }),
-      ]);
-
-    const associated: Record<string, number | boolean> = {};
-    if (appointments > 0) associated.appointments = appointments;
-    if (schedule > 0) associated.schedule = schedule;
-    if (dependents > 0) associated.dependents = dependents;
-    if (hasAccount) associated.account = true;
-    if (createdPersons > 0) associated.createdPersons = createdPersons;
-    return associated;
-  }
-
-  /**
    * Saves the professional data of a user.
    * @param manager The entity manager.
    * @param personId The user ID.
@@ -695,7 +830,11 @@ export class UsersService {
   private async saveProfessionalData(
     manager: EntityManager,
     personId: number,
-    data?: { licenseNumber: string; speciality: string; termsAccepted?: boolean },
+    data?: {
+      licenseNumber: string;
+      speciality: string;
+      termsAccepted?: boolean;
+    },
   ): Promise<void> {
     if (!data) return;
 
@@ -747,7 +886,13 @@ export class UsersService {
     preloaded?: Person,
   ): Promise<UserResponse> {
     const person = preloaded ?? (await this.findByIdOrFail(personId, manager));
-    const [roles, account, professionalData, dataTreatmentAccepted, scheduleTermsAccepted] = await Promise.all([
+    const [
+      roles,
+      account,
+      professionalData,
+      dataTreatmentAccepted,
+      scheduleTermsAccepted,
+    ] = await Promise.all([
       manager
         .createQueryBuilder(PersonRol, 'pr')
         .innerJoin(Rol, 'rol', 'rol.rol_id = pr.rol_id')
@@ -812,22 +957,11 @@ export class UsersService {
       createdBy: person.perCreatedBy,
       professionalData: professionalData
         ? {
-          licenseNumber: professionalData.licenseNumber.toString(),
-          speciality: professionalData.speciality,
-          termsAccepted: scheduleTermsAccepted[0]?.exists ?? false,
-        }
+            licenseNumber: professionalData.licenseNumber.toString(),
+            speciality: professionalData.speciality,
+            termsAccepted: scheduleTermsAccepted[0]?.exists ?? false,
+          }
         : undefined,
     };
   }
-}
-
-/**
- * Checks if an error is a foreign key violation.
- * @param error The error to check.
- * @returns True if the error is a foreign key violation, false otherwise.
- */
-function isForeignKeyViolation(error: unknown): boolean {
-  if (!(error instanceof QueryFailedError)) return false;
-  const driverError = error.driverError as { code?: string } | undefined;
-  return driverError?.code === FOREIGN_KEY_VIOLATION;
 }

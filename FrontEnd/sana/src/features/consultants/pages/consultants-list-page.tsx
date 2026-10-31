@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Search, User } from "lucide-react";
+import { CalendarCheck, Clock3, Mail, Phone, Search, User } from "lucide-react";
 import InlineMessage from "@/components/feedback/inline-message";
 import { formatRelativeDate } from "@/lib/format/date-time";
+import { ApiError } from "@/types/api-types";
 import {
   listConsultantsForAssistant,
   listConsultantsForPsychologist,
@@ -16,10 +17,9 @@ type Props = {
 };
 
 /**
- * Listado de consultantes (HU-2.4). El enlace de cada fila lleva a la
- * ficha completa cuando quien mira es el psicólogo tratante, o a la ficha
- * resumida cuando es la asistente — la separación real de datos la hace
- * el backend en cada endpoint, esto solo decide a qué ruta navegar.
+ * Displays a list of consultants based on the viewer's role.
+ * @param param0 The props containing the viewer's role.
+ * @returns The consultants list page.
  */
 export default function ConsultantsListPage({ viewerRole }: Props) {
   const [consultants, setConsultants] = useState<ConsultantSummary[]>([]);
@@ -39,9 +39,28 @@ export default function ConsultantsListPage({ viewerRole }: Props) {
       .then((result) => {
         if (isMounted) setConsultants(result);
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (isMounted) {
-          setLoadError("No pudimos cargar el listado. Intenta de nuevo.");
+          if (viewerRole === "psychologist" && error instanceof ApiError) {
+            if (error.status === 404) {
+              setLoadError(
+                "El backend no encuentra la ruta de consultantes del psicólogo. Actualiza y reinicia el backend.",
+              );
+              return;
+            }
+            if (error.status === 403) {
+              setLoadError(
+                "El servidor rechazó el acceso. Verifica que la sesión tenga el rol de psicólogo.",
+              );
+              return;
+            }
+          }
+
+          setLoadError(
+            error instanceof ApiError
+              ? error.message
+              : "No pudimos cargar el listado. Intenta de nuevo.",
+          );
         }
       })
       .finally(() => {
@@ -115,7 +134,7 @@ export default function ConsultantsListPage({ viewerRole }: Props) {
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
                   <User size={18} aria-hidden />
                 </span>
-                  <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold text-text">
                     {consultant.fullName}
                   </p>
@@ -124,12 +143,39 @@ export default function ConsultantsListPage({ viewerRole }: Props) {
                       ? `Documento ${consultant.identityDocument}`
                       : (consultant.assignedPsychologistName ?? "Sin asignar")}
                   </p>
-                </div>|
-                <p className="shrink-0 text-xs text-text-subtle">
-                  {consultant.lastAppointmentAt
-                    ? formatRelativeDate(consultant.lastAppointmentAt)
-                    : "Sin citas"}
-                </p>
+                  {viewerRole === "psychologist" && (
+                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-subtle">
+                      <span className="inline-flex items-center gap-1">
+                        <Mail size={12} aria-hidden />
+                        {consultant.email || "Sin correo"}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Phone size={12} aria-hidden />
+                        {consultant.phone || "Sin teléfono"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {viewerRole === "psychologist" ? (
+                  <div className="shrink-0 space-y-1 text-right text-xs text-text-subtle">
+                    <p className="inline-flex items-center gap-1">
+                      <CalendarCheck size={13} aria-hidden />
+                      {consultant.appointmentCount}{" "}
+                      {consultant.appointmentCount === 1 ? "cita" : "citas"}
+                    </p>
+                    <p className="flex items-center justify-end gap-1">
+                      <Clock3 size={13} aria-hidden />
+                      {consultant.completedAppointmentCount ?? 0} realizadas ·{" "}
+                      {consultant.waitingAppointmentCount ?? 0} en espera
+                    </p>
+                  </div>
+                ) : (
+                  <p className="shrink-0 text-xs text-text-subtle">
+                    {consultant.lastAppointmentAt
+                      ? formatRelativeDate(consultant.lastAppointmentAt)
+                      : "Sin citas"}
+                  </p>
+                )}
               </Link>
             ))
           )}

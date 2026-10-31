@@ -14,11 +14,12 @@ type Props = {
   department: string;
   municipality: string;
   municipalityError?: string;
+  disabled?: boolean;
   /** "donde vives actualmente" (adulto) o "donde vive el menor" (tutor). */
   helperText: string;
   onDepartmentChange: (value: string) => void;
   onMunicipalityChange: (value: string) => void;
-  onMunicipalityBlur: () => void;
+  onMunicipalityBlur?: () => void;
 };
 
 /**
@@ -30,6 +31,7 @@ export default function ResidenceFields({
   department,
   municipality,
   municipalityError,
+  disabled = false,
   helperText,
   onDepartmentChange,
   onMunicipalityChange,
@@ -123,7 +125,7 @@ export default function ResidenceFields({
         </span>
         <select
           value={department}
-          disabled={isLoadingDepartments && departments.length === 0}
+          disabled={disabled || (isLoadingDepartments && departments.length === 0)}
           onChange={(event) => onDepartmentChange(event.target.value)}
           className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:bg-surface-muted"
         >
@@ -137,6 +139,10 @@ export default function ResidenceFields({
               {dept.name}
             </option>
           ))}
+          {department &&
+            !departments.some(
+              (dept) => dept.name.toLowerCase() === department.toLowerCase(),
+            ) && <option value={department}>{department}</option>}
         </select>
         {departmentsError && (
           <span role="alert" className="mt-1.5 block text-xs text-danger">
@@ -157,6 +163,7 @@ export default function ResidenceFields({
                 value={municipality}
                 error={municipalityError}
                 placeholder="Escribe tu municipio"
+                disabled={disabled}
                 onChange={onMunicipalityChange}
                 onBlur={onMunicipalityBlur}
               />
@@ -170,7 +177,7 @@ export default function ResidenceFields({
               <span className="text-sm font-medium text-text">Municipio</span>
               <select
                 value={municipality}
-                disabled={isLoadingMunicipalities}
+                disabled={disabled || isLoadingMunicipalities}
                 onChange={(event) => onMunicipalityChange(event.target.value)}
                 onBlur={onMunicipalityBlur}
                 className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:bg-surface-muted"

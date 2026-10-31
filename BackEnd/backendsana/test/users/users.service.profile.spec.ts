@@ -1,6 +1,7 @@
 import { ForbiddenException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import type { DataSource, EntityManager } from 'typeorm';
+import { UpdateOwnProfileDto } from '../../src/users/dto/update-own-profile.dto.js';
 import { Person } from '../../src/users/entities/person.entity.js';
 import { UsersService } from '../../src/users/users.service.js';
 
@@ -40,10 +41,6 @@ describe('UsersService self-service profile', () => {
       {} as never,
       {} as never,
       {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
       dataSource as unknown as DataSource,
       {} as never,
     );
@@ -64,6 +61,7 @@ describe('UsersService self-service profile', () => {
       fullName: 'Ana Nueva',
       birthdate: null,
       vulnerabilities: [],
+      canEditConsultantFields: true,
     });
 
     expect(person.perName).toBe('Ana Nueva');
@@ -87,8 +85,29 @@ describe('UsersService self-service profile', () => {
       fullName: 'Ana',
       vulnerabilities: null,
       residenceZone: null,
+      canEditConsultantFields: false,
     });
     expect(person.perVulnerabilities).toEqual(['desplazamiento']);
+  });
+
+  it('allows employees to update only their name and phone', async () => {
+    const { service, person, manager } = setup();
+    const dto = Object.assign(new UpdateOwnProfileDto(), {
+      fullName: 'Ana Personal',
+      phone: '3009876543',
+    });
+
+    await expect(
+      service.updateOwnProfile(84, ['secretario'], dto),
+    ).resolves.toMatchObject({
+      fullName: 'Ana Personal',
+      phone: '3009876543',
+      canEditConsultantFields: false,
+    });
+
+    expect(person.perName).toBe('Ana Personal');
+    expect(person.perContactNumber).toBe('3009876543');
+    expect(manager.save).toHaveBeenCalledWith(person);
   });
 
   it('does not allow self-service updates to identity or account access fields', async () => {

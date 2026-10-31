@@ -14,6 +14,11 @@ const ALLOWED_ROLES = new Set([
   UserRole.Requester,
 ]);
 
+const CONSULTANT_ONLY_STATES = new Set([
+  AccountState.Inactive,
+  AccountState.Blocked,
+]);
+
 /**
  * Applies SANA account state and role authorization to an Auth0 identity.
  */
@@ -47,7 +52,9 @@ export class AuthService {
         this.logger.warn(
           `Module:auth, Function:authorizeAuth0, result-denied: email-${email}, reason-account_not_found`,
         );
-        throw new ForbiddenException('Account not found. Contact an administrator.');
+        throw new ForbiddenException(
+          'Account not found. Contact an administrator.',
+        );
       }
 
       if (!profile.isEmailVerified) {
@@ -61,15 +68,24 @@ export class AuthService {
         this.logger.warn(
           `Module:auth, Function:authorizeAuth0, result-denied: email-${email}, reason-email_not_verified`,
         );
-        throw new ForbiddenException('Email must be verified with the identity provider');
+        throw new ForbiddenException(
+          'Email must be verified with the identity provider',
+        );
       }
 
+      const rolesForState = this.getRolesForState(record.state, record.roles);
       if (
-        record.roles.length > 0 &&
-        !record.roles.some((role) => ALLOWED_ROLES.has(role as UserRole))
+        (CONSULTANT_ONLY_STATES.has(record.state as AccountState) &&
+          rolesForState.length === 0) ||
+        (record.roles.length > 0 &&
+          !rolesForState.some((role) => ALLOWED_ROLES.has(role as UserRole)))
       ) {
         if (record.userId) {
-          this.logDenied(record.userId, email, 'no authorized role (pre-claim check)');
+          this.logDenied(
+            record.userId,
+            email,
+            'no authorized role (pre-claim check)',
+          );
         }
         this.logger.warn(
           `Module:auth, Function:authorizeAuth0, result-denied: email-${email}, reason-no_authorized_role_pre_claim`,
@@ -82,7 +98,12 @@ export class AuthService {
           `Module:auth, Function:authorizeAuth0, result-claim-attempt: email-${email}, personId-${record.personId}`,
         );
         try {
-          await this.repository.claim(record.personId, profile.subject, providerName, true);
+          await this.repository.claim(
+            record.personId,
+            profile.subject,
+            providerName,
+            true,
+          );
           this.logger.log(
             `Module:auth, Function:authorizeAuth0, result-claim-success: email-${email}, personId-${record.personId}`,
           );
@@ -97,13 +118,20 @@ export class AuthService {
         this.logger.log(
           `Module:auth, Function:authorizeAuth0, result-link-provider: email-${email}, userId-${record.userId}, provider-${providerName}`,
         );
-        await this.repository.linkProvider(record.userId, profile.subject, providerName, true);
+        await this.repository.linkProvider(
+          record.userId,
+          profile.subject,
+          providerName,
+          true,
+        );
         record = await this.repository.findByProviderId(profile.subject);
       }
     }
 
     if (!record?.userId || record.providerId !== profile.subject)
-      throw new ForbiddenException('Auth0 account does not match the local account');
+      throw new ForbiddenException(
+        'Auth0 account does not match the local account',
+      );
 
     if (record.email.toLowerCase() !== email) {
       this.logger.log(
@@ -113,17 +141,30 @@ export class AuthService {
       record.email = email;
     }
 
-    if (record.state !== AccountState.Active) {
-      this.logDenied(record.userId, record.email, `account state '${record.state}'`);
+    const authorizedRoles = this.getRolesForState(record.state, record.roles);
+    if (
+      record.state !== AccountState.Active &&
+      (!CONSULTANT_ONLY_STATES.has(record.state as AccountState) ||
+        authorizedRoles.length === 0)
+    ) {
+      this.logDenied(
+        record.userId,
+        record.email,
+        `account state '${record.state}'`,
+      );
       this.logger.warn(
         `Module:auth, Function:authorizeAuth0, result-denied: email-${record.email}, userId-${record.userId}, reason-state_${record.state}`,
       );
-      throw new ForbiddenException('Account is not active');
+      throw new ForbiddenException(
+        CONSULTANT_ONLY_STATES.has(record.state as AccountState)
+          ? 'Inactive accounts may only access as consultants'
+          : 'Account is not active',
+      );
     }
 
     if (
       record.roles.length > 0 &&
-      !record.roles.some((role) => ALLOWED_ROLES.has(role as UserRole))
+      !authorizedRoles.some((role) => ALLOWED_ROLES.has(role as UserRole))
     ) {
       this.logDenied(record.userId, record.email, 'no authorized role');
       this.logger.warn(
@@ -135,7 +176,7 @@ export class AuthService {
     await this.repository.updateLastLogin(record.userId);
 
     this.logger.log(
-      `Module:auth, Function:authorizeAuth0, result-success: email-${record.email}, userId-${record.userId}, personId-${record.personId}, roles-[${record.roles.join(',')}], state-${record.state}`,
+      `Module:auth, Function:authorizeAuth0, result-success: email-${record.email}, userId-${record.userId}, personId-${record.personId}, roles-[${authorizedRoles.join(',')}], state-${record.state}`,
     );
 
     return {
@@ -143,7 +184,7 @@ export class AuthService {
       personId: record.personId,
       name: record.name,
       email: record.email,
-      roles: record.roles,
+      roles: authorizedRoles,
       auth0Subject: profile.subject,
       state: record.state,
       termsAccepted: record.termsAccepted ?? false,
@@ -158,6 +199,18 @@ export class AuthService {
    */
   async authenticateAuth0(profile: Auth0Profile): Promise<AuthenticatedUser> {
     return this.authorizeAuth0(profile);
+  }
+
+  /**
+   * Filters the roles based on the account state. If the account state is in CONSULTANT_ONLY_STATES, only the Requester role is allowed; otherwise, all roles are allowed.
+   * @param state The account state.
+   * @param roles The roles to filter.
+   * @returns The filtered roles based on the account state.
+   */
+  private getRolesForState(state: string, roles: string[]): string[] {
+    return CONSULTANT_ONLY_STATES.has(state as AccountState)
+      ? roles.filter((role) => role === UserRole.Requester)
+      : roles;
   }
 
   /**
@@ -177,7 +230,10 @@ export class AuthService {
    * @param psychologistId The ID of the psychologist.
    * @param ipAddress Optional IP address of the acceptor.
    */
-  async acceptPsychologistTerms(psychologistId: number, ipAddress?: string): Promise<void> {
+  async acceptPsychologistTerms(
+    psychologistId: number,
+    ipAddress?: string,
+  ): Promise<void> {
     await this.repository.acceptPsychologistTerms(psychologistId, ipAddress);
     this.logger.log(
       `Module:auth, Function:acceptPsychologistTerms, result-success: psychologistId-${psychologistId}`,

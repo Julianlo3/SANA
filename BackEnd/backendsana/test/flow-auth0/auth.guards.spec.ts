@@ -1,6 +1,9 @@
 import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import { JwtAuthGuard } from '../../src/auth/jwt-auth.guard.js';
+import {
+  JwtAuthGuard,
+  OptionalJwtAuthGuard,
+} from '../../src/auth/jwt-auth.guard.js';
 import { OriginGuard } from '../../src/guards/origin.guard.js';
 import { RolesGuard } from '../../src/guards/roles.guard.js';
 
@@ -66,6 +69,51 @@ describe('JwtAuthGuard', () => {
       ).rejects.toBeInstanceOf(UnauthorizedException);
     },
   );
+});
+
+describe('OptionalJwtAuthGuard', () => {
+  it('allows a request without a bearer token as anonymous', async () => {
+    const authenticateAuth0 = vi.fn();
+    const guard = new OptionalJwtAuthGuard(
+      { authenticateAuth0 } as never,
+      { verifyAccessToken: vi.fn() } as never,
+    );
+
+    await expect(
+      guard.canActivate(context({ headers: {} }) as never),
+    ).resolves.toBe(true);
+    expect(authenticateAuth0).not.toHaveBeenCalled();
+  });
+
+  it('does not downgrade an invalid authorization header to anonymous access', async () => {
+    const verifyAccessToken = vi.fn();
+    const guard = new OptionalJwtAuthGuard(
+      { authenticateAuth0: vi.fn() } as never,
+      { verifyAccessToken } as never,
+    );
+
+    await expect(
+      guard.canActivate(
+        context({ headers: { authorization: 'Basic malformed' } }) as never,
+      ),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(verifyAccessToken).not.toHaveBeenCalled();
+  });
+
+  it('authenticates a supplied bearer token using the required guard', async () => {
+    const verifyAccessToken = vi.fn().mockResolvedValue({ subject: 'auth0|1' });
+    const authenticateAuth0 = vi.fn().mockResolvedValue({ personId: 12 });
+    const guard = new OptionalJwtAuthGuard(
+      { authenticateAuth0 } as never,
+      { verifyAccessToken } as never,
+    );
+    const request = { headers: { authorization: 'Bearer access-token' } };
+
+    await expect(
+      guard.canActivate(context(request) as never),
+    ).resolves.toBe(true);
+    expect(request).toMatchObject({ user: { personId: 12 } });
+  });
 });
 
 describe('RolesGuard', () => {

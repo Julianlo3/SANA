@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -14,7 +15,11 @@ import { Appointment } from '../users/entities/appointment.entity.js';
 import { Psychologist } from '../users/entities/psychologist.entity.js';
 import type { CreateConsultantDto } from './dto/create-consultant.dto.js';
 import type { UpdateConsultantDto } from './dto/update-consultant.dto.js';
-import type { ConsultantResponse } from './dto/consultant-response.dto.js';
+import type {
+  ConsultantResponse,
+  PsychologistConsultantRecordResponse,
+  PsychologistConsultantSummaryResponse,
+} from './dto/consultant-response.dto.js';
 
 const STATE_TO_STATUS: Record<PersonState, ConsultantResponse['status']> = {
   activo: 'active',
@@ -169,6 +174,184 @@ export class ConsultantsService {
         this.toResponse(this.dataSource.manager, person.perId, person),
       ),
     );
+  }
+
+  /**
+   * Finds consultants with appointments assigned to the authenticated psychologist.
+   * @param psychologistId The id of the authenticated psychologist.
+   * @returns A list of consultants with appointments assigned to the authenticated psychologist.
+   */
+  findMineForPsychologist(
+    psychologistId: number,
+  ): Promise<PsychologistConsultantSummaryResponse[]> {
+    return this.dataSource.query<PsychologistConsultantSummaryResponse[]>(
+      `SELECT
+          req.per_id AS "id",
+          req.per_name AS "fullName",
+          req.per_identity_document::text AS "identityDocument",
+          req.per_email AS "email",
+          COALESCE(req.per_contact_number::text, '') AS "phone",
+          NULL::text AS "residence",
+          CASE WHEN req.per_state = 'activo' THEN 'active' ELSE 'inactive' END AS "status",
+          $1::integer AS "assignedPsychologistId",
+          NULL::text AS "assignedPsychologistName",
+          MAX(a.app_date) AS "lastAppointmentAt",
+          COUNT(a.app_id)::integer AS "appointmentCount",
+          COUNT(*) FILTER (WHERE a.app_state = 'realizada')::integer AS "completedAppointmentCount",
+          COUNT(*) FILTER (WHERE a.app_state IN ('asignada', 'confirmada'))::integer AS "waitingAppointmentCount"
+       FROM appointments a
+       JOIN person req ON req.per_id = a.req_id
+       WHERE a.psy_id = $1
+         AND a.app_state IN ('asignada', 'confirmada', 'realizada')
+       GROUP BY req.per_id, req.per_name, req.per_identity_document,
+                req.per_email, req.per_contact_number, req.per_state
+       ORDER BY req.per_name`,
+      [psychologistId],
+    );
+  }
+
+  /**
+   * Finds a consultant with full details for the authenticated psychologist.
+   * @param consultantId The id of the consultant to find.
+   * @param psychologistId The id of the authenticated psychologist.
+   * @returns The consultant with full details for the authenticated psychologist.
+   */
+  async findFullForPsychologist(
+    consultantId: number,
+    psychologistId: number,
+  ): Promise<PsychologistConsultantRecordResponse> {
+    const consultants = await this.dataSource.query<
+      PsychologistConsultantSummaryResponse[]
+    >(
+      `SELECT
+          req.per_id AS "id",
+          req.per_name AS "fullName",
+          req.per_identity_document::text AS "identityDocument",
+          req.per_email AS "email",
+          COALESCE(req.per_contact_number::text, '') AS "phone",
+          NULL::text AS "residence",
+          CASE WHEN req.per_state = 'activo' THEN 'active' ELSE 'inactive' END AS "status",
+          $2::integer AS "assignedPsychologistId",
+          NULL::text AS "assignedPsychologistName",
+          MAX(a.app_date) AS "lastAppointmentAt",
+          COUNT(a.app_id)::integer AS "appointmentCount",
+          COUNT(*) FILTER (WHERE a.app_state = 'realizada')::integer AS "completedAppointmentCount",
+          COUNT(*) FILTER (WHERE a.app_state IN ('asignada', 'confirmada'))::integer AS "waitingAppointmentCount"
+       FROM person req
+       JOIN appointments a ON a.req_id = req.per_id
+       WHERE req.per_id = $1
+         AND a.psy_id = $2
+         AND a.app_state IN ('asignada', 'confirmada', 'realizada')
+       GROUP BY req.per_id, req.per_name, req.per_identity_document,
+                req.per_email, req.per_contact_number, req.per_state`,
+      [consultantId, psychologistId],
+    );
+
+    const consultant = consultants[0];
+    if (!consultant) {
+      throw new ForbiddenException({
+        error: 'CONSULTANT_NOT_ASSIGNED',
+        message: 'No tienes acceso a la información de este consultante',
+      });
+    }
+
+    const rows = await this.dataSource.query<
+      {
+        appId: number;
+        appState: 'asignada' | 'confirmada' | 'realizada';
+        appDate: Date | null;
+        appDuration: number | null;
+        appReason: string | null;
+        patientType: 'self' | 'dependent';
+        patientName: string;
+        patientDependentId: number | null;
+        psychologistName: string;
+        cnId: number | null;
+        cnObservation: string | null;
+        cnCreatedAt: Date | null;
+      }[]
+    >(
+      `SELECT
+          a.app_id AS "appId",
+          a.app_state AS "appState",
+          a.app_date AS "appDate",
+          a.app_duration AS "appDuration",
+          a.app_reason AS "appReason",
+          CASE
+            WHEN a.app_patient_dependent_id IS NOT NULL THEN 'dependent'
+            ELSE 'self'
+          END AS "patientType",
+          COALESCE(dep.dep_name, req.per_name) AS "patientName",
+          a.app_patient_dependent_id AS "patientDependentId",
+          psy.per_name AS "psychologistName",
+          cn.cn_id AS "cnId",
+          cn.cn_observation AS "cnObservation",
+          cn.cn_created_at AS "cnCreatedAt"
+       FROM appointments a
+       JOIN person req ON req.per_id = a.req_id
+       LEFT JOIN dependents dep ON dep.dep_id = a.app_patient_dependent_id
+       JOIN person psy ON psy.per_id = a.psy_id
+       LEFT JOIN clinical_notes cn
+         ON cn.app_id = a.app_id AND cn.psy_id = a.psy_id
+       WHERE a.req_id = $1
+         AND a.psy_id = $2
+         AND a.app_state IN ('asignada', 'confirmada', 'realizada')
+       ORDER BY a.app_date DESC NULLS LAST, a.app_id DESC, cn.cn_created_at DESC`,
+      [consultantId, psychologistId],
+    );
+
+    const appointments = new Map<
+      number,
+      PsychologistConsultantRecordResponse['appointments'][number]
+    >();
+    const careRecords: PsychologistConsultantRecordResponse['careRecords'] = [];
+
+    for (const row of rows) {
+      let appointment = appointments.get(row.appId);
+      if (!appointment) {
+        appointment = {
+          id: row.appId,
+          state: row.appState,
+          appDate: row.appDate,
+          duration: row.appDuration,
+          reason: row.appReason,
+          patientType: row.patientType,
+          patientName: row.patientName,
+          patientDependentId: row.patientDependentId,
+          clinicalNotes: [],
+        };
+        appointments.set(row.appId, appointment);
+      }
+
+      if (
+        row.cnId !== null &&
+        row.cnObservation !== null &&
+        row.cnCreatedAt !== null
+      ) {
+        appointment.clinicalNotes.push({
+          id: row.cnId,
+          observation: row.cnObservation,
+          createdAt: row.cnCreatedAt,
+        });
+        careRecords.push({
+          id: row.cnId,
+          appointmentId: row.appId,
+          attendedAt: row.appDate,
+          observation: row.cnObservation,
+          patientType: row.patientType,
+          patientName: row.patientName,
+          patientDependentId: row.patientDependentId,
+          recordedByPsychologistId: psychologistId,
+          recordedByPsychologistName: row.psychologistName,
+        });
+      }
+    }
+
+    return {
+      ...consultant,
+      appointments: [...appointments.values()],
+      careRecords,
+    };
   }
 
   /**

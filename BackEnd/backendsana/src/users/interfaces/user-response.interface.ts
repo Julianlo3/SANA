@@ -25,6 +25,8 @@ export interface UserResponse {
     speciality: string;
     termsAccepted?: boolean;
   };
+  /** Presente y `true` cuando POST /users re-habilitó una cuenta bloqueada. */
+  wasReactivated?: boolean;
 }
 
 export interface OwnProfileResponse {
@@ -37,4 +39,5 @@ export interface OwnProfileResponse {
   gender: string | null;
   residenceZone: string | null;
   vulnerabilities: string[] | null;
+  canEditConsultantFields: boolean;
 }

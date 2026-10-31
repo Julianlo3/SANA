@@ -13,7 +13,14 @@ describe('UsersController', () => {
   };
 
   const adminRequest = {
-    user: { userId: 42, personId: 42, email: 'admin@example.com', roles: ['administrador'], auth0Subject: 'auth0|1', state: 'activo' },
+    user: {
+      userId: 42,
+      personId: 42,
+      email: 'admin@example.com',
+      roles: ['administrador'],
+      auth0Subject: 'auth0|1',
+      state: 'activo',
+    },
   };
 
   function setup() {
@@ -32,7 +39,9 @@ describe('UsersController', () => {
     };
     service.create.mockResolvedValue({ id: 1 });
 
-    await expect(controller.create(adminRequest as never, dto as never)).resolves.toEqual({
+    await expect(
+      controller.create(adminRequest as never, dto as never),
+    ).resolves.toEqual({
       id: 1,
     });
     expect(service.create).toHaveBeenCalledWith(dto, 42);
@@ -80,18 +89,22 @@ describe('UsersController', () => {
   it('delegates edits, status changes and deletion by id', async () => {
     const controller = setup();
     service.update.mockResolvedValue({ id: 7 });
-    service.updateStatus.mockResolvedValue({ id: 7, status: 'blocked' });
+    service.updateStatus.mockResolvedValue({ id: 7, status: 'inactive' });
     service.remove.mockResolvedValue(undefined);
 
     await controller.update(7, { fullName: 'New name' } as never);
     expect(service.update).toHaveBeenCalledWith(7, { fullName: 'New name' });
 
     await controller.updateStatus(adminRequest as never, 7, {
-      status: 'blocked',
+      status: 'inactive',
     } as never);
-    expect(service.updateStatus).toHaveBeenCalledWith(7, { status: 'blocked' }, 42);
+    expect(service.updateStatus).toHaveBeenCalledWith(
+      7,
+      { status: 'inactive' },
+      42,
+    );
 
-    await controller.remove(7);
-    expect(service.remove).toHaveBeenCalledWith(7);
+    await controller.remove(adminRequest as never, 7);
+    expect(service.remove).toHaveBeenCalledWith(7, 42);
   });
 });

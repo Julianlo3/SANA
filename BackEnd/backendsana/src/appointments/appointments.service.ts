@@ -15,6 +15,7 @@ import type { DiscardAppointmentDto } from './dto/discard-appointment.dto.js';
 import type { UpdateAppointmentStatusDto } from './dto/update-appointment-status.dto.js';
 import {
   AppointmentsRepository,
+  RequesterIdentityConflictError,
   type AppointmentRow,
   type PsychologistHistoryRow,
   type PsychologistOptionRow,
@@ -23,12 +24,21 @@ import {
 } from './appointments.repository.js';
 import { ScheduleService } from '../schedule/schedule.service.js';
 import { EmailService } from '../email/email.service.js';
+import type { AuthenticatedUser } from '../auth/auth.interface.js';
+import { UserRole } from '../models/user-role.enum.js';
 
 const REQUESTER_ALREADY_REGISTERED_MESSAGE =
-  'La información ingresada ya está asociada a una persona registrada. Verifique los datos e intente nuevamente.';
+  'No se pudo asociar la solicitud con esos datos. Verifique el correo y documento, o inicie sesión si ya tiene una cuenta.';
 const REQUESTER_UNIQUE_CONSTRAINTS = new Set([
   'Person_email_uq',
   'Person_idocument_uq',
+]);
+const APPOINTMENT_REQUEST_ROLES = new Set<UserRole>([
+  UserRole.Administrator,
+  UserRole.Secretary,
+  UserRole.Psychologist,
+  UserRole.Marketing,
+  UserRole.Requester,
 ]);
 
 /**
@@ -69,7 +79,17 @@ export class AppointmentsService {
    */
   async requestAppointment(
     dto: CreateAppointmentDto,
+    authenticatedUser?: AuthenticatedUser,
   ): Promise<{ appId: number; message: string }> {
+    if (
+      authenticatedUser &&
+      !authenticatedUser.roles.some((role) =>
+        APPOINTMENT_REQUEST_ROLES.has(role as UserRole),
+      )
+    ) {
+      throw new ForbiddenException('Account role is not authorized');
+    }
+
     this.validateRequester(dto);
     if (dto.patientType === 'dependent') {
       await this.validateDependent(dto);
@@ -83,7 +103,7 @@ export class AppointmentsService {
           cardType: dto.requesterCardType,
           identityDocument: dto.requesterIdentityDocument,
           contactNumber: dto.requesterContactNumber.trim(),
-          email: dto.requesterEmail?.trim(),
+          email: dto.requesterEmail.trim().toLowerCase(),
           birthdate: dto.requesterBirthdate,
           gender: dto.requesterGender,
           termsAccepted: dto.requesterTermsAccepted,
@@ -101,9 +121,13 @@ export class AppointmentsService {
           : null,
         appType: dto.appType,
         appReason: dto.appReason?.trim() ?? null,
+        authenticatedPersonId: authenticatedUser?.personId,
       });
     } catch (error) {
-      if (isRequesterUniqueConstraintViolation(error)) {
+      if (
+        error instanceof RequesterIdentityConflictError ||
+        isRequesterUniqueConstraintViolation(error)
+      ) {
         throw new ConflictException({
           error: 'REQUESTER_ALREADY_REGISTERED',
           message: REQUESTER_ALREADY_REGISTERED_MESSAGE,
@@ -113,9 +137,9 @@ export class AppointmentsService {
     }
 
     this.logger.log(
-      `Module:appointments, Function:requestAppointment, result-success: appId-${appId}, requesterDoc-${dto.requesterIdentityDocument}, patientType-${dto.patientType}, type-${dto.appType}`,
+      `Module:appointments, Function:requestAppointment, result-success: appId-${appId}, authenticated-${Boolean(authenticatedUser)}, patientType-${dto.patientType}, type-${dto.appType}`,
     );
-    await this.notifySecretaryOfNewRequest(dto, appId);
+    await this.notifyRequesterOfNewRequest(dto, appId);
 
     return {
       appId,
@@ -689,45 +713,37 @@ export class AppointmentsService {
     return updated;
   }
 
-  /**
-   * Notifies the secretary of a new appointment request.
-   * @param dto The DTO containing the appointment request details.
-   * @param appId The ID of the appointment.
-   * @returns A promise resolving when the notification is sent.
-   */
-  private async notifySecretaryOfNewRequest(
+  private async notifyRequesterOfNewRequest(
     dto: CreateAppointmentDto,
     appId: number,
   ): Promise<void> {
     try {
-      const recipients = (await this.repo.findActiveSecretaryEmails())
-        .filter((email) => email && !this.isPlaceholderEmail(email));
-      if (!recipients.length) {
-        this.logger.warn(`Appointment request email skipped: no active secretary email is available (appId-${appId})`);
+      console.log("enviando correo");
+      if (!dto.requesterEmail || this.isPlaceholderEmail(dto.requesterEmail)) {
+        this.logger.warn(`Appointment request confirmation email skipped: requester has no usable email (appId-${appId})`);
         return;
       }
-      const emailService = this.emailService;
-      if (!emailService) {
-        this.logger.warn(`Appointment request email skipped: email service is unavailable (appId-${appId})`);
+      if (!this.emailService) {
+        this.logger.warn(`Appointment request confirmation email skipped: email service is unavailable (appId-${appId})`);
         return;
       }
 
       const patientName = dto.patientType === 'dependent' ? dto.dependentName : dto.requesterName;
-      await Promise.all(recipients.map((recipient) =>
-        emailService.enqueueEmail({
-          to: recipient,
-          subject: `Nueva solicitud de cita #${appId}`,
-          text: [
-            'Se recibió una nueva solicitud de cita.',
-            `Radicado: ${appId}`,
-            `Solicitante: ${dto.requesterName}`,
-            `Paciente: ${patientName}`,
-            `Modalidad: ${dto.appType}`,
-          ].join('\n'),
-        }),
-      ));
+      await this.emailService.enqueueEmail({
+        to: dto.requesterEmail.trim().toLowerCase(),
+        subject: `Recibimos tu solicitud de cita #${appId}`,
+        text: [
+          `Hola ${dto.requesterName},`,
+          'Recibimos tu solicitud de cita correctamente.',
+          `Radicado: ${appId}`,
+          `Paciente: ${patientName}`,
+          `Modalidad: ${dto.appType}`,
+          'Podrá comprobar el estado de su cita desde la plataforma SANA iniciando sesión con el correo registrado',
+          'https://fundacionhuellitas.vercel.app/',
+        ].join('\n'),
+      });
     } catch (error) {
-      this.logger.warn(`Appointment request email recipients could not be resolved (appId-${appId}, code-${this.notificationErrorCode(error)})`);
+      this.logger.warn(`Appointment request confirmation email could not be prepared (appId-${appId}, code-${this.notificationErrorCode(error)})`);
     }
   }
 

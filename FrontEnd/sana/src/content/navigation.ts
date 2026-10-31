@@ -12,11 +12,12 @@ export const PUBLIC_NAV = {
     { label: "Contacto", href: "/#contact" },
   ],
   login: "Ingresar",
+  loginHref: "/iniciar-sesion",
   staffAccess: "Personal autorizado",
   staffHref: "/iniciar-sesion",
   staffHint: "Acceso para el equipo",
   requesterAccess: "Consultantes",
-  requesterHref: "/iniciar-sesion?tipo=consultante",
+  requesterHref: "/iniciar-sesion",
   requesterHint: "Mis citas y mis datos",
   donate: "Dona aquí",
 } as const;

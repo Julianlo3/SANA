@@ -162,130 +162,396 @@ Método MoSCoW. [PENDIENTE: prioridad de cada HU (Must, Should, Could, Won't).]
 
 # 3. Roles y permisos
 
-## 3.1 Roles
+## 3.1 Roles vigentes en el código
 
-| Código | Rol | Responsabilidad |
+Los nombres de rol que intercambian el frontend y backend son los valores exactos en minúscula:
+
+| Código | Valor técnico | Nombre visible | Responsabilidad según las pantallas actuales |
+|---|---|---|---|
+| ADMIN | `administrador` | Administrador | Gestiona usuarios y contenido institucional; consulta logs de seguridad. También puede acceder al layout general de personal. |
+| SECRETARY | `secretario` | Asistente administrativa / secretaria | Gestiona solicitudes y agenda, y administra fichas administrativas de consultantes. |
+| PSYCHOLOGIST | `psicologo` | Psicólogo | Gestiona citas asignadas, disponibilidad y atenciones/notas clínicas. |
+| MARKETING | `marketing` | Marketing y diseño | Administra contenido, noticias, banners y galería. |
+| REQUESTER | `consultante` | Consultante | Consulta su cuenta, solicitudes y citas propias. |
+| PENDING | `pendiente` | Cuenta pendiente | Es un estado/rol reconocido por el backend, pero no tiene acceso habilitado a las pantallas internas identificadas. |
+| — | Sin sesión | Visitante | Accede al sitio público y puede enviar una solicitud pública de cita. |
+
+El administrador puede asignar los cuatro roles internos (`administrador`, `secretario`, `psicologo`, `marketing`). El rol `consultante` se origina en el flujo público, no en el catálogo de roles del panel. El código no debe tratar `pendiente` como un rol interno autorizado.
+
+## 3.2 Autorización de pantallas del frontend
+
+Las rutas siguientes son rutas de página Next.js. Los grupos entre paréntesis son grupos de organización y no forman parte de la URL:
+
+| Pantallas / rutas | Acceso implementado |
+|---|---|
+| Sitio público: `/`, `/noticias`, `/noticias/:id`, `/solicitar-cita`, `/solicitar-cita/adulto`, `/solicitar-cita/menor`, `/solicitar-cita/confirmacion` | Público, sin sesión. El envío de cita se valida además en el backend. |
+| `/usuarios`, `/usuarios/nuevo`, `/usuarios/:id/editar` | Solo `administrador`, exigido por el layout `(dashboard)` mediante `requireAdministrator`. |
+| `/contenido/institucional`, `/contenido/noticias`, `/contenido/banners`, `/contenido/galeria` | `administrador` o `marketing`, exigido por el layout `(content)`. |
+| `/solicitudes`, `/solicitudes/:id` | Solo `secretario`, exigido en cada página; el layout `(staff)` también requiere uno de `secretario`, `psicologo`, `administrador`. |
+| `/calendario` | Solo `secretario`, exigido en la página y por el layout `(staff)`. |
+| `/mis-citas`, `/mi-disponibilidad` | Solo `psicologo`, exigido en la página y por el layout `(staff)`. |
+| `/consultantes`, `/consultantes/:id`, `/consultantes/:id/resumen`, `/registro-atencion/nuevo` | El layout `(staff)` permite `secretario`, `psicologo` o `administrador`. Las páginas de consultantes no agregan una restricción de rol más fina; el listado elige vista de psicólogo si el usuario tiene ese rol y, en otro caso, vista administrativa. La página de registro de atención tampoco restringe el rol individualmente. |
+| `/mi-cuenta` | Solo `consultante`, exigido por el layout `(consultante)`. |
+| `/panel` | Requiere sesión válida mediante `getCurrentUser`; redirige según rol a `/usuarios`, `/consultantes`, `/contenido/institucional`, `/mi-cuenta`, `/cuenta-pendiente` o `/acceso-restringido`. No es una pantalla de contenido propia. |
+| `/iniciar-sesion`, `/sesion-expirada`, `/acceso-restringido`, `/cuenta-pendiente` | Pantallas de autenticación/estado. |
+
+El menú lateral solo controla qué enlaces se muestran; no es un control de autorización. Las rutas deben continuar protegidas por servidor/layout y los endpoints backend deben validar sesión, rol y alcance del recurso.
+
+## 3.3 Autorización de endpoints del backend
+
+La API usa el prefijo `/api/v1`. En las tablas, `:id`, `:type`, `:appId` y otros parámetros representan segmentos dinámicos. Los métodos separados por coma aplican al endpoint indicado.
+
+### 3.3.1 Endpoints públicos y de sesión
+
+| Endpoint | Acceso |
+|---|---|
+| `GET /api/v1/`, `GET /api/v1/healthz` | Público; comprobación de servicio/salud. |
+| `POST /api/v1/appointments/request` | Público; crea una solicitud de cita para la persona solicitante o un menor dependiente. |
+| `GET /api/v1/policy/:type` | Público; obtiene el documento de política vigente. |
+| `GET /api/v1/public/content`, `GET /api/v1/public/news`, `GET /api/v1/public/news/:id`, `GET /api/v1/public/banners`, `GET /api/v1/public/gallery-images` | Público; solo contenido publicado/activo, con limitación de solicitudes. |
+| `GET /api/v1/auth/me`, `PATCH /api/v1/auth/terms`, `PATCH /api/v1/auth/psychologist-terms`, `DELETE /api/v1/auth/sessions/current` | Cualquier usuario con JWT válido. No hay `RolesGuard` ni rol explícito en estos métodos. El endpoint `psychologist-terms` no restringe el rol a psicólogo en el controlador actual. |
+| `GET /api/v1/users/me`, `PATCH /api/v1/users/me` | Cualquier usuario autenticado con uno de estos roles: `administrador`, `secretario`, `psicologo`, `marketing`, `consultante`. Las reglas de campos editables se aplican en el servicio según los roles. |
+
+### 3.3.2 Recursos protegidos por rol
+
+| Recurso / endpoints | Rol(es) autorizados | Operaciones |
 |---|---|---|
-| ADMIN | Administrador | Gestión de usuarios y roles, configuración de donaciones, reportes |
-| ASSISTANT | Asistente administrativa | Fichas de consultantes (datos básicos y administrativos) y agenda |
-| PSYCHOLOGIST | Psicólogo | Agenda propia y seguimiento de consultantes asignados |
-| MARKETING | Diseñadora (Marketing y Comunicaciones) | Contenido institucional |
-| — | Visitante | Sitio público y donaciones (sin sesión) |
+| `/users` | `administrador` | `GET /`, `GET /:id`, `POST /`, `PATCH /:id`, `PATCH /:id/status`, `DELETE /:id`: lista, consulta, crea, actualiza, cambia estado y elimina usuarios. |
+| `/consultants` ficha administrativa | `secretario` | `GET /`, `GET /:id`, `POST /`, `PATCH /:id`: consulta y actualiza fichas administrativas de consultantes. |
+| `/consultants` vista clínica propia | `psicologo` | `GET /mine`, `GET /:id/full`: consulta solo consultantes con citas propias asignadas y su ficha completa autorizada. |
+| `/appointments` solicitudes | `secretario` | `GET /`, `GET /:id`, `GET /psychologists`, `GET /:id/psychologist-history`; `PATCH /:id/confirm`, `/assign`, `/discard`, `/status`: gestiona y confirma solicitudes, asigna psicólogo y consulta el historial de asignación. |
+| `/appointments` propias del consultante | `consultante` | `GET /my-requests`, `PATCH /:id/cancel`: consulta y cancela/retira sus propias solicitudes/citas; el servicio restringe la operación a la identidad del usuario autenticado. |
+| `/appointments` asignadas al psicólogo | `psicologo` | `GET /relationships`, `GET /my-appointments`, `GET /my-appointments/:id`, `PATCH /:id/complete`: consulta el catálogo de parentescos y citas propias asignadas, y marca una cita como realizada. El servicio valida la asignación al psicólogo. |
+| `/schedule/me/blocks`, `/schedule/me/recurring-blocks` | `psicologo` | `GET`, `POST` en ambas rutas; `DELETE /me/blocks/:id` y `DELETE /me/recurring-blocks/:id`: administra su propia disponibilidad/bloqueos. |
+| `/schedule/me/accept-terms`, `/schedule/me/terms-status` | `psicologo` | `POST` acepta los términos de agenda; `GET` consulta estado. |
+| `/schedule/psychologists/:psychologistId/blocks`, `/schedule/psychologists/:psychologistId/calendar`, `/schedule/availability` | `secretario` | `GET`: consulta bloques, calendario y disponibilidad para coordinar citas. |
+| `/clinical-notes/register-attention`, `/clinical-notes/appointment/:appId`, `/clinical-notes/consultant/:requesterId/history`, `/clinical-notes/:cnId`, `/clinical-notes/:cnId/audit` | `psicologo` | `POST` registra atención; `GET` consulta nota, historial y auditoría. El servicio también aplica control de acceso al registro/cita/consultante; el rol por sí solo no debe considerarse autorización suficiente sobre datos clínicos. |
+| `/content-items` | `administrador`, `marketing` | `GET /`, `PATCH /`: consulta y edita contenido institucional de valor único (p. ej., misión y visión). |
+| `/content-cards` | `administrador`, `marketing` | `GET /`, `POST /`, `PATCH /:id`, `DELETE /:id`: gestiona tarjetas/listas de contenido institucional. |
+| `/news` | `administrador`, `marketing` | `GET /`, `POST /`, `PATCH /:id`, `PATCH /:id/status`, `PATCH /:id/pin`, `DELETE /:id`: administra noticias, publicación y fijación. |
+| `/banners` | `administrador`, `marketing` | `GET /`, `POST /`, `PATCH /:id`, `PATCH /:id/activation`, `DELETE /:id`: administra banners. |
+| `/gallery-images` | `administrador`, `marketing` | `GET /`, `POST /`, `PATCH /:id`, `PATCH /:id/status`, `DELETE /:id`: administra imágenes y estado de publicación de galería. |
+| `/image-upload-signatures` | `administrador`, `marketing` | `POST /`: solicita firma para cargar imágenes. |
+| `/security-logs` | `administrador` | `GET /`: consulta eventos de rechazo por rol, con filtros opcionales de usuario/fecha. |
 
-[CONFIRMAR: en una iteración anterior el modelo se redujo a dos roles autenticados y un flujo público; las HU vigentes usan cuatro roles autenticados. Confirmar la lista definitiva.]
+En rutas protegidas, `OriginGuard` y `JwtAuthGuard` complementan la autorización según el controlador. El `RolesGuard` combina metadatos del método y de la clase; el metadato del método prevalece. Por tanto, las excepciones de autoservicio de `/users/me` autorizan los roles indicados aunque la clase completa esté restringida por defecto a administración.
 
-## 3.2 Matriz de permisos
+## 3.4 Relación vigente entre pantalla y endpoint
 
-[PENDIENTE: matriz rol x recurso x operación (crear, leer, actualizar, eliminar) para: users, consultants, guardians, appointments, content, donation_settings, donations, reports. Restricción conocida: ASSISTANT no accede al seguimiento clínico.]
+El código actual es la definición aprobada del acceso. Los layouts y páginas determinan qué interfaz se puede navegar; el backend determina la autorización efectiva de datos y operaciones. Esta diferencia es intencional en las superficies siguientes y no autoriza a ampliar endpoints ni datos de respuesta.
 
-## 3.3 Reglas de autorización
+| Superficie | Navegación implementada | Autorización efectiva vigente |
+|---|---|---|
+| Consultantes (`/consultantes`, detalle y resumen) | El layout `(staff)` permite `secretario`, `psicologo` y `administrador`; el listado selecciona vista de psicólogo cuando corresponde y administrativa en los demás casos. | Secretaría usa la ficha administrativa (`GET /consultants`, `/:id`); psicología usa `/mine` y `/:id/full` con comprobación de asignación. Administración puede entrar al layout, pero no cuenta con endpoint de ficha administrativa propio. |
+| Registro de atención (`/registro-atencion/nuevo`) | Hereda acceso de layout de personal. | El registro y toda lectura de notas clínicas requieren `psicologo`; los demás roles reciben denegación del backend. |
+| `/panel` | Exige sesión y redirige según el rol. | Es una ruta de decisión/navegación; no expone un recurso backend propio. |
+| Términos de psicólogo | La interfaz de disponibilidad está reservada a `psicologo`. | `PATCH /auth/psychologist-terms` admite cualquier JWT válido porque el controlador no aplica `RolesGuard`; este es el permiso vigente del endpoint. Las rutas de agenda sí exigen `psicologo`. |
 
-- AUT-01. La autorización se aplica en el backend mediante un guard de roles (`RolesGuard`) en cada endpoint protegido. El ocultamiento de opciones en el frontend no sustituye esta validación.
-- AUT-02. Todo acceso denegado se registra en la tabla de auditoría (usuario, recurso, fecha y hora, IP).
-- AUT-03. Cada inicio de sesión exitoso actualiza `user_last_login_at`.
-- AUT-04. Una cuenta en estado bloqueado o desactivado no puede iniciar sesión.
+La UI nunca sustituye el control backend. Las comprobaciones de pertenencia/asignación y privacidad de datos se aplican en el servicio además del rol, incluso cuando una ruta de pantalla sea navegable por más de un rol.
+
+## 3.5 Reglas de autorización
+
+- AUT-01. La autorización efectiva se aplica en el backend en cada endpoint protegido. Ocultar enlaces o proteger un layout del frontend no sustituye guards, roles ni autorización a nivel de registro.
+- AUT-02. Un usuario solo puede operar sobre recursos propios o asignados cuando así lo exige el dominio (p. ej., solicitudes del consultante, citas del psicólogo y notas clínicas); la validación debe derivar la identidad de la sesión/JWT, no confiar en un identificador enviado por el cliente.
+- AUT-03. Los endpoints públicos se limitan a las operaciones expresamente marcadas como públicas; no deben entregar registros no publicados ni datos personales.
+- AUT-04. El backend responde con denegación de autorización cuando falte el rol exigido. Los intentos autenticados con rol insuficiente se registran mediante `RolesGuard`; el acceso de lectura de logs se reserva a `administrador`.
+- AUT-05. Cada inicio de sesión exitoso actualiza `user_last_login_at`.
+- AUT-06. Una cuenta bloqueada o desactivada no puede iniciar sesión.
+- AUT-07. Los roles de frontend y backend deben usar los mismos valores técnicos exactos. Cambios de roles/permisos requieren actualizar API, pantallas, menú, pruebas y esta matriz.
+
+## 3.6 Alcance aún no implementado
+
+- [PENDIENTE: definir roles y operaciones de donaciones, configuración de donaciones y reportes. No hay endpoints ni pantallas implementados que otorguen permisos para estas capacidades.]
 
 ---
 
 # 4. Stack tecnológico y convenciones
 
-## 4.1 Tecnologías
+## 4.1 Fuente de verdad y alcance
 
-| Capa | Tecnología | Versión |
+Esta sección describe el stack **realmente instalado**. No inferir dependencias, infraestructura ni servicios a partir de las historias de usuario. Donaciones, reportes, WhatsApp y OAuth social directo aparecen en requisitos, pero no tienen módulo, endpoint ni pantalla implementados; son pendientes, no parte del runtime actual.
+
+## 4.2 Tecnologías instaladas
+
+| Capa | Tecnología y versión declarada | Uso en SANA |
 |---|---|---|
-| Frontend | [PENDIENTE: framework] | [PENDIENTE] |
-| Backend | [PENDIENTE: confirmar NestJS], TypeScript | [PENDIENTE] |
-| ORM | TypeORM | [PENDIENTE] |
-| Base de datos | PostgreSQL (Neon) | [PENDIENTE] |
-| Autenticación | Google OAuth 2.0; JWT en cookie httpOnly | - |
-| Despliegue frontend | Vercel | - |
-| Despliegue backend | Render | - |
-| Correo transaccional | [PENDIENTE: Resend o SendGrid] | - |
-| Pruebas | [PENDIENTE: framework de pruebas unitarias, integración y e2e] | - |
-| Runtime y gestor de paquetes | [PENDIENTE: versión de Node.js; npm o pnpm] | - |
+| Frontend | Next.js `16.3.8`, React/React DOM `19.2.8`, TypeScript `5` | App Router, páginas y proxy BFF. |
+| Estilos/UI | Tailwind CSS `4`, PostCSS, CSS global; Lucide, React Big Calendar, date-fns, react-markdown | Diseño, iconos, agenda, fechas y Markdown limitado para noticias. |
+| Autenticación web | `@auth0/nextjs-auth0` `4.30.0` | Sesión Next.js y access token reenviado a la API. |
+| Backend | Node.js, NestJS `12.1.x`, TypeScript `6.0.2`, Express | API REST modular; puerto `3000` por defecto. |
+| Persistencia | PostgreSQL/Neon, `pg` `8.23.0`, TypeORM `1.1.1` | Entidades y esquema SQL versionado. |
+| Despliegue frontend | Vercel | Aplicación Next.js desplegada. |
+| Despliegue backend | Render | API NestJS desplegada. |
+| Seguridad | `jose`, Helmet, cookie-parser, bcrypt, Joi, class-validator/transformer | JWT Auth0, cabeceras, ambiente y DTOs. |
+| Correo | Nodemailer `10.0.13` sobre SMTP | Cola durable `email_outbox`, reintentos y limpieza de payload enviado. |
+| Imágenes | Cloudinary REST API, sin SDK | Firma de carga directa y verificación previa a persistir. |
+| Pruebas | Vitest, Supertest y cobertura V8 | Unitarias, e2e y OWASP. |
+| Calidad | Oxlint backend; ESLint Next frontend; Prettier backend | `npm run lint`; Prettier tiene script de escritura. |
 
-## 4.2 Restricciones técnicas conocidas
+No se declara versión de Node mediante `.nvmrc`, `engines` ni `.tool-versions`. Fijarla antes de CI/producción; no asumir la versión local.
 
-- TC-01. En TypeORM con PostgreSQL, las columnas enteras nulables DEBEN declarar `type: 'integer'` explícitamente.
+## 4.3 Topología y rutas técnicas
 
-## 4.3 Estructura del repositorio
+```text
+Navegador -> Next.js en Vercel (:5173 en desarrollo)
+              /api/backend/* -> route handler BFF
+                                -> BACKEND_API_URL/api/v1/* + Bearer JWT + Origin
+           NestJS en Render (:3000 por defecto) -> TypeORM -> PostgreSQL/Neon
+                                      -> Auth0, Cloudinary, SMTP/email_outbox
+```
 
-[PENDIENTE: árbol de directorios (frontend/, backend/, docs/, superprompt/).]
+- El backend fija `api/v1` con `app.setGlobalPrefix`; su contrato empieza por `/api/v1`, no `/api`.
+- El navegador consume `/api/backend/*`, no la URL del backend. El BFF añade el access token Auth0 disponible y `Origin`; no reenvía cookies de sesión al backend.
+- Los endpoints privados requieren `Authorization: Bearer <access-token>`. El backend actual no lee un JWT propio desde una cookie `httpOnly`.
+- CORS y `OriginGuard` admiten solo `CORS_ORIGIN`; el BFF usa `APP_BASE_URL` o `http://localhost:5173`.
 
-## 4.4 Control de versiones
+## 4.4 Estructura del repositorio
 
-- Rama principal: `main`. Todo cambio ingresa por Pull Request con al menos una revisión aprobada.
-- Nombres de rama descriptivos de la funcionalidad, con prefijo de tipo: `feat/crear-usuario`, `fix/login-cookie`. No usar solo el identificador de la HU.
-- Mensajes de commit según Conventional Commits, en español: `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`.
+```text
+BackEnd/backendsana/              # NestJS: src/<módulo>, test/, .env.example
+FrontEnd/sana/                    # Next.js App Router
+  src/app/                        # rutas y layouts por grupo
+  src/features/<dominio>/          # páginas, hooks, servicios, tipos, validación
+  src/services/api/http-client.ts  # único cliente HTTP de pantallas
+  src/app/api/backend/[...path]/   # proxy hacia NestJS
+DataBase/init-scripts/             # esquema base, semillas y esquema Neon evolutivo
+prompt master/                    # superprompt ensamblable y workflow
+```
 
-## 4.5 Estilo de código
+En frontend, una capacidad vive en `features/<dominio>`; las rutas de `app` solo componen páginas/layouts. Una pantalla no llama `fetch` directamente: usa el servicio de su feature y `http-client.ts`.
 
-[PENDIENTE: linter, formateador y configuración (p. ej. ESLint + Prettier).]
+## 4.5 Configuración y secretos
+
+| Componente | Variables relevantes | Regla |
+|---|---|---|
+| Backend | `DATABASE_*`, `DATABASE_SSL`, `CORS_ORIGIN`, `PORT`, `TRUST_PROXY_HOPS` | Joi las valida. `synchronize: false`; SSL Neon usa `rejectUnauthorized: false` al habilitarse. |
+| Auth0 | `AUTH0_DOMAIN`, `AUTH0_AUDIENCE`, `AUTH0_CLAIM_NAMESPACE`; frontend: `AUTH0_AUDIENCE` | El audience debe coincidir entre emisor, frontend y API. |
+| Proxy | `BACKEND_API_URL`, `APP_BASE_URL` | `BACKEND_API_URL` ya incluye `/api/v1`; no duplicar prefijo. |
+| Cloudinary | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `CLOUDINARY_FOLDER` | El secreto no llega al cliente; el backend firma cargas temporales. |
+| Correo | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | TLS mínimo 1.2. Sin configuración válida, el envío se desactiva de forma segura. |
+
+Los `.env` y secretos nunca se versionan. `.env.example` contiene plantillas, no credenciales.
+
+Vercel, Render y Neon son los despliegues activos. La ausencia de manifiestos de infraestructura como código en este repositorio no implica que el sistema no esté desplegado; las variables y dominios productivos se administran en cada proveedor.
+
+## 4.6 Convenciones de código
+
+- TypeScript estricto y ESM: importaciones locales backend terminan en `.js` aunque el fuente sea `.ts`.
+- NestJS: módulo agrupa controlador, servicio, repositorio, DTOs y entidades. Controlador = HTTP; servicio = dominio/transacciones; repositorio = persistencia.
+- DTOs con `class-validator`; `ValidationPipe` global usa `transform`, `whitelist` y `forbidNonWhitelisted`. Un campo no declarado causa `422`.
+- En TypeORM/PostgreSQL, columnas enteras anulables declaran `type: 'integer'`. Mantener `synchronize: false`; cada cambio vive en SQL/migración revisable.
+- El `httpClient` envía JSON y traduce errores de validación para formularios. Tipos, validación y servicios permanecen junto a la feature.
+- Nombres técnicos, rutas, payloads y estados respetan los valores exactos del código; la interfaz se redacta en español. Usar `YYYY-MM-DD` para fecha civil e ISO 8601 con zona para instantes.
+- No registrar tokens, contraseñas, documentos completos, notas clínicas ni cuerpos de correo.
+
+## 4.7 Scripts verificados
+
+| Área | Comandos |
+|---|---|
+| Backend | `npm run start:dev`, `npm run build`, `npm run lint`, `npm test`, `npm run test:e2e`, `npm run test:cov` |
+| Frontend | `npm run dev`, `npm run build`, `npm run lint` |
+
+Ejecutarlos desde `BackEnd/backendsana` o `FrontEnd/sana`. Ambos tienen `package-lock.json`: npm es el gestor establecido.
+
+## 4.8 Git y entrega
+
+- `main` recibe cambios mediante Pull Request aprobado.
+- Ramas descriptivas: `feat/`, `fix/`, `docs/`, `test/`, `refactor/`, `chore/`.
+- Conventional Commits en español: `feat: registrar bloqueo recurrente`.
+- Un cambio de contrato, rol, tabla, estado o variable de entorno actualiza las secciones 3, 4, 6, 9 y/o 10 y sus pruebas.
 
 ---
 
 # 5. Arquitectura y patrones de diseño
 
-## 5.1 Arquitectura general
+## 5.1 Estilo arquitectónico vigente
 
-[PENDIENTE: estilo arquitectónico (cliente-servidor, SPA + API REST, backend en capas controller/service/repository) y diagrama de componentes en Mermaid.]
+SANA es una aplicación cliente-servidor. Next.js implementa experiencia, sesión Auth0 y un **BFF mínimo**; NestJS es fuente de verdad para dominio, autorización y persistencia. La API es REST/JSON y PostgreSQL-Neon conserva el estado transaccional.
 
-## 5.2 Módulos del backend
+```mermaid
+flowchart LR
+  U[Visitante o usuario] --> FE[Next.js App Router en Vercel]
+  FE -->|/api/backend/*| BFF[Route handler proxy]
+  BFF -->|Bearer JWT, Origin| API[NestJS /api/v1 en Render]
+  API --> AUTH[Auth0]
+  API --> DB[(PostgreSQL / Neon)]
+  API --> CLD[Cloudinary]
+  API --> SMTP[SMTP / email_outbox]
+```
 
-| Módulo | Épica | Responsabilidad |
+El BFF no reproduce autorización ni reglas de negocio: reenvía token cuando hay sesión y NestJS decide. Un enlace o layout de Next no sustituye guards ni autorización a nivel de registro.
+
+## 5.2 Capas backend
+
+| Capa | Responsabilidad permitida | No debe hacer |
 |---|---|---|
-| auth | HE-01 | OAuth, emisión y validación de JWT, sesión |
-| users | HE-01 | CRUD de usuarios, asignación de roles, estados de cuenta |
-| consultants | HE-02 | Fichas de consultantes y acudientes |
-| appointments | HE-03 | Citas, disponibilidad, reprogramación y cancelación |
-| content | HE-04 | Contenido institucional |
-| donations | HE-05 | Configuración de medios de donación y registro de donaciones |
-| reports | HE-06 | Reportes agregados |
-| audit | Transversal | Registro de accesos denegados y cambios relevantes |
+| Controller | Ruta, guards, DTO, código HTTP, extraer identidad/params y delegar. | SQL, lógica extensa o confiar en IDs del body. |
+| Guard | JWT, origin, rate limit y rol. | Sustituir propiedad/asignación del recurso. |
+| Service | Casos de uso, estados, propiedad, transacciones y errores de dominio. | Conocer UI. |
+| Repository | TypeORM/SQL, bloqueo y persistencia. | Resolver permisos de interfaz. |
+| DTO/entity | Contrato validable y almacenamiento. | Convertirse en un servicio. |
 
-## 5.3 Patrones de diseño
+La identidad sensible se deriva de `request.user` validado, nunca de un `userId`, `psyId` o `requesterId` controlado por cliente.
 
-| Patrón | Aplicación | Justificación |
+## 5.3 Módulos existentes
+
+| Módulo | Responsabilidad actual |
+|---|---|
+| `auth` | Verifica Auth0, sincroniza identidad, sesión y términos. El backend no emite JWT propio. |
+| `users` | Usuarios internos, roles, estados y perfil propio. |
+| `appointments` | Solicitud pública, asignación, confirmación, descarte, cancelación y finalización. |
+| `schedule` | Bloqueos puntuales/recurrentes, calendario y disponibilidad. |
+| `consultants` | Ficha administrativa y vistas restringidas para psicología. |
+| `clinical-notes` | Registro, historial y auditoría de notas clínicas. |
+| `policy` | Documento vigente y evidencia de aceptación por solicitud, agenda o nota. |
+| `content` | Institucional, tarjetas, noticias, banners, galería y Cloudinary. |
+| `security-logs` | Rechazos por rol. |
+| `email` | Outbox SMTP, locks, reintentos y borrado de payload enviado. |
+
+No existen módulos implementados de donaciones, reportes ni WhatsApp. No inventar rutas o tablas sin contrato y decisión funcional aprobados.
+
+## 5.4 Patrones y reglas
+
+| Patrón | Aplicación | Regla |
 |---|---|---|
-| Repository | Acceso a datos vía TypeORM | [PENDIENTE] |
-| DTO con validación declarativa | Entrada de cada endpoint | [PENDIENTE] |
-| Guard / Middleware | Autenticación y autorización | [PENDIENTE] |
-| Inyección de dependencias | Servicios y repositorios | [PENDIENTE] |
-| [PENDIENTE] | | |
+| Módulos Nest + DI | Providers por constructor. | Registrar provider/export/import; no usar `new` para servicios. |
+| Repository | Acceso encapsulado en módulos de dominio. | SQL fuera de controladores; transacción cuando varios registros cambian juntos. |
+| DTO + validación | `class-validator`/transformer. | DTO específico si cambia semántica de creación, edición o transición. |
+| Guards/decoradores | `JwtAuthGuard`, `RolesGuard`, `OriginGuard`, `@Roles`, `@RateLimit`. | La protección de servidor es obligatoria; rol de método prevalece sobre clase. |
+| BFF | `app/api/backend/[...path]/route.ts`. | Delgado: sin dominio ni secretos de terceros en cliente. |
+| Feature-first | `pages`, `components`, `hooks`, `services`, `types`, `validation`. | La ruta compone; la feature implementa. |
+| Outbox | `email_outbox`. | Encolar con el evento cuando la notificación sea indispensable. |
+| Auditoría | Logs de seguridad, notas, contenido y asignaciones. | Actor, instante, recurso y acción mínimos; no datos sensibles completos. |
 
-## 5.4 Principios
+## 5.5 Invariantes transversales
 
-- Sin lógica de negocio en controladores.
-- Dependencias externas (correo, pasarela, mensajería) detrás de interfaces para permitir su sustitución y su simulación en pruebas.
+- Una cita tiene un único paciente: solicitante **o** dependiente. Transición y ocupación/liberación de agenda deben ser atómicas.
+- Psicología solo opera sus relaciones, citas y notas asignadas; secretaría no recibe observación clínica.
+- Contenido público usa proyecciones públicas: publicado/activo. Nunca reutilizar respuesta administrativa.
+- La imagen se carga directo a Cloudinary con firma; solo persisten URLs verificadas del folder, formato y tamaño permitidos.
+- Aceptaciones de política son evidencia histórica: cada solicitud y nota tiene la suya; la de agenda es única por persona-versión.
+- Estados son contrato: no añadir ni transitar estados sin actualizar API, BD, UI, pruebas y documentación.
+
+## 5.6 Decisión de extensión
+
+Antes de una capacidad nueva: delimitar caso de uso y datos sensibles; definir DTO/errores/roles en sección 9; entidad/migración e invariantes en sección 6; servicio y autorización de registro; endpoint; feature frontend; y pruebas de permisos, validación y transición. Si falta una decisión de producto, registrar un marcador de confirmación; no inventarla.
 
 ---
 
 # 6. Modelo de datos
 
-## 6.1 Diagrama entidad-relación
+## 6.1 Alcance y fuente de verdad
 
-[PENDIENTE: diagrama `erDiagram` en Mermaid del esquema actual en Neon.]
+La fuente de verdad del esquema desplegable es `DataBase/init-scripts/03-schema-NEON.sql`, incluidas sus migraciones incrementales al final. Las entidades TypeORM expresan el modelo de aplicación, pero ante divergencia se debe inspeccionar primero el SQL efectivo y corregir la discrepancia; no deducir tablas de las historias de usuario.
 
-## 6.2 Entidades
+El esquema usa `public`, claves enteras y timestamps `timestamptz`. Los nombres físicos tienen prefijos históricos (`per_`, `app_`, `cn_`); el API los convierte a nombres camelCase. No exponer nombres de columnas ni filas completas de tablas como contrato público.
 
-Para cada entidad se especifica: tabla, columnas (nombre, tipo, nulabilidad, valor por defecto), llave primaria, llaves foráneas, índices y restricciones.
+## 6.2 Mapa entidad-relación
 
-| Entidad | Requisitos conocidos |
+```mermaid
+erDiagram
+  person ||--o| users : "puede tener cuenta"
+  person ||--o{ person_rol : tiene
+  rol ||--o{ person_rol : asigna
+  person ||--o| psychologist : especializa
+  person ||--o{ appointments : solicita
+  person ||--o{ requester_dependent : representa
+  dependents ||--o{ requester_dependent : es_representado
+  relationship ||--o{ requester_dependent : define
+  appointments }o--|| person : paciente_propio
+  appointments }o--|| dependents : paciente_dependiente
+  psychologist ||--o{ appointments : atiende
+  appointments ||--o{ clinical_notes : genera
+  psychologist ||--o{ clinical_notes : redacta
+  psychologist ||--o{ schedule : bloquea
+  psychologist ||--o{ schedule_recurring_blocks : bloquea
+  psychologist ||--o{ schedule_occupancy : ocupa
+  appointments ||--o| schedule_occupancy : ocupa
+  policy_documents ||--o{ policy_acceptance : versiona
+  person ||--o{ policy_acceptance : acepta
+  appointments ||--o{ policy_acceptance : evidencia
+  clinical_notes ||--o{ policy_acceptance : evidencia
+  users ||--o{ content_change_log : actua
+  users ||--o{ news : crea_actualiza
+```
+
+La notación de paciente propio/dependiente representa una XOR de negocio: `appointments` debe tener exactamente uno de `app_patient_person_id` o `app_patient_dependent_id`. El SQL inicial exigía “al menos uno”; el servicio debe preservar además la exclusión mutua.
+
+## 6.3 Identidad, acceso y personas
+
+| Tabla | Finalidad y campos relevantes | Restricciones/invariantes |
+|---|---|---|
+| `person` | Persona base: nombre, documento, correo, contacto, estado, fecha de actualización; migraciones agregan tipo de documento, nacimiento, género, vulnerabilidades, zona y login. | Documento único; correo único case-insensitive (`lower(per_email)`); estados físicos históricos `activo/inactivo/bloqueado`. Convertir a los estados expuestos por API solo en el mapeo. |
+| `users` | Cuenta vinculada 1:1 a `person`: `use_id`, proveedor/sub Auth0, refresh-token hash y `user_last_login_at`. | PK/FK compartida con `person`; `(user_provider_id,user_provider_name)` único. No guardar tokens de acceso en texto plano. |
+| `rol` | Catálogo de roles. | Los valores de aplicación vigentes están en sección 3; no inferirlos por ID. |
+| `person_rol` | N:M persona-rol, con asignación y estado activo. | PK compuesta `(per_id, rol_id)`; soporta múltiples roles. |
+| `psychologist` | Extensión profesional: licencia, especialidad y términos de agenda. | PK/FK `psy_id -> person.per_id`, por lo que puede existir antes de tener fila `users`. |
+| `auth_sessions` | Metadatos de sesión/auditoría de autenticación. | Se relaciona a usuario; no exponer al cliente. |
+| `security_access_log` | Intentos autenticados de acceso con rol insuficiente. | Conserva actor, roles, sección, instante y referencia de sesión; lectura administrativa. |
+
+Una cuenta, una persona y un consultante no son sinónimos: una persona puede no tener cuenta, un psicólogo puede existir antes del primer inicio Auth0 y un dependiente no se modela como `person`.
+
+## 6.4 Consultantes, dependientes y citas
+
+| Tabla | Finalidad y campos relevantes | Restricciones/invariantes |
+|---|---|---|
+| `dependents` | Menor/dependiente: documento, nombre, contacto, nacimiento; migraciones agregan tipo documento y género. | Documento único. Tratar como dato sensible de menor. |
+| `relationship` | Catálogo de parentesco. | `requester_dependent.rel_id` es opcional; no convertirlo en texto libre. |
+| `requester_dependent` | Relación solicitante–dependiente y parentesco. | PK `(req_id,dep_id)`; evita duplicar el vínculo. |
+| `appointments` | Solicitud/cita: solicitante, paciente, psicólogo/secretaría, fecha, duración, tipo, estado, motivo, creación y descarte. | El servicio valida transiciones, asignación y disponibilidad. Índices por estado, solicitante, psicólogo, creación y paciente realizado. |
+| `appointment_assignment_history` | Reasignaciones: psicólogo anterior/nuevo, secretaria, motivo e instante. | Es historial inmutable de asignación, no el estado actual. |
+
+Estados de cita existentes en código/BD: `solicitada`, `asignada`, `confirmada`, `realizada`, `cancelada`, `descartada`. Usar exactamente estos valores en persistencia y contratos; no sustituir `descartada` por un borrado físico. La API pública crea solicitud sin exigir sesión; las operaciones posteriores deben derivar actor y alcance del JWT.
+
+## 6.5 Agenda y disponibilidad
+
+| Tabla | Semántica | Regla |
+|---|---|---|
+| `schedule` | Bloque puntual de indisponibilidad del psicólogo (`fecha`, inicio, fin, cita opcional). | Fin posterior a inicio. El campo histórico de motivo fue eliminado. |
+| `schedule_recurring_blocks` | Bloque semanal recurrente, con día de semana, franja y rango opcional de vigencia. | Fin posterior a inicio; pertenece al psicólogo. El motivo fue eliminado. |
+| `schedule_occupancy` | Intervalo ocupado por cita o bloqueo manual, con `source_type`, fecha y horas. | `source_type` es `appointment` o `manual`; una cita produce a lo sumo una ocupación (`app_id` único parcial). |
+
+La disponibilidad mostrada se calcula como la oferta/ventana aplicable menos `schedule_occupancy`; no tratar `schedule` y ocupación como la misma cosa. Al confirmar/asignar/cancelar/descartar una cita, actualizar cita y ocupación de forma atómica para evitar doble reserva. Los índices `(psy_id, occ_date, occ_start_time)` y de cita existen para estas consultas.
+
+## 6.6 Notas clínicas, consentimiento y auditoría
+
+| Tabla | Finalidad | Restricciones/invariantes |
+|---|---|---|
+| `clinical_notes` | Nota de atención: cita, psicólogo, observación y creación. | Solo el psicólogo asignado puede crear/ver mediante servicio; observación es dato de salud sensible. |
+| `clinical_notes_audit` | Trazabilidad de acceso/acción sobre la nota: nota, psicólogo, fecha e IP. | No sustituye la nota ni expone contenido. |
+| `policy_documents` | Versiones de políticas: tipo, versión/texto, vigencia y estado. | Obtener la versión vigente, no una cadena hardcodeada en cliente. |
+| `policy_acceptance` | Evidencia: persona, dependiente opcional, nota opcional, cita opcional, documento, IP e instante. | Unicidad por `(app_id,pd_id)` para solicitud y `(cn_id,pd_id)` para nota; aceptación propia de agenda única por persona-versión cuando no está ligada a cita/dependiente/nota. |
+
+No sobrescribir una aceptación al cambiar una política. Una solicitud de cita exige su aceptación de la versión vigente, incluso para la misma persona; una nota exige la suya. Las APIs que devuelvan historias o reportes deben proyectar el mínimo necesario y jamás usar estas tablas para revelar consentimiento de terceros.
+
+## 6.7 Contenido y medios
+
+| Tabla | Finalidad | Restricciones/invariantes |
+|---|---|---|
+| `content_items` | Valores institucionales únicos (por ejemplo misión y visión), valor y último editor. | Clave indexada; autor FK a usuario. |
+| `content_cards` | Valores, equipo, servicios y programas. | Sección: `values`, `team`, `services`, `programs`; imagen implica texto alternativo; orden e indicador activo. |
+| `news` | Noticias Markdown limitado, imagen, estado, publicación, fijación y autores. | Estado `published`/`retired`; solo una fijada; una fijada debe estar publicada; imagen implica alt. |
+| `gallery_images` | Imagen, alt, leyenda, orden, estado y autores. | Estado `published`/`retired`; alt obligatorio. |
+| `banners` | Título, imagen/alt, activo y autores. | La migración más reciente eliminó vigencias; activo requiere imagen. Máximo activo se aplica por configuración/servicio, no por una restricción SQL visible. |
+| `content_change_log` | Actor, tipo de contenido, ID, acción e instante. | Tipos/acciones enumerados; es trazabilidad, no versionado completo de contenido. |
+
+La BD guarda URL de Cloudinary, no binarios. Antes de persistir, el backend valida que la URL pertenezca al cloud/folder del proyecto y que cumpla formato/tamaño permitido. El sitio público únicamente lee registros publicados/activos mediante endpoints públicos.
+
+## 6.8 Operación técnica y alcance no implementado
+
+| Tabla | Uso |
 |---|---|
-| person / user | `per_state` (estado de cuenta), `user_last_login_at`. [PENDIENTE: resto de columnas] |
-| user_role | Relación N:M usuario-rol |
-| consultant | Campo de consentimiento modelado desde el inicio aunque no se use en el MVP. [PENDIENTE] |
-| guardian | Parentesco con selección múltiple (madre, padre, abuelo, abuela, tío, tía, otro). [PENDIENTE] |
-| appointment | [PENDIENTE] |
-| institutional_content | [PENDIENTE] |
-| donation_setting | [PENDIENTE] |
-| donation | Estado con al menos: por verificar, confirmada. [PENDIENTE] |
-| audit_log | [PENDIENTE] |
+| `email_outbox` | Cola SMTP: destinatario/asunto/cuerpo mientras está pendiente; estado (`pending`, `sending`, `sent`), intentos, lock, próximo intento y resultado. Al quedar `sent`, el check exige borrar destinatario y contenido. |
+| `donors`, `donations`, `payment_method` | Existen en el SQL heredado para donaciones, pero no tienen módulo/API/frontend implementado actual. No exponer ni extender sin contrato de donaciones aprobado. |
 
-## 6.3 Reglas
+## 6.9 Reglas de evolución
 
-- DB-01. Todo cambio de esquema se realiza mediante migraciones versionadas; no se usa `synchronize: true` fuera de desarrollo local.
-- DB-02. Los datos semilla usan exclusivamente información ficticia.
+- DB-01. Todo cambio se agrega como migración SQL idempotente y revisable en el esquema de Neon; no editar datos productivos manualmente ni depender de `synchronize: true`.
+- DB-02. Una migración preserva datos y establece valores/backfill antes de volver una columna obligatoria o añadir una FK/check.
+- DB-03. Nombrar explícitamente PK, FK, índices y checks; crear índices desde los patrones reales de consulta, no por intuición.
+- DB-04. Usar transacciones para cambios de estado que afecten cita, ocupación, historial, aceptación o outbox.
+- DB-05. Semillas contienen solo datos ficticios. Documentos, correos, teléfonos, IP, consentimiento y notas clínicas requieren minimización, proyección por rol y no se incluyen en logs/fixtures compartidos.
+- DB-06. Cualquier tabla/columna/estado nuevo exige entidad/repository, DTO y mapeo, autorización, prueba de migración y actualización de las secciones 3 y 9.
 
 ---
 
@@ -1010,42 +1276,193 @@ Característica: HU-6.3
 
 # 9. Contratos de la API
 
-## 9.1 Convenciones
+## 9.1 Convenciones obligatorias
 
-- REST sobre HTTPS, JSON, prefijo `/api`. [PENDIENTE: estrategia de versionado.]
-- Documentación OpenAPI generada automáticamente.
-- Formato de error: [PENDIENTE: estructura estándar, p. ej. `{ "statusCode": 400, "message": "...", "error": "Bad Request" }`].
+- API Nest: HTTPS/JSON, prefijo fijo `/api/v1`. Frontend: llama solo a `/api/backend/*`; el route handler lo traduce a la API e incorpora `Authorization: Bearer <Auth0 access token>` cuando hay sesión.
+- No hay OpenAPI/Swagger configurado actualmente. Esta sección y DTOs son el contrato de trabajo; no afirmar que la documentación se genera sola hasta implementarlo.
+- Métodos implementados: `GET`, `POST`, `PATCH`, `DELETE`. `DELETE` exitoso responde `204` sin cuerpo; creación responde `201`; lectura/actualización responde `200` salvo indicación contraria.
+- Entrada `application/json`; el pipe global transforma tipos, permite solo campos declarados y rechaza campos extra. Fechas civiles: `YYYY-MM-DD`; instantes: ISO 8601 con zona.
+- Rutas privadas requieren token Bearer válido y, normalmente, un `Origin` listado en `CORS_ORIGIN`. Rutas públicas con `OriginGuard` también requieren origen permitido cuando pasan por el backend; el BFF proporciona el origin esperado.
+- La UI no usa IDs de actor para autorizar: el actor es el token. Los IDs de ruta identifican recursos y se validan como enteros positivos cuando aplica.
 
-## 9.2 Endpoints
+## 9.2 Respuestas y errores
 
-Para cada endpoint: método, ruta, rol requerido, cuerpo de solicitud, respuesta, códigos de error y HU asociada.
+Las respuestas correctas son objetos o listas específicos de cada recurso, en camelCase. No hay envoltura universal `{ data }`, ni paginación común implementada. No agregarla de forma unilateral: sería un cambio rompiente para servicios frontend.
 
-| Método | Ruta | Rol | HU | Descripción |
-|---|---|---|---|---|
-| GET | /api/auth/google | Público | HU-1.1 | Inicio del flujo OAuth |
-| GET | /api/auth/google/callback | Público | HU-1.1 | Callback OAuth; emite la cookie de sesión |
-| POST | /api/users | ADMIN | HU-1.2 | Creación directa de usuario con rol(es) |
-| GET | /api/users | ADMIN | HU-1.3 | Listado de usuarios |
-| [PENDIENTE] | | | | Endpoints de HE-02 a HE-06 |
+| Estado | Significado / cuerpo esperado |
+|---|---|
+| `200`/`201` | Recurso, lista u objeto de resultado. |
+| `204` | Operación exitosa sin cuerpo. |
+| `400` | Parámetro o solicitud malformada fuera de la validación DTO. |
+| `401` | Token faltante, vencido o no válido. |
+| `403` | Origin no permitido, rol insuficiente o alcance del recurso denegado. |
+| `404` | Recurso inexistente o no visible para el actor. |
+| `409` | Conflicto de negocio, por ejemplo identidad, estado u ocupación incompatible. |
+| `422` | DTO inválido. Nest retorna `statusCode`, `error` y `message`, donde `message` puede ser arreglo de errores de `class-validator`. Algunos casos específicos devuelven `{ error, message }`. |
+| `429` | Límite de tasa en rutas que lo aplican. |
+| `5xx` | Falla no recuperable o dependencia externa indisponible (`503` en verificación Cloudinary). |
 
-[CONFIRMAR: paginación de `GET /api/users`: (1) en servidor con `page` y `limit`; (2) lista completa con filtrado en cliente.]
+El cliente HTTP actual convierte la lista de errores `422` en mapa `campo -> mensaje`. Por ello, conservar nombres de propiedades DTO y no exponer excepción/stack interno. Contratos nuevos deben declarar éxito, 401/403, 404, validación y conflictos de dominio.
+
+## 9.3 Catálogo de endpoints implementados
+
+Roles: `Público`, `JWT` (cualquier sesión válida), `ADMIN`, `SECRETARIO`, `PSICÓLOGO`, `MARKETING`, `CONSULTANTE`. Los roles exactos y reglas de alcance están en sección 3.
+
+| Método | Ruta relativa a `/api/v1` | Rol | Contrato resumido |
+|---|---|---|---|
+| GET | `/`, `/healthz` | Público | Información/estado del servicio. |
+| GET | `/auth/me` | JWT | Identidad autenticada: IDs, email y roles. |
+| PATCH | `/auth/terms`, `/auth/psychologist-terms` | JWT | Registra aceptación; retorna mensaje y bandera. El segundo no restringe rol en controlador: hallazgo a corregir, no permiso de producto. |
+| DELETE | `/auth/sessions/current` | JWT | Logout lógico; `204`. La sesión Auth0 sigue siendo propiedad de Auth0. |
+| GET/PATCH | `/users/me` | Roles internos o consultante | Perfil propio; PATCH permite solo campos de `UpdateOwnProfileDto`. |
+| POST/GET | `/users` | ADMIN | Crea usuario / lista con `status` y `search` opcionales; no hay paginación. |
+| GET/PATCH/DELETE | `/users/:id` | ADMIN | Consulta, edición o eliminación de usuario. |
+| PATCH | `/users/:id/status` | ADMIN | `{ status: active|inactive|blocked, reason? }`. |
+| POST | `/appointments/request` | Público o JWT opcional | Solicitud propia/dependiente; rate limit 10/minuto. Ver contrato detallado abajo. |
+| GET | `/appointments` | SECRETARIO | Lista; query opcional `state`. |
+| GET | `/appointments/psychologists`, `/appointments/:id`, `/:id/psychologist-history` | SECRETARIO | Selector de psicólogos, detalle y historial de asignación por paciente. |
+| PATCH | `/appointments/:id/confirm`, `/:id/assign`, `/:id/discard`, `/:id/status` | SECRETARIO | Confirmar/asignar/descartar/cancelar según DTO y transición válida. |
+| GET/PATCH | `/appointments/my-requests`, `/:id/cancel` | CONSULTANTE | Solicitudes propias y retiro/cancelación propia. |
+| GET | `/appointments/relationships` | PSICÓLOGO | Catálogo de parentescos; el rol implementado es psicólogo. |
+| GET/PATCH | `/appointments/my-appointments`, `/my-appointments/:id`, `/:id/complete` | PSICÓLOGO | Citas asignadas, detalle propio y marcar realizada. |
+| GET/POST/DELETE | `/schedule/me/blocks`, `/schedule/me/blocks/:id` | PSICÓLOGO | Bloque puntual propio. |
+| GET/POST/DELETE | `/schedule/me/recurring-blocks`, `/schedule/me/recurring-blocks/:id` | PSICÓLOGO | Bloque recurrente propio. |
+| POST/GET | `/schedule/me/accept-terms`, `/schedule/me/terms-status` | PSICÓLOGO | Aceptación y consulta de términos de agenda. |
+| GET | `/schedule/psychologists/:id/blocks`, `/psychologists/:id/calendar`, `/availability` | SECRETARIO | Bloques, calendario y slots; `availability` recibe DTO de query. |
+| GET/POST/PATCH | `/consultants`, `/consultants/:id` | SECRETARIO | Listar, crear, ver/editar ficha administrativa. |
+| GET | `/consultants/mine`, `/consultants/:id/full` | PSICÓLOGO | Solo consultantes propios y ficha completa autorizada. |
+| POST/GET | `/clinical-notes/register-attention`, `/appointment/:appId`, `/consultant/:requesterId/history`, `/:cnId`, `/:cnId/audit` | PSICÓLOGO | Registrar/consultar notas únicamente sobre relación asignada. |
+| GET | `/policy/:type` | Público | Documento de política vigente por tipo. |
+| GET/PATCH | `/content-items` | ADMIN o MARKETING | Valores institucionales únicos. |
+| GET/POST/PATCH/DELETE | `/content-cards`, `/:id` | ADMIN o MARKETING | Tarjetas; query `section` opcional al listar. |
+| GET/POST/PATCH/DELETE | `/news`, `/:id` | ADMIN o MARKETING | Administración de noticias. |
+| PATCH | `/news/:id/status`, `/news/:id/pin` | ADMIN o MARKETING | Estado y fijación de noticia. |
+| GET/POST/PATCH/DELETE | `/banners`, `/:id` | ADMIN o MARKETING | Banners. |
+| PATCH | `/banners/:id/activation` | ADMIN o MARKETING | `{ isActive: boolean }`. |
+| GET/POST/PATCH/DELETE | `/gallery-images`, `/:id` | ADMIN o MARKETING | Galería. |
+| PATCH | `/gallery-images/:id/status` | ADMIN o MARKETING | Estado de galería. |
+| POST | `/image-upload-signatures` | ADMIN o MARKETING | Firma temporal para carga a Cloudinary. |
+| GET | `/security-logs` | ADMIN | Eventos de rechazo con filtros de usuario/fecha. |
+| GET | `/public/content`, `/public/news`, `/public/news/:id`, `/public/banners`, `/public/gallery-images` | Público | Solo proyección publicable/activa; rate limit en controladores públicos. |
+
+El orden de rutas dinámicas importa al modificar controladores: declarar rutas específicas antes de `:id` para evitar que Nest las interprete como parámetro.
+
+## 9.4 Payloads de alto impacto
+
+### Solicitud pública de cita
+
+`POST /appointments/request` recibe:
+
+```json
+{
+  "requesterName": "Nombre completo",
+  "requesterCardType": "CC",
+  "requesterIdentityDocument": "12345678",
+  "requesterContactNumber": "3001234567",
+  "requesterEmail": "persona@correo.com",
+  "requesterTermsAccepted": true,
+  "patientType": "self",
+  "appType": "presencial",
+  "appReason": "Texto opcional hasta 1000 caracteres",
+  "residenceZone": "Zona opcional"
+}
+```
+
+Documento: 6–12 dígitos; teléfono: 7–12; correo máximo 100. `requesterBirthdate`/`requesterGender` son opcionales. Para `patientType: "dependent"`, añadir datos del dependiente (nombre, documento, fecha de nacimiento, género, contacto, `relationshipId`, aceptación). El servicio, no el cliente, valida que la combinación sea coherente y asocia una sesión opcional de forma segura. `appDateIdeal` existe solo por compatibilidad temporal: no usarlo en desarrollos nuevos.
+
+### Asignación y atención
+
+| Endpoint | Body |
+|---|---|
+| `PATCH /appointments/:id/confirm` | `{ "psyId": number, "appDate": "ISO-8601", "appDuration": number }` |
+| `PATCH /appointments/:id/assign` | Igual al anterior, más `reassignmentReason?` hasta 255 caracteres. |
+| `PATCH /appointments/:id/discard` | `{ "reason": "texto no vacío, máximo 500" }` |
+| `PATCH /appointments/:id/status` | `{ "state": "cancelada" }` únicamente. |
+| `POST /clinical-notes/register-attention` | `{ "appId": number, "observation?": "máximo 5000", "termsAccepted": boolean }` |
+
+La fecha, duración, conflicto de agenda, estado previo y pertenencia al psicólogo se validan en backend. Un `200` no es autorización para leer una nota de otro paciente: las consultas también verifican alcance.
+
+### Contenido e imágenes
+
+- `PATCH /content-items`: `{ "items": [{ "key": "mission|vision", "value": "texto" }] }`.
+- Tarjetas: `section` (`values|team|services|programs`), `title`, opcionales `subtitle`, `description`, `imageUrl`, `imageAlt`, `order`, `isActive`. La sección no cambia en PATCH; `null` borra opcionales donde el DTO lo permite.
+- Noticias, galería y banners aceptan URL únicamente tras carga firmada; una URL de imagen debe ser Cloudinary del folder del proyecto. Una imagen requiere `imageAlt`.
+- `POST /image-upload-signatures` entrega `cloudName`, `apiKey`, `timestamp`, `signature`, `folder`, formatos y bytes máximos. El cliente carga directo a Cloudinary y envía al recurso únicamente la URL segura resultante; jamás el secreto.
+
+## 9.5 Compatibilidad y cambios
+
+- Agregar campos de respuesta opcionales suele ser compatible; renombrar/eliminar campos, cambiar estado HTTP, rol, enum o envoltura de lista es rompiente.
+- Versionar una ruptura mediante `/api/v2` o estrategia aprobada; no mutar silenciosamente `/api/v1`.
+- Actualizar DTO, servicio frontend, tipos, pruebas de controlador/e2e y sección 3 cuando cambie autorización; actualizar sección 6 cuando cambie persistencia.
+- Endpoints de donaciones/reportes, login OAuth de API y webhooks de Wompi **no existen aún**. No documentarlos como endpoints disponibles.
 
 ---
 
 # 10. Integraciones externas
 
-| Servicio | Uso | Estado |
+## 10.1 Inventario real
+
+| Servicio | Uso actual | Estado y límite |
 |---|---|---|
-| Google OAuth 2.0 | Autenticación | Implementado |
-| Resend o SendGrid | Correo transaccional (recordatorios, notificaciones) | [PENDIENTE] |
-| WhatsApp Business Cloud API vía BSP (Twilio o 360dialog) | Recordatorios de citas | [PENDIENTE: inclusión en el MVP] |
-| Wompi | Donaciones en línea | [PENDIENTE] |
+| Auth0 | Autenticación web y emisión de access token; NestJS lo valida mediante JWKS/claims. | Implementado. El frontend usa `@auth0/nextjs-auth0`; el backend valida Bearer, no una cookie de aplicación. |
+| Vercel | Despliegue de la aplicación web Next.js. | Implementado y activo. La configuración de proyecto/variables se administra en Vercel. |
+| Render | Despliegue de la API NestJS. | Implementado y activo. La configuración de servicio/variables se administra en Render. |
+| PostgreSQL en Neon | Persistencia transaccional. | Implementado mediante TypeORM/`pg`; esquema en `03-schema-NEON.sql`. |
+| Cloudinary | Carga y alojamiento de imágenes institucionales. | Implementado con REST: firma backend, carga directa navegador, verificación backend. |
+| SMTP/Nodemailer | Correo transaccional. | Implementado de forma configurable; sin credenciales válidas se desactiva. No hay proveedor fijado. |
 
-Análisis de costos: el correo tiene costo prácticamente nulo; WhatsApp tiene costo bajo para el volumen esperado en Colombia; SMS es la alternativa de mayor costo y se descarta.
+Vercel, Render y Neon son los proveedores activos de despliegue/persistencia. Sus configuraciones operativas no están versionadas en este repositorio. Wompi, WhatsApp, Resend y SendGrid no están integrados en el código actual.
 
-[CONFIRMAR: tipo de cuenta bancaria de la fundación (personal o empresarial). Si no es empresarial, la integración con Wompi puede no ser viable y la donación se implementa como publicación de medios de pago con registro manual en estado "por verificar".]
+## 10.2 Auth0
 
-Toda integración DEBE implementarse detrás de una interfaz propia (ver 5.4) y contar con un doble de prueba.
+**Flujo.** El usuario se autentica con Auth0 mediante el SDK de Next.js. Al invocar `/api/backend/*`, el route handler intenta obtener el access token y lo reenvía como Bearer a NestJS. `JwtAuthGuard` verifica el token y `AuthService` resuelve/sincroniza la persona y sus roles locales. La API no crea un endpoint propio `/auth/google` ni emite cookies JWT.
+
+**Configuración mínima.** `AUTH0_DOMAIN`, `AUTH0_AUDIENCE` y `AUTH0_CLAIM_NAMESPACE` en backend; `AUTH0_AUDIENCE` en frontend, además de las variables requeridas por el SDK Auth0 de Next.js. Audience, issuer y namespace deben referirse al mismo tenant/API configurado.
+
+**Reglas.**
+
+- El token se trata como credencial: no loguearlo ni pasarlo a componentes cliente, URL, localStorage o errores.
+- Roles y estado de cuenta se resuelven en backend; el claim no autoriza por sí solo una fila ajena.
+- Probar sesión ausente, token vencido, audience/issuer incorrectos, cuenta bloqueada y rol insuficiente.
+- Cerrar sesión en la capa Auth0 correspondiente; `DELETE /auth/sessions/current` no revoca mágicamente la sesión del proveedor.
+
+## 10.3 Cloudinary
+
+**Flujo seguro.** Un usuario ADMIN/MARKETING pide `POST /image-upload-signatures` con el folder lógico. El backend genera firma SHA-1 para `CLOUDINARY_FOLDER/<folder>`, formatos JPG/PNG/WebP y límite de bytes. El navegador carga directo a Cloudinary usando firma, timestamp y API key. Finalmente envía la `secure_url` al endpoint de contenido; NestJS comprueba cloud, folder, extensión y tamaño con Cloudinary Admin API antes de guardarla.
+
+**Reglas.**
+
+- `CLOUDINARY_API_SECRET` queda exclusivamente en backend; API key y firma temporal no conceden acceso administrativo.
+- Persistir URLs, no binarios. Al eliminar un recurso, intentar borrar su imagen sin revertir la eliminación de BD si Cloudinary falla; registrar fallo sin URL completa si contiene datos sensibles.
+- Configurar timeout de dependencia (actualmente 10 s) y devolver `503` si no se puede validar. No aceptar URLs arbitrarias ni data URLs.
+- Mantener alt text y límites de formato/tamaño como parte del contrato de accesibilidad y seguridad.
+
+## 10.4 SMTP y outbox
+
+El backend lee `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` y `SMTP_FROM`. Construye transporte seguro (TLS 1.2+, certificado verificado), encola mensajes en `email_outbox`, reclama lotes de hasta diez, reintenta hasta ocho veces con backoff exponencial y borra destinatario/asunto/cuerpo al marcar `sent`.
+
+- La entrega de correo no debe bloquear ni deshacer el caso de uso principal si SMTP está ausente o falla, salvo requisito futuro explícito.
+- Nunca guardar contraseña SMTP ni contenido sensible en logs. La outbox es sensible mientras haya payload pendiente; restringir su acceso y retención.
+- Antes de elegir Resend, SendGrid u otro proveedor, definir contrato de entrega, bounces, remitente, costos, DPA y pruebas sandbox. No sustituir Nodemailer/SMTP sin esa decisión.
+
+## 10.5 Base de datos Neon
+
+TypeORM se conecta con `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `DATABASE_NAME` y `DATABASE_SSL`. En Neon, habilitar `DATABASE_SSL=true`; la configuración actual usa `rejectUnauthorized: false`, decisión que debe revisarse si el proveedor permite cadena/certificado validable.
+
+- `synchronize` permanece en `false`; el cambio de esquema se entrega por migración SQL revisada y probada.
+- Usar pool/timeout adecuado a la conexión Render–Neon y revisar límites de conexión del plan contratado. La configuración concreta se administra fuera del repositorio.
+- Hacer backups, restauración y rotación de contraseña desde Neon/proveedor; no hay automatización de backup declarada aquí.
+
+## 10.6 Integraciones planeadas, no implementadas
+
+| Integración | Necesidad de producto | Precondiciones para implementar |
+|---|---|---|
+| Wompi | Donaciones y webhook de transacción. | Definir merchant, firma/verificación, idempotencia por transacción, estados, conciliación, datos de donante, retención y endpoints/roles. |
+| WhatsApp Business/BSP | No existe aún y no se manejará según la decisión vigente. | No implementar integración, plantillas, webhooks ni flujos de notificación por WhatsApp. |
+| Resend/SendGrid | Alternativa de correo. | Decisión de proveedor y migración del adapter SMTP/outbox. |
+| Exportación PDF/Excel | Reportes. | Módulo de reportes, criterios agregados, autorización, formato, retención y prueba de que no exporta PII innecesaria. |
+
+No guardar llaves de Wompi/WhatsApp, secretos de webhook ni credenciales de proveedor en código o frontend. Toda integración nueva debe tener adapter server-side, validación de webhook/autenticidad, timeouts/reintentos/idempotencia, observabilidad sin PII, prueba de error y actualización de secciones 4, 6 y 9.
 
 ---
 
@@ -1074,15 +1491,61 @@ Toda integración DEBE implementarse detrás de una interfaz propia (ver 5.4) y 
 
 | Nivel | Alcance | Herramienta |
 |---|---|---|
-| Unitarias | Servicios, guards, utilidades | [PENDIENTE] |
-| Integración | Endpoints contra base de datos de prueba | [PENDIENTE] |
-| Aceptación / e2e | Escenarios Gherkin de la sección 7 | [PENDIENTE] |
+| Unitarias (frontend) | Validadores puros de formularios y reglas de negocio | Vitest |
+| Seguridad estática (frontend) | Verificaciones acotadas de guards, cliente HTTP, configuración y uso de HTML | Vitest + lectura de archivos TypeScript |
+| Unitarias (backend) | Servicios, controladores, repositorios, guards, DTO y configuración | Vitest + `@nestjs/testing` |
+| Seguridad (backend) | Controles organizados por categorías OWASP A01–A10 | Vitest |
+| Integración / e2e (backend) | Rutas raíz, health check y usuarios | Vitest + Supertest; alcance de escenarios Gherkin [PENDIENTE] |
+| Aceptación / e2e (frontend) | Escenarios Gherkin de la sección 7 | [PENDIENTE] |
+
+El repositorio contiene suites en frontend y backend. Las pruebas del frontend están en `FrontEnd/sana/test/`; las del backend, en `BackEnd/backendsana/test/`. El prompt DEBE conservar la distinción entre validaciones unitarias, inspecciones estáticas, pruebas unitarias de backend y pruebas e2e al informar cobertura; no debe presentar estas suites como cobertura completa de todos los escenarios Gherkin.
+
+### 12.1.1 Suite de seguridad existente del frontend
+
+El prompt DEBE crear y mantener estos archivos y los siguientes casos:
+
+| Archivo | Casos que se deben cubrir |
+|---|---|
+| `FrontEnd/sana/test/owasp/frontend-owasp.spec.ts` | **Control de acceso (A01):** comprobar que el guard gestiona sesión/token ausentes, respuestas 401/403 y validadores por rol (`requireAdministrator`, `requireAnyRole`). **Fallos criptográficos (A02):** comprobar que el cliente HTTP no contiene credenciales estáticas y envía cookies con `credentials: "include"`. **Inyección/XSS (A03):** recorrer `src` y rechazar usos de `dangerouslySetInnerHTML` sin Markdown seguro o sanitización. **Diseño inseguro (A04):** verificar el uso de `ApiError` y mensajes por estado HTTP. **Configuración (A05):** comprobar que Next.js no desactiva validaciones de lint/build ni habilita SVG peligroso sin justificación. **Autenticación (A07):** comprobar la ruta de Auth0 y su integración con `@auth0/nextjs-auth0` cuando corresponda al alcance. **Registro y monitoreo (A09):** comprobar que los fallos de red se capturan y producen un mensaje genérico seguro en español. |
+| `FrontEnd/sana/test/owasp/usuarios/user-validation.spec.ts` | Para creación/edición de usuarios: rechazar etiquetas HTML/XSS y cadenas de inyección SQL en nombres; permitir solo dígitos en documento y teléfono; limitar el nombre a 100 caracteres y el documento a 6–10 dígitos; exigir exactamente 10 dígitos para el teléfono; rechazar correos mal formados y dominios no admitidos para inicio de sesión con Google (Hotmail, Outlook y Yahoo en los casos probados), y aceptar Gmail y dominios propios como `sana.org.co`. |
+| `FrontEnd/sana/test/owasp/solicitar-cita/consultation-request.spec.ts` | Para la solicitud pública de cita: rechazar HTML/XSS e intentos de inyección en nombre, documento y teléfono; limitar el nombre a 100 caracteres, el documento a 6–12 dígitos, el teléfono a 7–12 dígitos y el motivo a 1000 caracteres; rechazar correos sin formato válido. |
+
+Estas pruebas invocan directamente las funciones de validación y, en el archivo general, inspeccionan el contenido de archivos del frontend; no envían peticiones a servicios reales ni usan datos reales de consultantes. Para entradas inválidas, el validador devuelve un mensaje de error en español (`string`); para entradas válidas devuelve `undefined`. Los casos deben cubrir entradas válidas e inválidas y los límites exactos (límite permitido y primer valor fuera del límite), además de los payloads maliciosos representativos indicados arriba.
+
+Las verificaciones estáticas del frontend son una línea base acotada y sensible a cambios de implementación; no sustituyen pruebas de comportamiento. La suite OWASP del frontend no contiene casos para A06, A08 ni A10; que el backend tenga archivos con esos nombres tampoco demuestra cobertura exhaustiva. Las comprobaciones de artefactos requeridos no deben omitirse silenciosamente cuando un archivo no exista: el test debe fallar o la ausencia debe justificarse explícitamente como fuera del alcance aprobado.
+
+### 12.1.2 Pruebas existentes del backend
+
+El prompt DEBE crear y mantener las suites existentes en `BackEnd/backendsana/test/` y agregar casos cuando cambien o se implementen los comportamientos correspondientes:
+
+| Área / archivos | Alcance comprobado |
+|---|---|
+| `app.controller.spec.ts`; `appointments/appointments.service.spec.ts`; `clinical-notes/clinical-notes.service.spec.ts`; `email/email.service.spec.ts`; `flow-auth0/auth.service.spec.ts`; `schedule/schedule.service.spec.ts`; `users/users.service.profile.spec.ts` | Pruebas unitarias de servicios y controladores: reglas de solicitudes y ciclo de vida de citas, notas clínicas y consultas, correo, autenticación Auth0, agenda y actualización del perfil propio. |
+| `appointments/appointments.repository.spec.ts`; `clinical-notes/clinical-notes.repository.spec.ts`; `email/email.repository.spec.ts`; `flow-auth0/auth.repository.spec.ts`; `policy/policy.repository.spec.ts`; `schedule/schedule.repository.spec.ts` | Pruebas de repositorios para persistencia/consultas de citas, notas, correo, identidad, políticas y disponibilidad/agendas. Deben usarse dobles cuando el caso no requiera expresamente una base de datos de prueba; no se debe afirmar que son pruebas contra una base real sin verificar su configuración. |
+| `users/users.controller.spec.ts`; `clinical-notes/clinical-notes.controller.spec.ts`; `flow-auth0/auth.controller.spec.ts`; `flow-auth0/auth.guards.spec.ts`; `flow-auth0/app.config.spec.ts`; `schedule/schedule-availability-query.dto.spec.ts` | Pruebas de controladores, guards de origen/JWT/roles, validación de configuración y DTO de consulta de disponibilidad. |
+| `owasp/A01-broken-access-control.spec.ts` a `owasp/A10-ssrf.spec.ts` | Suite backend organizada por las diez categorías OWASP Top 10:2021. Debe conservarse un archivo por categoría y sus casos deben comprobar controles concretos del backend. El nombre de una categoría no demuestra por sí mismo cobertura exhaustiva de esa categoría. |
+| `app.e2e-spec.ts`; `users.e2e-spec.ts` | Pruebas e2e con Nest y Supertest. La primera comprueba `GET /` y `GET /api/v1/healthz`; la segunda cubre rutas/flujo de usuarios según sus casos implementados. No equivalen a pruebas e2e de todas las HU. |
+
+El backend usa Vitest. Los archivos `vitest.config.ts` y `vitest.config.e2e.ts` separan las suites `*.spec.ts` y `*.e2e-spec.ts`, respectivamente. Los comandos disponibles desde `BackEnd/backendsana` son `npm test` (unitarias y demás `*.spec.ts`), `npm run test:cov` (con cobertura) y `npm run test:e2e` (solo `*.e2e-spec.ts`). Las dependencias incluyen `@nestjs/testing` y Supertest. El prompt DEBE mantener esos comandos/configuraciones y asegurar que las pruebas no requieran servicios externos reales en CI.
+
+Las pruebas e2e de usuarios deben revisarse junto con su configuración para identificar dependencias de base de datos o configuración externa antes de afirmar que son autónomas o aptas para CI. La matriz de escenarios Gherkin de la sección 7 sigue pendiente: cada escenario debe vincularse a una prueba por identificador, sin contar una prueba genérica de health check como aceptación de una HU.
+
+### 12.1.3 Ejecución
+
+- Vitest está declarado como dependencia de desarrollo (`FrontEnd/sana/package.json`). La ejecución actual desde `FrontEnd/sana` es `npx vitest run test/owasp`.
+- El manifiesto actual no declara un script `test`; el prompt DEBE agregar `"test": "vitest run"` a los scripts del frontend para permitir ejecución repetible con `npm test`.
+- Las pruebas no requieren base de datos, credenciales ni servicios externos. La suite debe poder ejecutarse en CI sin acceder a ellos.
+- Desde `BackEnd/backendsana`, ejecutar `npm test` para `*.spec.ts`, `npm run test:cov` para cobertura y `npm run test:e2e` para `*.e2e-spec.ts`. La suite e2e debe ejecutarse únicamente con la configuración de prueba documentada; no debe apuntar a datos de producción.
 
 ## 12.2 Reglas
 
 - QA-01. Cada escenario de la sección 7 tiene al menos una prueba cuyo nombre incluye el identificador, p. ej. `HU-1.1 E3 cuenta bloqueada o desactivada`.
-- QA-02. Cobertura mínima: [PENDIENTE].
+- QA-02. Cobertura mínima: [PENDIENTE]. No se debe inventar un porcentaje ni declarar cobertura de una HU por tener únicamente una prueba estática o de validación no vinculada a sus escenarios Gherkin.
 - QA-03. Las integraciones externas se prueban con dobles; no se llaman servicios reales en CI.
+- QA-04. Cada test debe ser determinista, independiente y usar únicamente datos ficticios; los nombres de test y mensajes esperados de la interfaz deben estar en español.
+- QA-05. Las pruebas de validación deben comprobar tanto el rechazo (mensaje no vacío) como la aceptación (`undefined`) y los límites de longitud/formato definidos para cada formulario. No basta con comprobar que la función existe.
+- QA-06. Las pruebas de seguridad estática deben limitar el análisis a archivos fuente pertinentes, informar claramente qué control verifican y no presentarse como prueba de seguridad integral.
+- QA-07. El comando de pruebas debe ejecutarse en CI junto con lint y build; cualquier fallo debe hacer fallar el pipeline.
 
 ## 12.3 Integración y despliegue continuos
 

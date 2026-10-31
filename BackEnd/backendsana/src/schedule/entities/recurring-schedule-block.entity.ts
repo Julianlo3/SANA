@@ -1,7 +1,7 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 /**
- * Entity representing a recurring schedule block for a psychologist, including the day of the week, start and end times, validity period, and reason for unavailability.
+ * Entity representing a recurring schedule block for a psychologist, including the day of the week, start and end times, and validity period.
  */
 @Entity({ name: 'schedule_recurring_blocks' })
 export class RecurringScheduleBlock {
@@ -25,9 +25,6 @@ export class RecurringScheduleBlock {
 
   @Column({ name: 'srb_valid_until', type: 'date', nullable: true })
   validUntil!: string | null;
-
-  @Column({ name: 'srb_reason', type: 'varchar', length: 255, nullable: true })
-  reason!: string | null;
 
   @Column({ name: 'srb_active', type: 'boolean', default: true })
   active!: boolean;

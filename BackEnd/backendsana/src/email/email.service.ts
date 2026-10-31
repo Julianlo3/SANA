@@ -16,24 +16,19 @@ export interface EmailMessage {
   html?: string;
 }
 
-export interface SmtpOptions {
-  host: string;
-  port: number;
-  secure: true;
-  requireTLS: true;
-  auth?: { user: string; pass: string };
-  tls: { minVersion: 'TLSv1.2'; rejectUnauthorized: true };
-  connectionTimeout: number;
-  greetingTimeout: number;
-  socketTimeout: number;
+export interface GmailOptions {
+  clientId: string;
+  clientSecret: string;
+  redirectUri: string;
+  refreshToken: string;
 }
 
-export interface SmtpTransport {
+export interface EmailTransport {
   sendMail(message: EmailMessage & { from: string }): Promise<unknown>;
 }
 
-export type SmtpTransportFactory = (options: SmtpOptions) => SmtpTransport;
-export const SMTP_TRANSPORT_FACTORY = Symbol('SMTP_TRANSPORT_FACTORY');
+export type EmailTransportFactory = (options: GmailOptions) => EmailTransport;
+export const EMAIL_TRANSPORT_FACTORY = Symbol('EMAIL_TRANSPORT_FACTORY');
 
 const POLL_INTERVAL_MS = 15_000;
 const BATCH_SIZE = 10;
@@ -48,21 +43,23 @@ const MAX_ATTEMPTS = 8;
 export class EmailService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(EmailService.name);
   private readonly sender: string | null;
-  private readonly transport: SmtpTransport | null;
+  private readonly transport: EmailTransport | null;
   private pollTimer: ReturnType<typeof setInterval> | undefined;
   private processing = false;
 
   constructor(
     private readonly configService: ConfigService,
     private readonly repository: EmailRepository,
-    @Inject(SMTP_TRANSPORT_FACTORY)
-    transportFactory: SmtpTransportFactory,
+    @Inject(EMAIL_TRANSPORT_FACTORY)
+    transportFactory: EmailTransportFactory,
   ) {
-    const config = this.readSmtpConfig();
+    const config = this.readGmailConfig();
     if (!config) {
       this.sender = null;
       this.transport = null;
-      this.logger.warn('Email delivery disabled: SMTP configuration is missing or invalid');
+      this.logger.warn(
+        'Email delivery disabled: Gmail API configuration is missing or invalid',
+      );
       return;
     }
 
@@ -72,13 +69,18 @@ export class EmailService implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       this.sender = null;
       this.transport = null;
-      this.logger.warn(`Email delivery disabled: SMTP transport could not be initialized (${this.errorCode(error)})`);
+      this.logger.warn(
+        `Email delivery disabled: Gmail API client could not be initialized (${this.errorCode(error)})`,
+      );
     }
   }
 
   onModuleInit(): void {
     if (!this.transport) return;
-    this.pollTimer = setInterval(() => void this.processPendingEmails(), POLL_INTERVAL_MS);
+    this.pollTimer = setInterval(
+      () => void this.processPendingEmails(),
+      POLL_INTERVAL_MS,
+    );
     this.pollTimer.unref?.();
     void this.processPendingEmails();
   }
@@ -94,15 +96,20 @@ export class EmailService implements OnModuleInit, OnModuleDestroy {
    */
   async enqueueEmail(message: EmailMessage): Promise<void> {
     if (!this.transport || !this.sender) {
-      this.logger.warn('Email skipped because SMTP delivery is not configured');
+      this.logger.warn(
+        'Email skipped because Gmail API delivery is not configured',
+      );
       return;
     }
 
     const recipient = typeof message?.to === 'string' ? message.to.trim() : '';
-    const subject = typeof message?.subject === 'string' ? message.subject.trim() : '';
+    const subject =
+      typeof message?.subject === 'string' ? message.subject.trim() : '';
     const text = typeof message?.text === 'string' ? message.text.trim() : '';
     if (!recipient || !isEmail(recipient)) {
-      this.logger.warn('Email skipped because the recipient address is missing or invalid');
+      this.logger.warn(
+        'Email skipped because the recipient address is missing or invalid',
+      );
       return;
     }
     if (!subject || !text) {
@@ -115,7 +122,9 @@ export class EmailService implements OnModuleInit, OnModuleDestroy {
         to: recipient,
         subject,
         text,
-        ...(typeof message.html === 'string' && message.html ? { html: message.html } : {}),
+        ...(typeof message.html === 'string' && message.html
+          ? { html: message.html }
+          : {}),
       });
       this.logger.log(`Email queued: emailId-${emailId}`);
       void this.processPendingEmails();
@@ -133,56 +142,52 @@ export class EmailService implements OnModuleInit, OnModuleDestroy {
 
     this.processing = true;
     try {
-      const queued = await this.repository.claimDue(BATCH_SIZE, STALE_LOCK_SECONDS);
+      const queued = await this.repository.claimDue(
+        BATCH_SIZE,
+        STALE_LOCK_SECONDS,
+      );
       await Promise.all(queued.map((email) => this.processClaimedEmail(email)));
     } catch (error) {
-      this.logger.error(`Email outbox processing failed (${this.errorCode(error)})`);
+      this.logger.error(
+        `Email outbox processing failed (${this.errorCode(error)})`,
+      );
     } finally {
       this.processing = false;
     }
   }
 
-  /**
-   * Reads the SMTP configuration from the environment variables.
-   * @returns The SMTP configuration or null if invalid.
-   */
-  private readSmtpConfig(): { from: string; options: SmtpOptions } | null {
-    const host = this.configService.get<string>('SMTP_HOST')?.trim();
-    const from = this.configService.get<string>('SMTP_FROM')?.trim();
-    const rawPort = this.configService.get<string>('SMTP_PORT')?.trim();
-    const port = rawPort ? Number(rawPort) : 465;
-    const user = this.configService.get<string>('SMTP_USER')?.trim();
-    const password = this.configService.get<string>('SMTP_PASSWORD');
+  /** Reads the OAuth2 configuration required by the Gmail API. */
+  private readGmailConfig(): { from: string; options: GmailOptions } | null {
+    const clientId = this.configService.get<string>('GMAIL_CLIENT_ID')?.trim();
+    const clientSecret = this.configService
+      .get<string>('GMAIL_CLIENT_SECRET')
+      ?.trim();
+    const redirectUri = this.configService
+      .get<string>('GMAIL_REDIRECT_URI')
+      ?.trim();
+    const refreshToken = this.configService
+      .get<string>('GMAIL_REFRESH_TOKEN')
+      ?.trim();
+    const from = this.configService.get<string>('GMAIL_FROM')?.trim();
 
     if (
-      !host || !from || !isEmail(from) ||
-      !Number.isInteger(port) || port < 1 || port > 65535 ||
-      Boolean(user) !== Boolean(password)
+      !clientId ||
+      !clientSecret ||
+      !redirectUri ||
+      !refreshToken ||
+      !from ||
+      !isEmail(from)
     ) {
       return null;
     }
-
-    const smtpUrl = new URL('smtps://localhost');
-    smtpUrl.hostname = host;
-    smtpUrl.port = String(port);
-    if (user && password) {
-      smtpUrl.username = user;
-      smtpUrl.password = password;
+    try {
+      new URL(redirectUri);
+    } catch {
+      return null;
     }
-
     return {
-        from,
-        options: {
-            host,
-            port,
-            secure: true,
-            requireTLS: true,
-            ...(user && password ? { auth: { user, pass: password } } : {}),
-            tls: { minVersion: 'TLSv1.2', rejectUnauthorized: true },
-            connectionTimeout: 10_000,
-            greetingTimeout: 10_000,
-            socketTimeout: 30_000,
-        },
+      from,
+      options: { clientId, clientSecret, redirectUri, refreshToken },
     };
   }
 
@@ -207,7 +212,12 @@ export class EmailService implements OnModuleInit, OnModuleDestroy {
       );
       const errorCode = this.errorCode(error);
       try {
-        await this.repository.scheduleRetry(email.email_id, delay, errorCode, MAX_ATTEMPTS);
+        await this.repository.scheduleRetry(
+          email.email_id,
+          delay,
+          errorCode,
+          MAX_ATTEMPTS,
+        );
       } catch (retryError) {
         this.logger.error(
           `Email retry could not be saved: emailId-${email.email_id}, code-${this.errorCode(retryError)}`,
@@ -237,8 +247,9 @@ export class EmailService implements OnModuleInit, OnModuleDestroy {
   private errorCode(error: unknown): string {
     if (typeof error === 'object' && error !== null && 'code' in error) {
       const code = (error as { code?: unknown }).code;
-      if (typeof code === 'string' && /^[A-Za-z0-9_-]+$/.test(code)) return code.slice(0, 80);
+      if (typeof code === 'string' && /^[A-Za-z0-9_-]+$/.test(code))
+        return code.slice(0, 80);
     }
-    return 'SMTP_ERROR';
+    return 'GMAIL_API_ERROR';
   }
 }
