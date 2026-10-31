@@ -57,4 +57,8 @@ export const ENDPOINTS = {
   banner: (id: number) => `/banners/${id}`,
   bannerActivation: (id: number) => `/banners/${id}/activation`,
   publicBanners: "/public/banners",
+
+  // Donaciones (Wompi)
+  donations: "/donations",
+  donationByTransactionId: (transactionId: string) => `/donations/${transactionId}`,
 } as const;

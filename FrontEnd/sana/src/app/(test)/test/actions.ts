@@ -30,26 +30,27 @@ export async function testBackendAuthMe() {
   // 4. Retornamos los datos que nos devuelve tu backend (NestJS)
   return await response.json();
 }
-
 /**
- * Genera la firma de integridad SHA-256 requerida por Wompi
+ * Genera la firma de integridad SHA-256 requerida por Wompi.
  * Fórmula: sha256(reference + amountInCents + currency + integritySecret)
+ *
+ * La clave de integridad se lee exclusivamente de WOMPI_INTEGRITY_SECRET.
+ * Para sandbox usa las claves test_* del dashboard de Wompi.
  */
 export async function generateWompiSignatureAction(
   reference: string,
   amountInCents: number,
   currency: string = 'COP',
-  integritySecret?: string
 ) {
-  const crypto = await import('crypto');
-  const secret = (
-    integritySecret ||
-    process.env.WOMPI_INTEGRITY_SECRET ||
-    'test_integrity_HJ7pf5UAHw8CQnWXIA7pLf8p8iLR9auS'
-  ).trim();
-  if (!secret) return null;
+  const secret = process.env.WOMPI_INTEGRITY_SECRET?.trim();
 
+  if (!secret) {
+    throw new Error(
+      'WOMPI_INTEGRITY_SECRET no está definida. Agrégala al .env (ver .env.example).',
+    );
+  }
+
+  const crypto = await import('crypto');
   const rawString = `${reference}${amountInCents}${currency}${secret}`;
   return crypto.createHash('sha256').update(rawString).digest('hex');
 }
-

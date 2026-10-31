@@ -118,13 +118,13 @@ export default function PublicHeader() {
             </Link>
           )}
 
-          <button
-            type="button"
-            className="cursor-pointer rounded-full bg-white px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition hover:bg-white/90"
+          <Link
+            href="/donaciones"
+            className="cursor-pointer rounded-full bg-white px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition hover:bg-white/90 hover:scale-105 active:scale-95 shadow-xs"
             style={{ color: "#eb5886" }}
           >
             {PUBLIC_NAV.donate}
-          </button>
+          </Link>
 
           <button
             onClick={() => setIsOpen((current) => !current)}
@@ -166,6 +166,16 @@ export default function PublicHeader() {
                 </Link>
               </li>
             )}
+
+            <li className="mt-2">
+              <Link
+                href="/donaciones"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center justify-center rounded-full bg-white px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#eb5886] transition hover:bg-white/90 shadow-xs"
+              >
+                {PUBLIC_NAV.donate}
+              </Link>
+            </li>
           </ul>
         </nav>
       )}
