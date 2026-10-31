@@ -1,6 +1,6 @@
 'use server';
 
-import crypto from 'crypto';
+import { webcrypto } from 'node:crypto';
 import {
   calculateWompiFee,
   generateDonationReference,
@@ -11,6 +11,36 @@ import type {
   DonationOperationResult,
   WompiTransactionResponse,
 } from '../types/donation-types';
+
+const WOMPI_TRANSACTION_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
+
+function createTransactionResult(
+  transaction: WompiTransactionResponse['data'],
+  extraDonorData?: { readonly fullName?: string; readonly email?: string },
+): DonationOperationResult {
+  const isApproved = transaction.status === 'APPROVED';
+  const isPending = transaction.status === 'PENDING';
+  const statusMessages: Record<DonationOperationResult['status'], string> = {
+    APPROVED: '¡Donación aprobada exitosamente!',
+    PENDING: 'Tu donación está en proceso de validación bancaria.',
+    DECLINED: 'La entidad bancaria no aprobó la transacción.',
+    VOIDED: 'La entidad bancaria no aprobó la transacción.',
+    ERROR: 'La entidad bancaria no aprobó la transacción.',
+  };
+
+  return {
+    success: isApproved || isPending,
+    status: transaction.status,
+    transactionId: transaction.id,
+    reference: transaction.reference,
+    amountCOP: Math.floor(transaction.amount_in_cents / 100),
+    donorFullName:
+      transaction.customer_data?.full_name || extraDonorData?.fullName || undefined,
+    donorEmail: transaction.customer_email || extraDonorData?.email || undefined,
+    paymentMethodType: transaction.payment_method_type || undefined,
+    message: statusMessages[transaction.status],
+  };
+}
 
 /**
  * Function that prepares the data for the Wompi checkout
@@ -39,10 +69,13 @@ export async function prepareDonationCheckoutAction(data: DonationFormData) {
 
   // Fórmula oficial de Wompi: sha256(reference + amountInCents + currency + secret)
   const rawString = `${reference}${amountInCents}${currency}${integritySecret}`;
-  const integritySignature = crypto
-    .createHash('sha256')
-    .update(rawString)
-    .digest('hex');
+  const signatureBuffer = await webcrypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(rawString),
+  );
+  const integritySignature = Array.from(new Uint8Array(signatureBuffer), (byte) =>
+    byte.toString(16).padStart(2, '0'),
+  ).join('');
 
   const publicKey = (
     process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY ||
@@ -79,12 +112,23 @@ export async function verifyTransactionStatusAction(
   }
 
   const cleanTxId = transactionId.trim();
+  if (!WOMPI_TRANSACTION_ID_PATTERN.test(cleanTxId)) {
+    return {
+      success: false,
+      status: 'ERROR',
+      message: 'ID de transacción inválido o no suministrado.',
+    };
+  }
+
   const privateKey = (process.env.WOMPI_PRIVATE_KEY || '').trim();
   const publicKey = (process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY || '').trim();
 
   // Consultar la transacción en la API oficial de Wompi
   let wompiTx: WompiTransactionResponse['data'] | null = null;
-  const apiHosts = ['https://api.wompi.co/v1', 'https://sandbox.wompi.co/v1'];
+  const apiHosts = [
+    new URL('https://api.wompi.co/v1/'),
+    new URL('https://sandbox.wompi.co/v1/'),
+  ];
 
   for (const host of apiHosts) {
     try {
@@ -97,7 +141,11 @@ export async function verifyTransactionStatusAction(
         headers['Authorization'] = `Bearer ${publicKey}`;
       }
 
-      const res = await fetch(`${host}/transactions/${cleanTxId}`, {
+      const transactionUrl = new URL(
+        `transactions/${encodeURIComponent(cleanTxId)}`,
+        host,
+      );
+      const res = await fetch(transactionUrl, {
         method: 'GET',
         headers,
         cache: 'no-store',
@@ -126,32 +174,5 @@ export async function verifyTransactionStatusAction(
     };
   }
 
-  const {
-    id,
-    reference,
-    amount_in_cents,
-    status,
-    payment_method_type,
-    customer_email,
-    customer_data,
-  } = wompiTx;
-
-  const isApproved = status === 'APPROVED';
-  const isPending = status === 'PENDING';
-
-  return {
-    success: isApproved || isPending,
-    status,
-    transactionId: id,
-    reference,
-    amountCOP: Math.floor(amount_in_cents / 100),
-    donorFullName: customer_data?.full_name || extraDonorData?.fullName || undefined,
-    donorEmail: customer_email || extraDonorData?.email || undefined,
-    paymentMethodType: payment_method_type || undefined,
-    message: isApproved
-      ? '¡Donación aprobada exitosamente!'
-      : isPending
-        ? 'Tu donación está en proceso de validación bancaria.'
-        : 'La entidad bancaria no aprobó la transacción.',
-  };
+  return createTransactionResult(wompiTx, extraDonorData);
 }

@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 interface ConfirmacionPageProps {
-  searchParams: Promise<{ id?: string }>;
+  readonly searchParams: Promise<{ readonly id?: string }>;
 }
 
 /**
@@ -50,11 +50,7 @@ export default async function ConfirmacionDonacionPage({
 
           <DonationResultModal
             result={result}
-            onReset={() => {
-              if (typeof window !== 'undefined') {
-                window.location.href = '/donaciones';
-              }
-            }}
+            resetHref="/donaciones"
           />
         </div>
       </main>

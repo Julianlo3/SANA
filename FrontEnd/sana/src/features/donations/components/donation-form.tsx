@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect, useTransition, useSyncExternalStore } from 'react';
 import { Heart, Loader2, Sparkles, AlertCircle } from 'lucide-react';
 import AmountSelector from './amount-selector';
 import FeeTransparencyCard from './fee-transparency-card';
@@ -18,6 +18,15 @@ import {
 import type { DonationOperationResult } from '../types/donation-types';
 
 const WOMPI_WIDGET_URL = 'https://checkout.wompi.co/widget.js';
+const WOMPI_WIDGET_STATUS_EVENT = 'wompi-widget-status';
+
+const subscribeToWompiWidget = (onStoreChange: () => void) => {
+  window.addEventListener(WOMPI_WIDGET_STATUS_EVENT, onStoreChange);
+  return () => window.removeEventListener(WOMPI_WIDGET_STATUS_EVENT, onStoreChange);
+};
+
+const getWompiWidgetSnapshot = () => Boolean(window.WidgetCheckout);
+const getWompiWidgetServerSnapshot = () => false;
 
 // Extend Window interface to include Wompi Widget
 declare global {
@@ -38,7 +47,11 @@ export default function DonationForm() {
   const [coverFee, setCoverFee] = useState<boolean>(true);
 
   // Estados de proceso
-  const [isWidgetLoaded, setIsWidgetLoaded] = useState<boolean>(false);
+  const isWidgetLoaded = useSyncExternalStore(
+    subscribeToWompiWidget,
+    getWompiWidgetSnapshot,
+    getWompiWidgetServerSnapshot,
+  );
   const [isPreparing, startPreparing] = useTransition();
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -49,7 +62,6 @@ export default function DonationForm() {
     if (typeof window === 'undefined') return;
 
     if (window.WidgetCheckout) {
-      setIsWidgetLoaded(true);
       return;
     }
 
@@ -61,7 +73,9 @@ export default function DonationForm() {
       document.head.appendChild(script);
     }
 
-    const onLoad = () => setIsWidgetLoaded(true);
+    const onLoad = () => {
+      window.dispatchEvent(new Event(WOMPI_WIDGET_STATUS_EVENT));
+    };
     const onError = () => {
       setErrorMessage('No pudimos conectar con la pasarela de pagos. Por favor refresca la página.');
     };

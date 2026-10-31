@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { PublicBanner } from '@/features/content/types/content-types';
 
 interface DonationBannerCarouselProps {
-  banners: PublicBanner[];
+  readonly banners: readonly PublicBanner[];
 }
 
 const DEFAULT_BANNER = {
@@ -59,7 +59,7 @@ export default function DonationBannerCarousel({
       {/* Slides con transición de opacidad */}
       {slides.map((slide, index) => (
         <div
-          key={slide.id || index}
+          key={slide.id}
           aria-hidden={index !== currentIndex}
           className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
             index === currentIndex ? 'opacity-100' : 'opacity-0 pointer-events-none'

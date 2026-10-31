@@ -3,10 +3,10 @@
 import { User, Mail } from 'lucide-react';
 
 interface DonorFieldsProps {
-  fullName: string;
-  email: string;
-  onFullNameChange: (val: string) => void;
-  onEmailChange: (val: string) => void;
+  readonly fullName: string;
+  readonly email: string;
+  readonly onFullNameChange: (val: string) => void;
+  readonly onEmailChange: (val: string) => void;
 }
 
 /**
@@ -24,15 +24,13 @@ export default function DonorFields({
   onEmailChange,
 }: DonorFieldsProps) {
   return (
-    <div className="space-y-3">
-      <div>
-        <label className="text-sm font-bold text-[var(--color-text)]">
-          Datos de contacto
-        </label>
-        <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-          Wompi requiere estos datos para emitir tu comprobante y enviarte el recibo bancario oficial.
-        </p>
-      </div>
+    <fieldset className="min-w-0 space-y-3 border-0 p-0">
+      <legend className="text-sm font-bold text-[var(--color-text)]">
+        Datos de contacto
+      </legend>
+      <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+        Wompi requiere estos datos para emitir tu comprobante y enviarte el recibo bancario oficial.
+      </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 transition-all duration-200">
         {/* Nombre completo */}
@@ -77,6 +75,6 @@ export default function DonorFields({
           </div>
         </div>
       </div>
-    </div>
+    </fieldset>
   );
 }

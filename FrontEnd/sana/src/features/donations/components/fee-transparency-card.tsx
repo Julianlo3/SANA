@@ -4,9 +4,9 @@ import { Heart, Info, Check, Sparkles } from 'lucide-react';
 import { calculateWompiFee, formatCOP, MIN_DONATION_COP } from '../services/wompi-service';
 
 interface FeeTransparencyCardProps {
-  amountCOP: number;
-  coverFee: boolean;
-  onToggleCoverFee: (covered: boolean) => void;
+  readonly amountCOP: number;
+  readonly coverFee: boolean;
+  readonly onToggleCoverFee: (covered: boolean) => void;
 }
 
 /**

@@ -1,12 +1,6 @@
 export type DonationStatus = 'APPROVED' | 'PENDING' | 'DECLINED' | 'VOIDED' | 'ERROR';
 
-export type PaymentMethodType =
-  | 'CARD'
-  | 'PSE'
-  | 'BANCOLOMBIA_TRANSFER'
-  | 'BANCOLOMBIA_COLLECT'
-  | 'NEQUI'
-  | string;
+export type PaymentMethodType = string;
 
 export interface RegisterDonationPayload {
   wompiTransactionId: string;

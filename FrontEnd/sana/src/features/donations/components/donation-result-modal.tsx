@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Heart,
   CheckCircle2,
@@ -13,14 +14,14 @@ import {
   Mail,
   ShieldCheck,
   AlertCircle,
-  HelpCircle,
 } from 'lucide-react';
 import { formatCOP } from '../services/wompi-service';
 import type { DonationOperationResult } from '../types/donation-types';
 
 interface DonationResultModalProps {
-  result: DonationOperationResult;
-  onReset: () => void;
+  readonly result: DonationOperationResult;
+  readonly onReset?: () => void;
+  readonly resetHref?: string;
 }
 
 /**
@@ -32,70 +33,118 @@ interface DonationResultModalProps {
 export default function DonationResultModal({
   result,
   onReset,
+  resetHref,
 }: DonationResultModalProps) {
+  const router = useRouter();
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
   const isApproved = result.status === 'APPROVED';
   const isPending = result.status === 'PENDING';
 
-  const handleCopyReference = () => {
-    if (!result.reference) return;
-    navigator.clipboard.writeText(result.reference);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+  const handleReset = () => {
+    if (onReset) {
+      onReset();
+    } else if (resetHref) {
+      router.push(resetHref);
+    }
   };
+
+  const handleCopyReference = async () => {
+    if (!result.reference) return;
+
+    try {
+      await navigator.clipboard.writeText(result.reference);
+      setCopied(true);
+      setCopyError(false);
+      window.setTimeout(() => setCopied(false), 2500);
+    } catch {
+      setCopyError(true);
+    }
+  };
+
+  let statusIcon = (
+    <div className="h-full w-full rounded-full bg-red-50 flex items-center justify-center text-red-500">
+      <AlertTriangle className="h-10 w-10 sm:h-12 sm:w-12" />
+    </div>
+  );
+  if (isApproved) {
+    statusIcon = (
+      <div className="h-full w-full rounded-full bg-[var(--color-primary-soft)] flex items-center justify-center text-[var(--color-primary)]">
+        <CheckCircle2 className="h-10 w-10 sm:h-12 sm:w-12" />
+      </div>
+    );
+  } else if (isPending) {
+    statusIcon = (
+      <div className="h-full w-full rounded-full bg-amber-50 flex items-center justify-center text-amber-500">
+        <Clock className="h-10 w-10 sm:h-12 sm:w-12 animate-pulse" />
+      </div>
+    );
+  }
+
+  let statusMessage = (
+    <div className="space-y-2">
+      <h3 className="font-display text-2xl sm:text-3xl font-black text-[var(--color-text)]">
+        Transacción no completada
+      </h3>
+      <p className="text-sm text-[var(--color-text-muted)] max-w-md mx-auto leading-relaxed">
+        {result.message ||
+          'La entidad bancaria no aprobó la transacción en este intento. Puedes probar nuevamente con otro medio de pago.'}
+      </p>
+    </div>
+  );
+  if (isPending) {
+    statusMessage = (
+      <div className="space-y-3">
+        <h3 className="font-display text-2xl sm:text-3xl font-black text-[var(--color-text)]">
+          Estamos validando tu donación
+        </h3>
+        <p className="text-sm text-[var(--color-text-muted)] max-w-lg mx-auto leading-relaxed">
+          Tu pago está pendiente de confirmación por tu entidad financiera. Con PSE o transferencias esto suele tardar unos minutos, pero a veces toma más tiempo.
+        </p>
+        <p className="text-xs sm:text-sm font-semibold text-[var(--color-primary-dark)] bg-[var(--color-primary-soft)]/60 py-2 px-4 rounded-xl max-w-md mx-auto">
+          Puedes cerrar esta pantalla. Cuando el banco confirme, te enviaremos el comprobante y nuestro agradecimiento a tu correo.
+        </p>
+      </div>
+    );
+  } else if (isApproved) {
+    statusMessage = (
+      <div className="space-y-2">
+        <h3 className="font-display text-2xl sm:text-3xl font-black text-[var(--color-text)]">
+          ¡Muchas gracias por tu generosidad!
+        </h3>
+        <p className="text-sm text-[var(--color-text-muted)] max-w-md mx-auto leading-relaxed">
+          Tu donación ha sido aprobada con éxito. Tu aporte llega directamente para apoyar la nutrición, psicología y acompañamiento de nuestras niñas y niños.
+        </p>
+      </div>
+    );
+  }
+
+  let copyButtonContent = (
+    <>
+      <Copy className="h-3.5 w-3.5" />
+      <span>Copiar</span>
+    </>
+  );
+  if (copied) {
+    copyButtonContent = (
+      <>
+        <Check className="h-3.5 w-3.5 text-emerald-600" />
+        <span className="text-emerald-700 font-bold">Copiada</span>
+      </>
+    );
+  } else if (copyError) {
+    copyButtonContent = <span className="text-red-700 font-bold">No se pudo copiar</span>;
+  }
 
   return (
     <div className="rounded-3xl border border-[var(--color-border)] bg-white p-6 sm:p-8 shadow-xl shadow-[var(--color-primary)]/5 text-center animate-in fade-in-50 duration-300">
       {/* Icono de estado dinámico */}
       <div className="mx-auto flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full mb-5">
-        {isApproved ? (
-          <div className="h-full w-full rounded-full bg-[var(--color-primary-soft)] flex items-center justify-center text-[var(--color-primary)]">
-            <CheckCircle2 className="h-10 w-10 sm:h-12 sm:w-12" />
-          </div>
-        ) : isPending ? (
-          <div className="h-full w-full rounded-full bg-amber-50 flex items-center justify-center text-amber-500">
-            <Clock className="h-10 w-10 sm:h-12 sm:w-12 animate-pulse" />
-          </div>
-        ) : (
-          <div className="h-full w-full rounded-full bg-red-50 flex items-center justify-center text-red-500">
-            <AlertTriangle className="h-10 w-10 sm:h-12 sm:w-12" />
-          </div>
-        )}
+        {statusIcon}
       </div>
 
       {/* Título y Mensajería principal según estándar de donaciones */}
-      {isPending ? (
-        <div className="space-y-3">
-          <h3 className="font-display text-2xl sm:text-3xl font-black text-[var(--color-text)]">
-            Estamos validando tu donación
-          </h3>
-          <p className="text-sm text-[var(--color-text-muted)] max-w-lg mx-auto leading-relaxed">
-            Tu pago está pendiente de confirmación por tu entidad financiera. Con PSE o transferencias esto suele tardar unos minutos, pero a veces toma más tiempo.
-          </p>
-          <p className="text-xs sm:text-sm font-semibold text-[var(--color-primary-dark)] bg-[var(--color-primary-soft)]/60 py-2 px-4 rounded-xl max-w-md mx-auto">
-            Puedes cerrar esta pantalla. Cuando el banco confirme, te enviaremos el comprobante y nuestro agradecimiento a tu correo.
-          </p>
-        </div>
-      ) : isApproved ? (
-        <div className="space-y-2">
-          <h3 className="font-display text-2xl sm:text-3xl font-black text-[var(--color-text)]">
-            ¡Muchas gracias por tu generosidad!
-          </h3>
-          <p className="text-sm text-[var(--color-text-muted)] max-w-md mx-auto leading-relaxed">
-            Tu donación ha sido aprobada con éxito. Tu aporte llega directamente para apoyar la nutrición, psicología y acompañamiento de nuestras niñas y niños.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <h3 className="font-display text-2xl sm:text-3xl font-black text-[var(--color-text)]">
-            Transacción no completada
-          </h3>
-          <p className="text-sm text-[var(--color-text-muted)] max-w-md mx-auto leading-relaxed">
-            {result.message ||
-              'La entidad bancaria no aprobó la transacción en este intento. Puedes probar nuevamente con otro medio de pago.'}
-          </p>
-        </div>
-      )}
+      {statusMessage}
 
       {/* Tarjeta de Referencia y Resumen */}
       <div className="my-6 rounded-2xl bg-[var(--color-surface-muted)] p-4 sm:p-5 text-xs text-left max-w-lg mx-auto border border-[var(--color-border)] space-y-3">
@@ -122,21 +171,11 @@ export default function DonationResultModal({
 
             <button
               type="button"
-              onClick={handleCopyReference}
+              onClick={() => void handleCopyReference()}
               className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[var(--color-text)] hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary-dark)] transition-colors cursor-pointer"
               title="Copiar referencia"
             >
-              {copied ? (
-                <>
-                  <Check className="h-3.5 w-3.5 text-emerald-600" />
-                  <span className="text-emerald-700 font-bold">Copiada</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="h-3.5 w-3.5" />
-                  <span>Copiar</span>
-                </>
-              )}
+              {copyButtonContent}
             </button>
           </div>
         ) : null}
@@ -209,7 +248,7 @@ export default function DonationResultModal({
 
             <button
               type="button"
-              onClick={onReset}
+              onClick={handleReset}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-6 py-3 text-xs font-bold uppercase tracking-wider text-white shadow-sm transition hover:bg-[var(--color-primary-dark)] cursor-pointer"
             >
               <Heart className="h-4 w-4 fill-white" />
@@ -219,7 +258,7 @@ export default function DonationResultModal({
         ) : (
           <button
             type="button"
-            onClick={onReset}
+            onClick={handleReset}
             className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-accent)] px-8 py-3.5 text-xs font-bold uppercase tracking-wider text-white shadow-md transition hover:bg-[var(--color-accent-strong)] cursor-pointer"
           >
             <RotateCcw className="h-4 w-4" />
