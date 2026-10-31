@@ -1,15 +1,59 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback, useSyncExternalStore } from 'react';
 import { generateWompiSignatureAction } from '@/app/(test)/test/actions';
 
-const WOMPI_API_URL = 'https://sandbox.wompi.co/v1';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const WOMPI_PUBLIC_KEY =
   process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY || 'pub_test_GSU1NtKHNeU3uByOGGJcTiN0AQHmWfxn';
+const WOMPI_WIDGET_URL = 'https://checkout.wompi.co/widget.js';
 
 /** Predefined donation amounts (COP) */
 const SUGGESTED_AMOUNTS = [5000, 10000, 20000, 50000];
+
+function subscribeToWidget(onReady, onError) {
+  if (typeof window === 'undefined' || window.WidgetCheckout) return () => {};
+
+  let script = document.querySelector(`script[src="${WOMPI_WIDGET_URL}"]`);
+  const handleLoad = () => onReady();
+  const handleError = () => onError();
+
+  if (!script) {
+    script = document.createElement('script');
+    script.src = WOMPI_WIDGET_URL;
+    script.async = true;
+  }
+
+  script.addEventListener('load', handleLoad);
+  script.addEventListener('error', handleError);
+  if (!script.isConnected) document.head.appendChild(script);
+
+  return () => {
+    script.removeEventListener('load', handleLoad);
+    script.removeEventListener('error', handleError);
+  };
+}
+
+function isWidgetReady() {
+  return typeof window !== 'undefined' && Boolean(window.WidgetCheckout);
+}
+
+function StatusBadge({ status }) {
+  const colors = {
+    APPROVED: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+    DECLINED: 'bg-red-100 text-red-700 border-red-200',
+    VOIDED: 'bg-orange-100 text-orange-700 border-orange-200',
+    ERROR: 'bg-red-100 text-red-700 border-red-200',
+    PENDING: 'bg-amber-100 text-amber-700 border-amber-200',
+  };
+  const colorClass = colors[status] || 'bg-slate-100 text-slate-600 border-slate-200';
+
+  return (
+    <span className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-semibold ${colorClass}`}>
+      {status}
+    </span>
+  );
+}
 
 /** Format COP currency */
 function formatCOP(cents) {
@@ -33,7 +77,15 @@ export default function WompiDonationTest() {
   const [amountCOP, setAmountCOP] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [widgetReady, setWidgetReady] = useState(false);
+  const widgetReady = useSyncExternalStore(
+    (onStoreChange) =>
+      subscribeToWidget(
+        onStoreChange,
+        () => setError('No se pudo cargar el widget de Wompi'),
+      ),
+    isWidgetReady,
+    () => false,
+  );
 
   // Post-payment flow
   const [transactionResult, setTransactionResult] = useState(null);
@@ -44,27 +96,6 @@ export default function WompiDonationTest() {
   const [donations, setDonations] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
-
-  const scriptLoaded = useRef(false);
-
-  // ---------- Load Wompi widget.js ----------
-  useEffect(() => {
-    if (scriptLoaded.current) return;
-    scriptLoaded.current = true;
-
-    // Check if already loaded
-    if (typeof window !== 'undefined' && window.WidgetCheckout) {
-      setWidgetReady(true);
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = 'https://checkout.wompi.co/widget.js';
-    script.async = true;
-    script.onload = () => setWidgetReady(true);
-    script.onerror = () => setError('No se pudo cargar el widget de Wompi');
-    document.head.appendChild(script);
-  }, []);
 
   // ---------- Register donation in backend ----------
   const registerDonation = useCallback(async (txn) => {
@@ -209,24 +240,6 @@ export default function WompiDonationTest() {
     } finally {
       setLoadingHistory(false);
     }
-  };
-
-  // ---------- status badge ----------
-  const StatusBadge = ({ status }) => {
-    const colors = {
-      APPROVED: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-      DECLINED: 'bg-red-100 text-red-700 border-red-200',
-      VOIDED: 'bg-orange-100 text-orange-700 border-orange-200',
-      ERROR: 'bg-red-100 text-red-700 border-red-200',
-      PENDING: 'bg-amber-100 text-amber-700 border-amber-200',
-    };
-    const colorClass = colors[status] || 'bg-slate-100 text-slate-600 border-slate-200';
-
-    return (
-      <span className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-semibold ${colorClass}`}>
-        {status}
-      </span>
-    );
   };
 
   // ---------- render ----------
