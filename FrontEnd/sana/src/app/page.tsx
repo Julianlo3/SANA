@@ -408,13 +408,13 @@ export default async function HomePage() {
                 {donation.description}
               </p>
 
-              <button
-                type="button"
-                className="mt-8 cursor-pointer rounded-full bg-white px-8 py-3.5 font-bold transition"
+              <Link
+                href="/donaciones"
+                className="mt-8 inline-flex items-center justify-center cursor-pointer rounded-full bg-white px-8 py-3.5 font-bold shadow-md transition hover:bg-white/95 hover:scale-105 active:scale-95"
                 style={{ color: COLORS.pink }}
               >
                 {donation.action}
-              </button>
+              </Link>
             </div>
           </div>
         </section>
