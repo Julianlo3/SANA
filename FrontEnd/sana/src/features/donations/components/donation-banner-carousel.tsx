@@ -111,9 +111,9 @@ export default function DonationBannerCarousel({
 
           {/* Indicadores de puntos (dots) */}
           <div className="absolute bottom-3 right-6 z-20 flex gap-1.5">
-            {slides.map((_, dotIndex) => (
+            {slides.map((slide, dotIndex) => (
               <button
-                key={dotIndex}
+                key={slide.id}
                 type="button"
                 onClick={() => setCurrentIndex(dotIndex)}
                 aria-label={`Ir al banner ${dotIndex + 1}`}

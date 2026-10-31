@@ -1,7 +1,5 @@
 export type DonationStatus = 'APPROVED' | 'PENDING' | 'DECLINED' | 'VOIDED' | 'ERROR';
 
-export type PaymentMethodType = string;
-
 export interface RegisterDonationPayload {
   wompiTransactionId: string;
   reference: string;
@@ -36,7 +34,7 @@ export interface WompiTransactionResponse {
     amount_in_cents: number;
     reference: string;
     currency: string;
-    payment_method_type: PaymentMethodType;
+    payment_method_type: string;
     payment_method?: {
       type: string;
       extra?: Record<string, unknown>;
