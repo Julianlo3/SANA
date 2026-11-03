@@ -31,6 +31,7 @@ import type {
 } from './interfaces/user-response.interface.js';
 import { ASSIGNABLE_ROLES } from './users.constants.js';
 import { EmailService } from '../email/email.service.js';
+import { buildAccountCreatedEmail } from '../email/templates/index.js';
 
 const STATE_TO_STATUS: Record<PersonState, UserResponse['status']> = {
   activo: 'active',
@@ -422,14 +423,18 @@ export class UsersService {
       return this.toResponse(manager, created.perId);
     });
 
+    const emailTemplate = buildAccountCreatedEmail({
+      fullName: dto.fullName,
+      email,
+      roleName: role.rolDescription,
+      loginUrl: 'https://fundacionhuellitas.vercel.app/',
+    });
+
     await this.emailService?.enqueueEmail({
       to: email,
-      subject: 'Tu cuenta de SANA está lista',
-      text: [
-        `Hola ${dto.fullName},`,
-        'El administrador creó o habilitó tu cuenta en SANA.',
-        'Ya puedes ingresar con la cuenta de Google asociada a este correo.',
-      ].join('\n'),
+      subject: emailTemplate.subject,
+      text: emailTemplate.text,
+      html: emailTemplate.html,
     });
 
     return user;
