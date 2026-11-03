@@ -1,18 +1,5 @@
 export type DonationStatus = 'APPROVED' | 'PENDING' | 'DECLINED' | 'VOIDED' | 'ERROR';
 
-export interface RegisterDonationPayload {
-  wompiTransactionId: string;
-  reference: string;
-  amountInCents: number;
-  currency: string;
-  status: string;
-  paymentMethodType?: string;
-  donorEmail?: string;
-  donorFullName?: string;
-  environment?: string;
-  wompiCreatedAt?: string;
-}
-
 export interface DonationRecord {
   donId: number;
   donWompiTransactionId: string;
@@ -25,28 +12,6 @@ export interface DonationRecord {
   donDonorFullName: string | null;
   donEnvironment: string;
   donCreatedAt: string;
-}
-
-export interface WompiTransactionResponse {
-  data: {
-    id: string;
-    created_at: string;
-    amount_in_cents: number;
-    reference: string;
-    currency: string;
-    payment_method_type: string;
-    payment_method?: {
-      type: string;
-      extra?: Record<string, unknown>;
-    };
-    status: DonationStatus;
-    status_message?: string;
-    customer_email?: string;
-    customer_data?: {
-      full_name?: string;
-      phone_number?: string;
-    };
-  };
 }
 
 export interface DonationFormData {

@@ -6,25 +6,28 @@ import {
   HttpStatus,
   Param,
   Post,
+  Headers,
   UseGuards,
 } from '@nestjs/common';
 import { OriginGuard } from '../guards/origin.guard.js';
 import { DonationsService } from './donations.service.js';
-import { RegisterDonationDto } from './dto/register-donation.dto.js';
 
 @Controller('donations')
-@UseGuards(OriginGuard)
 export class DonationsController {
   constructor(private readonly donationsService: DonationsService) {}
 
   /**
-   * Register a completed Wompi donation transaction.
-   * POST /api/v1/donations
+   * Receives signed Wompi transaction events. This is intentionally not
+   * protected by OriginGuard: Wompi is a server, not a browser.
+   * POST /api/v1/donations/webhooks/wompi
    */
-  @Post()
-  @HttpCode(HttpStatus.CREATED)
-  register(@Body() dto: RegisterDonationDto) {
-    return this.donationsService.register(dto);
+  @Post('webhooks/wompi')
+  @HttpCode(HttpStatus.OK)
+  receiveWompiEvent(
+    @Headers('x-event-checksum') checksum: string | undefined,
+    @Body() event: unknown,
+  ) {
+    return this.donationsService.processWompiEvent(event, checksum);
   }
 
   /**
@@ -32,6 +35,7 @@ export class DonationsController {
    * GET /api/v1/donations
    */
   @Get()
+  @UseGuards(OriginGuard)
   findAll() {
     return this.donationsService.findAll();
   }
@@ -41,6 +45,7 @@ export class DonationsController {
    * GET /api/v1/donations/:transactionId
    */
   @Get(':transactionId')
+  @UseGuards(OriginGuard)
   findByTransactionId(@Param('transactionId') transactionId: string) {
     return this.donationsService.findByTransactionId(transactionId);
   }

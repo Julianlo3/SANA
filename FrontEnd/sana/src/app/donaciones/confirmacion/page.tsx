@@ -4,7 +4,6 @@ import { ArrowLeft } from 'lucide-react';
 import PublicHeader from '@/components/navigation/public-header';
 import PublicFooter from '@/components/navigation/public-footer';
 import DonationResultModal from '@/features/donations/components/donation-result-modal';
-import { verifyTransactionStatusAction } from '@/features/donations/actions/donation-actions';
 
 export const metadata: Metadata = {
   title: 'Confirmación de Donación · Fundación Dejando Huellas Felices',
@@ -23,9 +22,13 @@ export default async function ConfirmacionDonacionPage({
   searchParams,
 }: ConfirmacionPageProps) {
   const { id } = await searchParams;
-
   const result = id
-    ? await verifyTransactionStatusAction(id)
+    ? {
+      success: true,
+      status: 'PENDING' as const,
+      transactionId: id,
+      message: 'Estamos esperando la confirmación oficial de Wompi. La donación se registrará únicamente cuando llegue el evento firmado de Wompi.',
+    }
     : {
       success: false,
       status: 'ERROR' as const,

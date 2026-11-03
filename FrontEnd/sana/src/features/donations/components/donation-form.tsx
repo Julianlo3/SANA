@@ -8,7 +8,6 @@ import TrustBadges from './trust-badges';
 import DonationResultModal from './donation-result-modal';
 import {
   prepareDonationCheckoutAction,
-  verifyTransactionStatusAction,
 } from '../actions/donation-actions';
 import {
   calculateWompiFee,
@@ -53,7 +52,6 @@ export default function DonationForm() {
     getWompiWidgetServerSnapshot,
   );
   const [isPreparing, startPreparing] = useTransition();
-  const [isVerifying, setIsVerifying] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [result, setResult] = useState<DonationOperationResult | null>(null);
 
@@ -128,26 +126,16 @@ export default function DonationForm() {
         const checkout = new window.WidgetCheckout!(widgetConfig);
 
         // 3. Abrir modal de Wompi (Wompi solicita nombre, email y teléfono internamente)
-        checkout.open(async (wompiResult) => {
+        checkout.open((wompiResult) => {
           if (wompiResult?.transaction?.id) {
-            setIsVerifying(true);
-            try {
-              const verification = await verifyTransactionStatusAction(
-                wompiResult.transaction.id,
-              );
-              setResult(verification);
-            } catch (err) {
-              setResult({
-                success: false,
-                status: 'ERROR',
-                message:
-                  err instanceof Error
-                    ? err.message
-                    : 'Error al verificar la transacción con la pasarela.',
-              });
-            } finally {
-              setIsVerifying(false);
-            }
+            // El callback del widget solo informa a la interfaz. La fuente de
+            // verdad y el único lugar que registra la donación es el webhook.
+            setResult({
+              success: true,
+              status: 'PENDING',
+              transactionId: wompiResult.transaction.id,
+              message: 'Estamos esperando la confirmación oficial de Wompi.',
+            });
           }
         });
       } catch (err) {
@@ -210,15 +198,15 @@ export default function DonationForm() {
         <button
           type="button"
           onClick={handleStartDonation}
-          disabled={!isValidAmount || isPreparing || isVerifying || !isWidgetLoaded}
+          disabled={!isValidAmount || isPreparing || !isWidgetLoaded}
           className="group relative w-full cursor-pointer overflow-hidden rounded-full bg-[var(--color-accent)] px-8 py-4 font-display text-sm font-extrabold uppercase tracking-wider text-white shadow-lg shadow-[var(--color-accent)]/25 transition-all duration-200 hover:bg-[var(--color-accent-strong)] hover:shadow-xl hover:shadow-[var(--color-accent)]/35 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <div className="flex items-center justify-center gap-2">
-            {isPreparing || isVerifying ? (
+            {isPreparing ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin" />
                 <span>
-                  {isVerifying ? 'Verificando con Wompi...' : 'Preparando pasarela segura...'}
+                  Preparando pasarela segura...
                 </span>
               </>
             ) : (
