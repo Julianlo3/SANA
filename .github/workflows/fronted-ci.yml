@@ -16,6 +16,8 @@ on:
       - "FrontEnd/sana/**"
       - ".github/workflows/frontend-ci.yml"
 
+  workflow_dispatch:
+
 permissions:
   contents: read
 
@@ -49,7 +51,7 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
-      # Verificación de tipos TypeScript
+      # Verificación de tipos
       - name: Check TypeScript
         run: npx tsc --noEmit
 
@@ -62,15 +64,97 @@ jobs:
         run: >
           npx vitest run
           --coverage
+          --coverage.reporter=text
+          --coverage.reporter=lcov
+          --coverage.reporter=html
+          --coverage.reporter=json-summary
           --reporter=default
           --reporter=junit
           --outputFile=reports/vitest-junit.xml
 
-      # Verifica que Next.js pueda compilarse
+      # Subir cobertura a Codecov
+      - name: Upload Frontend coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: FrontEnd/sana/coverage/lcov.info
+          flags: frontend
+          name: frontend-coverage
+          fail_ci_if_error: false
+
+      # Compilación
       - name: Build Next.js
         run: npm run build
 
-      # Publicación de reportes
+      # Resumen visual de cobertura
+      - name: Generate coverage summary
+        if: always()
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          const file = 'coverage/coverage-summary.json';
+          const summary = process.env.GITHUB_STEP_SUMMARY;
+
+          let markdown = '## Frontend - Cobertura de pruebas\n\n';
+
+          if (!fs.existsSync(file)) {
+            markdown += 'No se generó el reporte de cobertura.\n';
+          } else {
+            const report = JSON.parse(fs.readFileSync(file, 'utf8'));
+            const total = report.total;
+
+            markdown += '| Métrica | Cubierto | Total | Cobertura |\n';
+            markdown += '|---|---:|---:|---:|\n';
+
+            for (const key of ['lines', 'statements', 'functions', 'branches']) {
+              const metric = total[key];
+              if (!metric) continue;
+
+              markdown += `| ${key} | ${metric.covered} | ${metric.total} | ${metric.pct}% |\n`;
+            }
+          }
+
+          fs.appendFileSync(summary, markdown);
+          NODE
+
+      # Resumen visual de vulnerabilidades
+      - name: Generate dependency security summary
+        if: always()
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          const file = 'reports/npm-audit.json';
+          const summary = process.env.GITHUB_STEP_SUMMARY;
+
+          let markdown = '## Frontend - Auditoría de dependencias\n\n';
+
+          if (!fs.existsSync(file)) {
+            markdown += 'No se encontró el reporte de auditoría.\n';
+          } else {
+            try {
+              const report = JSON.parse(fs.readFileSync(file, 'utf8'));
+              const v = report.metadata?.vulnerabilities || {};
+
+              markdown += '| Severidad | Vulnerabilidades |\n';
+              markdown += '|---|---:|\n';
+
+              for (const level of ['critical', 'high', 'moderate', 'low', 'info']) {
+                markdown += `| ${level} | ${v[level] || 0} |\n`;
+              }
+
+              markdown += `\n**Total:** ${v.total || 0}\n`;
+            } catch {
+              markdown += 'No fue posible interpretar el reporte JSON.\n';
+            }
+          }
+
+          fs.appendFileSync(summary, markdown);
+          NODE
+
+      # Publicar reportes
       - name: Upload frontend reports
         if: always()
         uses: actions/upload-artifact@v4
