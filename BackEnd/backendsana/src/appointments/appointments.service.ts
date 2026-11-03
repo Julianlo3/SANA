@@ -24,6 +24,12 @@ import {
 } from './appointments.repository.js';
 import { ScheduleService } from '../schedule/schedule.service.js';
 import { EmailService } from '../email/email.service.js';
+import {
+  buildAppointmentRequestedEmail,
+  buildAppointmentConfirmedPatientEmail,
+  buildAppointmentAssignedPsychologistEmail,
+  buildAppointmentCancelledEmail,
+} from '../email/templates/index.js';
 import type { AuthenticatedUser } from '../auth/auth.interface.js';
 import { UserRole } from '../models/user-role.enum.js';
 
@@ -718,7 +724,6 @@ export class AppointmentsService {
     appId: number,
   ): Promise<void> {
     try {
-      console.log("enviando correo");
       if (!dto.requesterEmail || this.isPlaceholderEmail(dto.requesterEmail)) {
         this.logger.warn(`Appointment request confirmation email skipped: requester has no usable email (appId-${appId})`);
         return;
@@ -729,18 +734,18 @@ export class AppointmentsService {
       }
 
       const patientName = dto.patientType === 'dependent' ? dto.dependentName : dto.requesterName;
+      const emailTemplate = buildAppointmentRequestedEmail({
+        appId,
+        requesterName: dto.requesterName,
+        patientName,
+        appType: dto.appType,
+        portalUrl: 'https://fundacionhuellitas.vercel.app/iniciar-sesion',
+      });
       await this.emailService.enqueueEmail({
         to: dto.requesterEmail.trim().toLowerCase(),
-        subject: `Recibimos tu solicitud de cita #${appId}`,
-        text: [
-          `Hola ${dto.requesterName},`,
-          'Recibimos tu solicitud de cita correctamente.',
-          `Radicado: ${appId}`,
-          `Paciente: ${patientName}`,
-          `Modalidad: ${dto.appType}`,
-          'Podrá comprobar el estado de su cita desde la plataforma SANA iniciando sesión con el correo registrado',
-          'https://fundacionhuellitas.vercel.app/',
-        ].join('\n'),
+        subject: emailTemplate.subject,
+        text: emailTemplate.text,
+        html: emailTemplate.html,
       });
     } catch (error) {
       this.logger.warn(`Appointment request confirmation email could not be prepared (appId-${appId}, code-${this.notificationErrorCode(error)})`);
@@ -769,20 +774,22 @@ export class AppointmentsService {
     appointment: AppointmentRow,
   ): Promise<void> {
     const date = this.formatAppointmentDate(appointment.appDate);
-    const patientMessage = [
-      `Hola ${appointment.requesterName},`,
-      `La cita para ${appointment.patientName} quedó confirmada.`,
-      `Fecha y hora: ${date}`,
-      `Modalidad: ${appointment.appType}`,
-      `Profesional: ${appointment.psychologistName ?? 'Por confirmar'}`,
-      'Este mensaje no incluye información clínica.',
-    ].join('\n');
+    const patientTemplate = buildAppointmentConfirmedPatientEmail({
+      appId: appointment.appId,
+      requesterName: appointment.requesterName,
+      patientName: appointment.patientName,
+      appDate: date,
+      appType: appointment.appType,
+      psychologistName: appointment.psychologistName,
+      portalUrl: 'https://fundacionhuellitas.vercel.app/iniciar-sesion',
+    });
 
     if (appointment.requesterEmail && !this.isPlaceholderEmail(appointment.requesterEmail)) {
       await this.emailService?.enqueueEmail({
         to: appointment.requesterEmail,
-        subject: 'Confirmación de tu cita psicológica - Fundación Dejando Huellas Felices',
-        text: patientMessage,
+        subject: patientTemplate.subject,
+        text: patientTemplate.text,
+        html: patientTemplate.html,
       });
     } else {
       this.logger.warn(`Appointment confirmation email skipped: requester has no usable email (appId-${appointment.appId})`);
@@ -791,15 +798,19 @@ export class AppointmentsService {
     if (appointment.psychologistId && this.emailService) {
       const psychologistEmail = await this.repo.findPsychologistEmail(appointment.psychologistId);
       if (psychologistEmail && !this.isPlaceholderEmail(psychologistEmail)) {
+        const psychologistTemplate = buildAppointmentAssignedPsychologistEmail({
+          appId: appointment.appId,
+          psychologistName: appointment.psychologistName ?? 'profesional',
+          patientName: appointment.patientName,
+          appDate: date,
+          appType: appointment.appType,
+          agendaUrl: 'https://fundacionhuellitas.vercel.app/iniciar-sesion',
+        });
         await this.emailService?.enqueueEmail({
           to: psychologistEmail,
-          subject: `Nueva cita asignada #${appointment.appId}`,
-          text: [
-            `Hola ${appointment.psychologistName ?? 'profesional'},`,
-            `Tienes una cita confirmada con ${appointment.patientName}.`,
-            `Fecha y hora: ${date}`,
-            `Modalidad: ${appointment.appType}`,
-          ].join('\n'),
+          subject: psychologistTemplate.subject,
+          text: psychologistTemplate.text,
+          html: psychologistTemplate.html,
         });
       } else {
         this.logger.warn(`Appointment confirmation email skipped: psychologist has no usable email (appId-${appointment.appId})`);
@@ -826,20 +837,38 @@ export class AppointmentsService {
   private async deliverCancellationNotification(appointment: AppointmentRow): Promise<void> {
     const date = this.formatAppointmentDate(appointment.appDate);
     if (appointment.requesterEmail && !this.isPlaceholderEmail(appointment.requesterEmail)) {
+      const patientCancelTemplate = buildAppointmentCancelledEmail({
+        appId: appointment.appId,
+        recipientName: appointment.requesterName,
+        patientName: appointment.patientName,
+        appDate: date,
+        recipientType: 'patient',
+        actionUrl: 'https://fundacionhuellitas.vercel.app/iniciar-sesion',
+      });
       await this.emailService?.enqueueEmail({
         to: appointment.requesterEmail,
-        subject: `Cita cancelada #${appointment.appId}`,
-        text: `La cita para ${appointment.patientName} del ${date} fue cancelada. Para coordinar una nueva fecha, comunícate con la fundación.`,
+        subject: patientCancelTemplate.subject,
+        text: patientCancelTemplate.text,
+        html: patientCancelTemplate.html,
       });
     }
 
     if (appointment.psychologistId && this.emailService) {
       const psychologistEmail = await this.repo.findPsychologistEmail(appointment.psychologistId);
       if (psychologistEmail && !this.isPlaceholderEmail(psychologistEmail)) {
+        const psychologistCancelTemplate = buildAppointmentCancelledEmail({
+          appId: appointment.appId,
+          recipientName: appointment.psychologistName ?? 'profesional',
+          patientName: appointment.patientName,
+          appDate: date,
+          recipientType: 'psychologist',
+          actionUrl: 'https://fundacionhuellitas.vercel.app/iniciar-sesion',
+        });
         await this.emailService?.enqueueEmail({
           to: psychologistEmail,
-          subject: `Cita cancelada #${appointment.appId}`,
-          text: `La cita con ${appointment.patientName} del ${date} fue cancelada.`,
+          subject: psychologistCancelTemplate.subject,
+          text: psychologistCancelTemplate.text,
+          html: psychologistCancelTemplate.html,
         });
       }
     }

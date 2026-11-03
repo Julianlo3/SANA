@@ -223,8 +223,14 @@ export class EmailService implements OnModuleInit, OnModuleDestroy {
           `Email retry could not be saved: emailId-${email.email_id}, code-${this.errorCode(retryError)}`,
         );
       }
+      const errorDetails =
+        (error as { response?: { data?: unknown } })?.response?.data
+          ? JSON.stringify((error as { response: { data: unknown } }).response.data)
+          : error instanceof Error
+            ? error.message
+            : String(error);
       this.logger.warn(
-        `Email delivery failed and will be retried: emailId-${email.email_id}, attempt-${email.email_attempts}, code-${errorCode}`,
+        `Email delivery failed and will be retried: emailId-${email.email_id}, attempt-${email.email_attempts}, code-${errorCode}, reason-${errorDetails}`,
       );
       return;
     }
