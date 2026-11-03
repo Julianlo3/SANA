@@ -41,6 +41,9 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
+      - name: Create reports directory
+        run: mkdir -p reports
+
       # Análisis estático de código
       - name: Run ESLint
         run: npm run lint
@@ -49,14 +52,31 @@ jobs:
       - name: Check TypeScript
         run: npx tsc --noEmit
 
-      # Pruebas automatizadas
-      - name: Run tests
-        run: npm test
+      # Pruebas automatizadas y cobertura
+      - name: Run tests with coverage
+        run: >
+          npm test -- --coverage
+          --coverageReporters=text
+          --coverageReporters=lcov
+          --coverageReporters=html
+          --coverageReporters=cobertura
 
-      # Auditoría de dependencias
+      # Auditoría de dependencias y generación de reporte JSON
       - name: Audit dependencies
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=high --json > reports/npm-audit.json
 
       # Verifica que la aplicación pueda compilarse correctamente
       - name: Build NestJS
         run: npm run build
+
+      # Publica los reportes aunque alguna validación anterior falle
+      - name: Upload backend reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-reports
+          path: |
+            BackEnd/backendsana/coverage/
+            BackEnd/backendsana/reports/
+          if-no-files-found: warn
+          retention-days: 30
