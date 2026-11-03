@@ -1,3 +1,4 @@
+
 name: Backend CI
 
 on:
@@ -45,7 +46,7 @@ jobs:
         run: mkdir -p reports
 
       # Análisis estático de código
-      - name: Run ESLint
+      - name: Run Oxlint
         run: npm run lint
 
       # Verificación de tipos TypeScript
@@ -54,22 +55,17 @@ jobs:
 
       # Pruebas automatizadas y cobertura
       - name: Run tests with coverage
-        run: >
-          npm test -- --coverage
-          --coverageReporters=text
-          --coverageReporters=lcov
-          --coverageReporters=html
-          --coverageReporters=cobertura
+        run: npm run test:cov
 
-      # Auditoría de dependencias y generación de reporte JSON
+      # Auditoría de dependencias
       - name: Audit dependencies
         run: npm audit --audit-level=high --json > reports/npm-audit.json
 
-      # Verifica que la aplicación pueda compilarse correctamente
+      # Verifica que NestJS pueda compilarse
       - name: Build NestJS
         run: npm run build
 
-      # Publica los reportes aunque alguna validación anterior falle
+      # Publicación de reportes
       - name: Upload backend reports
         if: always()
         uses: actions/upload-artifact@v4

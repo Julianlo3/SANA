@@ -1,3 +1,4 @@
+
 name: Frontend CI
 
 on:
@@ -48,15 +49,15 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
-      # Verificación de TypeScript
+      # Verificación de tipos TypeScript
       - name: Check TypeScript
         run: npx tsc --noEmit
 
-      # Auditoría de dependencias de producción y reporte JSON
+      # Auditoría de dependencias de producción
       - name: Audit dependencies
         run: npm audit --audit-level=high --omit=dev --json > reports/npm-audit.json
 
-      # Pruebas unitarias, reporte JUnit y cobertura
+      # Pruebas unitarias, JUnit y cobertura
       - name: Run tests with coverage
         run: >
           npx vitest run
@@ -69,7 +70,7 @@ jobs:
       - name: Build Next.js
         run: npm run build
 
-      # Publica los reportes aunque alguna validación anterior falle
+      # Publicación de reportes
       - name: Upload frontend reports
         if: always()
         uses: actions/upload-artifact@v4

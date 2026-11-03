@@ -28,6 +28,7 @@
     "@types/react-big-calendar": "^1.16.3",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^5.2.0",
+    "@vitest/coverage-v8": "^5.1.0",
     "braces": "^3.0.3",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
