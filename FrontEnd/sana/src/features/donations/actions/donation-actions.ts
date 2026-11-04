@@ -4,6 +4,7 @@ import { webcrypto } from 'node:crypto';
 import {
   calculateWompiFee,
   generateDonationReference,
+  MAX_DONATION_COP,
   MIN_DONATION_COP,
 } from '../services/wompi-service';
 import type {
@@ -16,10 +17,15 @@ import type {
  * @returns object with the data for the Wompi checkout
  */
 export async function prepareDonationCheckoutAction(data: DonationFormData) {
-  const baseCOP = Math.floor(Number(data.amountCOP) || 0);
+  const baseCOP = Number(data.amountCOP);
 
-  if (baseCOP < MIN_DONATION_COP) {
+  if (!Number.isSafeInteger(baseCOP) || baseCOP < MIN_DONATION_COP) {
     throw new Error(`El monto mínimo de donación es de $ ${MIN_DONATION_COP.toLocaleString('es-CO')} COP`);
+  }
+  if (baseCOP > MAX_DONATION_COP) {
+    throw new Error(
+      `El monto máximo para donar en línea es de $ ${MAX_DONATION_COP.toLocaleString('es-CO')} COP`,
+    );
   }
 
   const { totalWithFee } = calculateWompiFee(baseCOP);
@@ -60,4 +66,3 @@ export async function prepareDonationCheckoutAction(data: DonationFormData) {
     signature: integritySignature,
   };
 }
-

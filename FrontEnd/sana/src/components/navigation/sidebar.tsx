@@ -55,6 +55,9 @@ const LINKS_BY_ROLE: Record<string, NavLink[]> = {
 
 };
 
+/**
+ * Props for the sidebar component.
+ */
 type Props = {
   roles: string[];
   fullName: string;
@@ -116,7 +119,7 @@ export default function Sidebar({ roles, fullName }: Props) {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col bg-sidebar p-4 transition-transform lg:static lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col bg-sidebar p-4 transition-transform lg:sticky lg:top-0 lg:h-screen lg:self-start lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"
           }`}
       >
         <div className="flex items-center gap-3 px-2 py-4">

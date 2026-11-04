@@ -1,8 +1,16 @@
 'use client';
 
 import { Heart, Info, Check, Sparkles } from 'lucide-react';
-import { calculateWompiFee, formatCOP, MIN_DONATION_COP } from '../services/wompi-service';
+import {
+  calculateWompiFee,
+  formatCOP,
+  MAX_DONATION_COP,
+  MIN_DONATION_COP,
+} from '../services/wompi-service';
 
+/**
+ * Props for the FeeTransparencyCard component, which displays the fee transparency card and calculates how much the foundation actually receives.
+ */
 interface FeeTransparencyCardProps {
   readonly amountCOP: number;
   readonly coverFee: boolean;
@@ -22,18 +30,31 @@ export default function FeeTransparencyCard({
   coverFee,
   onToggleCoverFee,
 }: FeeTransparencyCardProps) {
-  if (amountCOP < MIN_DONATION_COP) {
+  if (amountCOP < MIN_DONATION_COP || amountCOP > MAX_DONATION_COP) {
     return null;
   }
 
   const {
     baseAmount,
     feeAmount,
+    percentageFeeAmount,
+    fixedFeeAmount,
+    ivaAmount,
     totalWithFee,
+    coveredFeeAmount,
+    coveredPercentageFeeAmount,
+    coveredFixedFeeAmount,
+    coveredIvaAmount,
     netReceivedIfCovered,
     netReceivedIfNotCovered,
   } = calculateWompiFee(amountCOP);
 
+  const displayedFee = coverFee ? coveredFeeAmount : feeAmount;
+  const displayedPercentageFee = coverFee
+    ? coveredPercentageFeeAmount
+    : percentageFeeAmount;
+  const displayedFixedFee = coverFee ? coveredFixedFeeAmount : fixedFeeAmount;
+  const displayedIva = coverFee ? coveredIvaAmount : ivaAmount;
   const netReceived = coverFee ? netReceivedIfCovered : netReceivedIfNotCovered;
 
   return (
@@ -54,42 +75,69 @@ export default function FeeTransparencyCard({
         <div className="flex-1 text-xs">
           <span className="font-bold text-[var(--color-text)] flex items-center gap-1.5">
             <Heart className="h-3.5 w-3.5 text-[var(--color-accent)] fill-[var(--color-accent)]" />
-            <span>Deseo cubrir la comisión de la pasarela (~{formatCOP(feeAmount)})</span>
+            <span>Deseo cubrir la comisión estimada de Wompi ({formatCOP(coveredFeeAmount)})</span>
           </span>
           <p className="mt-0.5 text-[var(--color-text-muted)] leading-relaxed">
-            Permite que la fundación reciba el 100% de tu aporte sin deducciones de costos de pasarela.
+            Así, el aporte destinado a la fundación no se reduce por esta comisión.
           </p>
         </div>
       </label>
 
-      {/* Desglose transparente */}
-      <div className="mt-3.5 pt-3 border-t border-[var(--color-primary)]/15 text-xs space-y-2">
+      <div className="mt-3.5 space-y-1.5 rounded-xl border border-[var(--color-primary)]/15 bg-white/70 p-3 text-[11px] leading-relaxed text-[var(--color-text-muted)]">
+        <p>
+          Estimado según el Plan Avanzado Agregador: 2,65% del pago + $700 COP,
+          más IVA del 19% sobre la comisión, por transacción exitosa.
+        </p>
+        <p>
+          La tarifa puede variar si el comercio tiene condiciones negociadas;
+          Wompi publica una tarifa especial para pagos con código QR.
+        </p>
+        <a
+          href="https://wompi.com/es/co/planes-tarifas/plan-avanzado-agregador"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex font-semibold text-[var(--color-primary-dark)] underline underline-offset-2"
+        >
+          Consultar tarifas oficiales de Wompi
+        </a>
+      </div>
+
+      <div className="mt-3.5 space-y-2 border-t border-[var(--color-primary)]/15 pt-3 text-xs">
         <div className="flex justify-between text-[var(--color-text-muted)]">
-          <span>Monto base donado:</span>
+          <span>Aporte que deseas hacer:</span>
           <span className="font-semibold text-[var(--color-text)]">
             {formatCOP(baseAmount)}
           </span>
         </div>
 
         <div className="flex justify-between text-[var(--color-text-muted)]">
-          <span className="flex items-center gap-1">
-            <span>Comisión pasarela Wompi:</span>
-            <Info className="h-3 w-3 text-[var(--color-primary)]" />
+          <span>Comisión variable (2,65% del pago total):</span>
+          <span>{formatCOP(displayedPercentageFee)}</span>
+        </div>
+
+        <div className="flex justify-between text-[var(--color-text-muted)]">
+          <span>Comisión fija:</span>
+          <span>{formatCOP(displayedFixedFee)}</span>
+        </div>
+
+        <div className="flex justify-between text-[var(--color-text-muted)]">
+          <span>IVA (19% sobre la comisión):</span>
+          <span>{formatCOP(displayedIva)}</span>
+        </div>
+
+        <div className="flex justify-between font-semibold text-[var(--color-text)]">
+          <span className="inline-flex items-center gap-1">
+            <span>Comisión total estimada:</span>
+            <Info
+              className="h-3 w-3 text-[var(--color-primary)]"
+              aria-label="El cálculo se basa en la tarifa pública estándar de Wompi."
+            />
           </span>
           <span>
-            {coverFee ? (
-              <span className="font-medium text-[var(--color-text)]">
-                + {formatCOP(feeAmount)} (cubierta por ti)
-              </span>
-            ) : (
-              <span className="text-[var(--color-text-muted)]">
-                - {formatCOP(feeAmount)} (descontada)
-              </span>
-            )}
+            {coverFee ? "+" : "-"} {formatCOP(displayedFee)}
           </span>
         </div>
 
-        {/* Destacado: Cuánto recibe realmente la fundación */}
         <div className="rounded-xl bg-white/80 border border-[var(--color-primary)]/20 p-2.5 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <Sparkles className="h-4 w-4 text-[var(--color-primary)] shrink-0" />
@@ -104,7 +152,7 @@ export default function FeeTransparencyCard({
             </span>
             {coverFee && (
               <span className="block text-[10px] text-emerald-700 font-semibold">
-                (100% de tu aporte)
+                {netReceived >= baseAmount ? "Aporte completo" : ""}
               </span>
             )}
           </div>

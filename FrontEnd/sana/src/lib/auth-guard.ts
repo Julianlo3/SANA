@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
 import { auth0 } from "./auth0";
 
+/**
+ * Represents the current authenticated user.
+ */
 export type CurrentUser = {
   userId: number;
   personId: number;
@@ -19,14 +22,10 @@ const API_URL =
   "http://localhost:3000/api/v1";
 
 /**
- * Obtiene y valida el usuario actualmente autenticado.
- *
- * 1. Verifica que exista una sesión de Auth0.
- * 2. Obtiene el access token.
- * 3. Consulta al backend para obtener la información
- *    y los roles reales del usuario.
- * 4. Combina el nombre real (de Auth0) con los datos del backend.
- * 5. Redirige según el resultado de autorización.
+ * Gets the current authenticated user from the backend.
+ * If the backend is unreachable or returns an error, the user is redirected to a friendly status page.
+ * @throws Will throw an error if the backend cannot be reached or returns an error.
+ * @returns A promise that resolves to the current authenticated user.
  */
 export async function getCurrentUser(): Promise<CurrentUser> {
   const session = await auth0.getSession();
@@ -49,6 +48,9 @@ export async function getCurrentUser(): Promise<CurrentUser> {
         "http://localhost:5173",
     },
     cache: "no-store",
+  }).catch((error: unknown) => {
+    console.error("No se pudo conectar con el backend para validar la sesión.", error);
+    redirect("/servicio-no-disponible");
   });
 
   /**
@@ -70,9 +72,10 @@ export async function getCurrentUser(): Promise<CurrentUser> {
    * Cualquier otro error inesperado.
    */
   if (!response.ok) {
-    throw new Error(
-      "No se pudo validar la autorización local.",
+    console.error(
+      `El backend no pudo validar la sesión (HTTP ${response.status}).`,
     );
+    redirect("/servicio-no-disponible");
   }
 
   const backendUser = (await response.json()) as Omit<CurrentUser, "fullName">;
