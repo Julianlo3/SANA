@@ -14,6 +14,7 @@ import PendingContentNotice from "@/components/feedback/pending-content-notice";
 import { HOME_CONTENT } from "@/content/home";
 import HeroCarousel from "@/features/content/components/hero-carousel";
 import NewsCard from "@/features/content/components/news-card";
+import ServicesShowcase from "@/features/content/components/services-showcase";
 import TeamCarousel from "@/features/content/components/team-carousel";
 import {
   getPublicBanners,
@@ -240,21 +241,7 @@ export default async function HomePage() {
           </h2>
 
           {content.services.length > 0 ? (
-            <div className="mt-10 grid gap-6 md:grid-cols-2">
-              {content.services.map((service) => (
-                <article
-                  key={service.id}
-                  className="rounded-2xl border border-border bg-surface p-7"
-                >
-                  <h3 className="font-display text-xl font-bold text-text">
-                    {service.title}
-                  </h3>
-                  <p className="mt-3 text-sm leading-relaxed text-text-muted">
-                    {service.description}
-                  </p>
-                </article>
-              ))}
-            </div>
+            <ServicesShowcase services={content.services} />
           ) : (
             <PendingContentNotice className="mt-8" />
           )}
