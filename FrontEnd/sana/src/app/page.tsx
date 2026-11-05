@@ -14,6 +14,8 @@ import PendingContentNotice from "@/components/feedback/pending-content-notice";
 import { HOME_CONTENT } from "@/content/home";
 import HeroCarousel from "@/features/content/components/hero-carousel";
 import NewsCard from "@/features/content/components/news-card";
+import ServicesShowcase from "@/features/content/components/services-showcase";
+import TeamCarousel from "@/features/content/components/team-carousel";
 import {
   getPublicBanners,
   getPublicContent,
@@ -239,73 +241,24 @@ export default async function HomePage() {
           </h2>
 
           {content.services.length > 0 ? (
-            <div className="mt-10 grid gap-6 md:grid-cols-2">
-              {content.services.map((service) => (
-                <article
-                  key={service.id}
-                  className="rounded-2xl border border-border bg-surface p-7"
-                >
-                  <h3 className="font-display text-xl font-bold text-text">
-                    {service.title}
-                  </h3>
-                  <p className="mt-3 text-sm leading-relaxed text-text-muted">
-                    {service.description}
-                  </p>
-                </article>
-              ))}
-            </div>
+            <ServicesShowcase services={content.services} />
           ) : (
             <PendingContentNotice className="mt-8" />
           )}
         </section>
 
         {/* EQUIPO — azul marino */}
-        <section className="py-20" style={{ backgroundColor: COLORS.navy }}>
+        <section
+          className="overflow-x-clip py-20"
+          style={{ backgroundColor: COLORS.navy }}
+        >
           <div className="mx-auto max-w-6xl px-6">
             <h2 className="font-display text-4xl font-extrabold text-white">
               {team.title}
             </h2>
 
             {content.team.length > 0 ? (
-              <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                {content.team.map((member) => (
-                  <article
-                    key={member.id}
-                    className="rounded-2xl bg-white p-6 text-center"
-                  >
-                    <div
-                      className="relative mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-full font-display text-2xl font-bold"
-                      style={{ backgroundColor: COLORS.navySoft, color: COLORS.navy }}
-                    >
-                      {member.imageUrl ? (
-                        <Image
-                          src={member.imageUrl}
-                          alt={member.imageAlt ?? member.title}
-                          fill
-                          sizes="96px"
-                          className="object-cover"
-                        />
-                      ) : (
-                        member.title.charAt(0).toUpperCase()
-                      )}
-                    </div>
-                    <h3 className="mt-4 font-semibold text-text">
-                      {member.title}
-                    </h3>
-                    <p
-                      className="mt-1 text-sm font-semibold"
-                      style={{ color: COLORS.pink }}
-                    >
-                      {member.subtitle}
-                    </p>
-                    {member.description && (
-                      <p className="mt-3 text-sm leading-relaxed text-text-muted">
-                        {member.description}
-                      </p>
-                    )}
-                  </article>
-                ))}
-              </div>
+              <TeamCarousel members={content.team} />
             ) : (
               <PendingContentNotice className="mt-8" />
             )}
