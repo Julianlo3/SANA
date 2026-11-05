@@ -2,6 +2,9 @@
 
 import TextField from "@/components/forms/text-field";
 
+/**
+ * Props for the confirmed field component.
+ */
 type Props = {
   label: string;
   confirmLabel: string;
@@ -20,9 +23,9 @@ type Props = {
 };
 
 /**
- * Un campo + su confirmación ("escríbelo de nuevo"), uno debajo del otro.
- * Pedido del cliente (30/09): documento y correo se confirman dos veces,
- * en los dos formularios públicos.
+ * A field that requires the user to confirm the value by entering it twice. The second field prevents pasting for security reasons.
+ * @param param0 an object containing the props for the component
+ * @returns a React component that renders two text fields, one for the original value and one for the confirmation value
  */
 export default function ConfirmedField({
   label,
@@ -63,6 +66,8 @@ export default function ConfirmedField({
         error={confirmError}
         maxLength={maxLength}
         placeholder="Escríbelo de nuevo"
+        hint="Por seguridad, escríbelo manualmente; no se permite pegar."
+        preventPaste
         onChange={onConfirmChange}
         onBlur={onConfirmBlur}
       />

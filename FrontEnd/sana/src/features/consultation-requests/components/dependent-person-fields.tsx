@@ -7,6 +7,9 @@ import { calculateAge } from "../validation/consultation-request-validation";
 import ValidatedDateField from "./validated-date-field";
 import ValidatedSelectField from "./validated-select-field";
 
+/**
+ * Props for the DependentPersonFields component, which renders a form for entering information about a dependent person.
+ */
 type Props = {
   readonly fullName: string;
   readonly birthdate: string;
@@ -40,6 +43,9 @@ type Props = {
   readonly layout?: "grid" | "stacked";
 };
 
+/**
+ * Options for the gender select field, including value and label pairs.
+ */
 const GENDER_OPTIONS = [
   { value: "M", label: "Hombre" },
   { value: "F", label: "Mujer" },
@@ -47,6 +53,11 @@ const GENDER_OPTIONS = [
   { value: "P", label: "No quiero especificar" },
 ] as const;
 
+/**
+ * Renders a form for entering information about a dependent person, including full name, birthdate, gender, and identity document. It supports validation and error handling for each field.
+ * @param param0 Props for the DependentPersonFields component
+ * @returns A React component that renders a form for entering information about a dependent person, with validation and error handling for each field.
+ */
 export default function DependentPersonFields({
   fullName,
   birthdate,
@@ -132,6 +143,8 @@ export default function DependentPersonFields({
         error={errors.confirmIdentityDocument}
         maxLength={12}
         placeholder="Escríbelo de nuevo"
+        hint="Por seguridad, escríbelo manualmente; no se permite pegar."
+        preventPaste
         onChange={(value) =>
           onConfirmIdentityDocumentChange(keepDigits(value))
         }

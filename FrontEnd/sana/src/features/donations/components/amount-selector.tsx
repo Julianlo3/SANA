@@ -2,14 +2,23 @@
 
 import { useState } from 'react';
 import { RotateCcw, Plus, Edit3 } from 'lucide-react';
-import { formatCOP, MIN_DONATION_COP } from '../services/wompi-service';
+import {
+  formatCOP,
+  MAX_DONATION_COP,
+  MIN_DONATION_COP,
+} from '../services/wompi-service';
 
+/**
+ * interface for the props of the AmountSelector component, which allows users to select a donation amount.
+ */
 interface AmountSelectorProps {
   readonly value: number;
   readonly onChange: (newAmount: number) => void;
 }
 
-// Opciones para sumar al monto
+/**
+ * Options for the increment buttons that allow users to quickly add predefined amounts to their donation.
+ */
 const INCREMENT_OPTIONS = [
   { label: '+ $1.000', amount: 1000 },
   { label: '+ $5.000', amount: 5000 },
@@ -43,8 +52,15 @@ export default function AmountSelector({ value, onChange }: AmountSelectorProps)
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Permitir sólo dígitos enteros
     const clean = e.target.value.replace(/\D/g, '');
+    const maxInputLength = String(MAX_DONATION_COP).length + 1;
+    if (clean.length > String(MAX_DONATION_COP).length) {
+      setRawInputValue(clean.slice(0, maxInputLength));
+      onChange(MAX_DONATION_COP + 1);
+      return;
+    }
+
     setRawInputValue(clean);
-    const parsed = clean ? Number.parseInt(clean, 10) : 0;
+    const parsed = clean ? Number(clean) : 0;
     onChange(parsed);
   };
 
@@ -54,8 +70,9 @@ export default function AmountSelector({ value, onChange }: AmountSelectorProps)
   };
 
   const isBelowMin = value > 0 && value < MIN_DONATION_COP;
+  const isAboveMax = value > MAX_DONATION_COP;
   let amountBorderClass = 'border-[var(--color-border)] hover:border-[var(--color-primary)]/50';
-  if (isBelowMin) {
+  if (isBelowMin || isAboveMax) {
     amountBorderClass = 'border-amber-300 ring-2 ring-amber-100';
   } else if (value >= MIN_DONATION_COP) {
     amountBorderClass = 'border-[var(--color-primary)] ring-2 ring-[var(--color-primary-soft)]';
@@ -100,8 +117,11 @@ export default function AmountSelector({ value, onChange }: AmountSelectorProps)
             id="donation-amount-input"
             type="text"
             inputMode="numeric"
+            maxLength={String(MAX_DONATION_COP).length + 1}
             placeholder="0"
             value={displayedInputValue}
+            aria-invalid={isAboveMax}
+            aria-describedby="donation-amount-help"
             onFocus={handleInputFocus}
             onBlur={() => setIsEditingManually(false)}
             onChange={handleInputChange}
@@ -115,17 +135,22 @@ export default function AmountSelector({ value, onChange }: AmountSelectorProps)
 
         {/* Indicador de ayuda al pie del input */}
         <div className="flex items-center justify-between bg-[var(--color-surface-muted)] px-4 py-1.5 text-[11px] text-[var(--color-text-muted)] border-t border-[var(--color-border)]">
-          <span className="flex items-center gap-1">
+          <span id="donation-amount-help" className="flex items-center gap-1">
             <Edit3 className="h-3 w-3 text-[var(--color-primary)]" />
-            <span>Puedes digitar cualquier valor o sumar con los botones</span>
+            <span>Máximo en línea: {formatCOP(MAX_DONATION_COP, true)}</span>
           </span>
 
+          {isAboveMax && (
+            <span className="font-semibold text-amber-700" role="alert">
+              Supera el máximo permitido
+            </span>
+          )}
           {isBelowMin && (
             <span className="font-semibold text-amber-700">
               Mínimo $ {MIN_DONATION_COP.toLocaleString('es-CO')} COP
             </span>
           )}
-          {value >= MIN_DONATION_COP && (
+          {value >= MIN_DONATION_COP && !isAboveMax && (
             <span className="font-semibold text-[var(--color-primary-dark)]">
               {formatCOP(value)}
             </span>

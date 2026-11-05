@@ -12,6 +12,7 @@ import {
 import {
   calculateWompiFee,
   formatCOP,
+  MAX_DONATION_COP,
   MIN_DONATION_COP,
 } from '../services/wompi-service';
 import type { DonationOperationResult } from '../types/donation-types';
@@ -87,13 +88,23 @@ export default function DonationForm() {
     };
   }, []);
 
-  const { totalWithFee } = calculateWompiFee(amountCOP);
-  const finalAmountToPay = coverFee ? totalWithFee : amountCOP;
-  const isValidAmount = amountCOP >= MIN_DONATION_COP;
+  const isValidAmount =
+    Number.isSafeInteger(amountCOP) &&
+    amountCOP >= MIN_DONATION_COP &&
+    amountCOP <= MAX_DONATION_COP;
+  const totalWithFee = isValidAmount
+    ? calculateWompiFee(amountCOP).totalWithFee
+    : 0;
+  const finalAmountToPay =
+    coverFee && isValidAmount ? totalWithFee : amountCOP;
 
   const handleStartDonation = () => {
     if (!isValidAmount) {
-      setErrorMessage(`El monto mínimo para donar es de ${formatCOP(MIN_DONATION_COP, true)}.`);
+      setErrorMessage(
+        amountCOP > MAX_DONATION_COP
+          ? `El monto máximo para donar en línea es de ${formatCOP(MAX_DONATION_COP, true)}.`
+          : `El monto mínimo para donar es de ${formatCOP(MIN_DONATION_COP, true)}.`,
+      );
       return;
     }
 

@@ -18,13 +18,22 @@ import ResidenceFields from "../components/residence-fields";
 import { useConsultationRequestForm } from "../hooks/use-consultation-request-form";
 import type { CardType, Gender } from "../types/consultation-request-types";
 
+/**
+ * Renders the self request page, which allows users to submit a consultation request for themselves.
+ */
 const { selfForm } = REQUEST_CONTENT;
 
+/**
+ * document types for the identity document field, including value and label pairs.
+ */
 const DOCUMENT_TYPES: { value: CardType; label: string }[] = [
   { value: "CC", label: "Cédula de ciudadanía" },
   { value: "CE", label: "Cédula de extranjería" },
 ];
 
+/**
+ * Options for the gender select field, including value and label pairs.
+ */
 const GENDER_OPTIONS: { value: Gender; label: string }[] = [
   { value: "M", label: "Hombre" },
   { value: "F", label: "Mujer" },
@@ -32,7 +41,10 @@ const GENDER_OPTIONS: { value: Gender; label: string }[] = [
   { value: "P", label: "No quiero especificar" },
 ];
 
-/** HU-2.2: formulario de quien solicita la atención para sí mismo. */
+/**
+ * Renders the self request page, which allows users to submit a consultation request for themselves.
+ * @returns A React component that renders the self request page.
+ */
 export default function SelfRequestPage() {
   const {
     values,
@@ -146,6 +158,8 @@ export default function SelfRequestPage() {
                 error={errors.confirmIdentityDocument}
                 maxLength={12}
                 placeholder="Escríbelo de nuevo"
+                hint="Por seguridad, escríbelo manualmente; no se permite pegar."
+                preventPaste
                 onChange={(value) =>
                   setValue("confirmIdentityDocument", keepDigits(value))
                 }

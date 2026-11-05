@@ -46,9 +46,7 @@ import type {
 const { guardianForm } = REQUEST_CONTENT;
 
 /**
- * Las 4 opciones reales de la tabla relationship
- * (DataBase/init-scripts/02-inserts.sql). No hay "hermano/a" ni "otro":
- * el backend rechaza cualquier id que no esté en esa tabla.
+ * The fields that are validated in step 1 of the guardian request form. If any of these fields have validation errors, the user will be returned to step 1 for correction.
  */
 const RELATIONSHIP_OPTIONS: { value: GuardianRelationshipId; label: string }[] = [
   { value: 1, label: "Madre" },
@@ -57,11 +55,17 @@ const RELATIONSHIP_OPTIONS: { value: GuardianRelationshipId; label: string }[] =
   { value: 4, label: "Abuelo/a" },
 ];
 
+/**
+ * Returns a list of field names that have validation errors in step 1.
+ */
 const DOCUMENT_TYPES: { value: CardType; label: string }[] = [
   { value: "CC", label: "Cédula de ciudadanía" },
   { value: "CE", label: "Cédula de extranjería" },
 ];
 
+/**
+ * Options for the gender select field, including value and label pairs.
+ */
 const GENDER_OPTIONS: { value: Gender; label: string }[] = [
   { value: "M", label: "Hombre" },
   { value: "F", label: "Mujer" },
@@ -69,7 +73,9 @@ const GENDER_OPTIONS: { value: Gender; label: string }[] = [
   { value: "P", label: "No quiero especificar" },
 ];
 
-/** Campos del paso 1: los del acudiente y los del menor. */
+/**
+ * The fields that are validated in step 1 of the guardian request form. If any of these fields have validation errors, the user will be returned to step 1 for correction.
+ */
 const STEP1_FIELDS: (keyof RequestFormValues)[] = [
   "fullName",
   "documentType",
@@ -88,7 +94,11 @@ const STEP1_FIELDS: (keyof RequestFormValues)[] = [
   "minorGender",
 ];
 
-/** Nombres de los campos del paso 1 que hoy tienen error, para el resumen. */
+/**
+ * Returns a list of field names that have validation errors in step 1.
+ * @param values The current form values.
+ * @returns An array of field names that have validation errors in step 1.
+ */
 function getStep1Failed(values: RequestFormValues): string[] {
   const checks: [string, string | undefined][] = [
     ["Nombre completo", validateFullName(values.fullName)],
@@ -132,6 +142,10 @@ function getStep1Failed(values: RequestFormValues): string[] {
   return checks.filter(([, error]) => error).map(([label]) => label);
 }
 
+/**
+ * Renders the guardian request page, which allows users to submit a consultation request on behalf of a dependent person.
+ * @returns A React component that renders the guardian request page.
+ */
 export default function GuardianRequestPage() {
   const [step, setStep] = useState<1 | 2>(1);
   const [step1Attempted, setStep1Attempted] = useState(false);
@@ -170,7 +184,9 @@ export default function GuardianRequestPage() {
     window.setTimeout(scrollToFirstError, 50);
   }
 
-  /** Envía y, si el backend rechaza un dato del paso 1, vuelve a ese paso. */
+  /**
+   * Sends the consultation request. If any of the fields from step 1 are rejected, it returns to step 1 for correction.
+   */
   async function handleSend() {
     const rejected = await send();
 
@@ -305,6 +321,8 @@ export default function GuardianRequestPage() {
                   error={errors.confirmIdentityDocument}
                   maxLength={12}
                   placeholder="Escríbelo de nuevo"
+                  hint="Por seguridad, escríbelo manualmente; no se permite pegar."
+                  preventPaste
                   onChange={(value) =>
                     setValue("confirmIdentityDocument", keepDigits(value))
                   }

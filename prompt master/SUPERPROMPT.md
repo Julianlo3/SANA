@@ -269,7 +269,7 @@ La UI nunca sustituye el control backend. Las comprobaciones de pertenencia/asig
 
 ## 4.1 Fuente de verdad y alcance
 
-Esta sección describe el stack **realmente instalado**. No inferir dependencias, infraestructura ni servicios a partir de las historias de usuario. Donaciones, reportes, WhatsApp y OAuth social directo aparecen en requisitos, pero no tienen módulo, endpoint ni pantalla implementados; son pendientes, no parte del runtime actual.
+Esta sección describe el stack **realmente instalado**. No inferir dependencias, infraestructura ni servicios a partir de las historias de usuario. Donaciones, reportes, WhatsApp y OAuth social directo para inicio de sesión aparecen en requisitos, pero no tienen módulo, endpoint ni pantalla implementados; son pendientes. Gmail OAuth2 existe exclusivamente para que el backend pueda enviar correo, no para autenticar usuarios.
 
 ## 4.2 Tecnologías instaladas
 
@@ -283,7 +283,7 @@ Esta sección describe el stack **realmente instalado**. No inferir dependencias
 | Despliegue frontend | Vercel | Aplicación Next.js desplegada. |
 | Despliegue backend | Render | API NestJS desplegada. |
 | Seguridad | `jose`, Helmet, cookie-parser, bcrypt, Joi, class-validator/transformer | JWT Auth0, cabeceras, ambiente y DTOs. |
-| Correo | Nodemailer `10.0.13` sobre SMTP | Cola durable `email_outbox`, reintentos y limpieza de payload enviado. |
+| Correo | Gmail API mediante `googleapis` `188.0.0` y OAuth2 | Cola durable `email_outbox`, reintentos y limpieza de payload enviado. La comunicación se realiza por HTTPS con Gmail API. |
 | Imágenes | Cloudinary REST API, sin SDK | Firma de carga directa y verificación previa a persistir. |
 | Pruebas | Vitest, Supertest y cobertura V8 | Unitarias, e2e y OWASP. |
 | Calidad | Oxlint backend; ESLint Next frontend; Prettier backend | `npm run lint`; Prettier tiene script de escritura. |
@@ -296,8 +296,8 @@ No se declara versión de Node mediante `.nvmrc`, `engines` ni `.tool-versions`.
 Navegador -> Next.js en Vercel (:5173 en desarrollo)
               /api/backend/* -> route handler BFF
                                 -> BACKEND_API_URL/api/v1/* + Bearer JWT + Origin
-           NestJS en Render (:3000 por defecto) -> TypeORM -> PostgreSQL/Neon
-                                      -> Auth0, Cloudinary, SMTP/email_outbox
+           NestJS (:3000 por defecto) -> TypeORM -> PostgreSQL/Neon
+                                      -> Auth0, Cloudinary, Gmail API/email_outbox
 ```
 
 - El backend fija `api/v1` con `app.setGlobalPrefix`; su contrato empieza por `/api/v1`, no `/api`.
@@ -328,7 +328,8 @@ En frontend, una capacidad vive en `features/<dominio>`; las rutas de `app` solo
 | Auth0 | `AUTH0_DOMAIN`, `AUTH0_AUDIENCE`, `AUTH0_CLAIM_NAMESPACE`; frontend: `AUTH0_AUDIENCE` | El audience debe coincidir entre emisor, frontend y API. |
 | Proxy | `BACKEND_API_URL`, `APP_BASE_URL` | `BACKEND_API_URL` ya incluye `/api/v1`; no duplicar prefijo. |
 | Cloudinary | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `CLOUDINARY_FOLDER` | El secreto no llega al cliente; el backend firma cargas temporales. |
-| Correo | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | TLS mínimo 1.2. Sin configuración válida, el envío se desactiva de forma segura. |
+| Correo Gmail | `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REDIRECT_URI`, `GMAIL_REFRESH_TOKEN`, `GMAIL_FROM` | OAuth2 server-side. Si falta una variable, el envío se desactiva de forma segura. `GMAIL_FROM` debe ser la cuenta autorizada o un alias de Gmail verificado. |
+| Configuración OAuth temporal | `GMAIL_OAUTH_SETUP_SECRET` | Secreto aleatorio exclusivo para iniciar el consentimiento y firmar `state`; no es un token Gmail. Vaciarlo tras obtener el refresh token deshabilita las rutas de preparación. |
 
 Los `.env` y secretos nunca se versionan. `.env.example` contiene plantillas, no credenciales.
 
@@ -376,7 +377,7 @@ flowchart LR
   API --> AUTH[Auth0]
   API --> DB[(PostgreSQL / Neon)]
   API --> CLD[Cloudinary]
-  API --> SMTP[SMTP / email_outbox]
+  API --> GMAIL[Gmail API / OAuth2 / email_outbox]
 ```
 
 El BFF no reproduce autorización ni reglas de negocio: reenvía token cuando hay sesión y NestJS decide. Un enlace o layout de Next no sustituye guards ni autorización a nivel de registro.
@@ -406,7 +407,7 @@ La identidad sensible se deriva de `request.user` validado, nunca de un `userId`
 | `policy` | Documento vigente y evidencia de aceptación por solicitud, agenda o nota. |
 | `content` | Institucional, tarjetas, noticias, banners, galería y Cloudinary. |
 | `security-logs` | Rechazos por rol. |
-| `email` | Outbox SMTP, locks, reintentos y borrado de payload enviado. |
+| `email` | Outbox Gmail API, OAuth2 de preparación, locks, reintentos y borrado de payload enviado. |
 
 No existen módulos implementados de donaciones, reportes ni WhatsApp. No inventar rutas o tablas sin contrato y decisión funcional aprobados.
 
@@ -420,7 +421,7 @@ No existen módulos implementados de donaciones, reportes ni WhatsApp. No invent
 | Guards/decoradores | `JwtAuthGuard`, `RolesGuard`, `OriginGuard`, `@Roles`, `@RateLimit`. | La protección de servidor es obligatoria; rol de método prevalece sobre clase. |
 | BFF | `app/api/backend/[...path]/route.ts`. | Delgado: sin dominio ni secretos de terceros en cliente. |
 | Feature-first | `pages`, `components`, `hooks`, `services`, `types`, `validation`. | La ruta compone; la feature implementa. |
-| Outbox | `email_outbox`. | Encolar con el evento cuando la notificación sea indispensable. |
+| Outbox | `email_outbox`. | Encolar con el evento cuando la notificación sea indispensable; normalizar la respuesta de `UPDATE ... RETURNING` de TypeORM antes de entregarla al transport. |
 | Auditoría | Logs de seguridad, notas, contenido y asignaciones. | Actor, instante, recurso y acción mínimos; no datos sensibles completos. |
 
 ## 5.5 Invariantes transversales
@@ -541,7 +542,7 @@ La BD guarda URL de Cloudinary, no binarios. Antes de persistir, el backend vali
 
 | Tabla | Uso |
 |---|---|
-| `email_outbox` | Cola SMTP: destinatario/asunto/cuerpo mientras está pendiente; estado (`pending`, `sending`, `sent`), intentos, lock, próximo intento y resultado. Al quedar `sent`, el check exige borrar destinatario y contenido. |
+| `email_outbox` | Cola para Gmail API: destinatario/asunto/cuerpo mientras está pendiente; estado (`pending`, `sending`, `sent`, `failed`), intentos, lock, próximo intento y resultado. Al quedar `sent` o `failed`, el check exige borrar destinatario y contenido. |
 | `donors`, `donations`, `payment_method` | Existen en el SQL heredado para donaciones, pero no tienen módulo/API/frontend implementado actual. No exponer ni extender sin contrato de donaciones aprobado. |
 
 ## 6.9 Reglas de evolución
@@ -1312,6 +1313,8 @@ Roles: `Público`, `JWT` (cualquier sesión válida), `ADMIN`, `SECRETARIO`, `PS
 |---|---|---|---|
 | GET | `/`, `/healthz` | Público | Información/estado del servicio. |
 | GET | `/auth/me` | JWT | Identidad autenticada: IDs, email y roles. |
+| GET | `/auth/google?setup_key=...` | Secreto temporal | Inicia la autorización única de Gmail y devuelve `authorizationUrl`. No es el inicio de sesión Auth0 ni una ruta para frontend. Rate limit: 5/5 min. |
+| GET | `/auth/google/callback?code=...&state=...` | Estado OAuth firmado | Google redirige aquí; intercambia el código de un solo uso y responde temporalmente `{ refreshToken }` con `Cache-Control: no-store`. Rate limit: 10/5 min. |
 | PATCH | `/auth/terms`, `/auth/psychologist-terms` | JWT | Registra aceptación; retorna mensaje y bandera. El segundo no restringe rol en controlador: hallazgo a corregir, no permiso de producto. |
 | DELETE | `/auth/sessions/current` | JWT | Logout lógico; `204`. La sesión Auth0 sigue siendo propiedad de Auth0. |
 | GET/PATCH | `/users/me` | Roles internos o consultante | Perfil propio; PATCH permite solo campos de `UpdateOwnProfileDto`. |
@@ -1409,13 +1412,13 @@ La fecha, duración, conflicto de agenda, estado previo y pertenencia al psicól
 | Render | Despliegue de la API NestJS. | Implementado y activo. La configuración de servicio/variables se administra en Render. |
 | PostgreSQL en Neon | Persistencia transaccional. | Implementado mediante TypeORM/`pg`; esquema en `03-schema-NEON.sql`. |
 | Cloudinary | Carga y alojamiento de imágenes institucionales. | Implementado con REST: firma backend, carga directa navegador, verificación backend. |
-| SMTP/Nodemailer | Correo transaccional. | Implementado de forma configurable; sin credenciales válidas se desactiva. No hay proveedor fijado. |
+| Gmail API | Correo transaccional mediante OAuth2/HTTPS. | Implementado. Sin configuración completa se desactiva de forma segura. |
 
-Vercel, Render y Neon son los proveedores activos de despliegue/persistencia. Sus configuraciones operativas no están versionadas en este repositorio. Wompi, WhatsApp, Resend y SendGrid no están integrados en el código actual.
+En un despliegue con Vercel y Render, Vercel aloja el frontend y Render aloja NestJS, incluida la integración Gmail API. Wompi, WhatsApp, Resend y SendGrid no están integrados en el código actual.
 
 ## 10.2 Auth0
 
-**Flujo.** El usuario se autentica con Auth0 mediante el SDK de Next.js. Al invocar `/api/backend/*`, el route handler intenta obtener el access token y lo reenvía como Bearer a NestJS. `JwtAuthGuard` verifica el token y `AuthService` resuelve/sincroniza la persona y sus roles locales. La API no crea un endpoint propio `/auth/google` ni emite cookies JWT.
+**Flujo.** El usuario se autentica con Auth0 mediante el SDK de Next.js. Al invocar `/api/backend/*`, el route handler intenta obtener el access token y lo reenvía como Bearer a NestJS. `JwtAuthGuard` verifica el token y `AuthService` resuelve/sincroniza la persona y sus roles locales. La API no emite cookies JWT. Las rutas `/auth/google*` existen exclusivamente para preparar Gmail API y no participan en la autenticación de usuarios.
 
 **Configuración mínima.** `AUTH0_DOMAIN`, `AUTH0_AUDIENCE` y `AUTH0_CLAIM_NAMESPACE` en backend; `AUTH0_AUDIENCE` en frontend, además de las variables requeridas por el SDK Auth0 de Next.js. Audience, issuer y namespace deben referirse al mismo tenant/API configurado.
 
@@ -1437,13 +1440,45 @@ Vercel, Render y Neon son los proveedores activos de despliegue/persistencia. Su
 - Configurar timeout de dependencia (actualmente 10 s) y devolver `503` si no se puede validar. No aceptar URLs arbitrarias ni data URLs.
 - Mantener alt text y límites de formato/tamaño como parte del contrato de accesibilidad y seguridad.
 
-## 10.4 SMTP y outbox
+## 10.4 Gmail API y outbox
 
-El backend lee `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` y `SMTP_FROM`. Construye transporte seguro (TLS 1.2+, certificado verificado), encola mensajes en `email_outbox`, reclama lotes de hasta diez, reintenta hasta ocho veces con backoff exponencial y borra destinatario/asunto/cuerpo al marcar `sent`.
+El backend usa Gmail API por HTTPS y `googleapis`. Construye un mensaje MIME en base64url y usa `users.messages.send` con `userId: me`. El transporte usa OAuth2 con `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REDIRECT_URI`, `GMAIL_REFRESH_TOKEN` y `GMAIL_FROM`.
 
-- La entrega de correo no debe bloquear ni deshacer el caso de uso principal si SMTP está ausente o falla, salvo requisito futuro explícito.
-- Nunca guardar contraseña SMTP ni contenido sensible en logs. La outbox es sensible mientras haya payload pendiente; restringir su acceso y retención.
-- Antes de elegir Resend, SendGrid u otro proveedor, definir contrato de entrega, bounces, remitente, costos, DPA y pruebas sandbox. No sustituir Nodemailer/SMTP sin esa decisión.
+La outbox reclama lotes de hasta diez, reintenta hasta ocho veces con backoff exponencial (30 s hasta una hora), y borra destinatario/asunto/cuerpo en `sent` o `failed`. La entrega no deshace el caso de uso principal si Gmail falta o falla.
+
+### Flujo de configuración OAuth2
+
+1. Habilitar Gmail API y registrar en Google Auth Platform la URI exacta del callback.
+2. Para desarrollo local usar `http://localhost:3000/api/v1/auth/google/callback`. Para producción usar `https://<servicio-render>/api/v1/auth/google/callback`; Vercel no recibe este callback porque el intercambio ocurre en NestJS/Render.
+3. Configurar temporalmente `GMAIL_OAUTH_SETUP_SECRET`, abrir `GET /api/v1/auth/google?setup_key=<secreto>` y visitar el `authorizationUrl` devuelto.
+4. Tras consentimiento con scope `https://www.googleapis.com/auth/gmail.send`, Google llama al callback. Este valida `state`, intercambia el `code` de un uso y devuelve `refreshToken` sin almacenarlo ni registrarlo.
+5. Guardar el token en `GMAIL_REFRESH_TOKEN`, configurar el correo remitente en `GMAIL_FROM`, replicar secretos en Render, reiniciar y vaciar `GMAIL_OAUTH_SETUP_SECRET` cuando termine la preparación.
+
+El `refresh_token` no es el token o cookie que devuelve un inicio de sesión ordinario en Gmail/Auth0. Es una credencial OAuth2 de larga duración para renovar access tokens de la cuenta remitente. El JSON de cliente OAuth aporta ID, secreto y redirect URI, pero no aporta ni el remitente ni el refresh token.
+
+### Eventos que generan correo
+
+| Evento | Destinatario | Condición |
+|---|---|---|
+| Solicitud de cita (`POST /appointments/request`) | Secretarias activas con correo | Una por cada secretaria destinataria. No se envía acuse al solicitante en esta transición. |
+| Confirmación (`PATCH /appointments/:id/confirm`) | Solicitante y psicólogo asignado | Solo con correos reales, no los placeholders internos. |
+| Cancelación confirmada por secretaría (`PATCH /appointments/:id/status`) o por solicitante (`PATCH /appointments/:id/cancel`) | Solicitante y psicólogo asignado | Solo si la cita estaba confirmada. |
+| Creación de usuario (`POST /users`) | Usuario creado | Notifica que su cuenta está lista. |
+
+Asignar un psicólogo, descartar una solicitud, marcar una cita realizada o editar un usuario no dispara correo actualmente.
+
+### Reglas y consideraciones de implementación
+
+| Regla | Motivo técnico |
+|---|---|
+| Usar Gmail API por HTTPS; no depender de puertos SMTP. | Es compatible con despliegues que permiten tráfico HTTPS saliente y evita acoplar el servicio a un transporte SMTP. |
+| Registrar siempre la URI completa, incluido `/api/v1`: `http://localhost:3000/api/v1/auth/google/callback` en local y `https://<servicio-render>/api/v1/auth/google/callback` en producción. | NestJS usa el prefijo global `/api/v1` y el proveedor OAuth exige coincidencia exacta de la URI registrada y `GMAIL_REDIRECT_URI`. |
+| Obtener `GMAIL_REFRESH_TOKEN` mediante el flujo de consentimiento; no buscarlo en el JSON del cliente OAuth. | El JSON identifica a la aplicación OAuth; el refresh token representa la autorización de la cuenta remitente. |
+| Normalizar el resultado de `UPDATE ... RETURNING` en el repositorio de outbox. | TypeORM puede entregar `[rows, affectedCount]`; el servicio de entrega debe recibir exclusivamente las filas de correo. |
+| Permitir los estados `pending`, `sending`, `sent` y `failed`; borrar el payload en estados terminales. | Evita reintentos indefinidos y retiene datos de contacto/contenido solo mientras se necesita entregar el mensaje. |
+
+- Nunca guardar client secret, refresh token, setup secret ni contenido sensible del correo en código, frontend, logs o documentación versionada.
+- Probar un envío con una confirmación de cita y observar `Email queued` seguido de `Email sent`; revisar Spam. Una fila `sending` abandonada se recupera cuando vence su lock de cinco minutos.
 
 ## 10.5 Base de datos Neon
 
@@ -1458,8 +1493,8 @@ TypeORM se conecta con `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USERNAME`, `D
 | Integración | Necesidad de producto | Precondiciones para implementar |
 |---|---|---|
 | Wompi | Donaciones y webhook de transacción. | Definir merchant, firma/verificación, idempotencia por transacción, estados, conciliación, datos de donante, retención y endpoints/roles. |
-| WhatsApp Business/BSP | No existe aún y no se manejará según la decisión vigente. | No implementar integración, plantillas, webhooks ni flujos de notificación por WhatsApp. |
-| Resend/SendGrid | Alternativa de correo. | Decisión de proveedor y migración del adapter SMTP/outbox. |
+| WhatsApp Business/BSP | Recordatorios y notificaciones. | Aprobación de plantillas, consentimiento/opt-out, proveedor, límites, webhooks y auditoría. |
+| Resend/SendGrid | Alternativa de correo. | Decisión de proveedor y un adapter de correo compatible con la outbox. |
 | Exportación PDF/Excel | Reportes. | Módulo de reportes, criterios agregados, autorización, formato, retención y prueba de que no exporta PII innecesaria. |
 
 No guardar llaves de Wompi/WhatsApp, secretos de webhook ni credenciales de proveedor en código o frontend. Toda integración nueva debe tener adapter server-side, validación de webhook/autenticidad, timeouts/reintentos/idempotencia, observabilidad sin PII, prueba de error y actualización de secciones 4, 6 y 9.
@@ -1482,6 +1517,50 @@ No guardar llaves de Wompi/WhatsApp, secretos de webhook ni credenciales de prov
 - UI-01. Diseño responsive con enfoque mobile-first.
 - UI-02. Los mensajes de error y confirmación usan los textos definidos en los criterios de aceptación (sección 7).
 - UI-03. [PENDIENTE: librería de componentes.]
+
+## 11.4 Guía de mejoras frontend y registro de sesión
+
+### 2026-11-04 — Rol: frontend
+
+Esta guía define los resultados y criterios necesarios para implementar o recrear las mejoras de esta sesión. Antes de cambiar código, inspeccionar los componentes y patrones existentes; conservar la arquitectura del frontend, la autorización vigente y el comportamiento responsive. No modificar el backend para resolver estos casos.
+
+#### FE-01. Fallo del backend durante la validación de sesión
+
+- Si el backend no responde o devuelve un error inesperado al validar la sesión, navegar a una pantalla amigable de servicio no disponible; no mostrar al usuario logs, errores sin procesar ni una página rota.
+- Conservar los destinos existentes para los casos conocidos: `401` lleva a sesión expirada y `403` a acceso restringido.
+- La pantalla debe explicar que la validación no está disponible temporalmente y ofrecer «Intentar de nuevo» (volver al panel para repetir la validación) y «Volver al inicio».
+- Criterios de aceptación: rechazo de red y respuesta HTTP no exitosa distinta de `401`/`403` muestran la pantalla amigable; `401` y `403` mantienen su destino; los errores técnicos se registran solo en el servidor.
+
+#### FE-02. Digitación independiente en campos de confirmación
+
+- En el formulario público de citas, impedir pegar en los campos de confirmación de correo y documento de identidad del solicitante, acudiente y dependiente. Mantener habilitado pegar en los campos originales.
+- Reutilizar la capacidad del campo compartido de formularios, en vez de añadir manejadores distintos a cada pantalla. Mostrar una indicación visible y accesible de que el valor debe escribirse manualmente.
+- Criterios de aceptación: pegar no cambia el valor confirmado; escribirlo manualmente sigue funcionando; los campos originales conservan el pegado; cubrir al menos el campo de correo y el documento del dependiente con pruebas.
+
+#### FE-03. Transparencia y límites de donaciones
+
+- Presentar el monto del aporte, la comisión variable, la comisión fija, el IVA calculado sobre la comisión, el total que paga la persona y el neto estimado recibido por la fundación. La opción de cubrir la comisión es voluntaria y debe reflejarse de forma coherente en esos valores.
+- Para el estimado del Plan Avanzado Agregador de Wompi Colombia usar 2,65% del pago + $700 COP y 19% de IVA sobre la tarifa por transacción exitosa. Aclarar que es un estimado: la tarifa puede diferir por condiciones negociadas o medio de pago; enlazar la fuente oficial y no presentarlo como tarifa universal.
+- Cuando la persona cubre la tarifa, calcular el menor total entero en COP cuyo neto después de la tarifa estimada alcance el aporte deseado. El cálculo debe ser directo y acotado; no usar ciclos que incrementen o decrementen el valor peso a peso.
+- Limitar la donación en línea a $50.000.000 COP como decisión operativa de este producto, no como máximo impuesto por ley ni como límite universal de Wompi. Validar montos finitos, enteros y dentro del rango en la interfaz y nuevamente en el Server Action, antes de calcular o firmar el checkout.
+- Limitar el tamaño de entrada antes de convertir números; para un valor excesivo mostrar un error visible, evitar desbordamiento o congelamiento y deshabilitar el checkout. Ocultar el desglose mientras el monto está fuera del rango.
+- Criterios de aceptación: montos válidos muestran importes coherentes; el neto con comisión cubierta alcanza el aporte; un peso menos no debe bastar; el máximo funciona; entradas enormes se rechazan con prontitud tanto en UI como en servidor; el checkout no acepta valores inválidos.
+
+#### FE-04. Navegación desde la pantalla de indisponibilidad
+
+- Ofrecer una acción «Volver al inicio» que navegue a `/`, además de «Intentar de nuevo». Mantener ambos destinos distinguibles y utilizables con teclado y en pantallas pequeñas.
+- Criterio de aceptación: cada acción navega a su destino y la pantalla conserva el mensaje de indisponibilidad.
+
+#### FE-05. Menú lateral durante el desplazamiento
+
+- En escritorio, mantener el menú lateral visible mientras se desplaza el contenido de listas largas, usando el patrón sticky compatible con el contenedor existente.
+- Preservar el menú móvil como panel fijo/off-canvas y sus controles de abrir, cerrar y overlay. Aplicar el ajuste de escritorio solo desde el breakpoint correspondiente (`lg`).
+- Criterios de aceptación: el menú sigue disponible al recorrer listas largas en escritorio; no cubre ni bloquea contenido y el comportamiento móvil/tablet existente permanece funcional.
+
+#### FE-06. Verificación y alcance
+
+- Añadir o actualizar pruebas para el comportamiento modificado, incluidas las validaciones del cálculo y del Server Action de donaciones, los casos de error de autenticación y la prevención de pegado.
+- Ejecutar pruebas focalizadas, ESLint y build del frontend. No modificar servicios, contratos ni archivos del backend para estos cambios.
 
 ---
 
@@ -1520,8 +1599,8 @@ El prompt DEBE crear y mantener las suites existentes en `BackEnd/backendsana/te
 
 | Área / archivos | Alcance comprobado |
 |---|---|
-| `app.controller.spec.ts`; `appointments/appointments.service.spec.ts`; `clinical-notes/clinical-notes.service.spec.ts`; `email/email.service.spec.ts`; `flow-auth0/auth.service.spec.ts`; `schedule/schedule.service.spec.ts`; `users/users.service.profile.spec.ts` | Pruebas unitarias de servicios y controladores: reglas de solicitudes y ciclo de vida de citas, notas clínicas y consultas, correo, autenticación Auth0, agenda y actualización del perfil propio. |
-| `appointments/appointments.repository.spec.ts`; `clinical-notes/clinical-notes.repository.spec.ts`; `email/email.repository.spec.ts`; `flow-auth0/auth.repository.spec.ts`; `policy/policy.repository.spec.ts`; `schedule/schedule.repository.spec.ts` | Pruebas de repositorios para persistencia/consultas de citas, notas, correo, identidad, políticas y disponibilidad/agendas. Deben usarse dobles cuando el caso no requiera expresamente una base de datos de prueba; no se debe afirmar que son pruebas contra una base real sin verificar su configuración. |
+| `app.controller.spec.ts`; `appointments/appointments.service.spec.ts`; `clinical-notes/clinical-notes.service.spec.ts`; `email/email.service.spec.ts`; `flow-auth0/auth.service.spec.ts`; `schedule/schedule.service.spec.ts`; `users/users.service.profile.spec.ts` | Pruebas unitarias de servicios y controladores: reglas de solicitudes y ciclo de vida de citas, notas clínicas y consultas, correo, autenticación Auth0, agenda y actualización del perfil propio. Correo cubre configuración Gmail incompleta, envío, reintentos y límites de backoff mediante dobles; no usa Gmail real. |
+| `appointments/appointments.repository.spec.ts`; `clinical-notes/clinical-notes.repository.spec.ts`; `email/email.repository.spec.ts`; `flow-auth0/auth.repository.spec.ts`; `policy/policy.repository.spec.ts`; `schedule/schedule.repository.spec.ts` | Pruebas de repositorios para persistencia/consultas de citas, notas, correo, identidad, políticas y disponibilidad/agendas. Correo cubre el contrato de outbox y la normalización de `UPDATE ... RETURNING` de TypeORM. Deben usarse dobles cuando el caso no requiera expresamente una base de datos de prueba; no se debe afirmar que son pruebas contra una base real sin verificar su configuración. |
 | `users/users.controller.spec.ts`; `clinical-notes/clinical-notes.controller.spec.ts`; `flow-auth0/auth.controller.spec.ts`; `flow-auth0/auth.guards.spec.ts`; `flow-auth0/app.config.spec.ts`; `schedule/schedule-availability-query.dto.spec.ts` | Pruebas de controladores, guards de origen/JWT/roles, validación de configuración y DTO de consulta de disponibilidad. |
 | `owasp/A01-broken-access-control.spec.ts` a `owasp/A10-ssrf.spec.ts` | Suite backend organizada por las diez categorías OWASP Top 10:2021. Debe conservarse un archivo por categoría y sus casos deben comprobar controles concretos del backend. El nombre de una categoría no demuestra por sí mismo cobertura exhaustiva de esa categoría. |
 | `app.e2e-spec.ts`; `users.e2e-spec.ts` | Pruebas e2e con Nest y Supertest. La primera comprueba `GET /` y `GET /api/v1/healthz`; la segunda cubre rutas/flujo de usuarios según sus casos implementados. No equivalen a pruebas e2e de todas las HU. |

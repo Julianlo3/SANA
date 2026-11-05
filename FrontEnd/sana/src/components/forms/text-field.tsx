@@ -3,6 +3,9 @@
 import { useId } from "react";
 import { Lock } from "lucide-react";
 
+/**
+ * Props for the text field component.
+ */
 type Props = {
   label: string;
   value: string;
@@ -16,10 +19,16 @@ type Props = {
   maxLength?: number;
   required?: boolean;
   disabled?: boolean;
+  preventPaste?: boolean;
   /** Muestra el candado: el dato no se puede cambiar nunca desde esta pantalla. */
   locked?: boolean;
 };
 
+/**
+ * Component for a text field with label, error message, and hint. It supports various input types and modes, as well as optional features like preventing paste and locking the field.
+ * @param param0 Props for the text field component
+ * @returns A text field component
+ */
 export default function TextField({
   label,
   value,
@@ -33,6 +42,7 @@ export default function TextField({
   maxLength,
   required = false,
   disabled = false,
+  preventPaste = false,
   locked = false,
 }: Props) {
   const inputId = useId();
@@ -68,6 +78,7 @@ export default function TextField({
         aria-describedby={error || hint ? messageId : undefined}
         onChange={(event) => onChange?.(event.target.value)}
         onBlur={onBlur}
+        onPaste={preventPaste ? (event) => event.preventDefault() : undefined}
         className={`mt-2 w-full rounded-xl border px-4 py-3 text-sm text-text transition placeholder:text-text-subtle focus:outline-none focus:ring-2 ${
           isReadOnly
             ? "cursor-not-allowed border-border bg-surface-muted text-text-subtle"

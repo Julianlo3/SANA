@@ -24,4 +24,12 @@ describe('prepareDonationCheckoutAction', () => {
     expect(checkout.signature).toBe(expectedSignature);
   });
 
+  it('rechaza montos por encima del máximo antes de preparar el checkout', async () => {
+    await expect(
+      prepareDonationCheckoutAction({
+        amountCOP: Number.MAX_SAFE_INTEGER,
+        coverFee: false,
+      }),
+    ).rejects.toThrow('El monto máximo para donar en línea');
+  });
 });
