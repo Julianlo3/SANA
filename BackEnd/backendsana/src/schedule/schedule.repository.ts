@@ -10,7 +10,7 @@ import type { ScheduleCalendarResponse } from './dto/schedule-calendar-response.
  * Los bloques de disponibilidad se guardan en hora local, así que toda
  * comparación debe hacerse con este reloj y no con UTC (toISOString).
  */
-function toBogotaParts(date: Date): { dateStr: string; timeStr: string } {
+export function toBogotaParts(date: Date): { dateStr: string; timeStr: string } {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat('en-CA', {
       timeZone: 'America/Bogota',

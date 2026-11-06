@@ -26,6 +26,8 @@ import { ConfirmAppointmentDto } from './dto/confirm-appointment.dto.js';
 import { AssignAppointmentDto } from './dto/assign-appointment.dto.js';
 import { DiscardAppointmentDto } from './dto/discard-appointment.dto.js';
 import { UpdateAppointmentStatusDto } from './dto/update-appointment-status.dto.js';
+import { TakeSlotDto } from './dto/take-slot.dto.js';
+import { PublicScheduleAvailabilityQueryDto } from '../schedule/dto/public-schedule-availability-query.dto.js';
 import { RateLimit } from '../middlewares/rate-limit.decorator.js';
 import { RateLimitGuard } from '../guards/rate-limit.guard.js';
 
@@ -58,6 +60,19 @@ export class AppointmentsController {
       `Module:appointments, Function:requestAppointment, result-start: authenticated-${Boolean(request.user)}, patientType-${dto.patientType}, type-${dto.appType}`,
     );
     return this.appointmentsService.requestAppointment(dto, request.user);
+  }
+
+  /**
+   * Public endpoint: Lists available slots summarized without psychologist information.
+   * Can be queried by consultants to choose an appointment slot.
+   * @param query Query parameters (appointmentStart, duration, delayHours).
+   * @returns List of available summarized slots.
+   */
+  @Get('availability')
+  @UseGuards(RateLimitGuard)
+  @RateLimit({ limit: 60, windowSeconds: 60 })
+  findAvailability(@Query() query: PublicScheduleAvailabilityQueryDto) {
+    return this.appointmentsService.findPublicAvailability(query);
   }
 
   /**
@@ -117,6 +132,32 @@ export class AppointmentsController {
     return this.appointmentsService.cancelOwnAppointment(
       id,
       request.user.personId,
+    );
+  }
+
+  /**
+   * Protected endpoint: Allows an authenticated consultant to take/select an available slot
+   * for their own pending appointment request.
+   * @param request The HTTP request object.
+   * @param id The ID of the appointment.
+   * @param dto DTO containing the selected appDate.
+   * @returns A promise resolving to the result message.
+   */
+  @Patch(':id/select-slot')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Requester)
+  selectSlot(
+    @Req() request: Request & { user: AuthenticatedUser },
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: TakeSlotDto,
+  ) {
+    this.logger.log(
+      `Module:appointments, Function:selectSlot, result-start: appId-${id}, requesterId-${request.user.personId}, appDate-${dto.appDate}`,
+    );
+    return this.appointmentsService.selectSlotForOwnAppointment(
+      id,
+      request.user.personId,
+      dto.appDate,
     );
   }
 

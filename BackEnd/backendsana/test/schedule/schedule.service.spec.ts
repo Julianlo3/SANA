@@ -279,6 +279,55 @@ describe('ScheduleService', () => {
     ]);
   });
 
+  it('returns summarized slots without psychologist info for public availability', async () => {
+    const { service, repository } = setup();
+    repository.findAvailability.mockResolvedValue([
+      {
+        date: '2026-10-06',
+        startTime: '09:00:00',
+        endTime: '10:00:00',
+        psychologistId: 10,
+        psychologistName: 'Ana',
+        speciality: 'Infantil',
+      },
+      {
+        date: '2026-10-06',
+        startTime: '09:00:00',
+        endTime: '10:00:00',
+        psychologistId: 11,
+        psychologistName: 'Luis',
+        speciality: 'General',
+      },
+      {
+        date: '2026-10-06',
+        startTime: '10:00:00',
+        endTime: '11:00:00',
+        psychologistId: 10,
+        psychologistName: 'Ana',
+        speciality: 'Infantil',
+      },
+    ]);
+
+    const result = await service.findPublicAvailability({
+      appointmentStart: '2026-10-06T09:00:00.000Z',
+      duration: 60,
+      delayHours: 24,
+    });
+
+    expect(result).toEqual([
+      {
+        date: '2026-10-06',
+        startTime: '09:00:00',
+        endTime: '10:00:00',
+      },
+      {
+        date: '2026-10-06',
+        startTime: '10:00:00',
+        endTime: '11:00:00',
+      },
+    ]);
+  });
+
   it('delegates assignment and occupancy persistence to one repository transaction', async () => {
     const { service, repository } = setup();
     const result = await service.assignAppointmentSlot({

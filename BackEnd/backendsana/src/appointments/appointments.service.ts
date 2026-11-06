@@ -23,6 +23,8 @@ import {
   type RelationshipRow,
 } from './appointments.repository.js';
 import { ScheduleService } from '../schedule/schedule.service.js';
+import type { PublicScheduleAvailabilityQueryDto } from '../schedule/dto/public-schedule-availability-query.dto.js';
+import type { PublicScheduleSlotDto } from '../schedule/dto/public-schedule-availability-response.dto.js';
 import { EmailService } from '../email/email.service.js';
 import {
   buildAppointmentRequestedEmail,
@@ -101,6 +103,16 @@ export class AppointmentsService {
       await this.validateDependent(dto);
     }
 
+    if (dto.appDate) {
+      const appDateTime = new Date(dto.appDate).getTime();
+      if (Number.isNaN(appDateTime) || appDateTime <= Date.now()) {
+        throw new BadRequestException({
+          error: 'INVALID_APPOINTMENT_DATE',
+          message: 'La fecha de la cita debe ser posterior al momento actual',
+        });
+      }
+    }
+
     let appId: number;
     try {
       appId = await this.repo.createRequest({
@@ -128,6 +140,12 @@ export class AppointmentsService {
         appType: dto.appType,
         appReason: dto.appReason?.trim() ?? null,
         authenticatedPersonId: authenticatedUser?.personId,
+        slot: dto.appDate
+          ? {
+            appDate: new Date(dto.appDate),
+            duration: 60,
+          }
+          : null,
       });
     } catch (error) {
       if (
@@ -145,11 +163,92 @@ export class AppointmentsService {
     this.logger.log(
       `Module:appointments, Function:requestAppointment, result-success: appId-${appId}, authenticated-${Boolean(authenticatedUser)}, patientType-${dto.patientType}, type-${dto.appType}`,
     );
-    await this.notifyRequesterOfNewRequest(dto, appId);
+    if (dto.appDate) {
+      // La primera cita ya queda confirmada al reservar una franja pública;
+      // no debe pasar después por la aprobación de secretaría.
+      const appointment = await this.repo.findById(appId);
+      if (appointment) {
+        await this.sendConfirmationNotification(appointment);
+      }
+    } else {
+      await this.notifyRequesterOfNewRequest(dto, appId);
+    }
 
     return {
       appId,
-      message: 'Solicitud de cita registrada con éxito. Un secretario revisará la solicitud y te contactará para confirmar la fecha.',
+      message: dto.appDate
+        ? 'Tu primera cita quedó asignada y confirmada con éxito.'
+        : 'Solicitud de cita registrada con éxito. Un secretario revisará la solicitud y te contactará para confirmar la fecha.',
+    };
+  }
+
+  /**
+   * Retrieves summarized available schedule slots for public / consultant view.
+   * @param query Availability query parameters.
+   * @returns Summarized schedule slots without psychologist information.
+   */
+  async findPublicAvailability(
+    query: PublicScheduleAvailabilityQueryDto,
+  ): Promise<PublicScheduleSlotDto[]> {
+    return this.scheduleService.findPublicAvailability(query);
+  }
+
+  /**
+   * Allows an authenticated consultant to take/select an available slot for an existing pending appointment.
+   * @param appId The appointment ID.
+   * @param requesterId The ID of the requester.
+   * @param appDate The ISO date string of the chosen slot.
+   * @returns Result message and confirmation.
+   */
+  async selectSlotForOwnAppointment(
+    appId: number,
+    requesterId: number,
+    appDate: string,
+  ): Promise<{ appId: number; message: string; appDate: string }> {
+    const appDateTime = new Date(appDate).getTime();
+    if (Number.isNaN(appDateTime) || appDateTime <= Date.now()) {
+      throw new BadRequestException({
+        error: 'INVALID_APPOINTMENT_DATE',
+        message: 'La fecha de la cita debe ser posterior al momento actual',
+      });
+    }
+
+    const result = await this.repo.selectSlotForRequester({
+      appId,
+      requesterId,
+      appDate: new Date(appDate),
+      duration: 60,
+    });
+
+    if (result === 'not_found') {
+      throw new NotFoundException('La cita no existe o no pertenece al consultante');
+    }
+
+    if (result === 'not_assignable') {
+      throw new BadRequestException({
+        error: 'APPOINTMENT_NOT_ASSIGNABLE',
+        message: 'Solo se pueden agendar solicitudes en estado pendiente o asignada',
+      });
+    }
+
+    if (result === 'slot_taken') {
+      throw new ConflictException({
+        error: 'SCHEDULE_SLOT_TAKEN',
+        message: 'La franja horaria seleccionada ya no se encuentra disponible. Por favor seleccione otro horario.',
+      });
+    }
+
+    if (result === 'secretary_assignment_required') {
+      throw new BadRequestException({
+        error: 'SECRETARY_ASSIGNMENT_REQUIRED',
+        message: 'A partir de la segunda cita, la asignación de horarios debe ser realizada directamente por la secretaría.',
+      });
+    }
+
+    return {
+      appId,
+      message: 'Horario reservado con éxito.',
+      appDate,
     };
   }
 
