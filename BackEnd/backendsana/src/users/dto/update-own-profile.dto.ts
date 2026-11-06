@@ -12,6 +12,7 @@ import {
 
 const PHONE_PATTERN = /^\d{7,12}$/;
 
+/** Validates the self-service profile fields an authenticated user may change. */
 export class UpdateOwnProfileDto {
   @ValidateIf((_object, value) => value !== undefined)
   @IsString()

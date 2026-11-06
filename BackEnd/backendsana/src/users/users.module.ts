@@ -15,6 +15,7 @@ import { UsersService } from './users.service.js';
 import { EmailModule } from '../email/email.module.js';
 import { RolesGuard } from '../guards/roles.guard.js';
 
+/** Composes user administration, profiles, roles, and related persistence. */
 @Module({
   imports: [
     AuthModule,

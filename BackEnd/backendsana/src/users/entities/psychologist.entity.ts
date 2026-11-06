@@ -1,6 +1,7 @@
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 
 @Entity({ name: 'psychologist' })
+/** Stores professional registration data for a person with the psychologist role. */
 export class Psychologist {
   @PrimaryColumn({ name: 'psy_id' })
   id!: number;

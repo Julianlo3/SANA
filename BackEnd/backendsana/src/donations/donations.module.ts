@@ -4,6 +4,7 @@ import { Donation } from './entities/donation.entity.js';
 import { DonationsController } from './donations.controller.js';
 import { DonationsService } from './donations.service.js';
 
+/** Registers donation persistence and Wompi webhook handling. */
 @Module({
   imports: [TypeOrmModule.forFeature([Donation])],
   controllers: [DonationsController],

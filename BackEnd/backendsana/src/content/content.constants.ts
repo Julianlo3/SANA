@@ -1,6 +1,8 @@
+/** Allowed singleton content keys and their derived type. */
 export const CONTENT_ITEM_KEYS = ['about.mission', 'about.vision'] as const;
 export type ContentItemKey = (typeof CONTENT_ITEM_KEYS)[number];
 
+/** Sections that can contain ordered institutional content cards. */
 export const CONTENT_CARD_SECTIONS = [
   'values',
   'team',
@@ -9,6 +11,7 @@ export const CONTENT_CARD_SECTIONS = [
 ] as const;
 export type ContentCardSection = (typeof CONTENT_CARD_SECTIONS)[number];
 
+/** Persisted content resource types tracked in the change log. */
 export const CONTENT_TYPES = [
   'content_item',
   'content_card',
@@ -18,6 +21,7 @@ export const CONTENT_TYPES = [
 ] as const;
 export type ContentType = (typeof CONTENT_TYPES)[number];
 
+/** Auditable operations that may be performed on a content resource. */
 export type ContentAction =
   | 'create'
   | 'update'
@@ -29,6 +33,7 @@ export type ContentAction =
   | 'pin'
   | 'unpin';
 
+/** Validation limits for editorial text fields. */
 export const CONTENT_TEXT_MAX_LENGTH = 2000;
 export const CARD_DESCRIPTION_MAX_LENGTH = 1000;
 
@@ -37,9 +42,11 @@ export const NEWS_BODY_MAX_LENGTH = 10000;
 export const IMAGE_ALT_MAX_LENGTH = 150;
 export const GALLERY_CAPTION_MAX_LENGTH = 200;
 
+/** Publication states supported by public-facing content. */
 export const PUBLICATION_STATUSES = ['published', 'retired'] as const;
 export type PublicationStatus = (typeof PUBLICATION_STATUSES)[number];
 
+/** Upload restrictions and Cloudinary URL allowlist for content images. */
 export const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 export const IMAGE_FORMATS = ['jpg', 'png', 'webp'] as const;
 export const IMAGE_FOLDERS = ['content', 'news', 'gallery', 'banners'] as const;

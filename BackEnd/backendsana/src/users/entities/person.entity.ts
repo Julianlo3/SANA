@@ -1,8 +1,10 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
+/** States used to control a person's access and lifecycle. */
 export type PersonState = 'activo' | 'inactivo' | 'bloqueado' | 'pendiente';
 
 @Entity({ name: 'person' })
+/** Persists personal identity, contact, and profile data. */
 export class Person {
   @PrimaryGeneratedColumn({ name: 'per_id' })
   perId!: number;

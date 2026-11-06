@@ -13,6 +13,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 
+/** Optional professional credentials required when creating a psychologist. */
 export class ProfessionalDataDto {
   @Matches(/^\d{1,20}$/)
   licenseNumber!: string;
@@ -30,6 +31,7 @@ const IDENTITY_DOCUMENT_PATTERN = /^\d{6,12}$/;
 const PHONE_PATTERN = /^\d{7,10}$/;
 const ALLOWED_EMAIL_PATTERN = /@(gmail\.com|googlemail\.com|hotmail\.com|unicauca\.edu\.co)$/i;
 
+/** Validates the administrative payload used to create a user account. */
 export class CreateUserDto {
   @MaxLength(100)
   fullName!: string;

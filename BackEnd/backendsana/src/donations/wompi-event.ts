@@ -1,3 +1,4 @@
+/** Transaction fields consumed from a Wompi webhook event. */
 export interface WompiTransaction {
   id: string;
   reference: string;
@@ -11,6 +12,7 @@ export interface WompiTransaction {
   created_at?: string;
 }
 
+/** Authenticated webhook payload sent by Wompi after a transaction change. */
 export interface WompiEvent {
   event: string;
   environment: string;
