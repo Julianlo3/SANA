@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
+import { toBogotaParts } from '../schedule/schedule.repository.js';
 
 type QueryExecutor = DataSource | EntityManager;
 
@@ -328,12 +329,68 @@ export class AppointmentsRepository {
     );
   }
 
+  /**
+   * Counts prior non-cancelled appointments for a consultant or their dependent.
+   * Used to determine if the requested appointment is the 1st one or from the 2nd onwards.
+   * @param requesterId The requester ID.
+   * @param patientDependentId Optional dependent ID.
+   * @param excludeAppId Optional appointment ID to exclude.
+   * @param executor Query executor.
+   * @returns Number of prior appointments.
+   */
+  async countPriorAppointments(
+    requesterId: number,
+    patientDependentId: number | null,
+    excludeAppId?: number,
+    executor: QueryExecutor = this.dataSource,
+  ): Promise<number> {
+    const excludeFilter = excludeAppId ? 'AND app_id <> $3' : '';
+    const params = excludeAppId
+      ? [requesterId, patientDependentId, excludeAppId]
+      : [requesterId, patientDependentId];
+
+    const result = await executor.query<{ count: string | number }[]>(
+      `SELECT COUNT(1)::int AS count
+       FROM appointments
+       WHERE req_id = $1
+         AND (
+           ($2::int IS NOT NULL AND app_patient_dependent_id = $2)
+           OR ($2::int IS NULL AND app_patient_dependent_id IS NULL)
+         )
+         AND app_state NOT IN ('descartada', 'cancelada')
+         ${excludeFilter}`,
+      params,
+    );
+    return Number(result[0]?.count ?? 0);
+  }
+
+  /**
+   * Finds a person by identity document.
+   * @param identityDocument The document number.
+   * @param executor Query executor.
+   * @returns Person record or null.
+   */
+  async findPersonByIdentityDocument(
+    identityDocument: string,
+    executor: QueryExecutor = this.dataSource,
+  ): Promise<{ per_id: number } | null> {
+    const result = await executor.query<{ per_id: number }[]>(
+      `SELECT per_id FROM person WHERE per_identity_document = $1::bigint LIMIT 1`,
+      [identityDocument],
+    );
+    return result[0] ?? null;
+  }
+
   async createRequest(params: {
     requester: AppointmentRequesterParams;
     dependent: (AppointmentDependentParams & { relationshipId: number }) | null;
     appType: string;
     appReason: string | null;
     authenticatedPersonId?: number;
+    slot?: {
+      appDate: Date;
+      duration: number;
+    } | null;
   }): Promise<number> {
     return this.dataSource.transaction(async (manager) => {
       const requesterId = params.authenticatedPersonId
@@ -357,6 +414,94 @@ export class AppointmentsRepository {
         );
       }
 
+      let chosenSlot: { appDate: Date; duration: number; psyId: number } | null = null;
+      if (params.slot) {
+        const priorCount = await this.countPriorAppointments(
+          requesterId,
+          patientDependentId,
+          undefined,
+          manager,
+        );
+
+        if (priorCount > 0) {
+          throw new BadRequestException({
+            error: 'SECRETARY_ASSIGNMENT_REQUIRED',
+            message: 'A partir de la segunda cita, la asignación de horarios debe ser realizada directamente por la secretaría. Por favor registre su solicitud sin horario.',
+          });
+        }
+
+        const { dateStr, timeStr } = toBogotaParts(params.slot.appDate);
+        await manager.query(
+          `SELECT pg_advisory_xact_lock(hashtext('slot_assignment'), hashtext($1::text || $2::text))`,
+          [dateStr, timeStr],
+        );
+
+        const availablePsychologists = await manager.query<{ psy_id: number }[]>(
+          `SELECT p.psy_id
+           FROM psychologist p
+           JOIN person per ON per.per_id = p.psy_id
+           WHERE per.per_state = 'activo'
+             AND (
+               EXISTS (
+                 SELECT 1 FROM schedule b
+                 WHERE b.psy_id = p.psy_id
+                   AND b.sch_date = $1::date
+                   AND b.sch_start_time <= $2::time
+                   AND b.sch_end_time >= ($2::time + ($3 || ' minutes')::interval)::time
+               )
+               OR EXISTS (
+                 SELECT 1 FROM schedule_recurring_blocks r
+                 WHERE r.psy_id = p.psy_id
+                   AND r.srb_active = true
+                   AND r.srb_day_of_week = EXTRACT(ISODOW FROM $1::date)
+                   AND r.srb_valid_from <= $1::date
+                   AND (r.srb_valid_until IS NULL OR r.srb_valid_until >= $1::date)
+                   AND r.srb_start_time <= $2::time
+                   AND r.srb_end_time >= ($2::time + ($3 || ' minutes')::interval)::time
+               )
+             )
+             AND NOT EXISTS (
+               SELECT 1 FROM schedule_occupancy o
+               WHERE o.psy_id = p.psy_id
+                 AND o.occ_date = $1::date
+                 AND o.occ_start_time < ($2::time + ($3 || ' minutes')::interval)::time
+                 AND o.occ_end_time > $2::time
+             )
+             AND NOT EXISTS (
+               SELECT 1 FROM appointments a
+               WHERE a.psy_id = p.psy_id
+                 AND a.app_state IN ('asignada', 'confirmada')
+                 AND a.app_date IS NOT NULL
+                 AND (a.app_date AT TIME ZONE 'America/Bogota')::date = $1::date
+                 AND (a.app_date AT TIME ZONE 'America/Bogota')::time < ($2::time + ($3 || ' minutes')::interval)::time
+                 AND ((a.app_date + (a.app_duration || ' minutes')::interval) AT TIME ZONE 'America/Bogota')::time > $2::time
+             )
+             AND p.psy_id <> $4
+           ORDER BY (
+             SELECT COUNT(1)
+             FROM appointments a2
+             WHERE a2.psy_id = p.psy_id
+               AND a2.app_state IN ('asignada', 'confirmada')
+               AND a2.app_date >= now()
+           ) ASC
+           LIMIT 1`,
+          [dateStr, timeStr, params.slot.duration, requesterId],
+        );
+
+        if (availablePsychologists.length === 0) {
+          throw new ConflictException({
+            error: 'SCHEDULE_SLOT_TAKEN',
+            message: 'La franja horaria seleccionada ya no se encuentra disponible. Por favor seleccione otro horario.',
+          });
+        }
+
+        chosenSlot = {
+          appDate: params.slot.appDate,
+          duration: params.slot.duration,
+          psyId: availablePsychologists[0].psy_id,
+        };
+      }
+
       const appId = await this.create(
         {
           requesterId,
@@ -364,6 +509,7 @@ export class AppointmentsRepository {
           patientDependentId,
           appType: params.appType,
           appReason: params.appReason,
+          slot: chosenSlot,
         },
         manager,
       );
@@ -656,9 +802,9 @@ export class AppointmentsRepository {
   }
 
   /**
-   * insert appointment in 'pendiente' state
-   * @param params contains requesterId, patientPersonId, patientDependentId, appType, appReason
-   * @returns app_id or null
+   * insert appointment in 'pendiente' or 'asignada' state (if slot provided)
+   * @param params contains requesterId, patientPersonId, patientDependentId, appType, appReason, slot
+   * @returns app_id
    */
   async create(params: {
     requesterId: number;
@@ -666,23 +812,201 @@ export class AppointmentsRepository {
     patientDependentId: number | null;
     appType: string;
     appReason: string | null;
+    slot?: {
+      appDate: Date;
+      duration: number;
+      psyId: number;
+    } | null;
   }, executor: QueryExecutor = this.dataSource): Promise<number> {
-    const result = await executor.query<{ app_id: number }[]>(
-      `INSERT INTO appointments (
-         req_id, app_patient_person_id, app_patient_dependent_id,
-         app_state, app_type, app_reason, app_created_at
-       )
-       VALUES ($1, $2, $3, 'pendiente', $4, $5, now())
-       RETURNING app_id`,
-      [
+    const isAssigned = Boolean(params.slot?.psyId && params.slot?.appDate);
+    const query = isAssigned
+      ? `INSERT INTO appointments (
+           req_id, app_patient_person_id, app_patient_dependent_id,
+           app_state, app_type, app_reason, app_created_at,
+           psy_id, app_date, app_duration
+         )
+         VALUES ($1, $2, $3, 'confirmada', $4, $5, now(), $6, $7, $8)
+         RETURNING app_id`
+      : `INSERT INTO appointments (
+           req_id, app_patient_person_id, app_patient_dependent_id,
+           app_state, app_type, app_reason, app_created_at
+         )
+         VALUES ($1, $2, $3, 'pendiente', $4, $5, now())
+         RETURNING app_id`;
+
+    const queryParams = isAssigned
+      ? [
         params.requesterId,
         params.patientPersonId,
         params.patientDependentId,
         params.appType,
         params.appReason,
-      ],
-    );
-    return result[0].app_id;
+        params.slot!.psyId,
+        params.slot!.appDate,
+        params.slot!.duration,
+      ]
+      : [
+        params.requesterId,
+        params.patientPersonId,
+        params.patientDependentId,
+        params.appType,
+        params.appReason,
+      ];
+
+    const result = await executor.query<{ app_id: number }[]>(query, queryParams);
+    const appId = result[0].app_id;
+
+    if (isAssigned && params.slot) {
+      const { dateStr, timeStr } = toBogotaParts(params.slot.appDate);
+      await executor.query(
+        `INSERT INTO schedule_occupancy (
+           psy_id, app_id, occ_date, occ_start_time, occ_end_time, source_type
+         )
+         VALUES ($1, $2, $3::date, $4::time,
+                 ($4::time + ($5 || ' minutes')::interval)::time, 'appointment')`,
+        [params.slot.psyId, appId, dateStr, timeStr, params.slot.duration],
+      );
+    }
+
+    return appId;
+  }
+
+  /**
+   * Allows a requester to select/take an available slot for an existing pending appointment.
+   * @param params appId, requesterId, appDate, duration
+   * @returns 'assigned' | 'slot_taken' | 'not_found' | 'not_assignable'
+   */
+  async selectSlotForRequester(params: {
+    appId: number;
+    requesterId: number;
+    appDate: Date;
+    duration: number;
+  }): Promise<'assigned' | 'slot_taken' | 'not_found' | 'not_assignable' | 'secretary_assignment_required'> {
+    return this.dataSource.transaction(async (manager) => {
+      const appointments = await manager.query<{
+        app_id: number;
+        app_state: string;
+        req_id: number;
+        app_patient_dependent_id: number | null;
+      }[]>(
+        `SELECT app_id, app_state, req_id, app_patient_dependent_id
+         FROM appointments
+         WHERE app_id = $1
+         FOR UPDATE`,
+        [params.appId],
+      );
+      const appointment = appointments[0];
+      if (!appointment || appointment.req_id !== params.requesterId) {
+        return 'not_found';
+      }
+      if (!['pendiente', 'asignada'].includes(appointment.app_state)) {
+        return 'not_assignable';
+      }
+
+      const priorCount = await this.countPriorAppointments(
+        appointment.req_id,
+        appointment.app_patient_dependent_id,
+        params.appId,
+        manager,
+      );
+
+      if (priorCount > 0) {
+        return 'secretary_assignment_required';
+      }
+
+      const { dateStr, timeStr } = toBogotaParts(params.appDate);
+      await manager.query(
+        `SELECT pg_advisory_xact_lock(hashtext('slot_assignment'), hashtext($1::text || $2::text))`,
+        [dateStr, timeStr],
+      );
+
+      const availablePsychologists = await manager.query<{ psy_id: number }[]>(
+        `SELECT p.psy_id
+         FROM psychologist p
+         JOIN person per ON per.per_id = p.psy_id
+         WHERE per.per_state = 'activo'
+           AND (
+             EXISTS (
+               SELECT 1 FROM schedule b
+               WHERE b.psy_id = p.psy_id
+                 AND b.sch_date = $1::date
+                 AND b.sch_start_time <= $2::time
+                 AND b.sch_end_time >= ($2::time + ($3 || ' minutes')::interval)::time
+             )
+             OR EXISTS (
+               SELECT 1 FROM schedule_recurring_blocks r
+               WHERE r.psy_id = p.psy_id
+                 AND r.srb_active = true
+                 AND r.srb_day_of_week = EXTRACT(ISODOW FROM $1::date)
+                 AND r.srb_valid_from <= $1::date
+                 AND (r.srb_valid_until IS NULL OR r.srb_valid_until >= $1::date)
+                 AND r.srb_start_time <= $2::time
+                 AND r.srb_end_time >= ($2::time + ($3 || ' minutes')::interval)::time
+             )
+           )
+           AND NOT EXISTS (
+             SELECT 1 FROM schedule_occupancy o
+             WHERE o.psy_id = p.psy_id
+               AND o.occ_date = $1::date
+               AND o.app_id IS DISTINCT FROM $4
+               AND o.occ_start_time < ($2::time + ($3 || ' minutes')::interval)::time
+               AND o.occ_end_time > $2::time
+           )
+           AND NOT EXISTS (
+             SELECT 1 FROM appointments a
+             WHERE a.app_id <> $4
+               AND a.psy_id = p.psy_id
+               AND a.app_state IN ('asignada', 'confirmada')
+               AND a.app_date IS NOT NULL
+               AND (a.app_date AT TIME ZONE 'America/Bogota')::date = $1::date
+               AND (a.app_date AT TIME ZONE 'America/Bogota')::time < ($2::time + ($3 || ' minutes')::interval)::time
+               AND ((a.app_date + (a.app_duration || ' minutes')::interval) AT TIME ZONE 'America/Bogota')::time > $2::time
+           )
+           AND p.psy_id <> $5
+         ORDER BY (
+           SELECT COUNT(1)
+           FROM appointments a2
+           WHERE a2.psy_id = p.psy_id
+             AND a2.app_state IN ('asignada', 'confirmada')
+             AND a2.app_date >= now()
+         ) ASC
+         LIMIT 1`,
+        [dateStr, timeStr, params.duration, params.appId, params.requesterId],
+      );
+
+      if (availablePsychologists.length === 0) {
+        return 'slot_taken';
+      }
+
+      const chosenPsyId = availablePsychologists[0].psy_id;
+
+      await manager.query(
+        `UPDATE appointments
+         SET app_state = 'confirmada',
+             psy_id = $1,
+             app_date = $2,
+             app_duration = $3
+         WHERE app_id = $4`,
+        [chosenPsyId, params.appDate, params.duration, params.appId],
+      );
+
+      await manager.query(
+        `INSERT INTO schedule_occupancy (
+           psy_id, app_id, occ_date, occ_start_time, occ_end_time, source_type
+         )
+         VALUES ($1, $2, $3::date, $4::time,
+                 ($4::time + ($5 || ' minutes')::interval)::time, 'appointment')
+         ON CONFLICT (app_id) DO UPDATE SET
+           psy_id = EXCLUDED.psy_id,
+           occ_date = EXCLUDED.occ_date,
+           occ_start_time = EXCLUDED.occ_start_time,
+           occ_end_time = EXCLUDED.occ_end_time,
+           source_type = EXCLUDED.source_type`,
+        [chosenPsyId, params.appId, dateStr, timeStr, params.duration],
+      );
+
+      return 'assigned';
+    });
   }
 
   /**

@@ -6,6 +6,7 @@ import { Schedule } from '../users/entities/schedule.entity.js';
 import { RecurringScheduleBlock } from './entities/recurring-schedule-block.entity.js';
 import { ScheduleController } from './schedule.controller.js';
 import { ScheduleSecretaryController } from './schedule.secretary.controller.js';
+import { SchedulePublicController } from './schedule.public.controller.js';
 import { ScheduleRepository } from './schedule.repository.js';
 import { ScheduleService } from './schedule.service.js';
 import { RolesGuard } from '../guards/roles.guard.js';
@@ -19,7 +20,11 @@ import { SecurityLogModule } from '../security-logs/security-log.module.js';
     SecurityLogModule,
     TypeOrmModule.forFeature([Schedule, RecurringScheduleBlock]),
   ],
-  controllers: [ScheduleController, ScheduleSecretaryController],
+  controllers: [
+    ScheduleController,
+    ScheduleSecretaryController,
+    SchedulePublicController,
+  ],
   providers: [ScheduleRepository, ScheduleService, RolesGuard],
   exports: [ScheduleService],
 })

@@ -14,6 +14,8 @@ import type { RecurringScheduleBlockResponse } from './dto/recurring-schedule-bl
 import type { ScheduleAvailabilityQueryDto } from './dto/schedule-availability-query.dto.js';
 import type { ScheduleAvailabilitySlot } from './dto/schedule-availability-response.dto.js';
 import type { ScheduleCalendarResponse } from './dto/schedule-calendar-response.dto.js';
+import type { PublicScheduleAvailabilityQueryDto } from './dto/public-schedule-availability-query.dto.js';
+import type { PublicScheduleSlotDto } from './dto/public-schedule-availability-response.dto.js';
 
 /**
  * Service for managing schedule blocks and recurring schedule blocks for psychologists.
@@ -250,6 +252,38 @@ export class ScheduleService {
       slots.set(key, slot);
     }
     return [...slots.values()];
+  }
+
+  /**
+   * Finds summarized available time slots for consultants, without any psychologist information.
+   * @param query The query parameters for finding availability.
+   * @returns A promise resolving to the list of available summarized slots.
+   */
+  async findPublicAvailability(
+    query: PublicScheduleAvailabilityQueryDto,
+  ): Promise<PublicScheduleSlotDto[]> {
+    const appointmentStart = query.appointmentStart ?? new Date().toISOString();
+    const duration = query.duration ?? 60;
+    const delayHours = query.delayHours ?? 24;
+
+    const rows = await this.repository.findAvailability({
+      appointmentStart,
+      delayHours,
+      duration,
+    });
+
+    const uniqueSlots = new Map<string, PublicScheduleSlotDto>();
+    for (const row of rows) {
+      const key = `${row.date}|${row.startTime}|${row.endTime}`;
+      if (!uniqueSlots.has(key)) {
+        uniqueSlots.set(key, {
+          date: row.date,
+          startTime: row.startTime,
+          endTime: row.endTime,
+        });
+      }
+    }
+    return [...uniqueSlots.values()];
   }
 
   /**

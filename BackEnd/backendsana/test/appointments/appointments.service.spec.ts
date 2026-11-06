@@ -32,11 +32,13 @@ function setup() {
     confirm: vi.fn(),
     updateState: vi.fn().mockResolvedValue(true),
     recordAssignmentHistory: vi.fn().mockResolvedValue(undefined),
+    selectSlotForRequester: vi.fn().mockResolvedValue('assigned'),
   };
   const scheduleService = {
     confirmAppointmentSlot: vi.fn().mockResolvedValue(true),
     assignAppointmentSlot: vi.fn().mockResolvedValue('assigned'),
     checkPsychologistAvailability: vi.fn().mockResolvedValue(true),
+    findPublicAvailability: vi.fn().mockResolvedValue([]),
   };
   const emailService = { enqueueEmail: vi.fn().mockResolvedValue(undefined) };
   return {
@@ -136,6 +138,35 @@ describe('AppointmentsService.requestAppointment', () => {
 
     const persistedRequest = repository.createRequest.mock.calls[0][0];
     expect(persistedRequest).not.toHaveProperty('appDateIdeal');
+  });
+
+  it('confirms a first appointment immediately when a public slot is selected', async () => {
+    const { service, repository, emailService } = setup();
+    repository.findById.mockResolvedValue({
+      appId: 42,
+      appDate: '2026-12-10T15:00:00.000Z',
+      requesterName: 'Ana Solicitante',
+      requesterEmail: 'ana@example.com',
+      patientName: 'Ana Solicitante',
+      psychologistName: 'Psicóloga',
+      appType: 'virtual',
+    });
+
+    await expect(
+      service.requestAppointment(
+        baseRequest({ appDate: '2026-12-10T15:00:00.000Z' }) as never,
+      ),
+    ).resolves.toMatchObject({
+      appId: 42,
+      message: 'Tu primera cita quedó asignada y confirmada con éxito.',
+    });
+
+    expect(repository.createRequest).toHaveBeenCalledWith(expect.objectContaining({
+      slot: { appDate: new Date('2026-12-10T15:00:00.000Z'), duration: 60 },
+    }));
+    expect(emailService.enqueueEmail).toHaveBeenCalledWith(expect.objectContaining({
+      subject: 'Confirmación de tu cita psicológica - Fundación Dejando Huellas Felices',
+    }));
   });
 
   it('returns the same generic conflict for duplicate requester email or document', async () => {
@@ -654,6 +685,94 @@ describe('AppointmentsService.cancelOwnAppointment', () => {
 
     await expect(service.cancelOwnAppointment(42, 7)).rejects.toMatchObject({
       response: expect.objectContaining({ error: 'APPOINTMENT_STATE_CHANGED' }),
+    });
+  });
+
+  describe('Consultant Availability and Slot Selection', () => {
+    it('rejects an appointment request with a past appDate', async () => {
+      const { service, repository } = setup();
+
+      await expect(
+        service.requestAppointment(
+          baseRequest({ appDate: '2020-01-01T10:00:00.000Z' }) as never,
+        ),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({ error: 'INVALID_APPOINTMENT_DATE' }),
+      });
+      expect(repository.createRequest).not.toHaveBeenCalled();
+    });
+
+    it('creates request and reserves slot when future appDate is supplied', async () => {
+      const { service, repository } = setup();
+      const futureDate = new Date(Date.now() + 86400000).toISOString();
+
+      const result = await service.requestAppointment(
+        baseRequest({ appDate: futureDate }) as never,
+      );
+
+      expect(result).toEqual({
+        appId: 42,
+        message: 'Tu primera cita quedó asignada y confirmada con éxito.',
+      });
+      expect(repository.createRequest).toHaveBeenCalledWith(
+        expect.objectContaining({
+          slot: {
+            appDate: new Date(futureDate),
+            duration: 60,
+          },
+        }),
+      );
+    });
+
+    it('delegates public availability search to scheduleService', async () => {
+      const { service, scheduleService } = setup();
+      const mockSlots = [{ date: '2026-12-01', startTime: '08:00:00', endTime: '09:00:00' }];
+      scheduleService.findPublicAvailability.mockResolvedValue(mockSlots);
+
+      const result = await service.findPublicAvailability({
+        appointmentStart: '2026-12-01T08:00:00.000Z',
+        duration: 60,
+        delayHours: 24,
+      });
+
+      expect(result).toEqual(mockSlots);
+      expect(scheduleService.findPublicAvailability).toHaveBeenCalledWith({
+        appointmentStart: '2026-12-01T08:00:00.000Z',
+        duration: 60,
+        delayHours: 24,
+      });
+    });
+
+    it('allows an authenticated consultant to select a slot for their pending appointment', async () => {
+      const { service, repository } = setup();
+      const futureDate = new Date(Date.now() + 86400000).toISOString();
+      repository.selectSlotForRequester.mockResolvedValue('assigned');
+
+      const result = await service.selectSlotForOwnAppointment(10, 7, futureDate);
+
+      expect(result).toEqual({
+        appId: 10,
+        message: 'Horario reservado con éxito.',
+        appDate: futureDate,
+      });
+      expect(repository.selectSlotForRequester).toHaveBeenCalledWith({
+        appId: 10,
+        requesterId: 7,
+        appDate: new Date(futureDate),
+        duration: 60,
+      });
+    });
+
+    it('throws ConflictException when chosen slot is taken', async () => {
+      const { service, repository } = setup();
+      const futureDate = new Date(Date.now() + 86400000).toISOString();
+      repository.selectSlotForRequester.mockResolvedValue('slot_taken');
+
+      await expect(
+        service.selectSlotForOwnAppointment(10, 7, futureDate),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({ error: 'SCHEDULE_SLOT_TAKEN' }),
+      });
     });
   });
 });
