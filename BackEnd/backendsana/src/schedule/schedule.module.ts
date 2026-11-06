@@ -11,6 +11,7 @@ import { ScheduleService } from './schedule.service.js';
 import { RolesGuard } from '../guards/roles.guard.js';
 import { SecurityLogModule } from '../security-logs/security-log.module.js';
 
+/** Composes psychologist availability, calendar, and schedule-block features. */
 @Module({
   imports: [
     AuthModule,

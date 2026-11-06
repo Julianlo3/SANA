@@ -29,6 +29,7 @@ import { NewsService } from './news/news.service.js';
 import { PublicNewsController } from './news/public-news.controller.js';
 import { PublicContentController } from './public-content.controller.js';
 
+/** Groups administrative and public institutional-content features. */
 @Module({
   imports: [
     AuthModule,

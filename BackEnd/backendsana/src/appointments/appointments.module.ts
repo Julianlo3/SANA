@@ -14,6 +14,7 @@ import { EmailModule } from '../email/email.module.js';
 import { RolesGuard } from '../guards/roles.guard.js';
 import { SecurityLogModule } from '../security-logs/security-log.module.js';
 
+/** Composes appointment workflows, scheduling, policy acceptance, and notifications. */
 @Module({
   imports: [
     AuthModule,

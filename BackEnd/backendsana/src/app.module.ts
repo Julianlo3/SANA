@@ -44,4 +44,5 @@ import { AppService } from './app.service.js';
 
   providers: [AppService],
 })
+/** Root composition module that configures persistence and feature modules. */
 export class AppModule {}

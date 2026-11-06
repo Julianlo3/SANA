@@ -10,6 +10,7 @@ import { AuthModule } from '../auth/auth.module.js';
 import { RolesGuard } from '../guards/roles.guard.js';
 import { SecurityLogModule } from '../security-logs/security-log.module.js';
 
+/** Composes clinical-note persistence, authorization, and appointment integration. */
 @Module({
   imports: [
     AuthModule,

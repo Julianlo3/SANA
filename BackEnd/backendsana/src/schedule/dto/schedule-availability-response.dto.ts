@@ -1,3 +1,4 @@
+/** Available time slot and psychologists able to provide an appointment. */
 export interface ScheduleAvailabilitySlot {
   date: string;
   startTime: string;

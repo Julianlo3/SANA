@@ -1,3 +1,4 @@
+/** Administrative view of a consultant and their appointment summary. */
 export interface ConsultantResponse {
   id: number;
   fullName: string;
@@ -17,6 +18,7 @@ export interface ConsultantResponse {
   assignedPsychologistName: string | null;
 }
 
+/** Consultant summary visible to the psychologist responsible for their care. */
 export interface PsychologistConsultantSummaryResponse {
   id: number;
   fullName: string;
@@ -33,6 +35,7 @@ export interface PsychologistConsultantSummaryResponse {
   waitingAppointmentCount: number;
 }
 
+/** Appointment and note excerpt included in a consultant clinical record. */
 export interface PsychologistConsultantAppointmentResponse {
   id: number;
   state: 'asignada' | 'confirmada' | 'realizada';
@@ -49,6 +52,7 @@ export interface PsychologistConsultantAppointmentResponse {
   }[];
 }
 
+/** Full care record for a consultant, including appointments and attention notes. */
 export interface PsychologistConsultantRecordResponse
   extends PsychologistConsultantSummaryResponse {
   appointments: PsychologistConsultantAppointmentResponse[];

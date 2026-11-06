@@ -34,6 +34,7 @@ const SELF_SERVICE_ROLES = [
   UserRole.Requester,
 ];
 
+/** Exposes protected endpoints for user administration and self-service profiles. */
 @Controller('users')
 @UseGuards(OriginGuard, JwtAuthGuard, RolesGuard)
 @Roles(UserRole.Administrator)
@@ -42,6 +43,7 @@ export class UsersController {
 
   @Get('me')
   @Roles(...SELF_SERVICE_ROLES)
+  /** Returns the current authenticated user's profile. */
   getOwnProfile(@Req() request: Request & { user: AuthenticatedUser }) {
     return this.usersService.getOwnProfile(
       request.user.personId,
@@ -51,6 +53,7 @@ export class UsersController {
 
   @Patch('me')
   @Roles(...SELF_SERVICE_ROLES)
+  /** Updates the profile fields that the authenticated user may manage. */
   updateOwnProfile(
     @Req() request: Request & { user: AuthenticatedUser },
     @Body() dto: UpdateOwnProfileDto,
@@ -64,6 +67,7 @@ export class UsersController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  /** Creates a user account on behalf of an administrator. */
   create(
     @Req() request: Request & { user: AuthenticatedUser },
     @Body() dto: CreateUserDto,
@@ -72,6 +76,7 @@ export class UsersController {
   }
 
   @Get()
+  /** Lists users, optionally filtered by state or free-text search. */
   findAll(
     @Query('status') status?: 'active' | 'inactive',
     @Query('search') search?: string,
@@ -80,16 +85,19 @@ export class UsersController {
   }
 
   @Get(':id')
+  /** Retrieves a user by its person identifier. */
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.usersService.findOne(id);
   }
 
   @Patch(':id')
+  /** Updates the administrator-managed fields of a user. */
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUserDto) {
     return this.usersService.update(id, dto);
   }
 
   @Patch(':id/status')
+  /** Changes a user's account status and records the responsible administrator. */
   updateStatus(
     @Req() request: Request & { user: AuthenticatedUser },
     @Param('id', ParseIntPipe) id: number,
@@ -100,6 +108,7 @@ export class UsersController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  /** Removes a user and records the administrator who performed the action. */
   remove(
     @Req() request: Request & { user: AuthenticatedUser },
     @Param('id', ParseIntPipe) id: number,

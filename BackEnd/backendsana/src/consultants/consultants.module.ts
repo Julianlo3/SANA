@@ -11,6 +11,7 @@ import { AuthModule } from '../auth/auth.module.js';
 import { RolesGuard } from '../guards/roles.guard.js';
 import { SecurityLogModule } from '../security-logs/security-log.module.js';
 
+/** Provides consultant lookup and record services for authorized staff. */
 @Module({
   imports: [
     AuthModule,

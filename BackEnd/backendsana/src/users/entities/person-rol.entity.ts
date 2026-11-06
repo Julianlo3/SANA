@@ -1,6 +1,7 @@
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 
 @Entity({ name: 'person_rol' })
+/** Maps a person to a role, including assignment time and active status. */
 export class PersonRol {
   @PrimaryColumn({ name: 'per_id' })
   perId!: number;

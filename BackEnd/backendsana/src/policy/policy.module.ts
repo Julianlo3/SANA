@@ -6,6 +6,7 @@ import { PolicyRepository } from './policy.repository.js';
 import { PolicyService } from './policy.service.js';
 import { PolicyController } from './policy.controller.js';
 
+/** Provides policy-document retrieval and acceptance persistence. */
 @Module({
   imports: [TypeOrmModule.forFeature([PolicyDocument, PolicyAcceptance])],
   controllers: [PolicyController],
