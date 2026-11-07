@@ -25,10 +25,10 @@ function toDate(date: string, time: string): Date {
 function appointmentStartInBogota(appDate: string): Date | null {
   const dateTimeWithZone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(appDate);
   if (!dateTimeWithZone) {
-    const match = appDate.match(
-      /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})(?::\d{2}(?:\.\d+)?)?$/,
+    const match = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})(?::\d{2}(?:\.\d+)?)?$/.exec(
+      appDate,
     );
-    return match ? toDate(match[1], match[2]) : null;
+    return match?.[1] ? toDate(match[1], match[2]) : null;
   }
 
   const instant = new Date(appDate);

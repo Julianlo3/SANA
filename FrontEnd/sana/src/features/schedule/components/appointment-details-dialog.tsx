@@ -10,10 +10,8 @@ import type { CalendarEvent } from "../types/calendar-types";
  * Props for the confirmed appointment details dialog.
  */
 type Props = {
-  /** Appointment event displayed in the dialog. */
-  event: CalendarEvent;
-  /** Closes the dialog. */
-  onClose: () => void;
+  readonly event: CalendarEvent;
+  readonly onClose: () => void;
 };
 
 /**
@@ -53,9 +51,6 @@ export default function AppointmentDetailsDialog({ event, onClose }: Props) {
       onCancel={(event) => {
         event.preventDefault();
         onClose();
-      }}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
       }}
     >
       <div className="flex items-start gap-4 p-5 sm:p-6">

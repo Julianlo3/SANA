@@ -327,7 +327,7 @@ export function useConsultationRequestForm(patientType: PatientType) {
   /**
    * Currently selected evaluation appointment slot.
    */
-  const [selectedSlot, setSelectedSlotState] =
+  const [selectedSlot, setSelectedSlot] =
     useState<ConsultantAvailabilitySlot | null>(null);
 
   /**
@@ -335,9 +335,9 @@ export function useConsultationRequestForm(patientType: PatientType) {
    * @param slot Selected availability slot, or null to clear it.
    * @returns Nothing.
    */
-  const setSelectedSlot = useCallback(
+  const selectSlot = useCallback(
     (slot: ConsultantAvailabilitySlot | null) => {
-      setSelectedSlotState(slot);
+      setSelectedSlot(slot);
       if (slot) {
         setValue("appDate", buildSlotDateTime(slot.date, slot.startTime));
       } else {
@@ -472,7 +472,7 @@ export function useConsultationRequestForm(patientType: PatientType) {
     toggleGuardianDataPolicy,
     toggleMinorDataPolicy,
     selectedSlot,
-    setSelectedSlot,
+    setSelectedSlot: selectSlot,
     isSaving,
     submitError,
     send,

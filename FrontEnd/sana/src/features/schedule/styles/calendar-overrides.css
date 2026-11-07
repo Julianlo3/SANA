@@ -93,8 +93,8 @@
   display: none;
 }
 
-.rbc-time-header.rbc-overflowing {
-  margin-right: 0 !important;
+.rbc-time-view .rbc-time-header.rbc-overflowing {
+  margin-right: 0;
 }
 
 .rbc-time-content {

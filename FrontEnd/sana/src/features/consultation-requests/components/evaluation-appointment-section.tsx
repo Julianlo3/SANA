@@ -31,13 +31,13 @@ function fmtTime(time: string): string {
  */
 type Props = {
   /** Currently selected evaluation slot. */
-  selectedSlot: ConsultantAvailabilitySlot | null;
+  readonly selectedSlot: ConsultantAvailabilitySlot | null;
   /** Updates or clears the selected slot. */
-  onSelect: (slot: ConsultantAvailabilitySlot | null) => void;
+  readonly onSelect: (slot: ConsultantAvailabilitySlot | null) => void;
   /** Form validation error for the required slot. */
-  error?: string;
+  readonly error?: string;
   /** Disables slot selection. */
-  disabled?: boolean;
+  readonly disabled?: boolean;
 };
 
 /**

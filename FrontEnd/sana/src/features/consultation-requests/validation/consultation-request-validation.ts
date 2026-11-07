@@ -341,7 +341,7 @@ export function validateConsultationReason(value: string): string | undefined {
  * @returns A validation message, or undefined when valid.
  */
 export function validateEvaluationSlot(value: string): string | undefined {
-  if (!value || !value.trim()) {
+  if (!value?.trim()) {
     return "Selecciona un horario disponible para tu cita de evaluación.";
   }
   return undefined;

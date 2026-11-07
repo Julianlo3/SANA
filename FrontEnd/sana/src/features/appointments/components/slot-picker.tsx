@@ -54,13 +54,13 @@ export type SlotSelection = {
  */
 type Props = {
   /** Initial calendar date in YYYY-MM-DD format. */
-  defaultDate: string;
+  readonly defaultDate: string;
   /** Current slot and psychologist selection. */
-  selection: SlotSelection | null;
+  readonly selection: SlotSelection | null;
   /** Updates or clears the current selection. */
-  onSelect: (selection: SlotSelection | null) => void;
+  readonly onSelect: (selection: SlotSelection | null) => void;
   /** Disables all calendar and selection interactions. */
-  disabled?: boolean;
+  readonly disabled?: boolean;
 };
 
 /**
@@ -91,6 +91,24 @@ function apiErrorMessage(error: unknown, fallback: string): string {
  */
 function isSlotInFuture(slot: PublicAvailabilitySlot, now: number): boolean {
   return new Date(buildSlotDateTime(slot.date, slot.startTime)).getTime() >= now;
+}
+
+/**
+ * Returns the calendar status message for the current month query.
+ * @param isLoading Whether the availability request is pending.
+ * @param error Request error, if any.
+ * @param slotCount Number of available slots returned.
+ * @returns The status message, or an empty string when an error is shown.
+ */
+function getMonthStatusText(
+  isLoading: boolean,
+  error: string | null,
+  slotCount: number,
+): string {
+  if (isLoading) return "Cargando disponibilidad…";
+  if (error) return "";
+  if (slotCount === 0) return "No hay disponibilidad en este mes.";
+  return "Los puntos indican días con horarios disponibles.";
 }
 
 /**
@@ -419,15 +437,12 @@ export default function SlotPicker({
           })}
         </div>
 
-        <div className="mt-3 min-h-5 text-center text-xs text-text-subtle">
-          {isLoadingMonth
-            ? "Cargando disponibilidad…"
-            : monthError
-              ? null
-              : monthSlots.length === 0
-                ? "No hay disponibilidad en este mes."
-                : "Los puntos indican días con horarios disponibles."}
-        </div>
+        <output
+          aria-live="polite"
+          className="mt-3 block min-h-5 text-center text-xs text-text-subtle"
+        >
+          {getMonthStatusText(isLoadingMonth, monthError, monthSlots.length)}
+        </output>
       </section>
 
       {monthError && (
@@ -453,9 +468,9 @@ export default function SlotPicker({
           </h3>
 
           {isLoadingDay && (
-            <p role="status" className="text-sm text-text-muted">
+            <output aria-live="polite" className="text-sm text-text-muted">
               Buscando psicólogos disponibles…
-            </p>
+            </output>
           )}
 
           {dayError && (
@@ -476,12 +491,12 @@ export default function SlotPicker({
           )}
 
           {!isLoadingDay && !dayError && daySlots?.length === 0 && (
-            <p
-              role="status"
+            <output
+              aria-live="polite"
               className="rounded-xl border border-border bg-surface-muted px-4 py-3 text-sm text-text-muted"
             >
               Ya no hay horarios disponibles para este día. Elige otra fecha.
-            </p>
+            </output>
           )}
 
           {daySlots && daySlots.length > 0 && (
@@ -507,7 +522,7 @@ export default function SlotPicker({
                             : "border-border bg-surface text-text hover:border-primary hover:text-primary"
                         }`}
                       >
-                        <span className="font-semibold">{psychologist.name}</span>
+                        <span className="font-semibold">{psychologist.name}</span>{" "}
                         {psychologist.speciality && (
                           <span className="ml-1 text-xs opacity-80">
                             · {psychologist.speciality}

@@ -43,21 +43,21 @@ function parseLocalDate(dateStr: string): Date {
  */
 type Props = {
   /** Dates with availability returned by the backend. */
-  availableDays: Set<string>;
+  readonly availableDays: Set<string>;
   /** Returns the available slots for a date. */
-  slotsForDay: (day: string) => ConsultantAvailabilitySlot[];
+  readonly slotsForDay: (day: string) => ConsultantAvailabilitySlot[];
   /** Indicates whether availability is loading. */
-  isLoading: boolean;
+  readonly isLoading: boolean;
   /** Availability request error, if any. */
-  error: string | null;
+  readonly error: string | null;
   /** Retries the availability request. */
-  onReload: () => void;
+  readonly onReload: () => void;
   /** Currently selected slot. */
-  selectedSlot: ConsultantAvailabilitySlot | null;
+  readonly selectedSlot: ConsultantAvailabilitySlot | null;
   /** Updates or clears the selected slot. */
-  onSelect: (slot: ConsultantAvailabilitySlot | null) => void;
+  readonly onSelect: (slot: ConsultantAvailabilitySlot | null) => void;
   /** Disables calendar interactions. */
-  disabled?: boolean;
+  readonly disabled?: boolean;
 };
 
 /**
@@ -81,7 +81,10 @@ export default function ConsultantSlotPicker({
   const [selectedDay, setSelectedDay] = useState<string | null>(
     selectedSlot?.date ?? null,
   );
-  const latestAvailableMonth = [...availableDays].sort().at(-1)?.slice(0, 7);
+  const latestAvailableMonth = [...availableDays]
+    .sort((left, right) => left.localeCompare(right))
+    .at(-1)
+    ?.slice(0, 7);
   const canGoToNextMonth =
     latestAvailableMonth !== undefined &&
     format(currentMonth, "yyyy-MM") < latestAvailableMonth;
@@ -229,12 +232,12 @@ export default function ConsultantSlotPicker({
       </div>
 
       {availableDays.size === 0 && (
-        <p
-          role="status"
+        <output
+          aria-live="polite"
           className="rounded-xl border border-border bg-surface-muted px-4 py-4 text-center text-sm text-text-muted"
         >
           No hay horarios disponibles para los próximos 30 días.
-        </p>
+        </output>
       )}
 
       {/* Slots for the selected date. */}

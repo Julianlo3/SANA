@@ -209,34 +209,51 @@ function eventStyle(
   now: Date,
   focusedAppointmentId: number | null,
 ) {
+  const isAppointment = event.resource.kind === "appointment";
+  const isFocused = isFocusedAppointment(event, focusedAppointmentId);
+  let zIndex = 1;
+  if (isAppointment) zIndex = 4;
+  if (isFocused) zIndex = 6;
   const colors: Record<CalendarEvent["resource"]["kind"], string> = {
     block: AVAILABILITY_COLORS.block,
     recurring: AVAILABILITY_COLORS.recurring,
     appointment: "#134176",
   };
   const isPast = event.end.getTime() < now.getTime();
-  const isFocused =
-    event.resource.kind === "appointment" &&
-    event.resource.id === focusedAppointmentId;
-
   return {
     style: {
       backgroundColor: colors[event.resource.kind],
       borderRadius: "10px",
       border:
-        event.resource.kind === "appointment"
+        isAppointment
           ? "2px solid white"
           : "1px solid rgba(19, 65, 118, 0.12)",
-      color: event.resource.kind === "appointment" ? "white" : "#26384d",
+      color: isAppointment ? "white" : "#26384d",
       fontSize: "0.75rem",
       padding: "2px 6px",
       opacity: isPast ? 0.4 : 1,
       filter: isPast ? "grayscale(0.65)" : undefined,
       outline: isFocused ? "3px solid #f4c95d" : undefined,
       outlineOffset: isFocused ? "2px" : undefined,
-      zIndex: isFocused ? 6 : event.resource.kind === "appointment" ? 4 : 1,
+      zIndex,
     },
   };
+}
+
+/**
+ * Checks whether an event matches the focused appointment.
+ * @param event Calendar event to inspect.
+ * @param focusedAppointmentId Focused appointment identifier.
+ * @returns Whether the event is the focused appointment.
+ */
+function isFocusedAppointment(
+  event: CalendarEvent,
+  focusedAppointmentId: number | null,
+): boolean {
+  return (
+    event.resource.kind === "appointment" &&
+    event.resource.id === focusedAppointmentId
+  );
 }
 
 /**
@@ -262,11 +279,32 @@ function availabilityEventStyle(event: CalendarEvent) {
 }
 
 /**
+ * Returns day header styling for past and selected dates.
+ * @param date Calendar date to style.
+ * @param todayKey Current date in YYYY-MM-DD format.
+ * @param selectedDay Currently selected date.
+ * @returns Calendar day header attributes.
+ */
+function calendarDayProps(
+  date: Date,
+  todayKey: string,
+  selectedDay: Date | null,
+): React.HTMLAttributes<HTMLDivElement> {
+  if (dateKey(date) < todayKey) {
+    return { className: "schedule-past-day-header" };
+  }
+  if (selectedDay && isSameDay(date, selectedDay)) {
+    return { style: { backgroundColor: "#fbeaf0" } };
+  }
+  return {};
+}
+
+/**
  * Props required by the psychologist availability page.
  */
 type Props = {
   /** Whether the psychologist has accepted the schedule terms. */
-  psyTermsAccepted: boolean | null;
+  readonly psyTermsAccepted: boolean | null;
 };
 
 /**
@@ -570,14 +608,9 @@ export default function WeeklyAvailabilityPage({ psyTermsAccepted }: Props) {
                   setFocusedAppointmentId(event.resource.id);
                 }
               }}
-              dayPropGetter={(date: Date) => {
-                if (dateKey(date) < todayKey) {
-                  return { className: "schedule-past-day-header" };
-                }
-                return selectedDay && isSameDay(date, selectedDay)
-                  ? { style: { backgroundColor: "#fbeaf0" } }
-                  : {};
-              }}
+              dayPropGetter={(date: Date) =>
+                calendarDayProps(date, todayKey, selectedDay)
+              }
               eventPropGetter={(event: CalendarEvent) =>
                 eventStyle(event, now, focusedAppointmentId)
               }
@@ -601,21 +634,23 @@ export default function WeeklyAvailabilityPage({ psyTermsAccepted }: Props) {
             <span
               className="h-3 w-3 rounded-sm ring-1 ring-border"
               style={{ backgroundColor: AVAILABILITY_COLORS.block }}
-            />
+            />{" "}
             Puntual
           </span>
           <span className="flex items-center gap-1.5">
             <span
               className="h-3 w-3 rounded-sm ring-1 ring-border"
               style={{ backgroundColor: AVAILABILITY_COLORS.recurring }}
-            />
+            />{" "}
             Recurrente
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-3 w-3 rounded-full bg-[#134176]" /> Cita
+            <span className="h-3 w-3 rounded-full bg-[#134176]" />{" "}
+            Cita
           </span>
           <span className="flex items-center gap-1.5">
             <span className="h-3 w-3 rounded-sm bg-[#e2e4e8] ring-1 ring-border" />
+            {" "}
             Día pasado
           </span>
         </div>
