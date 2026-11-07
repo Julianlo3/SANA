@@ -1,14 +1,26 @@
+import type { AppointmentMode } from "@/features/appointments/types/appointment-types";
+
 /**
- * Tipos para la vista de calendario de "Mi agenda" (react-big-calendar).
- * Convierte ScheduleBlock y RecurringScheduleBlock al formato de evento
- * que la librería espera: título, fecha/hora de inicio y fin como Date.
+ * Calendar event types consumed by the psychologist schedule calendar.
  */
+/**
+ * Event metadata used to distinguish availability from appointments.
+ */
+export type CalendarEventResource =
+  | {
+      kind: "block" | "recurring";
+      id: number;
+    }
+  | {
+      kind: "appointment";
+      id: number;
+      patientName?: string;
+      mode?: AppointmentMode;
+    };
 
-export type CalendarEventResource = {
-  kind: "block" | "recurring" | "appointment";
-  id: number;
-};
-
+/**
+ * Event shape required by react-big-calendar.
+ */
 export type CalendarEvent = {
   title: string;
   start: Date;

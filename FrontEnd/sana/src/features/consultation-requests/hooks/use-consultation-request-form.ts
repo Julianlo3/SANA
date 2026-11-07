@@ -6,9 +6,11 @@ import { useForm } from "@/hooks/use-form";
 import { ApiError } from "@/types/api-types";
 import { scrollToFirstError } from "../lib/scroll-to-first-error";
 import { submitConsultationRequest } from "../services/consultation-requests-service";
+import { buildSlotDateTime } from "@/lib/date/slot-datetime";
 import type {
   AppointmentMode,
   CardType,
+  ConsultantAvailabilitySlot,
   ConsultationRequestPayload,
   Gender,
   GuardianRelationshipId,
@@ -21,6 +23,9 @@ import {
   type RequestFormValues,
 } from "../validation/consultation-request-validation";
 
+/**
+ * Initial values shared by self and guardian request forms.
+ */
 const EMPTY_FORM: RequestFormValues = {
   fullName: "",
   documentType: "",
@@ -44,9 +49,12 @@ const EMPTY_FORM: RequestFormValues = {
   hasAcceptedDataPolicy: false,
   hasAcceptedGuardianDataPolicy: false,
   hasAcceptedMinorDataPolicy: false,
+  appDate: "",
 };
 
-/** Nombre de cada campo, para decirle a la persona cuáles tiene mal. */
+/**
+ * Display labels used in the validation error summary.
+ */
 const FIELD_LABELS: Record<keyof RequestFormValues, string> = {
   fullName: "Nombre completo",
   documentType: "Tipo de documento",
@@ -70,9 +78,12 @@ const FIELD_LABELS: Record<keyof RequestFormValues, string> = {
   hasAcceptedDataPolicy: "Autorización de datos",
   hasAcceptedGuardianDataPolicy: "Autorización de datos del acudiente",
   hasAcceptedMinorDataPolicy: "Autorización de datos del menor",
+  appDate: "Horario de la cita de evaluación",
 };
 
-/** Campo del backend (DTO) → campo del formulario. */
+/**
+ * Maps backend DTO property names to frontend form fields.
+ */
 const BACKEND_FIELDS: Record<string, keyof RequestFormValues> = {
   requesterName: "fullName",
   requesterCardType: "documentType",
@@ -89,9 +100,12 @@ const BACKEND_FIELDS: Record<string, keyof RequestFormValues> = {
   appType: "appType",
   appReason: "consultationReason",
   residenceZone: "municipality",
+  appDate: "appDate",
 };
 
-/** Error de negocio del backend → campo del formulario donde se muestra. */
+/**
+ * Maps backend validation codes to the related form field.
+ */
 const ERROR_CODE_FIELDS: Record<string, keyof RequestFormValues> = {
   REQUESTER_BIRTHDATE_REQUIRED: "birthDate",
   REQUESTER_MUST_BE_ADULT: "birthDate",
@@ -100,19 +114,27 @@ const ERROR_CODE_FIELDS: Record<string, keyof RequestFormValues> = {
   INVALID_RELATIONSHIP: "relationship",
 };
 
-/** Código que devuelve el backend si correo y documento pertenecen a cuentas distintas. */
+/**
+ * Backend error code for an already registered requester.
+ */
 const ALREADY_REGISTERED_CODE = "REQUESTER_ALREADY_REGISTERED";
+
+/**
+ * User-facing message for an already registered requester.
+ */
 const ALREADY_REGISTERED_MESSAGE =
   "No pudimos asociar la solicitud con esos datos. Verifica tu correo y documento, o inicia sesión si ya tienes una cuenta.";
 
-/** Mensaje para errores del servidor, sin afirmar cuál fue la causa. */
+/**
+ * User-facing fallback for unexpected backend failures.
+ */
 const SERVER_ERROR_MESSAGE =
   "No pudimos registrar tu solicitud. Si ya pediste una cita antes con estos datos, entra por Ingresar → Consultantes. Si el problema continúa, intenta más tarde o comunícate con la fundación.";
 
 /**
- * Map the backend errors to the corresponding form fields.
- * @param error The ApiError object containing the backend errors.
- * @returns A RequestFormErrors object mapping the backend errors to the form fields.
+ * Maps backend validation errors to frontend form fields.
+ * @param error API error containing field errors or a validation code.
+ * @returns Validation errors keyed by frontend form field.
  */
 function mapServerErrors(error: ApiError): RequestFormErrors {
   const mapped: RequestFormErrors = {};
@@ -129,9 +151,10 @@ function mapServerErrors(error: ApiError): RequestFormErrors {
 }
 
 /**
- * El backend guarda la residencia como un solo texto (residenceZone),
- * hasta 255 caracteres, opcional. Se arma como "Municipio, Departamento".
- * Si la persona no indicó nada, se manda undefined (el campo es opcional).
+ * Combines department and municipality into the API residence field.
+ * @param department Selected department.
+ * @param municipality Selected municipality.
+ * @returns Residence in "Municipality, Department" format, or undefined.
  */
 function buildResidenceZone(
   department: string,
@@ -142,27 +165,9 @@ function buildResidenceZone(
 }
 
 /**
- * Lógica del formulario público de solicitud (HU-2.2).
- *
- * Un solo hook cubre los dos tipos de solicitante porque comparten la mayoría
- * de los campos. Eso permite conservar los datos de contacto al cambiar de
- * tipo, como pide HU-2.2.9.
- *
- * Alineado al DTO real del backend (CreateAppointmentDto): el payload es
- * plano, no anidado en guardian/minor, y el género va en una letra.
- *
- * Departamento y municipio se combinan en un solo texto (residenceZone),
- * porque el backend los guarda así, no como dos campos separados.
- *
- * Pedido del cliente (reunión 30/09): se quitó la fecha preferida de cita
- * del formulario. appDateIdeal ya no se pide a la persona; se manda null
- * siempre, y la pantalla muestra un mensaje fijo de que la asistente
- * asignará la cita en el menor tiempo posible.
- *
- * Errores: se muestran debajo de cada campo y en un resumen que dice cuáles
- * están mal. Si el backend rechaza un campo que la validación local no
- * detectó, también queda marcado en ese campo, y `send` devuelve cuáles
- * fueron para que la pantalla pueda volver al paso donde están.
+ * Manages validation, selection, and submission for public request forms.
+ * @param patientType Request type, either self or dependent.
+ * @returns Form state, field handlers, selected slot, and submit action.
  */
 export function useConsultationRequestForm(patientType: PatientType) {
   const router = useRouter();
@@ -179,7 +184,12 @@ export function useConsultationRequestForm(patientType: PatientType) {
 
   const { setValue: baseSetValue, submit } = form;
 
-  /** Al editar un campo, se quita el error que le había puesto el backend. */
+  /**
+   * Updates a field and clears its previous backend validation error.
+   * @param field Field to update.
+   * @param value New field value.
+   * @returns Nothing.
+   */
   const setValue = useCallback(
     <K extends keyof RequestFormValues>(
       field: K,
@@ -204,17 +214,25 @@ export function useConsultationRequestForm(patientType: PatientType) {
   const showSummary =
     form.wasSubmitted || Object.keys(serverErrors).length > 0;
 
-  /** Nombres de los campos que están mal, para el resumen. */
+  /**
+   * Builds the visible labels for the current validation summary.
+   * @returns Invalid field labels, or an empty array when hidden.
+   */
   const errorSummary = useMemo(
     () =>
       showSummary
         ? (Object.keys(errors) as (keyof RequestFormValues)[]).map(
-            (key) => FIELD_LABELS[key],
-          )
+          (key) => FIELD_LABELS[key],
+        )
         : [],
     [errors, showSummary],
   );
 
+  /**
+   * Updates the selected guardian relationship.
+   * @param relationship Relationship identifier or empty value.
+   * @returns Nothing.
+   */
   const setRelationship = useCallback(
     (relationship: GuardianRelationshipId | "") => {
       setValue("relationship", relationship);
@@ -222,6 +240,11 @@ export function useConsultationRequestForm(patientType: PatientType) {
     [setValue],
   );
 
+  /**
+   * Updates the selected identity document type.
+   * @param documentType Document type or empty value.
+   * @returns Nothing.
+   */
   const setDocumentType = useCallback(
     (documentType: CardType | "") => {
       setValue("documentType", documentType);
@@ -229,6 +252,11 @@ export function useConsultationRequestForm(patientType: PatientType) {
     [setValue],
   );
 
+  /**
+   * Updates the requester's gender.
+   * @param gender Gender code or empty value.
+   * @returns Nothing.
+   */
   const setGender = useCallback(
     (gender: Gender | "") => {
       setValue("gender", gender);
@@ -236,6 +264,11 @@ export function useConsultationRequestForm(patientType: PatientType) {
     [setValue],
   );
 
+  /**
+   * Updates the dependent's gender.
+   * @param gender Gender code or empty value.
+   * @returns Nothing.
+   */
   const setMinorGender = useCallback(
     (gender: Gender | "") => {
       setValue("minorGender", gender);
@@ -243,6 +276,11 @@ export function useConsultationRequestForm(patientType: PatientType) {
     [setValue],
   );
 
+  /**
+   * Updates the appointment delivery mode.
+   * @param appType Appointment mode or empty value.
+   * @returns Nothing.
+   */
   const setAppointmentMode = useCallback(
     (appType: AppointmentMode | "") => {
       setValue("appType", appType);
@@ -250,6 +288,11 @@ export function useConsultationRequestForm(patientType: PatientType) {
     [setValue],
   );
 
+  /**
+   * Updates requester data processing consent.
+   * @param accepted Whether consent was accepted.
+   * @returns Nothing.
+   */
   const toggleDataPolicy = useCallback(
     (accepted: boolean) => {
       setValue("hasAcceptedDataPolicy", accepted);
@@ -257,6 +300,11 @@ export function useConsultationRequestForm(patientType: PatientType) {
     [setValue],
   );
 
+  /**
+   * Updates guardian data processing consent.
+   * @param accepted Whether consent was accepted.
+   * @returns Nothing.
+   */
   const toggleGuardianDataPolicy = useCallback(
     (accepted: boolean) => {
       setValue("hasAcceptedGuardianDataPolicy", accepted);
@@ -264,6 +312,11 @@ export function useConsultationRequestForm(patientType: PatientType) {
     [setValue],
   );
 
+  /**
+   * Updates dependent data processing consent.
+   * @param accepted Whether consent was accepted.
+   * @returns Nothing.
+   */
   const toggleMinorDataPolicy = useCallback(
     (accepted: boolean) => {
       setValue("hasAcceptedMinorDataPolicy", accepted);
@@ -271,6 +324,34 @@ export function useConsultationRequestForm(patientType: PatientType) {
     [setValue],
   );
 
+  /**
+   * Currently selected evaluation appointment slot.
+   */
+  const [selectedSlot, setSelectedSlotState] =
+    useState<ConsultantAvailabilitySlot | null>(null);
+
+  /**
+   * Stores the selected slot and updates the form's appointment datetime.
+   * @param slot Selected availability slot, or null to clear it.
+   * @returns Nothing.
+   */
+  const setSelectedSlot = useCallback(
+    (slot: ConsultantAvailabilitySlot | null) => {
+      setSelectedSlotState(slot);
+      if (slot) {
+        setValue("appDate", buildSlotDateTime(slot.date, slot.startTime));
+      } else {
+        setValue("appDate", "");
+      }
+    },
+    [setValue],
+  );
+
+  /**
+   * Builds the API payload for the active request type.
+   * @param submitted Validated form values.
+   * @returns The self or dependent request payload.
+   */
   const buildPayload = useCallback(
     (submitted: RequestFormValues): ConsultationRequestPayload => {
       const residenceZone = buildResidenceZone(
@@ -298,7 +379,7 @@ export function useConsultationRequestForm(patientType: PatientType) {
           dependentTermsAccepted: true,
           appType: submitted.appType as AppointmentMode,
           appReason: submitted.consultationReason.trim(),
-          appDateIdeal: null,
+          appDate: submitted.appDate,
           residenceZone,
         };
       }
@@ -315,7 +396,7 @@ export function useConsultationRequestForm(patientType: PatientType) {
         requesterTermsAccepted: true,
         appType: submitted.appType as AppointmentMode,
         appReason: submitted.consultationReason.trim(),
-        appDateIdeal: null,
+        appDate: submitted.appDate,
         residenceZone,
       };
     },
@@ -323,8 +404,8 @@ export function useConsultationRequestForm(patientType: PatientType) {
   );
 
   /**
-   * Envía la solicitud. Devuelve los campos que el backend rechazó (vacío si
-   * todo salió bien o si el fallo no es de un campo concreto).
+   * Submits the request and identifies fields rejected by the backend.
+   * @returns Rejected form fields, or an empty array when none are identified.
    */
   const send = useCallback(async (): Promise<
     (keyof RequestFormValues)[]
@@ -390,6 +471,8 @@ export function useConsultationRequestForm(patientType: PatientType) {
     toggleDataPolicy,
     toggleGuardianDataPolicy,
     toggleMinorDataPolicy,
+    selectedSlot,
+    setSelectedSlot,
     isSaving,
     submitError,
     send,

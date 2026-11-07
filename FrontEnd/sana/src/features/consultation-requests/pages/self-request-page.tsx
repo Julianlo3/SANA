@@ -14,17 +14,18 @@ import { VULNERABLE_POPULATION_OPTIONS } from "@/config/vulnerable-population";
 import AppointmentModeField from "../components/appointment-mode-field";
 import ConfirmedField from "../components/confirmed-field";
 import DataPolicyConsent from "../components/data-policy-consent";
+import EvaluationAppointmentSection from "../components/evaluation-appointment-section";
 import ResidenceFields from "../components/residence-fields";
 import { useConsultationRequestForm } from "../hooks/use-consultation-request-form";
 import type { CardType, Gender } from "../types/consultation-request-types";
 
 /**
- * Renders the self request page, which allows users to submit a consultation request for themselves.
+ * Content configuration for the self request form.
  */
 const { selfForm } = REQUEST_CONTENT;
 
 /**
- * document types for the identity document field, including value and label pairs.
+ * Document types available in the self request form.
  */
 const DOCUMENT_TYPES: { value: CardType; label: string }[] = [
   { value: "CC", label: "Cédula de ciudadanía" },
@@ -32,7 +33,7 @@ const DOCUMENT_TYPES: { value: CardType; label: string }[] = [
 ];
 
 /**
- * Options for the gender select field, including value and label pairs.
+ * Gender options available in the self request form.
  */
 const GENDER_OPTIONS: { value: Gender; label: string }[] = [
   { value: "M", label: "Hombre" },
@@ -42,8 +43,8 @@ const GENDER_OPTIONS: { value: Gender; label: string }[] = [
 ];
 
 /**
- * Renders the self request page, which allows users to submit a consultation request for themselves.
- * @returns A React component that renders the self request page.
+ * Renders the request form for the requester.
+ * @returns The self request page.
  */
 export default function SelfRequestPage() {
   const {
@@ -58,6 +59,8 @@ export default function SelfRequestPage() {
     setGender,
     setAppointmentMode,
     toggleDataPolicy,
+    selectedSlot,
+    setSelectedSlot,
     send,
   } = useConsultationRequestForm("self");
 
@@ -334,6 +337,13 @@ export default function SelfRequestPage() {
                 para confirmar la fecha y hora.
               </p>
             </fieldset>
+
+            <EvaluationAppointmentSection
+              selectedSlot={selectedSlot}
+              onSelect={setSelectedSlot}
+              error={errors.appDate}
+              disabled={isSaving}
+            />
 
             <DataPolicyConsent
               checked={values.hasAcceptedDataPolicy}

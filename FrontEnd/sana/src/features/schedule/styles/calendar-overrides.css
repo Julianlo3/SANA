@@ -29,11 +29,49 @@
   background-color: #feefc4;
 }
 
+.schedule-past-day-header {
+  width: 100%;
+}
+
 .rbc-header {
   border-bottom: none;
   padding: 0.5rem 0;
   font-weight: 600;
   color: #134176;
+}
+
+.rbc-time-header-cell .rbc-header.schedule-past-day-header {
+  background-color: #e2e4e8;
+  color: #596273;
+}
+
+.rbc-date-cell:has(.schedule-past-month-day) {
+  background-color: #e2e4e8;
+  color: #596273;
+}
+
+.schedule-day-header {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 3rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.1;
+  white-space: normal;
+}
+
+.schedule-day-number {
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.schedule-day-name {
+  margin-top: 0.2rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: capitalize;
 }
 
 .rbc-month-view,
@@ -44,4 +82,123 @@
 
 .rbc-event {
   box-shadow: none;
+}
+
+.rbc-background-event {
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.rbc-time-header-content > .rbc-allday-cell {
+  display: none;
+}
+
+.rbc-time-header.rbc-overflowing {
+  margin-right: 0 !important;
+}
+
+.rbc-time-content {
+  scrollbar-width: none;
+}
+
+.rbc-time-content::-webkit-scrollbar {
+  display: none;
+}
+
+.appointment-details-dialog[open] {
+  position: fixed;
+  inset: 50% auto auto 50%;
+  margin: 0;
+  translate: -50% -50%;
+  animation: appointment-dialog-enter 180ms ease-out both;
+}
+
+.appointment-details-dialog::backdrop {
+  background-color: rgb(15 23 42 / 45%);
+  animation: appointment-backdrop-enter 180ms ease-out both;
+}
+
+@keyframes appointment-dialog-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes appointment-backdrop-enter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .appointment-details-dialog[open],
+  .appointment-details-dialog::backdrop {
+    animation: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .rbc-time-header-content,
+  .rbc-time-content > .rbc-day-slot {
+    flex: 1 1 0;
+    min-width: 0;
+    width: 0;
+    box-sizing: border-box;
+  }
+
+  .rbc-time-header-gutter {
+    flex: 0 0 auto;
+  }
+
+  .rbc-time-header-content > .rbc-time-header-cell {
+    display: flex;
+    flex: 0 0 100%;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .rbc-time-header-cell .rbc-header {
+    flex: 1 1 0;
+    width: 0;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow: visible;
+    padding: 0.25rem 0;
+    white-space: normal;
+    text-align: center;
+  }
+
+  .rbc-time-header-cell .rbc-header > span,
+  .rbc-time-header-cell .rbc-header > button {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .rbc-time-header-cell .schedule-day-name {
+    display: block;
+    max-width: 100%;
+    overflow: visible;
+    white-space: nowrap;
+    font-size: 0.65rem;
+  }
+
+  .rbc-toolbar {
+    row-gap: 0.5rem;
+  }
+
+  .rbc-toolbar-label {
+    margin-block: 0.15rem;
+  }
 }
