@@ -17,6 +17,7 @@ import ConfirmedField from "../components/confirmed-field";
 import ConsultationReasonField from "../components/consultation-reason-field";
 import DataPolicyConsent from "../components/data-policy-consent";
 import DependentPersonFields from "../components/dependent-person-fields";
+import EvaluationAppointmentSection from "../components/evaluation-appointment-section";
 import ResidenceFields from "../components/residence-fields";
 import ValidatedSelectField from "../components/validated-select-field";
 import { useConsultationRequestForm } from "../hooks/use-consultation-request-form";
@@ -43,10 +44,13 @@ import type {
   GuardianRelationshipId,
 } from "../types/consultation-request-types";
 
+/**
+ * Content configuration for the guardian request form.
+ */
 const { guardianForm } = REQUEST_CONTENT;
 
 /**
- * The fields that are validated in step 1 of the guardian request form. If any of these fields have validation errors, the user will be returned to step 1 for correction.
+ * Guardian relationship options displayed by the request form.
  */
 const RELATIONSHIP_OPTIONS: { value: GuardianRelationshipId; label: string }[] = [
   { value: 1, label: "Madre" },
@@ -56,7 +60,7 @@ const RELATIONSHIP_OPTIONS: { value: GuardianRelationshipId; label: string }[] =
 ];
 
 /**
- * Returns a list of field names that have validation errors in step 1.
+ * Document types available in the guardian request form.
  */
 const DOCUMENT_TYPES: { value: CardType; label: string }[] = [
   { value: "CC", label: "Cédula de ciudadanía" },
@@ -64,7 +68,7 @@ const DOCUMENT_TYPES: { value: CardType; label: string }[] = [
 ];
 
 /**
- * Options for the gender select field, including value and label pairs.
+ * Gender options available in the guardian request form.
  */
 const GENDER_OPTIONS: { value: Gender; label: string }[] = [
   { value: "M", label: "Hombre" },
@@ -74,7 +78,7 @@ const GENDER_OPTIONS: { value: Gender; label: string }[] = [
 ];
 
 /**
- * The fields that are validated in step 1 of the guardian request form. If any of these fields have validation errors, the user will be returned to step 1 for correction.
+ * Fields validated before advancing from the guardian request's first step.
  */
 const STEP1_FIELDS: (keyof RequestFormValues)[] = [
   "fullName",
@@ -95,9 +99,9 @@ const STEP1_FIELDS: (keyof RequestFormValues)[] = [
 ];
 
 /**
- * Returns a list of field names that have validation errors in step 1.
+ * Returns labels for invalid fields in the first form step.
  * @param values The current form values.
- * @returns An array of field names that have validation errors in step 1.
+ * @returns Labels of fields that failed validation.
  */
 function getStep1Failed(values: RequestFormValues): string[] {
   const checks: [string, string | undefined][] = [
@@ -143,8 +147,8 @@ function getStep1Failed(values: RequestFormValues): string[] {
 }
 
 /**
- * Renders the guardian request page, which allows users to submit a consultation request on behalf of a dependent person.
- * @returns A React component that renders the guardian request page.
+ * Renders the guardian request form for a dependent.
+ * @returns The guardian request page.
  */
 export default function GuardianRequestPage() {
   const [step, setStep] = useState<1 | 2>(1);
@@ -165,6 +169,8 @@ export default function GuardianRequestPage() {
     setAppointmentMode,
     toggleGuardianDataPolicy,
     toggleMinorDataPolicy,
+    selectedSlot,
+    setSelectedSlot,
     send,
   } = useConsultationRequestForm("dependent");
 
@@ -172,6 +178,10 @@ export default function GuardianRequestPage() {
   const summary =
     step === 1 && step1Failed.length > 0 ? step1Failed : errorSummary;
 
+  /**
+   * Validates the first step and advances when all its fields are valid.
+   * @returns Nothing.
+   */
   function goToStep2() {
     STEP1_FIELDS.forEach((field) => setFieldTouched(field));
     setStep1Attempted(true);
@@ -185,7 +195,8 @@ export default function GuardianRequestPage() {
   }
 
   /**
-   * Sends the consultation request. If any of the fields from step 1 are rejected, it returns to step 1 for correction.
+   * Submits the request and returns to step one if it has invalid fields.
+   * @returns A promise that resolves after submission handling completes.
    */
   async function handleSend() {
     const rejected = await send();
@@ -563,6 +574,13 @@ export default function GuardianRequestPage() {
                   para confirmar la fecha y hora.
                 </p>
               </fieldset>
+
+              <EvaluationAppointmentSection
+                selectedSlot={selectedSlot}
+                onSelect={setSelectedSlot}
+                error={errors.appDate}
+                disabled={isSaving}
+              />
 
               <div className="space-y-3">
                 <DataPolicyConsent

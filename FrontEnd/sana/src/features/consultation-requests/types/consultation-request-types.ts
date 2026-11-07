@@ -1,33 +1,59 @@
 /**
- * Tipos del formulario público de solicitud de cita (HU-2.2).
- *
- * Alineados al DTO real del backend (BackEnd/backendsana/src/appointments/dto/create-appointment.dto.ts),
- * no a un contrato propio. Los nombres de campo, los valores de una letra
- * para el género, y el resto de restricciones vienen de ahí.
- *
- * Decisión de equipo: no se muestran al público los horarios reales de los
- * psicólogos. El consultante solo indica una fecha ideal como referencia;
- * toda solicitud queda "pendiente" y la asistente es quien la asigna desde
- * su bandeja (HU-2.3).
+ * Frontend request types aligned with the appointment creation API.
  */
-
-/** Tipo de documento. El backend acepta las tres para cualquier persona. */
+/** Document types accepted by the request API. */
 export type CardType = "CC" | "TI" | "CE";
 
-/** Género en el código de una letra que espera el backend. */
+/**
+ * Single-letter gender codes accepted by the request API.
+ */
 export type Gender = "F" | "M" | "O" | "P";
 
-/** "self": la persona pide para sí misma. "dependent": un tutor pide para un menor. */
+/**
+ * Identifies whether a request is for the requester or a dependent.
+ */
 export type PatientType = "self" | "dependent";
 
+/**
+ * Appointment delivery modes accepted by the request API.
+ */
 export type AppointmentMode = "presencial" | "virtual";
 
 /**
- * Parentesco del tutor con el menor. Los ids salen de DataBase/init-scripts/02-inserts.sql
- * (tabla relationship): son solo estos cuatro, no hay "hermano/a" ni "otro".
+ * Relationship identifiers accepted for a dependent request.
  */
 export type GuardianRelationshipId = 1 | 2 | 3 | 4;
 
+/**
+ * Anonymized available appointment slot returned by the public API.
+ */
+export type ConsultantAvailabilitySlot = {
+  /** Slot date in YYYY-MM-DD format. */
+  date: string;
+  /** Slot start time in HH:mm or HH:mm:ss format. */
+  startTime: string;
+  /** Slot end time in HH:mm or HH:mm:ss format. */
+  endTime: string;
+};
+
+/**
+ * Enforces the date field required by each request entry point.
+ */
+type AppointmentDateSelection =
+  | {
+      /** Selected evaluation slot as an ISO datetime. */
+      appDate: string;
+      appDateIdeal?: never;
+    }
+  | {
+      /** Profile request flow, where a slot is assigned later. */
+      appDateIdeal: null;
+      appDate?: never;
+    };
+
+/**
+ * Payload for a request submitted on behalf of the requester.
+ */
 export type SelfRequestPayload = {
   patientType: "self";
   requesterName: string;
@@ -40,11 +66,13 @@ export type SelfRequestPayload = {
   requesterTermsAccepted: true;
   appType: AppointmentMode;
   appReason: string;
-  appDateIdeal: string | null;
-  /** "Municipio, Departamento". Opcional, hasta 255 caracteres. */
+  /** Optional residence in "Municipality, Department" format. */
   residenceZone?: string;
-};
+} & AppointmentDateSelection;
 
+/**
+ * Payload for a request submitted by a guardian for a dependent.
+ */
 export type GuardianRequestPayload = {
   patientType: "dependent";
   requesterName: string;
@@ -52,35 +80,35 @@ export type GuardianRequestPayload = {
   requesterIdentityDocument: string;
   requesterContactNumber: string;
   requesterEmail: string;
-  /** El backend exige que el acudiente sea mayor de edad. */
+  /** Guardian birth date; the API requires an adult requester. */
   requesterBirthdate: string;
   requesterGender: Gender;
   requesterTermsAccepted: true;
   dependentName: string;
-  /**
-   * Número del registro civil (NUIP) si el menor tiene menos de 7 años,
-   * o de la tarjeta de identidad si tiene 7 o más. El backend lo exige
-   * siempre, sin importar la edad.
-   */
+  /** Dependent identity document, required for every age. */
   dependentIdentityDocument: string;
   dependentBirthdate: string;
   dependentGender: Gender;
-  /** Si el menor no tiene contacto propio, se reutiliza el del acudiente. */
+  /** Dependent contact number, defaulting to the guardian's number. */
   dependentContactNumber: string;
   relationshipId: GuardianRelationshipId;
   dependentTermsAccepted: true;
   appType: AppointmentMode;
   appReason: string;
-  appDateIdeal: string | null;
-  /** "Municipio, Departamento". Opcional, hasta 255 caracteres. */
+  /** Optional residence in "Municipality, Department" format. */
   residenceZone?: string;
-};
+} & AppointmentDateSelection;
 
+/**
+ * Discriminated union of supported consultation request payloads.
+ */
 export type ConsultationRequestPayload =
   | SelfRequestPayload
   | GuardianRequestPayload;
 
-/** Respuesta de POST /appointments/request. */
+/**
+ * Receipt returned after a consultation request is created.
+ */
 export type ConsultationRequestReceipt = {
   appId: number;
   message: string;
