@@ -1,0 +1,1 @@
+Soy mayor de edad y autorizo de forma previa, expresa e informada a la Fundación Dejando Huellas Felices para tratar mis datos personales, incluidos los datos sensibles que decida entregar, según la Política de Tratamiento de Datos Personales, que leí y acepto. Entiendo que mis datos pueden alojarse en servidores fuera de Colombia.
