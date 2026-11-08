@@ -3,12 +3,17 @@ import {
   IsDateString,
   IsEmail,
   IsEnum,
+  IsIn,
   IsNotEmpty,
   IsOptional,
   IsString,
   Matches,
   MaxLength,
 } from 'class-validator';
+import {
+  ASSISTED_ACCEPTANCE_CHANNELS,
+  type AssistedAcceptanceChannel,
+} from '../../policy/acceptance-channel.js';
 
 const IDENTITY_DOCUMENT_PATTERN = /^\d{6,12}$/;
 const PHONE_PATTERN = /^\d{7,10}$/;
@@ -54,6 +59,12 @@ export class CreateConsultantDto {
 
   @IsBoolean()
   termsAccepted!: boolean;
+
+  @IsOptional()
+  @IsIn(ASSISTED_ACCEPTANCE_CHANNELS, {
+    message: 'channel must be telefono, whatsapp or presencial',
+  })
+  channel?: AssistedAcceptanceChannel;
 
   @IsOptional()
   @IsString()

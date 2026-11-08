@@ -59,7 +59,8 @@ export class AppointmentsController {
     this.logger.log(
       `Module:appointments, Function:requestAppointment, result-start: authenticated-${Boolean(request.user)}, patientType-${dto.patientType}, type-${dto.appType}`,
     );
-    return this.appointmentsService.requestAppointment(dto, request.user);
+    const ipAddress = request.ip || request.socket.remoteAddress;
+    return this.appointmentsService.requestAppointment(dto, request.user, ipAddress);
   }
 
   /**

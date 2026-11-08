@@ -48,4 +48,13 @@ export class Donation {
     default: () => 'CURRENT_TIMESTAMP',
   })
   donCreatedAt!: Date;
+
+  @Column({ name: 'don_terms_pd_id', type: 'integer', nullable: true })
+  donTermsPdId!: number | null;
+
+  @Column({ name: 'don_terms_accepted_at', type: 'timestamptz', nullable: true })
+  donTermsAcceptedAt!: Date | null;
+
+  @Column({ name: 'don_ip_address', type: 'varchar', length: 50, nullable: true })
+  donIpAddress!: string | null;
 }

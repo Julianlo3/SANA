@@ -32,7 +32,10 @@ describe('AuthRepository', () => {
       'p.per_name AS name',
     );
     expect(dataSource.query.mock.calls[0][0]).toContain(
-      "pd.pd_type = 'data_treatment'",
+      "ARRAY['account_terms', 'terms_of_use', 'privacy_policy']",
+    );
+    expect(dataSource.query.mock.calls[0][0]).not.toContain(
+      "'data_treatment'",
     );
     expect(dataSource.query.mock.calls[0][0]).not.toContain(
       'per_termns_accpted',
@@ -108,6 +111,54 @@ describe('AuthRepository', () => {
       [9],
     );
     expect(manager.query).toHaveBeenCalledTimes(2);
+  });
+
+  it('records account terms, terms of use and privacy policy with the IP in one transaction', async () => {
+    const { repository, dataSource, manager } = setup();
+    dataSource.transaction.mockImplementation(async (callback) =>
+      callback(manager),
+    );
+    manager.query
+      .mockResolvedValueOnce([{ pd_id: 9 }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ pd_id: 6 }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ pd_id: 5 }])
+      .mockResolvedValueOnce([]);
+
+    await repository.acceptTerms(42, '203.0.113.7');
+
+    expect(dataSource.transaction).toHaveBeenCalledOnce();
+    expect(dataSource.query).not.toHaveBeenCalled();
+    expect(manager.query.mock.calls.map((call) => call[1])).toEqual([
+      ['account_terms'],
+      [42, 9, '203.0.113.7'],
+      ['terms_of_use'],
+      [42, 6, '203.0.113.7'],
+      ['privacy_policy'],
+      [42, 5, '203.0.113.7'],
+    ]);
+    expect(manager.query.mock.calls[1][0]).toContain("pa_channel)");
+    expect(manager.query.mock.calls[1][0]).toContain("'web'");
+    expect(
+      manager.query.mock.calls.some((call) => call[1]?.includes('data_treatment')),
+    ).toBe(false);
+  });
+
+  it('fails the whole acceptance when one of the account documents is missing', async () => {
+    const { repository, dataSource, manager } = setup();
+    dataSource.transaction.mockImplementation(async (callback) =>
+      callback(manager),
+    );
+    manager.query
+      .mockResolvedValueOnce([{ pd_id: 9 }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    await expect(repository.acceptTerms(42)).rejects.toThrow(
+      'No policy document found for type: terms_of_use',
+    );
+    expect(manager.query).toHaveBeenCalledTimes(3);
   });
 });
 // Los valores del usuario se pasan como parámetros SQL, no se interpolan en la consulta.

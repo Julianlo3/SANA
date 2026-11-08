@@ -1,15 +1,22 @@
 import {
+  IsArray,
   IsBoolean,
   IsDateString,
   IsEmail,
   IsEnum,
+  IsIn,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsPositive,
   IsString,
   Matches,
   MaxLength,
 } from 'class-validator';
+import {
+  ACCEPTANCE_CHANNELS,
+  type AcceptanceChannel,
+} from '../../policy/acceptance-channel.js';
 
 export type PatientType = 'self' | 'dependent';
 export type CardType = 'CC' | 'TI' | 'CE';
@@ -124,4 +131,17 @@ export class CreateAppointmentDto {
   @IsString()
   @MaxLength(255)
   residenceZone?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @IsNotEmpty({ each: true })
+  @MaxLength(75, { each: true })
+  vulnerabilities?: string[];
+
+  @IsOptional()
+  @IsIn(ACCEPTANCE_CHANNELS, {
+    message: 'channel debe ser web, telefono, whatsapp o presencial',
+  })
+  channel?: AcceptanceChannel;
 }
