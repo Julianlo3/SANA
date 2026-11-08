@@ -28,6 +28,7 @@ import {
 import { es } from "date-fns/locale";
 import { Clock3, LockKeyhole, Repeat, Trash2 } from "lucide-react";
 import "react-big-calendar/lib/css/react-big-calendar.css";
+import PolicyMarkdown from "@/components/legal/policy-markdown";
 import "../styles/calendar-overrides.css";
 import InlineMessage from "@/components/feedback/inline-message";
 import Button from "@/components/ui/button";
@@ -433,7 +434,11 @@ export default function WeeklyAvailabilityPage({ psyTermsAccepted }: Props) {
           Términos de uso de la agenda
         </h1>
         <div className="mt-4 rounded-2xl border border-border bg-surface p-6 text-sm leading-relaxed text-text">
-          {terms.policyContent ?? "Cargando términos…"}
+          {terms.policyContent ? (
+            <PolicyMarkdown>{terms.policyContent}</PolicyMarkdown>
+          ) : (
+            "Cargando términos…"
+          )}
         </div>
         <div className="mt-6">
           <Button onClick={terms.accept} disabled={terms.isAccepting}>

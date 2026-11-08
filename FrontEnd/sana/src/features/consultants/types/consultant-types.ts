@@ -79,3 +79,18 @@ export type ConsultantAccessLogEntry = {
   userRole: string;
   accessedAt: string;
 };
+/** Canal por el que la asistente obtuvo la autorización verbal. */
+export type AssistedConsentChannel = "telefono" | "whatsapp" | "presencial";
+
+/** Payload de POST /consultants: ficha registrada por la asistente. */
+export type CreateConsultantPayload = {
+  fullName: string;
+  cardType: "CC" | "TI" | "CE";
+  identityDocument: string;
+  email: string;
+  phone: string;
+  birthdate: string;
+  gender: "F" | "M" | "O" | "P";
+  termsAccepted: boolean;
+  channel?: AssistedConsentChannel;
+};

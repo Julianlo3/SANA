@@ -3,6 +3,7 @@ import InlineMessage from "@/components/feedback/inline-message";
 import AppointmentModeField from "@/features/consultation-requests/components/appointment-mode-field";
 import ConsultationReasonField from "@/features/consultation-requests/components/consultation-reason-field";
 import DataPolicyConsent from "@/features/consultation-requests/components/data-policy-consent";
+import { ACCOUNT_SELF_REQUEST_CONSENT } from "@/content/legal";
 import AppointmentRequestDialog from "./appointment-request-dialog";
 import { useNewRequest } from "../hooks/use-new-request";
 import type { OwnProfile } from "../types/my-account-types";
@@ -57,7 +58,7 @@ export default function NewRequestDialog({
             checked={request.accepted}
             onChange={request.setAccepted}
             error={request.errors.accepted}
-            policyType="data_treatment"
+            label={ACCOUNT_SELF_REQUEST_CONSENT}
           />
 
           {request.submitError && (

@@ -1,6 +1,8 @@
+import { GENERAL_NOTICE, LEGAL_CONTACT, LEGAL_LINKS } from "./legal";
+
 /**
  * Contenido del pie de página.
- * Datos de contacto y horario pendientes de confirmar con la fundación.
+ * El horario de atención sigue pendiente de confirmar con la fundación.
  */
 
 export const FOOTER_CONTENT = {
@@ -16,7 +18,14 @@ export const FOOTER_CONTENT = {
 
   contact: {
     title: "Contacto",
-    items: ["correo@pendiente.org", "Teléfono pendiente", "Popayán, Cauca"],
+    items: [
+      { label: LEGAL_CONTACT.city },
+      { label: LEGAL_CONTACT.email, href: `mailto:${LEGAL_CONTACT.email}` },
+      {
+        label: LEGAL_CONTACT.phone,
+        href: `tel:+57${LEGAL_CONTACT.phone.replaceAll(" ", "")}`,
+      },
+    ],
   },
 
   links: {
@@ -31,6 +40,14 @@ export const FOOTER_CONTENT = {
   schedule: {
     title: "Horario de atención",
     description: "Horario pendiente de confirmar con la fundación.",
+  },
+
+  legalLinks: [LEGAL_LINKS.privacyPolicy, LEGAL_LINKS.terms],
+
+  notice: {
+    ...GENERAL_NOTICE,
+    email: LEGAL_CONTACT.email,
+    policyLink: LEGAL_LINKS.privacyPolicy,
   },
 
   legal: "Todos los derechos reservados",

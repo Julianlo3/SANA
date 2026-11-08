@@ -100,8 +100,7 @@ export function useNewDependentRequest(
   });
   const [appType, setAppType] = useState<AppointmentMode | "">("");
   const [reason, setReason] = useState("");
-  const [requesterAccepted, setRequesterAccepted] = useState(false);
-  const [dependentAccepted, setDependentAccepted] = useState(false);
+  const [accepted, setAccepted] = useState(false);
   const [wasSubmitted, setWasSubmitted] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -120,10 +119,9 @@ export function useNewDependentRequest(
       relationship: validateRelationship(values.relationship),
       appType: validateAppointmentMode(appType),
       reason: validateConsultationReason(reason),
-      requesterAccepted: validateDataPolicy(requesterAccepted),
-      dependentAccepted: validateDataPolicy(dependentAccepted),
+      accepted: validateDataPolicy(accepted),
     }),
-    [values, appType, reason, requesterAccepted, dependentAccepted],
+    [values, appType, reason, accepted],
   );
 
   const visibleErrors = wasSubmitted
@@ -137,8 +135,7 @@ export function useNewDependentRequest(
         relationship: undefined,
         appType: undefined,
         reason: undefined,
-        requesterAccepted: undefined,
-        dependentAccepted: undefined,
+        accepted: undefined,
       };
 
   const setField = useCallback(
@@ -164,14 +161,14 @@ export function useNewDependentRequest(
       requesterEmail: profile.email.trim().toLowerCase(),
       requesterBirthdate: profile.birthdate?.slice(0, 10) ?? "",
       requesterGender: profile.gender as Gender,
-      requesterTermsAccepted: true,
+      requesterTermsAccepted: accepted,
       dependentName: values.name.trim(),
       dependentIdentityDocument: values.identityDocument.trim(),
       dependentBirthdate: values.birthdate,
       dependentGender: values.gender as Gender,
       dependentContactNumber: profile.phone?.trim() ?? "",
       relationshipId: values.relationship as GuardianRelationshipId,
-      dependentTermsAccepted: true,
+      dependentTermsAccepted: accepted,
       appType: appType as AppointmentMode,
       appReason: reason.trim(),
       appDateIdeal: null,
@@ -193,7 +190,7 @@ export function useNewDependentRequest(
     } finally {
       setIsSaving(false);
     }
-  }, [errors, profile, values, appType, reason, onCreated]);
+  }, [errors, profile, values, appType, reason, accepted, onCreated]);
 
   return {
     missing,
@@ -203,10 +200,8 @@ export function useNewDependentRequest(
     setAppType,
     reason,
     setReason,
-    requesterAccepted,
-    setRequesterAccepted,
-    dependentAccepted,
-    setDependentAccepted,
+    accepted,
+    setAccepted,
     errors: visibleErrors,
     isSaving,
     submitError,

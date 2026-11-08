@@ -82,7 +82,7 @@ export function useNewRequest(profile: OwnProfile, onCreated: () => void) {
       requesterEmail: profile.email.trim().toLowerCase(),
       requesterBirthdate: profile.birthdate?.slice(0, 10) ?? "",
       requesterGender: (profile.gender ?? "") as Gender,
-      requesterTermsAccepted: true,
+      requesterTermsAccepted: accepted,
       appType: appType as AppointmentMode,
       appReason: reason.trim(),
       appDateIdeal: null,
@@ -104,7 +104,7 @@ export function useNewRequest(profile: OwnProfile, onCreated: () => void) {
     } finally {
       setIsSaving(false);
     }
-  }, [errors, profile, appType, reason, onCreated]);
+  }, [errors, profile, appType, reason, accepted, onCreated]);
 
   return {
     missing,

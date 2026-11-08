@@ -67,7 +67,7 @@ export function useScheduleTerms(initialPsyTermsAccepted: boolean | null) {
     let isMounted = true;
 
     getPolicyDocument("schedule_terms").then((policy) => {
-      if (isMounted) setPolicyContent(policy.pdContent);
+      if (isMounted) setPolicyContent(policy.content);
     });
 
     return () => {

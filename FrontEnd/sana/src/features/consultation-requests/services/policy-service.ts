@@ -1,24 +1,28 @@
 import { httpClient } from "@/services/api/http-client";
 
-/** Los tipos que existen hoy en policy_documents (ver 02-inserts.sql). */
+/** Tipos de documento que existen en policy_documents. */
 export type PolicyType =
   | "data_treatment"
   | "dependent_consent"
-  | "schedule_terms";
+  | "schedule_terms"
+  | "privacy_policy"
+  | "terms_of_use"
+  | "account_terms"
+  | "donation_terms";
 
+/** Respuesta de GET /policy/:type. */
 export type PolicyDocument = {
-  pdId: number;
-  pdType: string;
-  pdVersion: string;
-  pdContent: string;
-  pdEffectiveFrom: string;
+  id: number;
+  type: PolicyType;
+  version: string;
+  content: string;
+  effectiveFrom: string;
 };
 
 /**
  * Trae el texto vigente de una política (GET /policy/:type), público y sin
- * autenticación. Se usa para mostrar el texto real en los checkboxes de
- * autorización del formulario de solicitud (HU-2.2.6 y HU-2.2.8), y para
- * los términos de agenda del psicólogo (schedule_terms).
+ * autenticación. Se usa en las casillas de autorización y en los términos
+ * de agenda del psicólogo.
  */
 export async function getPolicyDocument(
   type: PolicyType,

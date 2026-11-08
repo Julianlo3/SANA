@@ -6,9 +6,9 @@ import AmountSelector from './amount-selector';
 import FeeTransparencyCard from './fee-transparency-card';
 import TrustBadges from './trust-badges';
 import DonationResultModal from './donation-result-modal';
-import {
-  prepareDonationCheckoutAction,
-} from '../actions/donation-actions';
+import DataPolicyConsent from '@/features/consultation-requests/components/data-policy-consent';
+import { DONATION_NOTICE } from '@/content/legal';
+import { startDonationCheckout } from '../services/donation-checkout-service';
 import {
   calculateWompiFee,
   formatCOP,
@@ -45,6 +45,8 @@ declare global {
 export default function DonationForm() {
   const [amountCOP, setAmountCOP] = useState<number>(20000);
   const [coverFee, setCoverFee] = useState<boolean>(true);
+  const [termsAccepted, setTermsAccepted] = useState<boolean>(false);
+  const [termsError, setTermsError] = useState<string | undefined>(undefined);
 
   // Estados de proceso
   const isWidgetLoaded = useSyncExternalStore(
@@ -108,6 +110,11 @@ export default function DonationForm() {
       return;
     }
 
+    if (!termsAccepted) {
+      setTermsError('Debes aceptar las condiciones de donación para continuar.');
+      return;
+    }
+
     if (!window.WidgetCheckout) {
       setErrorMessage('La pasarela de pago aún se está preparando. Por favor espera un segundo.');
       return;
@@ -117,10 +124,11 @@ export default function DonationForm() {
 
     startPreparing(async () => {
       try {
-        // 1. Obtener firma segura y referencia desde el Server Action
-        const checkoutData = await prepareDonationCheckoutAction({
+        // 1. El backend registra la aceptación y firma la referencia
+        const checkoutData = await startDonationCheckout({
           amountCOP,
           coverFee,
+          termsAccepted,
         });
 
         // 2. Configurar el widget Wompi
@@ -164,6 +172,8 @@ export default function DonationForm() {
     setErrorMessage(null);
     setAmountCOP(20000);
     setCoverFee(true);
+    setTermsAccepted(false);
+    setTermsError(undefined);
   };
 
   // Si ya tenemos un resultado de donación, mostramos la tarjeta de resultado
@@ -197,6 +207,21 @@ export default function DonationForm() {
           onToggleCoverFee={setCoverFee}
         />
 
+        <p className="rounded-2xl bg-[var(--color-primary-soft)]/40 p-4 text-xs leading-relaxed text-[var(--color-text-muted)]">
+          {DONATION_NOTICE}
+        </p>
+
+        <DataPolicyConsent
+          checked={termsAccepted}
+          onChange={(checked) => {
+            setTermsAccepted(checked);
+            if (checked) setTermsError(undefined);
+          }}
+          error={termsError}
+          policyType="donation_terms"
+          disabled={isPreparing}
+        />
+
         {/* Mensaje de error si ocurre alguno */}
         {errorMessage && (
           <div className="flex items-start gap-2.5 rounded-2xl bg-red-50 p-3.5 text-xs text-red-700 border border-red-200">
@@ -209,7 +234,7 @@ export default function DonationForm() {
         <button
           type="button"
           onClick={handleStartDonation}
-          disabled={!isValidAmount || isPreparing || !isWidgetLoaded}
+          disabled={!isValidAmount || !termsAccepted || isPreparing || !isWidgetLoaded}
           className="group relative w-full cursor-pointer overflow-hidden rounded-full bg-[var(--color-accent)] px-8 py-4 font-display text-sm font-extrabold uppercase tracking-wider text-white shadow-lg shadow-[var(--color-accent)]/25 transition-all duration-200 hover:bg-[var(--color-accent-strong)] hover:shadow-xl hover:shadow-[var(--color-accent)]/35 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <div className="flex items-center justify-center gap-2">

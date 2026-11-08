@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CalendarCheck, Clock3, Mail, Phone, Search, User } from "lucide-react";
+import { CalendarCheck, Clock3, Mail, Phone, Search, User, UserPlus } from "lucide-react";
 import InlineMessage from "@/components/feedback/inline-message";
 import { formatRelativeDate } from "@/lib/format/date-time";
 import { ApiError } from "@/types/api-types";
@@ -14,6 +14,8 @@ import type { ConsultantSummary } from "../types/consultant-types";
 
 type Props = {
   viewerRole: "assistant" | "psychologist";
+  /** Only the secretary can register a consultant (POST /consultants). */
+  canCreate?: boolean;
 };
 
 /**
@@ -21,7 +23,7 @@ type Props = {
  * @param param0 The props containing the viewer's role.
  * @returns The consultants list page.
  */
-export default function ConsultantsListPage({ viewerRole }: Props) {
+export default function ConsultantsListPage({ viewerRole, canCreate = false }: Props) {
   const [consultants, setConsultants] = useState<ConsultantSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -84,9 +86,20 @@ export default function ConsultantsListPage({ viewerRole }: Props) {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <h1 className="font-display text-3xl font-bold text-primary-dark">
-        Consultantes
-      </h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-display text-3xl font-bold text-primary-dark">
+          Consultantes
+        </h1>
+        {canCreate && (
+          <Link
+            href="/consultantes/nuevo"
+            className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-dark"
+          >
+            <UserPlus size={16} aria-hidden />
+            Registrar consultante
+          </Link>
+        )}
+      </div>
       <p className="mt-2 text-sm text-text-muted">
         {viewerRole === "psychologist"
           ? "Personas asignadas a tu cuidado."
