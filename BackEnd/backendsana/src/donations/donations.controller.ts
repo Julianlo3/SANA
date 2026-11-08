@@ -11,9 +11,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { OriginGuard } from '../guards/origin.guard.js';
 import { RateLimitGuard } from '../guards/rate-limit.guard.js';
+import { RolesGuard } from '../guards/roles.guard.js';
 import { RateLimit } from '../middlewares/rate-limit.decorator.js';
+import { Roles } from '../middlewares/roles.decorator.js';
+import { UserRole } from '../models/user-role.enum.js';
 import { DonationsService } from './donations.service.js';
 import { CreateDonationCheckoutDto } from './dto/create-donation-checkout.dto.js';
 
@@ -50,21 +54,24 @@ export class DonationsController {
   }
 
   /**
-   * List all registered donations.
+   * List all registered donations. Administrators only: the rows contain the
+   * donor's name, email and IP address.
    * GET /api/v1/donations
    */
   @Get()
-  @UseGuards(OriginGuard)
+  @UseGuards(OriginGuard, JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Administrator)
   findAll() {
     return this.donationsService.findAll();
   }
 
   /**
-   * Find a donation by Wompi transaction ID.
+   * Find a donation by Wompi transaction ID. Administrators only.
    * GET /api/v1/donations/:transactionId
    */
   @Get(':transactionId')
-  @UseGuards(OriginGuard)
+  @UseGuards(OriginGuard, JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Administrator)
   findByTransactionId(@Param('transactionId') transactionId: string) {
     return this.donationsService.findByTransactionId(transactionId);
   }

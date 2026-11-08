@@ -74,7 +74,7 @@ describe('DonationsService.createCheckout', () => {
     expect(repository.manager.query).toHaveBeenCalledWith(
       expect.stringContaining("pd_type = 'donation_terms'"),
     );
-    const saved = repository.save.mock.calls[0][0];
+    const saved = repository.save.mock.calls[0][0] as { donTermsAcceptedAt?: Date };
     expect(saved).toMatchObject({
       donReference: result.reference,
       donWompiTransactionId: `checkout:${result.reference}`,

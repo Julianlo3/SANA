@@ -145,6 +145,14 @@ Solo debe aparecer `web`, con el mismo total de aceptaciones que antes.
 
    Debe devolver JSON con `"version":"1.0"`.
 
+5. Comprueba que los datos de los donantes ya no son públicos:
+
+   ```bash
+   curl -i -H "Origin: https://<frontend>" https://<backend>/api/v1/donations
+   ```
+
+   Debe responder `401`.
+
 ## 5. Frontend en Vercel
 
 1. Despliega (o reactiva el despliegue automático) cuando el backend ya esté
