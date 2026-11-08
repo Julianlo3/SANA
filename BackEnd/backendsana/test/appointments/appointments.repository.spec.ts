@@ -63,6 +63,8 @@ describe('AppointmentsRepository.createRequest', () => {
       .mockResolvedValueOnce([{ app_id: 42 }])
       .mockResolvedValueOnce([{ pd_id: 1 }]) // data_treatment policy
       .mockResolvedValueOnce([{ pd_id: 2 }]) // dependent_consent policy (not used for self)
+      .mockResolvedValueOnce([{ pd_id: 5 }]) // privacy_policy
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([]);
 
     await expect(
@@ -75,8 +77,146 @@ describe('AppointmentsRepository.createRequest', () => {
     ).resolves.toBe(42);
 
     expect(dataSource.transaction).toHaveBeenCalledOnce();
-    expect(manager.query).toHaveBeenCalledTimes(6);
+    expect(manager.query).toHaveBeenCalledTimes(8);
     expect(manager.query.mock.calls[2][0]).toContain("'pendiente'");
+  });
+
+  it('records data treatment and privacy policy with the IP and web channel', async () => {
+    const { repository, manager } = createTransactionalRepository();
+    manager.query
+      .mockResolvedValueOnce([{
+        per_id: 7,
+        identity_document: '10212265698',
+        matches_identity_document: true,
+        matches_email: true,
+        has_user: false,
+      }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ app_id: 42 }])
+      .mockResolvedValueOnce([{ pd_id: 1 }])
+      .mockResolvedValueOnce([{ pd_id: 2 }])
+      .mockResolvedValueOnce([{ pd_id: 5 }])
+      .mockResolvedValue([]);
+
+    await repository.createRequest({
+      requester: requester(),
+      dependent: null,
+      appType: 'virtual',
+      appReason: null,
+      acceptance: { ipAddress: '203.0.113.7', channel: 'web' },
+    });
+
+    expect(manager.query.mock.calls[5][1]).toEqual(['privacy_policy']);
+    const inserts = manager.query.mock.calls.filter(([sql]) =>
+      String(sql).includes('INSERT INTO policy_acceptance'),
+    );
+    expect(inserts.map(([, values]) => values)).toEqual([
+      [7, null, 1, 42, '203.0.113.7', 'web', null],
+      [7, null, 5, 42, '203.0.113.7', 'web', null],
+    ]);
+    expect(inserts[0][0]).toContain('pa_ip_address, pa_channel, pa_registered_by');
+  });
+
+  it('records dependent consent for the minor and privacy policy for the guardian', async () => {
+    const { repository, manager } = createTransactionalRepository();
+    const policyIds: Record<string, number> = {
+      data_treatment: 1,
+      dependent_consent: 2,
+      privacy_policy: 5,
+    };
+    manager.query.mockImplementation(async (sql: string, values?: unknown[]) => {
+      if (sql.includes('FROM person p')) {
+        return [{
+          per_id: 7,
+          identity_document: '10212265698',
+          matches_identity_document: true,
+          matches_email: true,
+          has_user: false,
+        }];
+      }
+      if (sql.includes('INSERT INTO appointments')) return [{ app_id: 42 }];
+      if (sql.includes('FROM policy_documents')) {
+        return [{ pd_id: policyIds[String(values?.[0])] }];
+      }
+      return [];
+    });
+    const upsertDependent = vi.spyOn(repository, 'upsertDependent').mockResolvedValue(30);
+
+    await repository.createRequest({
+      requester: requester(),
+      dependent: {
+        name: 'Menor',
+        identityDocument: '1100223344',
+        birthdate: '2015-05-05',
+        termsAccepted: true,
+        relationshipId: 1,
+      },
+      appType: 'virtual',
+      appReason: null,
+      acceptance: { ipAddress: '203.0.113.7', channel: 'web' },
+    });
+
+    expect(upsertDependent).toHaveBeenCalledOnce();
+    const inserts = manager.query.mock.calls
+      .filter(([sql]) => String(sql).includes('INSERT INTO policy_acceptance'))
+      .map(([, values]) => values);
+    expect(inserts).toEqual([
+      [7, null, 1, 42, '203.0.113.7', 'web', null],
+      [7, null, 5, 42, '203.0.113.7', 'web', null],
+      [7, 30, 2, 42, '203.0.113.7', 'web', null],
+    ]);
+  });
+
+  it('stores the requester vulnerabilities in person when they are provided', async () => {
+    const { repository, manager } = createTransactionalRepository();
+    manager.query
+      .mockResolvedValueOnce([{
+        per_id: 7,
+        identity_document: '10212265698',
+        matches_identity_document: true,
+        matches_email: true,
+        has_user: false,
+      }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ app_id: 42 }])
+      .mockResolvedValue([]);
+
+    await repository.createRequest({
+      requester: { ...requester(), vulnerabilities: ['Población migrante'] },
+      dependent: null,
+      appType: 'virtual',
+      appReason: null,
+    });
+
+    expect(manager.query.mock.calls[2][0]).toContain('SET per_vulnerabilities = $2::varchar(75)[]');
+    expect(manager.query.mock.calls[2][1]).toEqual([7, ['Población migrante']]);
+  });
+
+  it('does not touch person vulnerabilities when they are not provided', async () => {
+    const { repository, manager } = createTransactionalRepository();
+    manager.query
+      .mockResolvedValueOnce([{
+        per_id: 7,
+        identity_document: '10212265698',
+        matches_identity_document: true,
+        matches_email: true,
+        has_user: false,
+      }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ app_id: 42 }])
+      .mockResolvedValue([]);
+
+    await repository.createRequest({
+      requester: requester(),
+      dependent: null,
+      appType: 'virtual',
+      appReason: null,
+    });
+
+    expect(
+      manager.query.mock.calls.some(([sql]) => String(sql).includes('per_vulnerabilities')),
+    ).toBe(false);
   });
 });
 
@@ -167,7 +307,8 @@ describe('AppointmentsRepository.upsertRequester', () => {
       .mockResolvedValueOnce([{ app_id: 42 }])
       .mockResolvedValueOnce([{ pd_id: 1 }])
       .mockResolvedValueOnce([{ pd_id: 2 }])
-      .mockResolvedValueOnce([]);
+      .mockResolvedValueOnce([{ pd_id: 5 }])
+      .mockResolvedValue([]);
 
     await expect(
       repository.createRequest({

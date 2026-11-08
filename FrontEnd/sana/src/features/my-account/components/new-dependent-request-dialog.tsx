@@ -5,6 +5,7 @@ import InlineMessage from "@/components/feedback/inline-message";
 import AppointmentModeField from "@/features/consultation-requests/components/appointment-mode-field";
 import ConsultationReasonField from "@/features/consultation-requests/components/consultation-reason-field";
 import DataPolicyConsent from "@/features/consultation-requests/components/data-policy-consent";
+import { ACCOUNT_DEPENDENT_REQUEST_CONSENT } from "@/content/legal";
 import DependentPersonFields from "@/features/consultation-requests/components/dependent-person-fields";
 import ValidatedSelectField from "@/features/consultation-requests/components/validated-select-field";
 import AppointmentRequestDialog from "./appointment-request-dialog";
@@ -109,16 +110,10 @@ export default function NewDependentRequestDialog({
         />
 
         <DataPolicyConsent
-          checked={request.requesterAccepted}
-          onChange={request.setRequesterAccepted}
-          error={request.errors.requesterAccepted}
-          policyType="data_treatment"
-        />
-        <DataPolicyConsent
-          checked={request.dependentAccepted}
-          onChange={request.setDependentAccepted}
-          error={request.errors.dependentAccepted}
-          policyType="dependent_consent"
+          checked={request.accepted}
+          onChange={request.setAccepted}
+          error={request.errors.accepted}
+          label={ACCOUNT_DEPENDENT_REQUEST_CONSENT}
         />
 
         {request.submitError && (

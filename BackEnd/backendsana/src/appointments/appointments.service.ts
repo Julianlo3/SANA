@@ -34,6 +34,7 @@ import {
 } from '../email/templates/index.js';
 import type { AuthenticatedUser } from '../auth/auth.interface.js';
 import { UserRole } from '../models/user-role.enum.js';
+import { normalizeVulnerabilities } from '../users/vulnerabilities.js';
 
 const REQUESTER_ALREADY_REGISTERED_MESSAGE =
   'No se pudo asociar la solicitud con esos datos. Verifique el correo y documento, o inicie sesión si ya tiene una cuenta.';
@@ -88,6 +89,7 @@ export class AppointmentsService {
   async requestAppointment(
     dto: CreateAppointmentDto,
     authenticatedUser?: AuthenticatedUser,
+    ipAddress?: string,
   ): Promise<{ appId: number; message: string }> {
     if (
       authenticatedUser &&
@@ -98,10 +100,12 @@ export class AppointmentsService {
       throw new ForbiddenException('Account role is not authorized');
     }
 
+    this.validateChannel(dto, authenticatedUser);
     this.validateRequester(dto);
     if (dto.patientType === 'dependent') {
       await this.validateDependent(dto);
     }
+    const vulnerabilities = this.resolveVulnerabilities(dto);
 
     if (dto.appDate) {
       const appDateTime = new Date(dto.appDate).getTime();
@@ -126,6 +130,7 @@ export class AppointmentsService {
           gender: dto.requesterGender,
           termsAccepted: dto.requesterTermsAccepted,
           residenceZone: dto.residenceZone?.trim() ?? null,
+          vulnerabilities,
         },
         dependent: dto.patientType === 'dependent'
           ? {
@@ -140,6 +145,7 @@ export class AppointmentsService {
         appType: dto.appType,
         appReason: dto.appReason?.trim() ?? null,
         authenticatedPersonId: authenticatedUser?.personId,
+        acceptance: { ipAddress: ipAddress ?? null, channel: 'web' },
         slot: dto.appDate
           ? {
             appDate: new Date(dto.appDate),
@@ -250,6 +256,34 @@ export class AppointmentsService {
       message: 'Horario reservado con éxito.',
       appDate,
     };
+  }
+
+  /**
+   * Only a secretary may declare an assisted channel. The public form always
+   * records the acceptance as 'web', because the requester is the one accepting.
+   */
+  private validateChannel(
+    dto: CreateAppointmentDto,
+    authenticatedUser?: AuthenticatedUser,
+  ): void {
+    if (!dto.channel || dto.channel === 'web') return;
+    if (!authenticatedUser?.roles.includes(UserRole.Secretary)) {
+      throw new ForbiddenException({
+        error: 'CHANNEL_NOT_ALLOWED',
+        message: 'Solo el rol secretario puede registrar una aceptación por un canal distinto a la web',
+      });
+    }
+  }
+
+  private resolveVulnerabilities(dto: CreateAppointmentDto): string[] | undefined {
+    if (dto.vulnerabilities === undefined) return undefined;
+    if (dto.patientType === 'dependent') {
+      throw new BadRequestException({
+        error: 'VULNERABILITIES_NOT_ALLOWED_FOR_DEPENDENT',
+        message: 'La población vulnerable solo se registra cuando la cita es para la persona solicitante',
+      });
+    }
+    return normalizeVulnerabilities(dto.vulnerabilities) ?? undefined;
   }
 
   private validateRequester(dto: CreateAppointmentDto): void {

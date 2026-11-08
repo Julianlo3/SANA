@@ -1,4 +1,5 @@
 import type { CardType, Gender } from "../types/consultation-request-types";
+import type { VulnerablePopulationCategory } from "@/config/vulnerable-population";
 
 /**
  * Validation rules and types for public consultation request forms.
@@ -49,6 +50,8 @@ export type RequestFormValues = {
   department: string;
   municipality: string;
   consultationReason: string;
+  /** Optional sensitive answer; only the self request sends it. */
+  vulnerablePopulation: VulnerablePopulationCategory | "";
   hasAcceptedDataPolicy: boolean;
   hasAcceptedGuardianDataPolicy: boolean;
   hasAcceptedMinorDataPolicy: boolean;

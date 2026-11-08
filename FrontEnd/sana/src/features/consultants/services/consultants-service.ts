@@ -4,6 +4,7 @@ import type {
   ConsultantAccessLogEntry,
   ConsultantFullRecord,
   ConsultantSummary,
+  CreateConsultantPayload,
 } from "../types/consultant-types";
 
 /**
@@ -115,4 +116,19 @@ export async function getConsultantAccessLog(
   return httpClient.get<ConsultantAccessLogEntry[]>(
     ENDPOINTS.consultantAccessLog(consultantId),
   );
+}
+/**
+ * Creates a consultant record registered by the assistant (POST /consultants).
+ * The consent is recorded with the channel used to obtain it.
+ * @param payload Consultant data and the verbal consent.
+ * @returns The created consultant summary.
+ */
+export async function createConsultant(
+  payload: CreateConsultantPayload,
+): Promise<ConsultantSummary> {
+  const consultant = await httpClient.post<ConsultantApiResponse>(
+    ENDPOINTS.consultants,
+    payload,
+  );
+  return toConsultantSummary(consultant);
 }

@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import { toBogotaParts } from '../schedule/schedule.repository.js';
+import type { AcceptanceChannel } from '../policy/acceptance-channel.js';
 
 type QueryExecutor = DataSource | EntityManager;
 
@@ -14,7 +15,16 @@ export interface AppointmentRequesterParams {
   gender?: string;
   termsAccepted: boolean;
   residenceZone?: string | null;
+  vulnerabilities?: string[];
 }
+
+export interface PolicyAcceptanceContext {
+  ipAddress: string | null;
+  channel: AcceptanceChannel;
+  registeredBy?: number | null;
+}
+
+const WEB_ACCEPTANCE: PolicyAcceptanceContext = { ipAddress: null, channel: 'web' };
 
 export class RequesterIdentityConflictError extends Error {
   constructor() {
@@ -387,6 +397,7 @@ export class AppointmentsRepository {
     appType: string;
     appReason: string | null;
     authenticatedPersonId?: number;
+    acceptance?: PolicyAcceptanceContext;
     slot?: {
       appDate: Date;
       duration: number;
@@ -400,6 +411,15 @@ export class AppointmentsRepository {
           manager,
         )
         : await this.upsertRequester(params.requester, manager);
+      if (params.requester.vulnerabilities !== undefined) {
+        await manager.query(
+          `UPDATE person
+           SET per_vulnerabilities = $2::varchar(75)[],
+               per_update_date = now()
+           WHERE per_id = $1`,
+          [requesterId, params.requester.vulnerabilities],
+        );
+      }
       let patientPersonId: number | null = requesterId;
       let patientDependentId: number | null = null;
 
@@ -521,6 +541,7 @@ export class AppointmentsRepository {
         patientDependentId,
         params.requester.termsAccepted,
         params.dependent?.termsAccepted,
+        params.acceptance ?? WEB_ACCEPTANCE,
         manager,
       );
 
@@ -535,6 +556,7 @@ export class AppointmentsRepository {
    * @param dependentId Optional dependent ID.
    * @param requesterTermsAccepted Whether the requester accepted terms.
    * @param dependentTermsAccepted Whether the dependent terms were accepted.
+   * @param acceptance IP address, channel and staff user that registered the acceptance.
    * @param executor The query executor.
    */
   private async recordPolicyAcceptances(
@@ -543,28 +565,41 @@ export class AppointmentsRepository {
     dependentId: number | null,
     requesterTermsAccepted: boolean,
     dependentTermsAccepted: boolean | undefined,
+    acceptance: PolicyAcceptanceContext,
     executor: QueryExecutor,
   ): Promise<void> {
-    // Get current policy document IDs
     const dataTreatmentPdId = await this.getCurrentPolicyDocumentId('data_treatment', executor);
     const dependentConsentPdId = await this.getCurrentPolicyDocumentId('dependent_consent', executor);
+    const privacyPolicyPdId = await this.getCurrentPolicyDocumentId('privacy_policy', executor);
+
+    const insertAcceptance = (pdId: number, acceptanceDependentId: number | null) =>
+      executor.query(
+        `INSERT INTO policy_acceptance (
+           per_id, dep_id, pd_id, app_id, pa_ip_address, pa_channel, pa_registered_by
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         ON CONFLICT (app_id, pd_id) WHERE app_id IS NOT NULL DO NOTHING`,
+        [
+          requesterId,
+          acceptanceDependentId,
+          pdId,
+          appId,
+          acceptance.ipAddress,
+          acceptance.channel,
+          acceptance.registeredBy ?? null,
+        ],
+      );
 
     if (requesterTermsAccepted && dataTreatmentPdId) {
-      await executor.query(
-        `INSERT INTO policy_acceptance (per_id, pd_id, app_id)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (app_id, pd_id) WHERE app_id IS NOT NULL DO NOTHING`,
-        [requesterId, dataTreatmentPdId, appId],
-      );
+      await insertAcceptance(dataTreatmentPdId, null);
+    }
+
+    if (requesterTermsAccepted && privacyPolicyPdId) {
+      await insertAcceptance(privacyPolicyPdId, null);
     }
 
     if (dependentId && dependentTermsAccepted && dependentConsentPdId) {
-      await executor.query(
-        `INSERT INTO policy_acceptance (per_id, dep_id, pd_id, app_id)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT (app_id, pd_id) WHERE app_id IS NOT NULL DO NOTHING`,
-        [requesterId, dependentId, dependentConsentPdId, appId],
-      );
+      await insertAcceptance(dependentConsentPdId, dependentId);
     }
   }
 

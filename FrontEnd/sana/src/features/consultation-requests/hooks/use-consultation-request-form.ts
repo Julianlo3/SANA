@@ -46,11 +46,25 @@ const EMPTY_FORM: RequestFormValues = {
   department: "",
   municipality: "",
   consultationReason: "",
+  vulnerablePopulation: "",
   hasAcceptedDataPolicy: false,
   hasAcceptedGuardianDataPolicy: false,
   hasAcceptedMinorDataPolicy: false,
   appDate: "",
 };
+
+/**
+ * Maps the optional vulnerable population answer to the API field.
+ * No answer is not sent; "none" is sent as an empty list.
+ * @param value Selected category.
+ * @returns The vulnerabilities list, or undefined when not answered.
+ */
+function toVulnerabilities(
+  value: RequestFormValues["vulnerablePopulation"],
+): string[] | undefined {
+  if (!value) return undefined;
+  return value === "none" ? [] : [value];
+}
 
 /**
  * Display labels used in the validation error summary.
@@ -75,6 +89,7 @@ const FIELD_LABELS: Record<keyof RequestFormValues, string> = {
   department: "Departamento",
   municipality: "Municipio",
   consultationReason: "Motivo de la consulta",
+  vulnerablePopulation: "Población vulnerable",
   hasAcceptedDataPolicy: "Autorización de datos",
   hasAcceptedGuardianDataPolicy: "Autorización de datos del acudiente",
   hasAcceptedMinorDataPolicy: "Autorización de datos del menor",
@@ -101,6 +116,7 @@ const BACKEND_FIELDS: Record<string, keyof RequestFormValues> = {
   appReason: "consultationReason",
   residenceZone: "municipality",
   appDate: "appDate",
+  vulnerabilities: "vulnerablePopulation",
 };
 
 /**
@@ -112,6 +128,7 @@ const ERROR_CODE_FIELDS: Record<string, keyof RequestFormValues> = {
   DEPENDENT_MUST_BE_MINOR: "minorBirthDate",
   DEPENDENT_RELATIONSHIP_REQUIRED: "relationship",
   INVALID_RELATIONSHIP: "relationship",
+  INVALID_VULNERABILITY: "vulnerablePopulation",
 };
 
 /**
@@ -369,14 +386,14 @@ export function useConsultationRequestForm(patientType: PatientType) {
           requesterEmail: submitted.email.trim().toLowerCase(),
           requesterBirthdate: submitted.birthDate,
           requesterGender: submitted.gender as Gender,
-          requesterTermsAccepted: true,
+          requesterTermsAccepted: submitted.hasAcceptedGuardianDataPolicy,
           dependentName: submitted.minorFullName.trim(),
           dependentIdentityDocument: submitted.minorIdentityDocument.trim(),
           dependentBirthdate: submitted.minorBirthDate,
           dependentGender: submitted.minorGender as Gender,
           dependentContactNumber: submitted.phone.trim(),
           relationshipId: submitted.relationship as GuardianRelationshipId,
-          dependentTermsAccepted: true,
+          dependentTermsAccepted: submitted.hasAcceptedMinorDataPolicy,
           appType: submitted.appType as AppointmentMode,
           appReason: submitted.consultationReason.trim(),
           appDate: submitted.appDate,
@@ -393,11 +410,12 @@ export function useConsultationRequestForm(patientType: PatientType) {
         requesterEmail: submitted.email.trim().toLowerCase(),
         requesterBirthdate: submitted.birthDate,
         requesterGender: submitted.gender as Gender,
-        requesterTermsAccepted: true,
+        requesterTermsAccepted: submitted.hasAcceptedDataPolicy,
         appType: submitted.appType as AppointmentMode,
         appReason: submitted.consultationReason.trim(),
         appDate: submitted.appDate,
         residenceZone,
+        vulnerabilities: toVulnerabilities(submitted.vulnerablePopulation),
       };
     },
     [patientType],

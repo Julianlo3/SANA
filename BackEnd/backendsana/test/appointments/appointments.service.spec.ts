@@ -259,6 +259,160 @@ describe('AppointmentsService.requestAppointment', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(repository.createRequest).not.toHaveBeenCalled();
   });
+
+  it('rejects the request when the requester did not accept the data treatment', async () => {
+    const { service, repository } = setup();
+
+    await expect(
+      service.requestAppointment(
+        baseRequest({ requesterTermsAccepted: false }) as never,
+      ),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ error: 'TERMS_NOT_ACCEPTED' }),
+    });
+    expect(repository.createRequest).not.toHaveBeenCalled();
+  });
+
+  it('records the acceptance with the request IP and the web channel', async () => {
+    const { service, repository } = setup();
+
+    await service.requestAppointment(baseRequest() as never, undefined, '203.0.113.7');
+
+    expect(repository.createRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        acceptance: { ipAddress: '203.0.113.7', channel: 'web' },
+      }),
+    );
+  });
+
+  it('accepts an explicit web channel from an anonymous requester', async () => {
+    const { service, repository } = setup();
+
+    await service.requestAppointment(baseRequest({ channel: 'web' }) as never);
+
+    expect(repository.createRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        acceptance: { ipAddress: null, channel: 'web' },
+      }),
+    );
+  });
+
+  it.each([
+    ['an anonymous requester', undefined],
+    ['a consultant', ['consultante']],
+    ['a psychologist', ['psicologo']],
+  ])('forbids an assisted channel sent by %s', async (_label, roles) => {
+    const { service, repository } = setup();
+    const authenticatedUser = roles
+      ? {
+        userId: 11,
+        personId: 11,
+        email: 'user@example.com',
+        name: 'Usuario',
+        roles,
+        auth0Subject: 'auth0|user',
+        state: 'activo',
+        termsAccepted: true,
+      }
+      : undefined;
+
+    await expect(
+      service.requestAppointment(
+        baseRequest({ channel: 'telefono' }) as never,
+        authenticatedUser as never,
+      ),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ error: 'CHANNEL_NOT_ALLOWED' }),
+    });
+    expect(repository.createRequest).not.toHaveBeenCalled();
+  });
+
+  it('lets a secretary send an assisted channel without recording another person as accepting', async () => {
+    const { service, repository } = setup();
+    const secretary = {
+      userId: 10,
+      personId: 10,
+      email: 'secretaria@example.com',
+      name: 'Secretaria',
+      roles: ['secretario'],
+      auth0Subject: 'auth0|secretary',
+      state: 'activo',
+      termsAccepted: true,
+    };
+
+    await service.requestAppointment(
+      baseRequest({ channel: 'whatsapp' }) as never,
+      secretary,
+      '198.51.100.4',
+    );
+
+    expect(repository.createRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authenticatedPersonId: 10,
+        acceptance: { ipAddress: '198.51.100.4', channel: 'web' },
+      }),
+    );
+  });
+
+  it('passes trimmed vulnerabilities for a self request', async () => {
+    const { service, repository } = setup();
+
+    await service.requestAppointment(
+      baseRequest({ vulnerabilities: ['  Población migrante  ', 'Adulto mayor'] }) as never,
+    );
+
+    expect(repository.createRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requester: expect.objectContaining({
+          vulnerabilities: ['Población migrante', 'Adulto mayor'],
+        }),
+      }),
+    );
+  });
+
+  it('rejects blank vulnerabilities with the same rule as the profile', async () => {
+    const { service, repository } = setup();
+
+    await expect(
+      service.requestAppointment(
+        baseRequest({ vulnerabilities: ['   '] }) as never,
+      ),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ error: 'INVALID_VULNERABILITY' }),
+    });
+    expect(repository.createRequest).not.toHaveBeenCalled();
+  });
+
+  it('rejects vulnerabilities on a request for a dependent', async () => {
+    const { service, repository } = setup();
+
+    await expect(
+      service.requestAppointment(
+        baseRequest({
+          patientType: 'dependent',
+          dependentName: 'Menor a cargo',
+          dependentIdentityDocument: '87654321',
+          dependentBirthdate: '2015-01-01',
+          relationshipId: 1,
+          dependentTermsAccepted: true,
+          vulnerabilities: ['Población migrante'],
+        }) as never,
+      ),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        error: 'VULNERABILITIES_NOT_ALLOWED_FOR_DEPENDENT',
+      }),
+    });
+    expect(repository.createRequest).not.toHaveBeenCalled();
+  });
+
+  it('does not send vulnerabilities when the requester omits them', async () => {
+    const { service, repository } = setup();
+
+    await service.requestAppointment(baseRequest() as never);
+
+    expect(repository.createRequest.mock.calls[0][0].requester.vulnerabilities).toBeUndefined();
+  });
 });
 
 describe('AppointmentsService assignment lifecycle', () => {

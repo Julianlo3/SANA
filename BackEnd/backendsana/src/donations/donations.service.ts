@@ -1,10 +1,34 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
-import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 import { Donation } from './entities/donation.entity.js';
+import type { CreateDonationCheckoutDto } from './dto/create-donation-checkout.dto.js';
 import type { WompiEvent, WompiTransaction } from './wompi-event.js';
+
+export const CHECKOUT_STATUS = 'CHECKOUT';
+const CHECKOUT_TRANSACTION_PREFIX = 'checkout:';
+const DONATION_CURRENCY = 'COP';
+
+export interface DonationCheckout {
+  reference: string;
+  amountInCents: number;
+  currency: typeof DONATION_CURRENCY;
+  signature: string;
+}
+
+function generateDonationReference(): string {
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const random = randomBytes(4).toString('hex').toUpperCase();
+  return `SANA-DON-${timestamp}-${random}`;
+}
 
 @Injectable()
 export class DonationsService {
@@ -15,6 +39,82 @@ export class DonationsService {
     private readonly donationRepository: Repository<Donation>,
     private readonly configService: ConfigService,
   ) {}
+
+  /**
+   * Starts a Wompi checkout: records the donor's acceptance of the current
+   * donation terms and returns the reference and integrity signature that
+   * the Wompi widget needs. The row stays in CHECKOUT status until the
+   * approved webhook arrives.
+   * @param dto Amount, optional donor data and the terms acceptance.
+   * @param ipAddress IP address of the donor.
+   * @returns Data required to open the Wompi checkout.
+   */
+  async createCheckout(
+    dto: CreateDonationCheckoutDto,
+    ipAddress?: string,
+  ): Promise<DonationCheckout> {
+    if (dto.termsAccepted !== true) {
+      throw new BadRequestException({
+        error: 'TERMS_NOT_ACCEPTED',
+        message: 'Debe aceptar las condiciones de donación y la política de tratamiento de datos personales para continuar',
+      });
+    }
+    if (dto.amountInCents % 100 !== 0) {
+      throw new BadRequestException({
+        error: 'INVALID_DONATION_AMOUNT',
+        message: 'El monto de la donación debe ser un valor entero en pesos',
+      });
+    }
+
+    const integritySecret = this.configService.get<string>('WOMPI_INTEGRITY_SECRET')?.trim();
+    if (!integritySecret) {
+      throw new ServiceUnavailableException('Wompi checkout is not configured');
+    }
+
+    const termsPdId = await this.getCurrentDonationTermsId();
+    if (!termsPdId) {
+      throw new ServiceUnavailableException('Donation terms are not configured');
+    }
+
+    const reference = generateDonationReference();
+    const signature = createHash('sha256')
+      .update(`${reference}${dto.amountInCents}${DONATION_CURRENCY}${integritySecret}`)
+      .digest('hex');
+
+    await this.donationRepository.save(
+      this.donationRepository.create({
+        donWompiTransactionId: `${CHECKOUT_TRANSACTION_PREFIX}${reference}`,
+        donReference: reference,
+        donAmountInCents: String(dto.amountInCents),
+        donCurrency: DONATION_CURRENCY,
+        donStatus: CHECKOUT_STATUS,
+        donDonorEmail: dto.donorEmail?.trim().toLowerCase() ?? null,
+        donDonorFullName: dto.donorFullName?.trim() || null,
+        donTermsPdId: termsPdId,
+        donTermsAcceptedAt: new Date(),
+        donIpAddress: ipAddress ?? null,
+      }),
+    );
+    this.logger.log(`Donation checkout created: reference-${reference}, termsPdId-${termsPdId}`);
+
+    return {
+      reference,
+      amountInCents: dto.amountInCents,
+      currency: DONATION_CURRENCY,
+      signature,
+    };
+  }
+
+  private async getCurrentDonationTermsId(): Promise<number | null> {
+    const rows = await this.donationRepository.manager.query<{ pd_id: number }[]>(
+      `SELECT pd_id
+       FROM policy_documents
+       WHERE pd_type = 'donation_terms'
+       ORDER BY pd_effective_from DESC, pd_id DESC
+       LIMIT 1`,
+    );
+    return rows[0]?.pd_id ?? null;
+  }
 
   /**
    * Registers an approved donation only after a signed Wompi webhook arrives.
@@ -44,15 +144,20 @@ export class DonationsService {
       return { received: true, registered: false };
     }
 
-    const donation = this.donationRepository.create({
+    const checkout = await this.donationRepository.findOne({
+      where: { donReference: transaction.reference, donStatus: CHECKOUT_STATUS },
+    });
+    const donation = checkout ?? this.donationRepository.create();
+    Object.assign(donation, {
       donWompiTransactionId: transaction.id,
       donReference: transaction.reference,
       donAmountInCents: String(transaction.amount_in_cents),
       donCurrency: transaction.currency,
       donStatus: transaction.status,
       donPaymentMethodType: transaction.payment_method_type ?? null,
-      donDonorEmail: transaction.customer_email ?? null,
-      donDonorFullName: transaction.customer_data?.full_name ?? null,
+      donDonorEmail: transaction.customer_email ?? checkout?.donDonorEmail ?? null,
+      donDonorFullName:
+        transaction.customer_data?.full_name ?? checkout?.donDonorFullName ?? null,
       donEnvironment: event.environment,
       donWompiCreatedAt: transaction.created_at ? new Date(transaction.created_at) : null,
     });
@@ -148,6 +253,7 @@ export class DonationsService {
    */
   async findAll(): Promise<Donation[]> {
     return this.donationRepository.find({
+      where: { donStatus: Not(CHECKOUT_STATUS) },
       order: { donCreatedAt: 'DESC' },
     });
   }
@@ -157,7 +263,7 @@ export class DonationsService {
    */
   async findByTransactionId(transactionId: string): Promise<Donation | null> {
     return this.donationRepository.findOne({
-      where: { donWompiTransactionId: transactionId },
+      where: { donWompiTransactionId: transactionId, donStatus: Not(CHECKOUT_STATUS) },
     });
   }
 }

@@ -70,6 +70,7 @@ const consultantDto = (): CreateConsultantDto =>
     birthdate: '1990-01-01',
     gender: 'F',
     termsAccepted: true,
+    channel: 'telefono',
     residenceZone: '  Centro  ',
   });
 
@@ -79,7 +80,7 @@ describe('ConsultantsService consultant records (HU-2.1)', () => {
   it('creates a consultant with normalized contact data, residence zone, role and consent', async () => {
     const { service, manager, personRepository } = setup();
 
-    const result = await service.create(consultantDto(), 7);
+    const result = await service.create(consultantDto(), 7, '203.0.113.7');
 
     expect(personRepository.findOne).toHaveBeenCalledWith({
       where: { perIdentityDocument: '12345678' },
@@ -97,8 +98,8 @@ describe('ConsultantsService consultant records (HU-2.1)', () => {
       expect.objectContaining({ rolId: 3, active: true }),
     );
     expect(manager.query).toHaveBeenCalledWith(
-      expect.stringContaining('INSERT INTO policy_acceptance'),
-      [41, 12],
+      expect.stringContaining('pa_ip_address, pa_channel, pa_registered_by'),
+      [41, 12, '203.0.113.7', 'telefono', 7],
     );
     expect(result).toMatchObject({
       id: 41,
@@ -201,5 +202,69 @@ describe('ConsultantsService consultant records (HU-2.1)', () => {
       fullName: 'Ana Actualizada',
       residenceZone: 'Oriente',
     });
+  });
+
+  it('requires the acceptance channel when the secretary registers the consent', async () => {
+    const { service, dataSource } = setup();
+    const dto = Object.assign(consultantDto(), { channel: undefined });
+
+    await expect(service.create(dto, 7)).rejects.toMatchObject({
+      response: { error: 'ACCEPTANCE_CHANNEL_REQUIRED' },
+    });
+    await expect(
+      service.update(41, { termsAccepted: true }, 7),
+    ).rejects.toMatchObject({
+      response: { error: 'ACCEPTANCE_CHANNEL_REQUIRED' },
+    });
+    expect(dataSource.transaction).not.toHaveBeenCalled();
+  });
+
+  it.each(['web', 'email', 'TELEFONO'])(
+    'rejects the channel %s for a registration made by the secretary',
+    async (channel) => {
+      const errors = await validate(Object.assign(consultantDto(), { channel }));
+
+      expect(errors.map((error) => error.property)).toContain('channel');
+    },
+  );
+
+  it.each(['telefono', 'whatsapp', 'presencial'])(
+    'accepts the assisted channel %s',
+    async (channel) => {
+      const errors = await validate(Object.assign(consultantDto(), { channel }));
+
+      expect(errors.map((error) => error.property)).not.toContain('channel');
+    },
+  );
+
+  it('does not record a consent when the secretary did not mark it', async () => {
+    const { service, manager } = setup();
+    const dto = Object.assign(consultantDto(), {
+      termsAccepted: false,
+      channel: undefined,
+    });
+
+    await service.create(dto, 7);
+
+    expect(manager.query).not.toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO policy_acceptance'),
+      expect.anything(),
+    );
+  });
+
+  it('records the consent obtained by WhatsApp when updating the record', async () => {
+    const { service, manager } = setup();
+
+    await service.update(
+      41,
+      { termsAccepted: true, channel: 'whatsapp' },
+      7,
+      '198.51.100.4',
+    );
+
+    expect(manager.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO policy_acceptance'),
+      [41, 12, '198.51.100.4', 'whatsapp', 7],
+    );
   });
 });

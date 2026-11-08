@@ -1,5 +1,3 @@
-import { DATA_POLICY } from "@/config/data-policy";
-
 /**
  * Textos del flujo público de solicitud de cita (HU-2.2).
  * Separados de los componentes para que se puedan ajustar sin tocar código.
@@ -18,9 +16,9 @@ export const REQUEST_CONTENT = {
           "Soy mayor de edad y busco acompañamiento psicológico personal.",
       },
       guardian: {
-        title: "Soy tutor legal",
+        title: "Para un menor de edad a mi cargo",
         description:
-          "Solicito atención para un menor de edad o persona bajo mi tutela legal.",
+          "Soy madre, padre o familiar a cargo y solicito atención para un menor de 18 años.",
       },
     },
     confidentialityNote:
@@ -79,12 +77,6 @@ export const REQUEST_CONTENT = {
     nextStep: "Siguiente paso",
     previousStep: "Paso anterior",
     submit: "Enviar solicitud",
-  },
-
-  dataPolicy: {
-    label: DATA_POLICY.consentLabel,
-    linkLabel: DATA_POLICY.linkLabel,
-    url: DATA_POLICY.url,
   },
 
    success: {

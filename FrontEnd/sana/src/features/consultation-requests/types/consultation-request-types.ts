@@ -63,11 +63,13 @@ export type SelfRequestPayload = {
   requesterEmail: string;
   requesterBirthdate: string;
   requesterGender: Gender;
-  requesterTermsAccepted: true;
+  requesterTermsAccepted: boolean;
   appType: AppointmentMode;
   appReason: string;
   /** Optional residence in "Municipality, Department" format. */
   residenceZone?: string;
+  /** Optional vulnerable population codes; an empty list means "none". */
+  vulnerabilities?: string[];
 } & AppointmentDateSelection;
 
 /**
@@ -83,7 +85,7 @@ export type GuardianRequestPayload = {
   /** Guardian birth date; the API requires an adult requester. */
   requesterBirthdate: string;
   requesterGender: Gender;
-  requesterTermsAccepted: true;
+  requesterTermsAccepted: boolean;
   dependentName: string;
   /** Dependent identity document, required for every age. */
   dependentIdentityDocument: string;
@@ -92,7 +94,7 @@ export type GuardianRequestPayload = {
   /** Dependent contact number, defaulting to the guardian's number. */
   dependentContactNumber: string;
   relationshipId: GuardianRelationshipId;
-  dependentTermsAccepted: true;
+  dependentTermsAccepted: boolean;
   appType: AppointmentMode;
   appReason: string;
   /** Optional residence in "Municipality, Department" format. */

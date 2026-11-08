@@ -94,7 +94,8 @@ export class ConsultantsController {
     @Req() request: Request & { user: AuthenticatedUser },
     @Body() dto: CreateConsultantDto,
   ) {
-    return this.consultantsService.create(dto, request.user.userId);
+    const ipAddress = request.ip || request.socket.remoteAddress;
+    return this.consultantsService.create(dto, request.user.userId, ipAddress);
   }
 
   /**
@@ -110,6 +111,7 @@ export class ConsultantsController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateConsultantDto,
   ) {
-    return this.consultantsService.update(id, dto, request.user.userId);
+    const ipAddress = request.ip || request.socket.remoteAddress;
+    return this.consultantsService.update(id, dto, request.user.userId, ipAddress);
   }
 }

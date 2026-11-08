@@ -11,7 +11,8 @@ import TextField from "@/components/forms/text-field";
 import Button from "@/components/ui/button";
 import { REQUEST_CONTENT } from "@/content/consultation-request";
 import { keepDigits } from "@/lib/format/text";
-import { VULNERABLE_POPULATION_OPTIONS } from "@/config/vulnerable-population";
+import EmergencyNotice from "@/components/legal/emergency-notice";
+import { GUARDIAN_DATA_TREATMENT_CONSENT } from "@/content/legal";
 import AppointmentModeField from "../components/appointment-mode-field";
 import ConfirmedField from "../components/confirmed-field";
 import ConsultationReasonField from "../components/consultation-reason-field";
@@ -262,6 +263,8 @@ export default function GuardianRequestPage() {
             {guardianForm.description}
           </p>
 
+          <EmergencyNotice className="mt-6" />
+
           {step === 1 ? (
             <div className="mt-8 space-y-8 rounded-2xl border border-border bg-surface p-6">
               <fieldset className="space-y-5">
@@ -497,27 +500,6 @@ export default function GuardianRequestPage() {
                   genderLabel="Género del menor"
                 />
 
-                <label className="block">
-                  <span className="text-sm font-medium text-text">
-                    ¿El menor pertenece a alguna población vulnerable?
-                    (opcional)
-                  </span>
-                  <select
-                    defaultValue=""
-                    className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  >
-                    <option value="">Prefiero no decir</option>
-                    {VULNERABLE_POPULATION_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="mt-1.5 block text-xs text-text-subtle">
-                    Esta información es opcional y nos ayuda a orientar mejor
-                    la atención.
-                  </span>
-                </label>
               </fieldset>
 
               <p className="flex items-start gap-2 text-xs leading-relaxed text-text-subtle">
@@ -587,8 +569,7 @@ export default function GuardianRequestPage() {
                   checked={values.hasAcceptedGuardianDataPolicy}
                   onChange={toggleGuardianDataPolicy}
                   error={errors.hasAcceptedGuardianDataPolicy}
-                  policyType="data_treatment"
-                  label="Autorizo el tratamiento de mis datos personales como tutor/acudiente."
+                  label={GUARDIAN_DATA_TREATMENT_CONSENT}
                 />
 
                 <DataPolicyConsent
@@ -596,7 +577,6 @@ export default function GuardianRequestPage() {
                   onChange={toggleMinorDataPolicy}
                   error={errors.hasAcceptedMinorDataPolicy}
                   policyType="dependent_consent"
-                  label="Autorizo el tratamiento de los datos personales del menor a mi cargo."
                 />
               </div>
 

@@ -142,14 +142,4 @@ export function formatCOP(amountCOP: number, includeCurrency = false): string {
   return includeCurrency ? `${formatted} COP` : formatted;
 }
 
-/**
- * Generates a unique reference for the donation with SANA-DON prefix.
- * @returns Unique reference for the donation
- */
-export function generateDonationReference(): string {
-  const ts = Date.now().toString(36).toUpperCase();
-  const rand = Math.random().toString(36).substring(2, 7).toUpperCase();
-  return `SANA-DON-${ts}-${rand}`;
-}
-
 export { MAX_DONATION_COP, MIN_DONATION_COP };

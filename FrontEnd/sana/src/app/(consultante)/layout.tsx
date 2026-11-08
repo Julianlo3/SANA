@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { CalendarCheck, Home, LogOut, UserRound } from "lucide-react";
 import { requireAnyRole } from "@/lib/auth-guard";
+import AccountTermsGate from "@/features/my-account/components/account-terms-gate";
 
 /**
  * Layout component for the requester views.
@@ -70,7 +71,7 @@ export default async function RequesterLayout({
       </header>
 
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6">
-        {children}
+        <AccountTermsGate termsAccepted={user.termsAccepted}>{children}</AccountTermsGate>
       </main>
     </div>
   );

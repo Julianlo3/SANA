@@ -15,6 +15,8 @@ export type CurrentUser = {
   state: string;
   /** Null si el usuario no es psicólogo; true/false si lo es. */
   psyTermsAccepted: boolean | null;
+  /** True si aceptó la versión vigente de account_terms, terms_of_use y privacy_policy. */
+  termsAccepted: boolean;
 };
 
 const API_URL =

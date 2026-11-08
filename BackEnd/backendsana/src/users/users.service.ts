@@ -24,6 +24,7 @@ import { PersonRol } from './entities/person-rol.entity.js';
 import { Psychologist } from './entities/psychologist.entity.js';
 import { Rol } from './entities/rol.entity.js';
 import { UserAccount } from './entities/user-account.entity.js';
+import { normalizeVulnerabilities } from './vulnerabilities.js';
 import type {
   OwnProfileResponse,
   UserResponse,
@@ -254,14 +255,7 @@ export class UsersService {
   private normalizeVulnerabilities(
     vulnerabilities: string[] | null | undefined,
   ): string[] | null {
-    const normalized = vulnerabilities?.map((value) => value.trim()) ?? null;
-    if (normalized?.some((value) => !value)) {
-      throw new BadRequestException({
-        error: 'INVALID_VULNERABILITY',
-        message: 'Las vulnerabilidades no pueden estar vacías',
-      });
-    }
-    return normalized;
+    return normalizeVulnerabilities(vulnerabilities);
   }
 
   /**

@@ -6,6 +6,7 @@ import PageDecor from "@/components/ui/page-decor";
 import PublicHeader from "@/components/navigation/public-header";
 import PublicFooter from "@/components/navigation/public-footer";
 import InlineMessage from "@/components/feedback/inline-message";
+import EmergencyNotice from "@/components/legal/emergency-notice";
 import TextField from "@/components/forms/text-field";
 import Button from "@/components/ui/button";
 import { REQUEST_CONTENT } from "@/content/consultation-request";
@@ -91,6 +92,8 @@ export default function SelfRequestPage() {
           <p className="mt-3 text-sm text-text-muted">
             {selfForm.description}
           </p>
+
+          <EmergencyNotice className="mt-6" />
 
           <div className="mt-8 space-y-8 rounded-2xl border border-border bg-surface p-6">
             <fieldset className="space-y-5">
@@ -234,7 +237,14 @@ export default function SelfRequestPage() {
                   ¿Perteneces a alguna población vulnerable? (opcional)
                 </span>
                 <select
-                  defaultValue=""
+                  value={values.vulnerablePopulation}
+                  onChange={(event) =>
+                    setValue(
+                      "vulnerablePopulation",
+                      event.target.value as typeof values.vulnerablePopulation,
+                    )
+                  }
+                  aria-invalid={errors.vulnerablePopulation ? true : undefined}
                   className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
                 >
                   <option value="">Prefiero no decir</option>
@@ -248,6 +258,11 @@ export default function SelfRequestPage() {
                   Esta información es opcional y nos ayuda a orientar mejor la
                   atención.
                 </span>
+                {errors.vulnerablePopulation && (
+                  <span role="alert" className="mt-1.5 block text-xs text-danger">
+                    {errors.vulnerablePopulation}
+                  </span>
+                )}
               </label>
             </fieldset>
 
