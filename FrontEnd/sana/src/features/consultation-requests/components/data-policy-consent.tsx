@@ -56,6 +56,9 @@ export default function DataPolicyConsent({
 
   const text = label ?? (state.status === "ready" ? state.content : null);
   const unavailable = !label && state.status === "error";
+  const placeholder = unavailable
+    ? DATA_POLICY.unavailableLabel
+    : DATA_POLICY.loadingLabel;
 
   return (
     <div>
@@ -74,13 +77,7 @@ export default function DataPolicyConsent({
         />
 
         <span className="text-xs leading-relaxed text-text-muted">
-          {text ? (
-            <LegalLinksText text={text} />
-          ) : unavailable ? (
-            DATA_POLICY.unavailableLabel
-          ) : (
-            DATA_POLICY.loadingLabel
-          )}
+          {text ? <LegalLinksText text={text} /> : placeholder}
           {!(text && mentionsPrivacyPolicy(text)) && (
             <>
               {" "}

@@ -23,7 +23,10 @@ type Props = {
  * @param param0 The props containing the viewer's role.
  * @returns The consultants list page.
  */
-export default function ConsultantsListPage({ viewerRole, canCreate = false }: Props) {
+export default function ConsultantsListPage({
+  viewerRole,
+  canCreate = false,
+}: Readonly<Props>) {
   const [consultants, setConsultants] = useState<ConsultantSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);

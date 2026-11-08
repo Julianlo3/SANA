@@ -5,7 +5,9 @@ const PHONE_LINK =
   "font-bold underline underline-offset-2 hover:text-primary-dark";
 
 /** Notice shown at the top of the appointment request forms. */
-export default function EmergencyNotice({ className = "" }: { className?: string }) {
+export default function EmergencyNotice({
+  className = "",
+}: Readonly<{ className?: string }>) {
   return (
     <aside
       role="note"

@@ -15,10 +15,10 @@ const DATE_FORMAT = new Intl.DateTimeFormat("es-CO", {
 export default function LegalDocumentPage({
   document,
   unavailableTitle,
-}: {
+}: Readonly<{
   document: PolicyDocument | null;
   unavailableTitle: string;
-}) {
+}>) {
   return (
     <div className="flex min-h-full flex-col">
       <PublicHeader />

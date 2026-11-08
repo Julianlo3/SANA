@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource } from 'typeorm';
 
 /**
  * Represents the local person and roles used to authorize an identity.
@@ -200,21 +200,29 @@ export class AuthRepository {
    * @param ipAddress Optional IP address of the acceptor.
    */
   async acceptTerms(personId: number, ipAddress?: string): Promise<void> {
-    await this.dataSource.transaction(async (manager) => {
-      for (const policyType of ACCOUNT_POLICY_TYPES) {
-        const pdId = await this.getCurrentPolicyDocumentId(policyType, manager);
-        if (!pdId) {
-          throw new Error(`No policy document found for type: ${policyType}`);
-        }
+    const currentDocuments = await this.dataSource.query<{ pd_type: string; pd_id: number }[]>(
+      `SELECT DISTINCT ON (pd_type) pd_type, pd_id
+       FROM policy_documents
+       WHERE pd_type = ANY($1::varchar[])
+       ORDER BY pd_type, pd_effective_from DESC, pd_id DESC`,
+      [ACCOUNT_POLICY_TYPES],
+    );
 
-        await manager.query(
-          `INSERT INTO policy_acceptance (per_id, pd_id, pa_ip_address, pa_channel)
-           VALUES ($1, $2, $3, 'web')
-           ON CONFLICT (per_id, pd_id) WHERE dep_id IS NULL AND cn_id IS NULL AND app_id IS NULL DO NOTHING`,
-          [personId, pdId, ipAddress ?? null],
-        );
+    const pdIds = ACCOUNT_POLICY_TYPES.map((policyType) => {
+      const document = currentDocuments.find((row) => row.pd_type === policyType);
+      if (!document) {
+        throw new Error(`No policy document found for type: ${policyType}`);
       }
+      return document.pd_id;
     });
+
+    await this.dataSource.query(
+      `INSERT INTO policy_acceptance (per_id, pd_id, pa_ip_address, pa_channel)
+       SELECT $1, accepted.pd_id, $3, 'web'
+       FROM unnest($2::int[]) AS accepted(pd_id)
+       ON CONFLICT (per_id, pd_id) WHERE dep_id IS NULL AND cn_id IS NULL AND app_id IS NULL DO NOTHING`,
+      [personId, pdIds, ipAddress ?? null],
+    );
   }
 
   /**
@@ -241,11 +249,8 @@ export class AuthRepository {
    * @param policyType The type of policy.
    * @returns A promise that resolves to the policy document ID or null if not found.
    */
-  private async getCurrentPolicyDocumentId(
-    policyType: string,
-    executor: DataSource | EntityManager = this.dataSource,
-  ): Promise<number | null> {
-    const rows = await executor.query<{ pd_id: number }[]>(
+  private async getCurrentPolicyDocumentId(policyType: string): Promise<number | null> {
+    const rows = await this.dataSource.query<{ pd_id: number }[]>(
       `SELECT pd_id
        FROM policy_documents
        WHERE pd_type = $1

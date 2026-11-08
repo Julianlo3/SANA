@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const POLICIES_DIR = path.join(__dirname, '..', 'policies');
 const INIT_SCRIPTS_DIR = path.join(__dirname, '..', 'init-scripts');
@@ -25,23 +25,25 @@ const RELEASES = [
   },
 ];
 
+const byName = (a, b) => a.localeCompare(b);
+
 function readPolicyTexts(folder) {
   const dir = path.join(POLICIES_DIR, folder);
   return Object.fromEntries(
     fs
       .readdirSync(dir)
       .filter((file) => file.endsWith('.md'))
-      .sort()
+      .sort(byName)
       .map((file) => [
         path.basename(file, '.md'),
-        fs.readFileSync(path.join(dir, file), 'utf8').replace(/\r\n/g, '\n').trim(),
+        fs.readFileSync(path.join(dir, file), 'utf8').replaceAll('\r\n', '\n').trim(),
       ]),
   );
 }
 
 function validate(release, texts) {
-  const expected = Object.keys(release.versions).sort();
-  const found = Object.keys(texts).sort();
+  const expected = Object.keys(release.versions).sort(byName);
+  const found = Object.keys(texts).sort(byName);
   const missing = expected.filter((type) => !found.includes(type));
   const unexpected = found.filter((type) => !expected.includes(type));
   if (missing.length || unexpected.length) {

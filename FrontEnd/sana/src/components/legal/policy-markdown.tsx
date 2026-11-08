@@ -64,10 +64,10 @@ const COMPONENTS: Components = {
 export default function PolicyMarkdown({
   children,
   className = "",
-}: {
+}: Readonly<{
   children: string;
   className?: string;
-}) {
+}>) {
   return (
     <div className={`space-y-4 text-sm text-text-muted sm:text-base ${className}`}>
       <ReactMarkdown

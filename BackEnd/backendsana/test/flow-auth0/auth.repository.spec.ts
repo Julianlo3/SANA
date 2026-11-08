@@ -113,52 +113,40 @@ describe('AuthRepository', () => {
     expect(manager.query).toHaveBeenCalledTimes(2);
   });
 
-  it('records account terms, terms of use and privacy policy with the IP in one transaction', async () => {
-    const { repository, dataSource, manager } = setup();
-    dataSource.transaction.mockImplementation(async (callback) =>
-      callback(manager),
-    );
-    manager.query
-      .mockResolvedValueOnce([{ pd_id: 9 }])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ pd_id: 6 }])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ pd_id: 5 }])
+  it('records account terms, terms of use and privacy policy with the IP in a single insert', async () => {
+    const { repository, dataSource } = setup();
+    dataSource.query
+      .mockResolvedValueOnce([
+        { pd_type: 'privacy_policy', pd_id: 5 },
+        { pd_type: 'account_terms', pd_id: 9 },
+        { pd_type: 'terms_of_use', pd_id: 6 },
+      ])
       .mockResolvedValueOnce([]);
 
     await repository.acceptTerms(42, '203.0.113.7');
 
-    expect(dataSource.transaction).toHaveBeenCalledOnce();
-    expect(dataSource.query).not.toHaveBeenCalled();
-    expect(manager.query.mock.calls.map((call) => call[1])).toEqual([
-      ['account_terms'],
-      [42, 9, '203.0.113.7'],
-      ['terms_of_use'],
-      [42, 6, '203.0.113.7'],
-      ['privacy_policy'],
-      [42, 5, '203.0.113.7'],
+    expect(dataSource.query).toHaveBeenCalledTimes(2);
+    expect(dataSource.query.mock.calls[0][0]).toContain('DISTINCT ON (pd_type)');
+    expect(dataSource.query.mock.calls[0][1]).toEqual([
+      ['account_terms', 'terms_of_use', 'privacy_policy'],
     ]);
-    expect(manager.query.mock.calls[1][0]).toContain("pa_channel)");
-    expect(manager.query.mock.calls[1][0]).toContain("'web'");
-    expect(
-      manager.query.mock.calls.some((call) => call[1]?.includes('data_treatment')),
-    ).toBe(false);
+    expect(dataSource.query.mock.calls[1][0]).toContain('unnest($2::int[])');
+    expect(dataSource.query.mock.calls[1][0]).toContain("'web'");
+    expect(dataSource.query.mock.calls[1][1]).toEqual([42, [9, 6, 5], '203.0.113.7']);
+    expect(JSON.stringify(dataSource.query.mock.calls)).not.toContain('data_treatment');
   });
 
-  it('fails the whole acceptance when one of the account documents is missing', async () => {
-    const { repository, dataSource, manager } = setup();
-    dataSource.transaction.mockImplementation(async (callback) =>
-      callback(manager),
-    );
-    manager.query
-      .mockResolvedValueOnce([{ pd_id: 9 }])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([]);
+  it('records nothing when one of the account documents is missing', async () => {
+    const { repository, dataSource } = setup();
+    dataSource.query.mockResolvedValueOnce([
+      { pd_type: 'account_terms', pd_id: 9 },
+      { pd_type: 'privacy_policy', pd_id: 5 },
+    ]);
 
     await expect(repository.acceptTerms(42)).rejects.toThrow(
       'No policy document found for type: terms_of_use',
     );
-    expect(manager.query).toHaveBeenCalledTimes(3);
+    expect(dataSource.query).toHaveBeenCalledOnce();
   });
 });
 // Los valores del usuario se pasan como parámetros SQL, no se interpolan en la consulta.
