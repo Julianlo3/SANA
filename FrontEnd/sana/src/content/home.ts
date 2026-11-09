@@ -55,6 +55,12 @@ export const HOME_CONTENT = {
 
   gallery: {
     title: "Galería",
+    wall: "Fotos de la fundación en movimiento",
+    dialog: "Foto de la galería",
+    allPhotos: "Todas las fotos",
+    showAll: "Ver todas las fotos",
+    pause: "Pausar el movimiento de las fotos",
+    resume: "Reanudar el movimiento de las fotos",
   },
 
   donation: {

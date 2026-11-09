@@ -11,6 +11,7 @@ import PublicHeader from "@/components/navigation/public-header";
 import PublicFooter from "@/components/navigation/public-footer";
 import PendingContentNotice from "@/components/feedback/pending-content-notice";
 import { HOME_CONTENT } from "@/content/home";
+import GallerySection from "@/features/content/components/gallery-section";
 import HeroCarousel from "@/features/content/components/hero-carousel";
 import NewsCard from "@/features/content/components/news-card";
 import ServicesShowcase from "@/features/content/components/services-showcase";
@@ -30,8 +31,6 @@ const PROGRAM_ICONS = [HeartHandshake, ShieldCheck, Users];
 
 const COLORS = {
   pink: "#eb5886",
-  pinkSoft: "#fbeaf0",
-  pinkDark: "#993556",
 };
 
 export default async function HomePage() {
@@ -284,44 +283,11 @@ export default async function HomePage() {
         </section>
 
         {/* GALERÍA — rosa suave */}
-        <section className="py-20" style={{ backgroundColor: COLORS.pinkSoft }}>
-          <div className="mx-auto max-w-6xl px-6">
-            <h2
-              className="font-display text-4xl font-extrabold"
-              style={{ color: COLORS.pinkDark }}
-            >
-              {gallery.title}
-            </h2>
-
-            {galleryImages.length > 0 ? (
-              <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-3">
-                {galleryImages.map((image) => (
-                  <figure
-                    key={image.id}
-                    className="overflow-hidden rounded-2xl bg-white"
-                  >
-                    <div className="relative aspect-[4/3]">
-                      <Image
-                        src={image.imageUrl}
-                        alt={image.imageAlt}
-                        fill
-                        sizes="(max-width: 768px) 50vw, 33vw"
-                        className="object-cover"
-                      />
-                    </div>
-                    {image.caption && (
-                      <figcaption className="px-4 py-3 text-sm text-text-muted">
-                        {image.caption}
-                      </figcaption>
-                    )}
-                  </figure>
-                ))}
-              </div>
-            ) : (
-              <PendingContentNotice className="mt-8" />
-            )}
-          </div>
-        </section>
+        <GallerySection
+          images={galleryImages}
+          labels={gallery}
+          emptyState={<PendingContentNotice className="mt-8" />}
+        />
 
         {/* DONACIONES — rosa */}
         <section className="mx-auto max-w-6xl px-6 pb-20 pt-20">
