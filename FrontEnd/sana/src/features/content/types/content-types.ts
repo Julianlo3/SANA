@@ -24,8 +24,23 @@ export type ContentCard = {
   imageAlt: string | null;
   order: number;
   isActive: boolean;
+  teamGroup: TeamGroup | null;
+  facebookUrl: string | null;
+  instagramUrl: string | null;
+  linkedinUrl: string | null;
+  photoCrop: PhotoCrop | null;
   updatedAt: string;
   updatedBy: ContentEditor;
+};
+
+export type TeamGroup = "staff" | "professional";
+
+/** Area of the original photo shown in the circle, as percentages of its width and height. */
+export type PhotoCrop = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 };
 
 export type ContentCardPayload = {
@@ -35,6 +50,11 @@ export type ContentCardPayload = {
   imageUrl: string | null;
   imageAlt: string | null;
   isActive: boolean;
+  teamGroup?: TeamGroup;
+  facebookUrl?: string | null;
+  instagramUrl?: string | null;
+  linkedinUrl?: string | null;
+  photoCrop?: PhotoCrop | null;
 };
 
 export type PublicationStatus = "published" | "retired";
@@ -134,11 +154,19 @@ export type PublicContentCard = Pick<
   "id" | "title" | "subtitle" | "description" | "imageUrl" | "imageAlt"
 >;
 
+export type PublicTeamCard = PublicContentCard & {
+  teamGroup: TeamGroup;
+  facebookUrl: string | null;
+  instagramUrl: string | null;
+  linkedinUrl: string | null;
+  photoCrop: PhotoCrop | null;
+};
+
 export type PublicContent = {
   mission: string | null;
   vision: string | null;
   values: PublicContentCard[];
-  team: PublicContentCard[];
+  team: PublicTeamCard[];
   services: PublicContentCard[];
   programs: PublicContentCard[];
 };

@@ -14,6 +14,7 @@ import {
   CARD_DESCRIPTION_MAX_LENGTH,
   CLOUDINARY_IMAGE_URL_PATTERN,
 } from '../content.constants.js';
+import { TeamProfileFieldsDto } from './team-profile-fields.dto.js';
 
 const trim = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;
@@ -21,7 +22,7 @@ const trim = ({ value }: { value: unknown }) =>
 /**
  * DTO for updating a content card. The section cannot be changed; `null` clears optional fields.
  */
-export class UpdateContentCardDto {
+export class UpdateContentCardDto extends TeamProfileFieldsDto {
   @IsOptional()
   @Transform(trim)
   @IsString()

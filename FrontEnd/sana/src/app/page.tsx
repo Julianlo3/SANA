@@ -7,7 +7,6 @@ import {
   CalendarCheck,
 } from "lucide-react";
 import { Wave } from "@/components/ui/shapes";
-import CurveShape from "@/components/ui/curve-shape";
 import PublicHeader from "@/components/navigation/public-header";
 import PublicFooter from "@/components/navigation/public-footer";
 import PendingContentNotice from "@/components/feedback/pending-content-notice";
@@ -15,7 +14,8 @@ import { HOME_CONTENT } from "@/content/home";
 import HeroCarousel from "@/features/content/components/hero-carousel";
 import NewsCard from "@/features/content/components/news-card";
 import ServicesShowcase from "@/features/content/components/services-showcase";
-import TeamCarousel from "@/features/content/components/team-carousel";
+import TeamSection from "@/features/content/components/team-section";
+import TeamWatermark from "@/features/content/components/team-watermark";
 import {
   getPublicBanners,
   getPublicContent,
@@ -32,10 +32,6 @@ const COLORS = {
   pink: "#eb5886",
   pinkSoft: "#fbeaf0",
   pinkDark: "#993556",
-  teal: "#43acb6",
-  tealSoft: "#e1f5ee",
-  navy: "#134176",
-  navySoft: "#b5d4f4",
 };
 
 export default async function HomePage() {
@@ -51,7 +47,7 @@ export default async function HomePage() {
       <PublicHeader />
 
       <main className="flex-1">
-        {/* HERO — rosa */}
+        {/* HERO — filtro azul */}
         <HeroCarousel
           slides={banners.map((banner) => ({
             key: String(banner.id),
@@ -59,32 +55,15 @@ export default async function HomePage() {
             alt: banner.imageAlt,
           }))}
         >
+          <div aria-hidden className="pointer-events-none absolute inset-0 bg-navy/70" />
 
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 overflow-hidden"
-          >
-            <CurveShape
-              className="absolute -left-10 top-0 h-full w-32 sm:w-48"
-              style={{ color: COLORS.pink }}
-            />
-            <CurveShape
-              flip
-              className="absolute -right-10 top-0 h-full w-32 sm:w-48"
-              style={{ color: COLORS.pink }}
-            />
-          </div>
-
-          <div
-            className="absolute inset-x-0 top-1/2 -translate-y-1/2 px-6 py-5 text-center sm:py-7"
-            style={{ backgroundColor: `${COLORS.navy}b3` }}
-          >
+          <div className="relative flex w-full items-center justify-center px-11 py-8 text-center sm:px-24 sm:py-12">
             <div className="mx-auto max-w-3xl">
-              <p className="font-display text-sm font-bold uppercase tracking-wide text-white sm:text-lg">
+              <p className="font-display text-xs font-bold uppercase tracking-wide text-white sm:text-lg">
                 {hero.eyebrow}
               </p>
 
-              <h1 className="mt-1 font-display text-3xl font-extrabold uppercase leading-tight text-white sm:text-5xl">
+              <h1 className="mt-1 font-display text-2xl font-extrabold uppercase leading-tight text-white min-[400px]:text-3xl sm:text-5xl">
                 {hero.title}
               </h1>
 
@@ -94,8 +73,7 @@ export default async function HomePage() {
 
               <Link
                 href="/solicitar-cita"
-                className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-white px-6 py-2 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white"
-                style={{ color: "white" }}
+                className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-navy sm:px-6"
               >
                 <CalendarCheck size={16} aria-hidden />
                 {hero.primaryAction}
@@ -175,11 +153,10 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* PROGRAMAS — turquesa */}
+        {/* PROGRAMAS — celeste */}
         <section
           id="programs"
-          className="relative overflow-hidden py-24"
-          style={{ backgroundColor: COLORS.teal }}
+          className="relative overflow-hidden bg-support-blue py-24"
         >
           <Wave
             aria-hidden
@@ -187,7 +164,7 @@ export default async function HomePage() {
           />
 
           <div className="relative mx-auto max-w-6xl px-6">
-            <h2 className="text-center font-display text-4xl font-extrabold text-white">
+            <h2 className="text-center font-display text-4xl font-extrabold text-navy">
               {programs.title}
             </h2>
 
@@ -203,12 +180,9 @@ export default async function HomePage() {
                 return (
                   <article
                     key={program.id}
-                    className="rounded-2xl bg-white p-7"
+                    className="bg-white p-7"
                   >
-                    <div
-                      className="flex h-12 w-12 items-center justify-center rounded-2xl"
-                      style={{ backgroundColor: COLORS.tealSoft, color: COLORS.teal }}
-                    >
+                    <div className="flex h-12 w-12 items-center justify-center bg-navy text-white">
                       <Icon size={22} aria-hidden />
                     </div>
 
@@ -249,18 +223,31 @@ export default async function HomePage() {
 
         {/* EQUIPO — azul marino */}
         <section
-          className="overflow-x-clip py-20"
-          style={{ backgroundColor: COLORS.navy }}
+          id="team"
+          aria-label={team.title}
+          className="relative isolate overflow-x-clip bg-navy py-20"
         >
-          <div className="mx-auto max-w-6xl px-6">
-            <h2 className="font-display text-4xl font-extrabold text-white">
-              {team.title}
-            </h2>
-
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_15%_10%,rgba(67,172,182,0.35),transparent_45%),radial-gradient(circle_at_90%_85%,rgba(235,88,134,0.18),transparent_40%)]"
+          />
+          <TeamWatermark />
+          <div className="relative mx-auto max-w-6xl px-6">
             {content.team.length > 0 ? (
-              <TeamCarousel members={content.team} />
+              <TeamSection
+                members={content.team}
+                titles={{
+                  staff: team.staffTitle,
+                  professional: team.professionalTitle,
+                }}
+              />
             ) : (
-              <PendingContentNotice className="mt-8" />
+              <>
+                <h2 className="font-display text-4xl font-extrabold text-white">
+                  {team.title}
+                </h2>
+                <PendingContentNotice className="mt-8" />
+              </>
             )}
           </div>
         </section>

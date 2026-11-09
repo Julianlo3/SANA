@@ -31,11 +31,11 @@ export default function PublicFooter() {
 
         <div>
           <h3 className="font-semibold text-text">{contact.title}</h3>
-          <ul className="mt-4 space-y-2 text-sm text-text-muted">
+          <ul className="mt-3 text-sm text-text-muted lg:mt-4 lg:space-y-2">
             {contact.items.map((item) => (
-              <li key={item.label}>
+              <li key={item.label} className="flex min-h-11 items-center lg:block lg:min-h-0">
                 {"href" in item ? (
-                  <a href={item.href} className="break-words hover:text-primary">
+                  <a href={item.href} className="inline-flex min-h-11 items-center break-all hover:text-primary lg:inline lg:min-h-0">
                     {item.label}
                   </a>
                 ) : (
@@ -48,10 +48,10 @@ export default function PublicFooter() {
 
         <div>
           <h3 className="font-semibold text-text">{links.title}</h3>
-          <ul className="mt-4 space-y-2 text-sm text-text-muted">
+          <ul className="mt-3 text-sm text-text-muted lg:mt-4 lg:space-y-2">
             {[...links.items, ...legalLinks].map((link) => (
               <li key={link.href}>
-                <Link href={link.href} className="hover:text-primary">
+                <Link href={link.href} className="inline-flex min-h-11 items-center hover:text-primary lg:inline lg:min-h-0">
                   {link.label}
                 </Link>
               </li>

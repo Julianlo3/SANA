@@ -40,6 +40,8 @@ export const HOME_CONTENT = {
 
   team: {
     title: "Nuestro equipo",
+    staffTitle: "Nuestro equipo de trabajo",
+    professionalTitle: "Nuestro equipo profesional",
   },
 
   news: {
