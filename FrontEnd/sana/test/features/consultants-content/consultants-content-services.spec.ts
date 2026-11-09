@@ -112,11 +112,17 @@ describe("consultant and content services for HU-2.1 and HU-4.1–HU-4.3", () =>
         imageUrl: "",
         imageAlt: "",
         isActive: true,
+        teamGroup: "",
+        facebookUrl: "",
+        instagramUrl: "",
+        linkedinUrl: "",
+        photoCrop: null,
       }),
     ).toMatchObject({
       title: "Nombre es obligatorio.",
       subtitle: "Cargo es obligatorio.",
       imageUrl: "Foto es obligatoria.",
+      teamGroup: "Elige el grupo al que pertenece.",
     });
   });
 
