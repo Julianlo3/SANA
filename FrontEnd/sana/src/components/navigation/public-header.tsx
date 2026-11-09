@@ -43,35 +43,33 @@ export default function PublicHeader() {
   }, [isAccountMenuOpen]);
 
   return (
-    <header
-      className="sticky top-0 z-30"
-      style={{ backgroundColor: "#eb5886" }}
-    >
-      <div className="flex items-center gap-4 px-6 py-3 lg:px-12">
-        <Link href="/" className="flex items-center">
+    <header className="sticky top-0 z-30 bg-primary">
+      <div className="flex items-center gap-2 px-3 py-3 min-[380px]:gap-3 min-[380px]:px-4 sm:gap-4 sm:px-6 lg:px-12">
+        <Link href="/" className="relative flex min-w-0 shrink-0 items-center before:absolute before:content-[''] before:inset-x-0 before:-inset-y-2.5">
           <Image
             src={PUBLIC_NAV.logo.src}
             alt={PUBLIC_NAV.logo.alt}
             width={400}
             height={92}
             priority
-            className="h-11 w-auto brightness-0 invert"
+            sizes="(max-width: 640px) 140px, 200px"
+            className="aspect-[400/92] h-6 w-auto max-w-none shrink-0 brightness-0 invert min-[360px]:h-7 sm:h-10 lg:h-11"
           />
         </Link>
 
-        <nav className="ml-auto hidden items-center gap-8 md:flex">
+        <nav className="ml-auto hidden items-center gap-6 lg:flex xl:gap-8">
           {PUBLIC_NAV.links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="text-xs font-bold uppercase tracking-wider text-white transition hover:text-white/80"
+              className="whitespace-nowrap text-xs font-bold uppercase tracking-wider text-navy transition hover:text-white"
             >
               {link.label}
             </Link>
           ))}
         </nav>
 
-        <div className="ml-auto flex items-center gap-3 md:ml-0">
+        <div className="ml-auto flex shrink-0 items-center gap-1.5 min-[380px]:gap-2 sm:gap-3 lg:ml-0">
           {user ? (
             <div ref={accountMenuRef} className="relative">
               <button
@@ -81,7 +79,7 @@ export default function PublicHeader() {
                 aria-haspopup="true"
                 aria-controls="public-account-menu"
                 aria-expanded={isAccountMenuOpen}
-                className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-primary text-sm font-semibold text-white shadow-sm transition hover:ring-2 hover:ring-white/40"
+                className="relative flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-navy before:absolute before:content-[''] before:-inset-1.5 min-[380px]:h-9 min-[380px]:w-9 text-sm font-semibold text-white shadow-sm transition hover:ring-2 hover:ring-white/60"
               >
                 {getInitials(user.name ?? user.email ?? "Usuario")}
               </button>
@@ -112,7 +110,7 @@ export default function PublicHeader() {
           ) : (
             <Link
               href={PUBLIC_NAV.loginHref}
-              className="cursor-pointer rounded-full border border-white/70 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white/10"
+              className="hidden cursor-pointer whitespace-nowrap rounded-full border border-navy/50 px-4 py-2 text-xs font-bold uppercase tracking-wider text-navy transition hover:bg-white/20 sm:inline-flex"
             >
               {PUBLIC_NAV.login}
             </Link>
@@ -120,8 +118,7 @@ export default function PublicHeader() {
 
           <Link
             href="/donaciones"
-            className="cursor-pointer rounded-full bg-white px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition hover:bg-white/90 hover:scale-105 active:scale-95 shadow-xs"
-            style={{ color: "#eb5886" }}
+            className="relative cursor-pointer whitespace-nowrap rounded-full bg-white px-3 py-2 before:absolute before:content-[''] before:inset-x-0 before:-inset-y-1.5 text-xs font-bold uppercase tracking-wide text-navy shadow-xs transition hover:scale-105 hover:bg-white/90 active:scale-95 min-[380px]:px-3.5 min-[380px]:tracking-wider sm:px-5 sm:py-2.5"
           >
             {PUBLIC_NAV.donate}
           </Link>
@@ -130,7 +127,7 @@ export default function PublicHeader() {
             onClick={() => setIsOpen((current) => !current)}
             aria-label={isOpen ? "Cerrar menú" : "Abrir menú"}
             aria-expanded={isOpen}
-            className="cursor-pointer rounded-xl border border-white/40 p-2 text-white transition hover:bg-white/10 md:hidden"
+            className="relative cursor-pointer rounded-xl border border-navy/30 p-1.5 before:absolute before:content-[''] before:-inset-1.5 text-navy transition hover:bg-white/20 min-[380px]:p-2 lg:hidden"
           >
             {isOpen ? <X size={20} aria-hidden /> : <Menu size={20} aria-hidden />}
           </button>
@@ -138,17 +135,14 @@ export default function PublicHeader() {
       </div>
 
       {isOpen && (
-        <nav
-          className="border-t border-white/20 px-6 py-4 md:hidden"
-          style={{ backgroundColor: "#eb5886" }}
-        >
+        <nav className="border-t border-navy/15 bg-primary px-4 py-4 sm:px-6 lg:hidden">
           <ul className="flex flex-col gap-1">
             {PUBLIC_NAV.links.map((link) => (
               <li key={link.href}>
                 <Link
                   href={link.href}
                   onClick={() => setIsOpen(false)}
-                  className="block rounded-xl px-3 py-3 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white/10"
+                  className="block rounded-xl px-3 py-3.5 text-xs font-bold uppercase tracking-wider text-navy transition hover:bg-white/20"
                 >
                   {link.label}
                 </Link>
@@ -156,11 +150,11 @@ export default function PublicHeader() {
             ))}
 
             {!user && (
-              <li className="mt-1 border-t border-white/20 pt-2">
+              <li className="mt-1 border-t border-navy/15 pt-2">
                 <Link
                   href={PUBLIC_NAV.loginHref}
                   onClick={() => setIsOpen(false)}
-                  className="block rounded-xl px-3 py-3 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white/10"
+                  className="block rounded-xl px-3 py-3.5 text-xs font-bold uppercase tracking-wider text-navy transition hover:bg-white/20"
                 >
                   {PUBLIC_NAV.login}
                 </Link>
@@ -171,7 +165,7 @@ export default function PublicHeader() {
               <Link
                 href="/donaciones"
                 onClick={() => setIsOpen(false)}
-                className="flex items-center justify-center rounded-full bg-white px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#eb5886] transition hover:bg-white/90 shadow-xs"
+                className="flex items-center justify-center rounded-full bg-white px-4 py-3.5 text-xs font-bold uppercase tracking-wider text-navy shadow-xs transition hover:bg-white/90"
               >
                 {PUBLIC_NAV.donate}
               </Link>
