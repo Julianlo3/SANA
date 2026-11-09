@@ -11,6 +11,16 @@ export const CONTENT_CARD_SECTIONS = [
 ] as const;
 export type ContentCardSection = (typeof CONTENT_CARD_SECTIONS)[number];
 
+/** Blocks that split the team section: work staff and professional staff. */
+export const TEAM_GROUPS = ['staff', 'professional'] as const;
+export type TeamGroup = (typeof TEAM_GROUPS)[number];
+
+/** Social profile URL allowlist for team members, matched by domain. */
+export const SOCIAL_URL_MAX_LENGTH = 300;
+export const FACEBOOK_URL_PATTERN = /^https:\/\/([a-z0-9-]+\.)*facebook\.com\/\S+$/i;
+export const INSTAGRAM_URL_PATTERN = /^https:\/\/([a-z0-9-]+\.)*instagram\.com\/\S+$/i;
+export const LINKEDIN_URL_PATTERN = /^https:\/\/([a-z0-9-]+\.)*linkedin\.com\/\S+$/i;
+
 /** Persisted content resource types tracked in the change log. */
 export const CONTENT_TYPES = [
   'content_item',

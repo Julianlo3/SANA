@@ -149,6 +149,7 @@ describe('ContentService institutional content (HU-4.1)', () => {
           subtitle: 'Counsellor',
           imageUrl,
           imageAlt: 'Portrait',
+          teamGroup: 'staff',
         } as never,
       ),
     ).rejects.toBeInstanceOf(UnprocessableEntityException);
@@ -165,6 +166,8 @@ describe('ContentService institutional content (HU-4.1)', () => {
       description: null,
       imageUrl,
       imageAlt: 'Portrait',
+      teamGroup: 'staff',
+      photoCrop: null,
     };
     repository.findCardById.mockResolvedValue(current);
     repository.updateCard.mockResolvedValue({ ...current, title: 'Ana Pérez' });
@@ -211,6 +214,11 @@ describe('ContentService institutional content (HU-4.1)', () => {
         imageUrl,
         imageAlt: 'Portrait',
         isActive: true,
+        teamGroup: 'professional',
+        facebookUrl: null,
+        instagramUrl: 'https://www.instagram.com/member',
+        linkedinUrl: null,
+        photoCrop: { x: 10, y: 5, width: 40, height: 60 },
       },
     ]);
 
@@ -235,6 +243,11 @@ describe('ContentService institutional content (HU-4.1)', () => {
           description: null,
           imageUrl,
           imageAlt: 'Portrait',
+          teamGroup: 'professional',
+          facebookUrl: null,
+          instagramUrl: 'https://www.instagram.com/member',
+          linkedinUrl: null,
+          photoCrop: { x: 10, y: 5, width: 40, height: 60 },
         },
       ],
       services: [],

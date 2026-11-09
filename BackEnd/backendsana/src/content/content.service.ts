@@ -5,7 +5,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import type { AuthenticatedUser } from '../auth/auth.interface.js';
-import type { ContentCardSection } from './content.constants.js';
+import type { ContentCardSection, TeamGroup } from './content.constants.js';
 import { CloudinaryService } from './images/cloudinary.service.js';
 import {
   ContentRepository,
@@ -15,8 +15,10 @@ import type { ContentCardsQueryDto } from './dto/content-cards-query.dto.js';
 import type {
   ContentCardResponse,
   ContentItemResponse,
+  PhotoCrop,
   PublicContentCard,
   PublicContentResponse,
+  PublicTeamCard,
 } from './dto/content-response.dto.js';
 import type { CreateContentCardDto } from './dto/create-content-card.dto.js';
 import type { UpdateContentCardDto } from './dto/update-content-card.dto.js';
@@ -24,19 +26,34 @@ import type { UpdateContentItemsDto } from './dto/update-content-items.dto.js';
 
 type CardFields = Pick<
   ContentCardResponse,
-  'title' | 'subtitle' | 'description' | 'imageUrl' | 'imageAlt'
+  'title' | 'subtitle' | 'description' | 'imageUrl' | 'imageAlt' | 'teamGroup'
 >;
+
+type TeamFields = Pick<
+  ContentCardResponse,
+  'teamGroup' | 'facebookUrl' | 'instagramUrl' | 'linkedinUrl' | 'photoCrop'
+>;
+
+const DEFAULT_TEAM_GROUP: TeamGroup = 'staff';
+
+const TEAM_ONLY_FIELDS: (keyof TeamFields)[] = [
+  'teamGroup',
+  'facebookUrl',
+  'instagramUrl',
+  'linkedinUrl',
+  'photoCrop',
+];
 
 const REQUIRED_BY_SECTION: Record<ContentCardSection, (keyof CardFields)[]> = {
   values: ['title'],
-  team: ['title', 'subtitle', 'imageUrl'],
+  team: ['title', 'subtitle', 'imageUrl', 'teamGroup'],
   services: ['title', 'description'],
   programs: ['title', 'description'],
 };
 
 const FIELD_LABELS: Record<ContentCardSection, Partial<Record<keyof CardFields, string>>> = {
   values: { title: 'nombre del valor' },
-  team: { title: 'nombre', subtitle: 'cargo', imageUrl: 'foto' },
+  team: { title: 'nombre', subtitle: 'cargo', imageUrl: 'foto', teamGroup: 'grupo' },
   services: { title: 'nombre del servicio', description: 'descripción' },
   programs: { title: 'nombre del programa', description: 'descripción' },
 };
@@ -97,14 +114,24 @@ export class ContentService {
     user: AuthenticatedUser,
     dto: CreateContentCardDto,
   ): Promise<ContentCardResponse> {
+    const teamFields: TeamFields = {
+      teamGroup: dto.teamGroup ?? null,
+      facebookUrl: dto.facebookUrl ?? null,
+      instagramUrl: dto.instagramUrl ?? null,
+      linkedinUrl: dto.linkedinUrl ?? null,
+      photoCrop: dto.photoCrop ?? null,
+    };
     const fields: CardFields = {
       title: dto.title,
       subtitle: emptyToNull(dto.subtitle),
       description: emptyToNull(dto.description),
       imageUrl: dto.imageUrl ?? null,
       imageAlt: emptyToNull(dto.imageAlt),
+      teamGroup: teamFields.teamGroup,
     };
+    this.ensureTeamOnlyFields(dto.section, teamFields);
     this.ensureRequiredFields(dto.section, fields);
+    ensureValidPhotoCrop(teamFields.photoCrop, fields.imageUrl);
     if (fields.imageUrl) {
       await this.cloudinaryService.ensureValidImage(fields.imageUrl, 'content');
     }
@@ -113,6 +140,7 @@ export class ContentService {
       {
         section: dto.section,
         ...fields,
+        ...teamFields,
         order: dto.order ?? null,
         isActive: dto.isActive ?? true,
       },
@@ -148,24 +176,45 @@ export class ContentService {
       imageAlt: dto.imageAlt === undefined ? undefined : emptyToNull(dto.imageAlt),
       order: dto.order,
       isActive: dto.isActive,
+      teamGroup: dto.teamGroup,
+      facebookUrl: dto.facebookUrl,
+      instagramUrl: dto.instagramUrl,
+      linkedinUrl: dto.linkedinUrl,
+      photoCrop: dto.photoCrop,
     };
     if (patch.imageUrl === null) patch.imageAlt = null;
+    const imageChanged =
+      patch.imageUrl !== undefined && patch.imageUrl !== current.imageUrl;
+    if (imageChanged && patch.photoCrop === undefined) patch.photoCrop = null;
 
+    this.ensureTeamOnlyFields(current.section, {
+      teamGroup: patch.teamGroup ?? null,
+      facebookUrl: patch.facebookUrl ?? null,
+      instagramUrl: patch.instagramUrl ?? null,
+      linkedinUrl: patch.linkedinUrl ?? null,
+      photoCrop: patch.photoCrop ?? null,
+    });
+    const imageUrl = patch.imageUrl === undefined ? current.imageUrl : patch.imageUrl;
     this.ensureRequiredFields(current.section, {
       title: patch.title ?? current.title,
       subtitle: patch.subtitle === undefined ? current.subtitle : patch.subtitle,
       description:
         patch.description === undefined ? current.description : patch.description,
-      imageUrl: patch.imageUrl === undefined ? current.imageUrl : patch.imageUrl,
+      imageUrl,
       imageAlt: patch.imageAlt === undefined ? current.imageAlt : patch.imageAlt,
+      teamGroup: patch.teamGroup === undefined ? current.teamGroup : patch.teamGroup,
     });
+    ensureValidPhotoCrop(
+      patch.photoCrop === undefined ? current.photoCrop : patch.photoCrop,
+      imageUrl,
+    );
     if (patch.imageUrl && patch.imageUrl !== current.imageUrl) {
       await this.cloudinaryService.ensureValidImage(patch.imageUrl, 'content');
     }
 
     const card = await this.repository.updateCard(id, patch, user.userId);
     if (!card) throw new NotFoundException('El elemento de contenido no existe');
-    if (current.imageUrl && patch.imageUrl !== undefined && patch.imageUrl !== current.imageUrl) {
+    if (current.imageUrl && imageChanged) {
       void this.cloudinaryService.deleteImage(current.imageUrl);
     }
 
@@ -217,10 +266,36 @@ export class ContentService {
       mission: items.find((item) => item.key === 'about.mission')?.value ?? null,
       vision: items.find((item) => item.key === 'about.vision')?.value ?? null,
       values: bySection('values'),
-      team: bySection('team'),
+      team: cards
+        .filter((card) => card.section === 'team')
+        .map((card) => ({
+          id: card.id,
+          title: card.title,
+          subtitle: card.subtitle,
+          description: card.description,
+          imageUrl: card.imageUrl,
+          imageAlt: card.imageAlt,
+          teamGroup: card.teamGroup ?? DEFAULT_TEAM_GROUP,
+          facebookUrl: card.facebookUrl,
+          instagramUrl: card.instagramUrl,
+          linkedinUrl: card.linkedinUrl,
+          photoCrop: card.photoCrop,
+        }) satisfies PublicTeamCard),
       services: bySection('services'),
       programs: bySection('programs'),
     };
+  }
+
+  private ensureTeamOnlyFields(section: ContentCardSection, fields: TeamFields): void {
+    if (section === 'team') return;
+    const notAllowed = TEAM_ONLY_FIELDS.filter((field) => fields[field] !== null);
+    if (notAllowed.length > 0) {
+      throw new UnprocessableEntityException({
+        error: 'TEAM_FIELDS_NOT_ALLOWED',
+        message: 'El grupo, las redes sociales y el recorte de la foto solo aplican al equipo',
+        fields: notAllowed,
+      });
+    }
   }
 
   private ensureRequiredFields(section: ContentCardSection, fields: CardFields): void {
@@ -244,4 +319,22 @@ export class ContentService {
 
 function emptyToNull(value: string | null | undefined): string | null {
   return value ? value : null;
+}
+
+function ensureValidPhotoCrop(crop: PhotoCrop | null, imageUrl: string | null): void {
+  if (!crop) return;
+  if (!imageUrl) {
+    throw new UnprocessableEntityException({
+      error: 'INVALID_PHOTO_CROP',
+      message: 'El recorte de la foto requiere una foto',
+      fields: ['photoCrop'],
+    });
+  }
+  if (crop.x + crop.width > 100 || crop.y + crop.height > 100) {
+    throw new UnprocessableEntityException({
+      error: 'INVALID_PHOTO_CROP',
+      message: 'El recorte de la foto debe quedar dentro de la imagen',
+      fields: ['photoCrop'],
+    });
+  }
 }

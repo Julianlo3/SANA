@@ -5,13 +5,19 @@ import {
   CONTENT_ITEM_KEYS,
   type ContentCardSection,
   type ContentItemKey,
+  type TeamGroup,
 } from './content.constants.js';
 import type {
   ContentCardResponse,
   ContentItemResponse,
+  PhotoCrop,
 } from './dto/content-response.dto.js';
 
-interface ContentCardRow extends Omit<ContentCardResponse, 'updatedBy'> {
+interface ContentCardRow extends Omit<ContentCardResponse, 'updatedBy' | 'photoCrop'> {
+  photoCropX: string | null;
+  photoCropY: string | null;
+  photoCropWidth: string | null;
+  photoCropHeight: string | null;
   editorId: number;
   editorName: string;
 }
@@ -33,11 +39,16 @@ export interface ContentCardWriteParams {
   imageAlt: string | null;
   order: number | null;
   isActive: boolean;
+  teamGroup: TeamGroup | null;
+  facebookUrl: string | null;
+  instagramUrl: string | null;
+  linkedinUrl: string | null;
+  photoCrop: PhotoCrop | null;
 }
 
 export type ContentCardPatch = Partial<Omit<ContentCardWriteParams, 'section'>>;
 
-const CARD_PATCH_COLUMNS: Record<keyof ContentCardPatch, string> = {
+const CARD_PATCH_COLUMNS: Record<Exclude<keyof ContentCardPatch, 'photoCrop'>, string> = {
   title: 'cc_title',
   subtitle: 'cc_subtitle',
   description: 'cc_description',
@@ -45,6 +56,17 @@ const CARD_PATCH_COLUMNS: Record<keyof ContentCardPatch, string> = {
   imageAlt: 'cc_image_alt',
   order: 'cc_order',
   isActive: 'cc_is_active',
+  teamGroup: 'cc_team_group',
+  facebookUrl: 'cc_facebook_url',
+  instagramUrl: 'cc_instagram_url',
+  linkedinUrl: 'cc_linkedin_url',
+};
+
+const PHOTO_CROP_COLUMNS: Record<keyof PhotoCrop, string> = {
+  x: 'cc_photo_crop_x',
+  y: 'cc_photo_crop_y',
+  width: 'cc_photo_crop_width',
+  height: 'cc_photo_crop_height',
 };
 
 const CARD_SELECT = `
@@ -58,6 +80,14 @@ const CARD_SELECT = `
     cc.cc_image_alt AS "imageAlt",
     cc.cc_order AS "order",
     cc.cc_is_active AS "isActive",
+    cc.cc_team_group AS "teamGroup",
+    cc.cc_facebook_url AS "facebookUrl",
+    cc.cc_instagram_url AS "instagramUrl",
+    cc.cc_linkedin_url AS "linkedinUrl",
+    cc.cc_photo_crop_x AS "photoCropX",
+    cc.cc_photo_crop_y AS "photoCropY",
+    cc.cc_photo_crop_width AS "photoCropWidth",
+    cc.cc_photo_crop_height AS "photoCropHeight",
     cc.cc_updated_at AS "updatedAt",
     p.per_id AS "editorId",
     p.per_name AS "editorName"
@@ -180,12 +210,15 @@ export class ContentRepository {
       const rows = await manager.query<{ id: number }[]>(
         `INSERT INTO content_cards (
            cc_section, cc_title, cc_subtitle, cc_description, cc_image_url,
-           cc_image_alt, cc_order, cc_is_active, cc_updated_by, cc_updated_at
+           cc_image_alt, cc_order, cc_is_active, cc_updated_by, cc_updated_at,
+           cc_team_group, cc_facebook_url, cc_instagram_url, cc_linkedin_url,
+           cc_photo_crop_x, cc_photo_crop_y, cc_photo_crop_width, cc_photo_crop_height
          )
          VALUES (
            $1::varchar, $2, $3, $4, $5, $6,
            COALESCE($7::integer, (SELECT COALESCE(MAX(cc_order) + 1, 0) FROM content_cards WHERE cc_section = $1::varchar)),
-           $8, $9, now()
+           $8, $9, now(),
+           $10, $11, $12, $13, $14, $15, $16, $17
          )
          RETURNING cc_id AS "id"`,
         [
@@ -198,6 +231,14 @@ export class ContentRepository {
           params.order,
           params.isActive,
           userId,
+          params.teamGroup,
+          params.facebookUrl,
+          params.instagramUrl,
+          params.linkedinUrl,
+          params.photoCrop?.x ?? null,
+          params.photoCrop?.y ?? null,
+          params.photoCrop?.width ?? null,
+          params.photoCrop?.height ?? null,
         ],
       );
       const id = rows[0].id;
@@ -222,10 +263,17 @@ export class ContentRepository {
       const assignments: string[] = [];
       const values: unknown[] = [];
 
-      for (const field of Object.keys(CARD_PATCH_COLUMNS) as (keyof ContentCardPatch)[]) {
+      for (const field of Object.keys(CARD_PATCH_COLUMNS) as (keyof typeof CARD_PATCH_COLUMNS)[]) {
         if (patch[field] === undefined) continue;
         values.push(patch[field]);
         assignments.push(`${CARD_PATCH_COLUMNS[field]} = $${values.length}`);
+      }
+
+      if (patch.photoCrop !== undefined) {
+        for (const key of Object.keys(PHOTO_CROP_COLUMNS) as (keyof PhotoCrop)[]) {
+          values.push(patch.photoCrop?.[key] ?? null);
+          assignments.push(`${PHOTO_CROP_COLUMNS[key]} = $${values.length}`);
+        }
       }
 
       values.push(userId, id);
@@ -276,6 +324,26 @@ export class ContentRepository {
 }
 
 function toCardResponse(row: ContentCardRow): ContentCardResponse {
-  const { editorId, editorName, ...card } = row;
-  return { ...card, updatedBy: { id: editorId, name: editorName } };
+  const {
+    editorId,
+    editorName,
+    photoCropX,
+    photoCropY,
+    photoCropWidth,
+    photoCropHeight,
+    ...card
+  } = row;
+  const photoCrop =
+    photoCropX === null ||
+    photoCropY === null ||
+    photoCropWidth === null ||
+    photoCropHeight === null
+      ? null
+      : {
+          x: Number(photoCropX),
+          y: Number(photoCropY),
+          width: Number(photoCropWidth),
+          height: Number(photoCropHeight),
+        };
+  return { ...card, photoCrop, updatedBy: { id: editorId, name: editorName } };
 }
