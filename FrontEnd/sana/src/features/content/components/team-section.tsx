@@ -10,6 +10,11 @@ type Props = {
 };
 
 const GROUP_ORDER: TeamGroup[] = ["staff", "professional"];
+const DEFAULT_GROUP: TeamGroup = "staff";
+
+function groupOf(member: PublicTeamCard): TeamGroup {
+  return GROUP_ORDER.includes(member.teamGroup) ? member.teamGroup : DEFAULT_GROUP;
+}
 
 /**
  * Public team section split into one carousel per group; empty groups are not shown.
@@ -20,7 +25,9 @@ export default function TeamSection({ members, titles }: Props) {
   const blocks = GROUP_ORDER.map((group) => ({
     group,
     title: titles[group],
-    members: members.filter((member) => member.teamGroup === group),
+    members: members
+      .filter((member) => groupOf(member) === group)
+      .map((member) => ({ ...member, teamGroup: group })),
   })).filter((block) => block.members.length > 0);
 
   return (
