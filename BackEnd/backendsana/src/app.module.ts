@@ -13,6 +13,7 @@ import { ClinicalNotesModule } from './clinical-notes/clinical-notes.module.js';
 import { SecurityLogsModule } from './security-logs/security-logs.module.js';
 import { ContentModule } from './content/content.module.js';
 import { DonationsModule } from './donations/donations.module.js';
+import { ReportsModule } from './reports/reports.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 
@@ -38,6 +39,7 @@ import { AppService } from './app.service.js';
     SecurityLogsModule,
     ContentModule,
     DonationsModule,
+    ReportsModule,
   ],
 
   controllers: [AppController],
