@@ -116,6 +116,12 @@ export type PublicNews = Pick<
   "id" | "title" | "body" | "imageUrl" | "imageAlt" | "isPinned" | "publishedAt"
 >;
 
+/** Light version of a news item sent to client components; the body never leaves the server. */
+export type NewsTeaser = Pick<
+  PublicNews,
+  "id" | "title" | "imageUrl" | "imageAlt" | "isPinned" | "publishedAt"
+> & { excerpt: string };
+
 export type PublicNewsPage = {
   items: PublicNews[];
   total: number;

@@ -1,23 +1,20 @@
 "use client";
 
-import {
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type CSSProperties,
-  type ReactNode,
-} from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Images, Pause, Play } from "lucide-react";
 import GalleryAllPhotos from "@/features/content/components/gallery-all-photos";
 import GalleryBackdrop from "@/features/content/components/gallery-backdrop";
 import GalleryLightbox from "@/features/content/components/gallery-lightbox";
 import GalleryWall from "@/features/content/components/gallery-wall";
+import SectionTitle from "@/features/content/components/section-title";
+import {
+  useReducedMotion,
+  useSectionEntrance,
+  useTabVisible,
+} from "@/features/content/hooks/use-section-motion";
 import type { PublicGalleryImage } from "@/features/content/types/content-types";
 import "../styles/gallery.css";
-
-const LETTER_DELAY_MS = 55;
 
 export type GalleryLabels = {
   title: string;
@@ -29,24 +26,11 @@ export type GalleryLabels = {
   resume: string;
 };
 
-type Entrance = "idle" | "waiting" | "shown";
-
 type LightboxState = {
   index: number;
   originRect: DOMRect | null;
   returnFocus: HTMLElement;
 };
-
-function subscribeReducedMotion(onChange: () => void) {
-  const query = window.matchMedia("(prefers-reduced-motion: reduce)");
-  query.addEventListener("change", onChange);
-  return () => query.removeEventListener("change", onChange);
-}
-
-function subscribeVisibility(onChange: () => void) {
-  document.addEventListener("visibilitychange", onChange);
-  return () => document.removeEventListener("visibilitychange", onChange);
-}
 
 export default function GallerySection({
   images,
@@ -59,45 +43,18 @@ export default function GallerySection({
 }) {
   const sectionRef = useRef<HTMLElement>(null);
   const showAllRef = useRef<HTMLButtonElement>(null);
-  const [isInView, setIsInView] = useState(false);
-  const [entrance, setEntrance] = useState<Entrance>("idle");
+  const { isInView, entrance } = useSectionEntrance(sectionRef);
   const [pausedByUser, setPausedByUser] = useState<boolean | null>(null);
   const [ratios, setRatios] = useState<Record<number, number>>({});
   const [isGridOpen, setIsGridOpen] = useState(false);
   const [lightbox, setLightbox] = useState<LightboxState | null>(null);
 
-  const reducedMotion = useSyncExternalStore(
-    subscribeReducedMotion,
-    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-    () => false,
-  );
-  const isTabVisible = useSyncExternalStore(
-    subscribeVisibility,
-    () => document.visibilityState === "visible",
-    () => true,
-  );
+  const reducedMotion = useReducedMotion();
+  const isTabVisible = useTabVisible();
 
   const isPaused = pausedByUser ?? reducedMotion;
   const isRunning = isInView && isTabVisible && lightbox === null && !isGridOpen;
   const isMoving = isRunning && !isPaused;
-
-  useEffect(() => {
-    const section = sectionRef.current;
-    if (!section) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsInView(entry.isIntersecting);
-        if (entry.isIntersecting && entry.intersectionRatio >= 0.2) {
-          setEntrance("shown");
-        } else if (!entry.isIntersecting) {
-          setEntrance((current) => (current === "idle" ? "waiting" : current));
-        }
-      },
-      { threshold: [0, 0.2] },
-    );
-    observer.observe(section);
-    return () => observer.disconnect();
-  }, []);
 
   const recordRatio = (id: number, ratio: number) =>
     setRatios((current) => (current[id] ? current : { ...current, [id]: ratio }));
@@ -123,8 +80,6 @@ export default function GallerySection({
     showAllRef.current?.focus({ preventScroll: true });
   };
 
-  const title = Array.from(labels.title);
-
   return (
     <section
       ref={sectionRef}
@@ -137,22 +92,7 @@ export default function GallerySection({
       <GalleryBackdrop />
 
       <div className="relative mx-auto max-w-6xl px-6">
-        <h2
-          id="gallery-title"
-          aria-label={labels.title}
-          className="font-display text-4xl font-extrabold text-[#993556]"
-        >
-          {title.map((letter, position) => (
-            <span
-              key={position}
-              aria-hidden
-              className="gallery-title-letter"
-              style={{ "--letter-delay": `${position * LETTER_DELAY_MS}ms` } as CSSProperties}
-            >
-              {letter}
-            </span>
-          ))}
-        </h2>
+        <SectionTitle id="gallery-title" text={labels.title} />
       </div>
 
       {images.length > 0 ? (

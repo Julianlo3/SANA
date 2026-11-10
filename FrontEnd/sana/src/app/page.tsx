@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -13,7 +14,8 @@ import PendingContentNotice from "@/components/feedback/pending-content-notice";
 import { HOME_CONTENT } from "@/content/home";
 import GallerySection from "@/features/content/components/gallery-section";
 import HeroCarousel from "@/features/content/components/hero-carousel";
-import NewsCard from "@/features/content/components/news-card";
+import HomeNews from "@/features/content/components/home-news";
+import NewsSectionSkeleton from "@/features/content/components/news-section-skeleton";
 import ServicesShowcase from "@/features/content/components/services-showcase";
 import TeamSection from "@/features/content/components/team-section";
 import TeamWatermark from "@/features/content/components/team-watermark";
@@ -21,7 +23,6 @@ import {
   getPublicBanners,
   getPublicContent,
   getPublicGallery,
-  getPublicNews,
 } from "@/features/content/services/public-content-service";
 
 const { hero, about, programs, services, team, news, gallery, donation } =
@@ -34,9 +35,8 @@ const COLORS = {
 };
 
 export default async function HomePage() {
-  const [content, latestNews, galleryImages, banners] = await Promise.all([
+  const [content, galleryImages, banners] = await Promise.all([
     getPublicContent(),
-    getPublicNews(1, 3),
     getPublicGallery(),
     getPublicBanners(),
   ]);
@@ -251,36 +251,10 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* NOTICIAS — blanco */}
-        <section id="news" className="mx-auto max-w-6xl px-6 py-20">
-          <h2
-            className="font-display text-4xl font-extrabold"
-            style={{ color: COLORS.pink }}
-          >
-            {news.title}
-          </h2>
-
-          {latestNews.items.length > 0 ? (
-            <>
-              <div className="mt-10 grid gap-6 md:grid-cols-3">
-                {latestNews.items.map((item) => (
-                  <NewsCard key={item.id} news={item} />
-                ))}
-              </div>
-              {latestNews.total > latestNews.items.length && (
-                <Link
-                  href="/noticias"
-                  className="mt-8 inline-block font-semibold transition"
-                  style={{ color: COLORS.pink }}
-                >
-                  {news.seeAll}
-                </Link>
-              )}
-            </>
-          ) : (
-            <PendingContentNotice className="mt-8" />
-          )}
-        </section>
+        {/* NOTICIAS — crema */}
+        <Suspense fallback={<NewsSectionSkeleton title={news.title} />}>
+          <HomeNews />
+        </Suspense>
 
         {/* GALERÍA — rosa suave */}
         <GallerySection

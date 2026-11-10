@@ -1,3 +1,5 @@
+import type { NewsTeaser, PublicNews } from "./types/content-types";
+
 const DATE_FORMATTER = new Intl.DateTimeFormat("es-CO", {
   dateStyle: "long",
   timeZone: "America/Bogota",
@@ -24,5 +26,25 @@ export function toExcerpt(markdown: string, maxLength = 160): string {
     .replace(/[*_]/g, "")
     .replace(/\s+/g, " ")
     .trim();
-  return text.length > maxLength ? `${text.slice(0, maxLength).trimEnd()}…` : text;
+  if (text.length <= maxLength) return text;
+  const cut = text.slice(0, maxLength + 1);
+  const lastSpace = cut.lastIndexOf(" ");
+  const words = lastSpace > maxLength * 0.6 ? cut.slice(0, lastSpace) : cut.slice(0, maxLength);
+  return `${words.replace(/[\s.,;:]+$/, "")}…`;
+}
+
+export function toNewsTeaser(news: PublicNews, excerptLength = 140): NewsTeaser {
+  return {
+    id: news.id,
+    title: news.title,
+    excerpt: toExcerpt(news.body, excerptLength),
+    imageUrl: news.imageUrl,
+    imageAlt: news.imageAlt,
+    isPinned: news.isPinned,
+    publishedAt: news.publishedAt,
+  };
+}
+
+export function padNumber(value: number): string {
+  return String(value).padStart(2, "0");
 }
