@@ -3,12 +3,12 @@ import type {
   PatientType,
 } from "@/features/appointments/types/appointment-types";
 
-/** Estados que el backend permite pedir en GET /appointments/my-appointments. */
+/** Appointment states accepted by the psychologist appointment endpoint. */
 export type MyAppointmentState = "confirmada" | "realizada" | "cancelada";
 
 /**
- * Una cita del psicólogo, tal como la devuelve GET /appointments/my-appointments.
- * El motivo de consulta solo lo ve el psicólogo tratante.
+ * Appointment data returned to the treating psychologist.
+ * Only the treating psychologist receives the consultation reason.
  */
 export type MyAppointment = {
   appId: number;
@@ -20,6 +20,10 @@ export type MyAppointment = {
   patientName: string;
   appReason?: string | null;
 };
+
+/**
+ * Defines the appointment clinical note type.
+ */
 
 export type AppointmentClinicalNote = {
   cnId: number;

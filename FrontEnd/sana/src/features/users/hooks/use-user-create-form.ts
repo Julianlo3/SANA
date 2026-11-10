@@ -11,6 +11,9 @@ import {
   type UserFormValues,
 } from "../validation/user-validation";
 
+/**
+ * Defines the empty form.
+ */
 const EMPTY_FORM: UserFormValues = {
   fullName: "",
   identityDocument: "",
@@ -23,7 +26,7 @@ const EMPTY_FORM: UserFormValues = {
   speciality: "",
 };
 
-/** Lógica del formulario de creación. La pantalla solo pinta lo que devuelve. */
+/** Manages user creation form state and submission. */
 export function useUserCreateForm() {
   const router = useRouter();
   const form = useForm<UserFormValues>({
@@ -73,8 +76,7 @@ export function useUserCreateForm() {
           : undefined,
       });
 
-      // Si el backend re-habilitó un usuario bloqueado, redirigimos con
-      // el param reactivated=1 para que la página de listado muestre un banner.
+      // Pass the reactivation state so the list page can show its banner.
       if (result.wasReactivated) {
         router.push("/usuarios?reactivated=1");
         return;

@@ -22,6 +22,9 @@ import {
 import { getInitials } from "@/lib/format/text";
 import { formatRoleLabels, findRoleByName } from "@/config/roles";
 
+/**
+ * Defines the nav link type.
+ */
 type NavLink = {
   label: string;
   href: string;
@@ -67,12 +70,13 @@ type Props = {
  * Sidebar component for staff members.
  * @param param0 The sidebar props.
  * @returns The sidebar.
+ * @param props Component properties.
  */
 export default function Sidebar({ roles, fullName }: Props) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  /** El grupo de rol abierto en el acordeón. Si solo hay uno, empieza abierto. */
+  /** Role group expanded in the accordion; a single group starts expanded. */
   const rolesWithLinks = roles.filter((role) => LINKS_BY_ROLE[role]);
   const [openGroup, setOpenGroup] = useState<string | null>(
     rolesWithLinks.length === 1 ? rolesWithLinks[0] : null,
@@ -153,12 +157,12 @@ export default function Sidebar({ roles, fullName }: Props) {
           </div>
 
           {rolesWithLinks.length === 1 ? (
-            // Un solo rol con acceso: sin acordeón, opciones directas.
+            // A single accessible role renders its links without an accordion.
             <div className="flex flex-col gap-1">
               {LINKS_BY_ROLE[rolesWithLinks[0]].map(renderLink)}
             </div>
           ) : (
-            // Varios roles: cada uno es un grupo plegable, uno abierto a la vez.
+            // Multiple roles render as collapsible groups with one open at a time.
             rolesWithLinks.map((role) => {
               const roleDefinition = findRoleByName(role);
               const isOpen = openGroup === role;

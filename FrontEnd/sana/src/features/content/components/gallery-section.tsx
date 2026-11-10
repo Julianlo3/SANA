@@ -16,6 +16,10 @@ import {
 import type { PublicGalleryImage } from "@/features/content/types/content-types";
 import "../styles/gallery.css";
 
+/**
+ * Defines the gallery labels type.
+ */
+
 export type GalleryLabels = {
   title: string;
   wall: string;
@@ -26,12 +30,20 @@ export type GalleryLabels = {
   resume: string;
 };
 
+/**
+ * Defines the lightbox state type.
+ */
 type LightboxState = {
   index: number;
   originRect: DOMRect | null;
   returnFocus: HTMLElement;
 };
 
+/**
+ * Renders the gallery section component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function GallerySection({
   images,
   labels,

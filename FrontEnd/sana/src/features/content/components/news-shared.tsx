@@ -2,10 +2,20 @@ import Link from "next/link";
 import { ArrowRight, Pin } from "lucide-react";
 import type { NewsTeaser } from "@/features/content/types/content-types";
 
+/**
+ * Returns the index of the first pinned news item.
+ * @param news News items to inspect.
+ * @returns The first pinned item's index, or zero when none is pinned.
+ */
 export function defaultActiveIndex(news: Pick<NewsTeaser, "isPinned">[]) {
   return Math.max(0, news.findIndex((item) => item.isPinned));
 }
 
+/**
+ * Renders the featured chip component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export function FeaturedChip({ label, className = "" }: Readonly<{ label: string; className?: string }>) {
   return (
     <span
@@ -17,6 +27,11 @@ export function FeaturedChip({ label, className = "" }: Readonly<{ label: string
   );
 }
 
+/**
+ * Renders the see all link component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export function SeeAllLink({ label, className = "" }: Readonly<{ label: string; className?: string }>) {
   return (
     <Link

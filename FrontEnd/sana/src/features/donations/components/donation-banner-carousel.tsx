@@ -5,10 +5,16 @@ import Image from 'next/image';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { PublicBanner } from '@/features/content/types/content-types';
 
+/**
+ * Defines the donation banner carousel props interface.
+ */
 interface DonationBannerCarouselProps {
   readonly banners: readonly PublicBanner[];
 }
 
+/**
+ * Defines the default banner.
+ */
 const DEFAULT_BANNER = {
   id: 0,
   imageUrl: '/images/ninos-arbol.jpg',
@@ -16,6 +22,9 @@ const DEFAULT_BANNER = {
   order: 0,
 };
 
+/**
+ * Defines the rotation interval.
+ */
 const ROTATION_INTERVAL = 5000;
 
 /**
@@ -23,6 +32,7 @@ const ROTATION_INTERVAL = 5000;
  * rotating automatically and synchronized with the content management role.
  * @param banners Array of PublicBanner
  * @returns JSX.Element
+ * @param props Component properties.
  */
 export default function DonationBannerCarousel({
   banners,

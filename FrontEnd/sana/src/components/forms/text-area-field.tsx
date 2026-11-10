@@ -2,6 +2,9 @@
 
 import { useId } from "react";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   label: string;
   value: string;
@@ -16,6 +19,11 @@ type Props = {
   disabled?: boolean;
 };
 
+/**
+ * Renders the text area field component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function TextAreaField({
   label,
   value,

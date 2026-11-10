@@ -26,14 +26,24 @@ export type ColombiaCity = {
   departmentId: number;
 };
 
+/**
+ * Defines the base url.
+ */
 const BASE_URL = "https://api-colombia.com/api/v1";
 
+/**
+ * Defines the departments promise.
+ */
 let departmentsPromise: Promise<ColombiaDepartment[]> | null = null;
+/**
+ * Defines the cities promise cache.
+ */
 const citiesPromiseCache = new Map<number, Promise<ColombiaCity[]>>();
 
 /**
  * Gets the list of all departments in Colombia, ordered alphabetically.
  * It uses caching to avoid unnecessary repeated requests.
+ * @returns A promise resolving to the operation result.
  */
 export async function getColombiaDepartments(): Promise<ColombiaDepartment[]> {
   departmentsPromise ??= fetch(`${BASE_URL}/Department`)
@@ -57,6 +67,8 @@ export async function getColombiaDepartments(): Promise<ColombiaDepartment[]> {
 /**
  * Gets the list of municipalities corresponding to a department by its ID.
  * It is cached by departmentId to optimize repeated selections.
+ * @param departmentId Resource identifier.
+ * @returns A promise resolving to the operation result.
  */
 export async function getColombiaCities(
   departmentId: number,
@@ -85,6 +97,8 @@ export async function getColombiaCities(
 
 /**
  * Gets the list of municipalities by searching the department by its name.
+ * @param departmentName Name value.
+ * @returns A promise resolving to the operation result.
  */
 export async function getColombiaCitiesByDepartmentName(
   departmentName: string,

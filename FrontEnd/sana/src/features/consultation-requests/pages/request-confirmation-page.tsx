@@ -8,12 +8,14 @@ import PublicHeader from "@/components/navigation/public-header";
 import PublicFooter from "@/components/navigation/public-footer";
 import { REQUEST_CONTENT } from "@/content/consultation-request";
 
+/**
+ * Defines the success.
+ */
 const { success } = REQUEST_CONTENT;
 
 /**
- * Pantalla de éxito tras enviar la solicitud (HU-2.2.2).
- * Toda solicitud queda "pending": la notificación al consultante se envía
- * solo cuando la asistente confirma la cita (HU-2.3), no en este paso.
+ * Renders the success screen after a request is submitted.
+ * Requests remain pending until an assistant confirms the appointment.
  */
 export default function RequestConfirmationPage() {
   const searchParams = useSearchParams();

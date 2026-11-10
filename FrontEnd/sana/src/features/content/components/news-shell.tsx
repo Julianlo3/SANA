@@ -3,8 +3,16 @@ import NewsBackdrop from "@/features/content/components/news-backdrop";
 import SectionTitle from "@/features/content/components/section-title";
 import "../styles/news.css";
 
+/**
+ * Defines the news title id.
+ */
 const NEWS_TITLE_ID = "news-title";
 
+/**
+ * Renders the news shell component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function NewsShell({
   children,
   entrance,

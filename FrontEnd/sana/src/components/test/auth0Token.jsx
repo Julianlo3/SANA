@@ -1,6 +1,10 @@
 import { auth0 } from '@/lib/auth0';
 import MaskedToken from '@/components/test/masked-token';
 
+/**
+ * Renders the auth0 token component.
+ * @returns Rendered component.
+ */
 export default async function Auth0Token() {
   const session = await auth0.getSession();
   const tokenData = session ? await auth0.getAccessToken().catch(() => null) : null;

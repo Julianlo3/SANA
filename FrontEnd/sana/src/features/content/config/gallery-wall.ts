@@ -1,8 +1,27 @@
+/**
+ * Defines min items per set.
+ */
 export const MIN_ITEMS_PER_SET = 12;
+/**
+ * Defines the split threshold.
+ */
 const SPLIT_THRESHOLD = 6;
+/**
+ * Defines the min ratio.
+ */
 const MIN_RATIO = 0.72;
+/**
+ * Defines the max ratio.
+ */
 const MAX_RATIO = 1.45;
+/**
+ * Defines the default ratio.
+ */
 const DEFAULT_RATIO = 1;
+
+/**
+ * Defines the wall item type.
+ */
 
 export type WallItem = {
   key: string;
@@ -11,17 +30,32 @@ export type WallItem = {
   isPrimary: boolean;
 };
 
+/**
+ * Defines the wall row type.
+ */
+
 export type WallRow = {
   items: WallItem[];
   direction: 1 | -1;
   speed: number;
 };
 
+/**
+ * Implements the rotation for operation.
+ * @param seed seed input.
+ */
 function rotationFor(seed: number) {
   const value = Math.sin(seed * 12.9898) * 43758.5453;
   return Math.round(((value - Math.floor(value)) * 8 - 4) * 10) / 10;
 }
 
+/**
+ * Builds row.
+ * @param indexes indexes input.
+ * @param rowNumber row number input.
+ * @param isMirror is mirror input.
+ * @returns Result of the operation.
+ */
 function buildRow(
   indexes: number[],
   rowNumber: number,
@@ -42,6 +76,8 @@ function buildRow(
  * Splits the photos between two rows. With few photos both rows show the whole
  * set (the second one offset and hidden from assistive tech) so the strip never
  * looks empty; each row is then repeated until it is wide enough to loop.
+ * @param count count input.
+ * @returns Result of the operation.
  */
 export function buildWallRows(count: number): WallRow[] {
   const all = Array.from({ length: count }, (_, index) => index);
@@ -66,6 +102,11 @@ export function buildWallRows(count: number): WallRow[] {
     },
   ];
 }
+
+/**
+ * Implements the wall ratio operation.
+ * @param ratio ratio input.
+ */
 
 export function wallRatio(ratio: number | undefined) {
   return Math.min(MAX_RATIO, Math.max(MIN_RATIO, ratio ?? DEFAULT_RATIO));

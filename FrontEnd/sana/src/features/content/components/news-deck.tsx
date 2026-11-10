@@ -18,26 +18,60 @@ import { formatDate, padNumber } from "@/features/content/format";
 import { useReducedMotion } from "@/features/content/hooks/use-section-motion";
 import type { NewsTeaser } from "@/features/content/types/content-types";
 
+/**
+ * Defines the fly ms.
+ */
 const FLY_MS = 320;
+/**
+ * Defines the spring ms.
+ */
 const SPRING_MS = 520;
+/**
+ * Defines the swipe ratio.
+ */
 const SWIPE_RATIO = 0.3;
+/**
+ * Defines the swipe velocity.
+ */
 const SWIPE_VELOCITY = 0.5;
+/**
+ * Defines the tap slop px.
+ */
 const TAP_SLOP_PX = 8;
+/**
+ * Defines the max drag rotation.
+ */
 const MAX_DRAG_ROTATION = 8;
+/**
+ * Defines the ease out.
+ */
 const EASE_OUT = "cubic-bezier(0.22, 1, 0.36, 1)";
+/**
+ * Defines the spring.
+ */
 const SPRING = "cubic-bezier(0.34, 1.56, 0.64, 1)";
 
+/**
+ * Defines the peek.
+ */
 const PEEK = [
   { x: 0, y: 0, rotate: 0 },
   { x: 12, y: 10, rotate: -3 },
   { x: -8, y: 18, rotate: 2 },
 ];
 
+/**
+ * Defines the tints.
+ */
 const TINTS = [
   "var(--color-accent-soft)",
   "var(--color-primary-soft)",
   "var(--color-highlight)",
 ];
+
+/**
+ * Defines the news deck labels type.
+ */
 
 export type NewsDeckLabels = {
   seeAll: string;
@@ -49,6 +83,9 @@ export type NewsDeckLabels = {
   position: string;
 };
 
+/**
+ * Defines the drag type.
+ */
 type Drag = {
   pointerId: number;
   startX: number;
@@ -60,11 +97,15 @@ type Drag = {
   axis: "x" | "y" | null;
 };
 
+/**
+ * Defines the pending effect type.
+ */
 type PendingEffect = { card: number; kind: "returned" | "entered" };
 
 /**
  * Mobile and tablet layout: a deck of paper notes that can be swiped, with a
  * numbered index beside it on tablets.
+ * @param props Component properties.
  */
 export default function NewsDeck({
   news,

@@ -1,11 +1,10 @@
 /**
- * Contenido de la página de inicio.
+ * Home page content.
  *
- * Todo el texto y las rutas de imagen viven aquí para que se puedan cambiar
- * sin tocar los componentes. Las rutas apuntan a /public.
+ * Text and image paths are centralized here for updates without component
+ * changes. Image paths are relative to `/public`.
  *
- * Nota: las imágenes actuales son de archivo y están pendientes de reemplazo
- * por fotografías propias de la fundación.
+ * Current stock images are placeholders for foundation-owned photography.
  */
 
 export const HOME_CONTENT = {

@@ -3,11 +3,18 @@ import Auth0Token from '@/components/test/auth0Token';
 import Auth0BackendTest from '@/components/test/auth0BackendTest';
 import { requireAdministrator } from '@/lib/auth-guard';
 
+/**
+ * Defines page metadata.
+ */
 export const metadata = {
   title: 'Pruebas del sistema',
   robots: { index: false, follow: false },
 };
 
+/**
+ * Renders the test page.
+ * @returns Rendered component.
+ */
 export default async function TestPage() {
   await requireAdministrator();
 

@@ -1,6 +1,14 @@
 import type { ContentCardSection, TeamGroup } from "../types/content-types";
 
+/**
+ * Defines the card field type.
+ */
+
 export type CardField = "title" | "subtitle" | "description";
+
+/**
+ * Defines the card field config type.
+ */
 
 export type CardFieldConfig = {
   label: string;
@@ -8,6 +16,10 @@ export type CardFieldConfig = {
   hint?: string;
   placeholder?: string;
 };
+
+/**
+ * Defines the card section config type.
+ */
 
 export type CardSectionConfig = {
   section: ContentCardSection;
@@ -19,8 +31,15 @@ export type CardSectionConfig = {
   teamProfile: boolean;
 };
 
+/**
+ * Defines the social field type.
+ */
+
 export type SocialField = "facebookUrl" | "instagramUrl" | "linkedinUrl";
 
+/**
+ * Defines team group options.
+ */
 export const TEAM_GROUP_OPTIONS: { value: TeamGroup; label: string; hint: string }[] = [
   {
     value: "staff",
@@ -34,11 +53,17 @@ export const TEAM_GROUP_OPTIONS: { value: TeamGroup; label: string; hint: string
   },
 ];
 
+/**
+ * Defines team group labels.
+ */
 export const TEAM_GROUP_LABELS: Record<TeamGroup, string> = {
   staff: "Equipo de trabajo",
   professional: "Equipo profesional",
 };
 
+/**
+ * Defines social fields.
+ */
 export const SOCIAL_FIELDS: {
   field: SocialField;
   label: string;
@@ -69,8 +94,14 @@ export const SOCIAL_FIELDS: {
   },
 ];
 
+/**
+ * Defines social url max length.
+ */
 export const SOCIAL_URL_MAX_LENGTH = 300;
 
+/**
+ * Defines card sections.
+ */
 export const CARD_SECTIONS: CardSectionConfig[] = [
   {
     section: "values",
@@ -132,16 +163,46 @@ export const CARD_SECTIONS: CardSectionConfig[] = [
   },
 ];
 
+/**
+ * Defines image allowed types.
+ */
 export const IMAGE_ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+/**
+ * Defines image max bytes.
+ */
 export const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+/**
+ * Defines image rules message.
+ */
 export const IMAGE_RULES_MESSAGE =
   "La imagen debe ser JPG, PNG o WebP de máximo 5 MB.";
 
+/**
+ * Defines news title max length.
+ */
 export const NEWS_TITLE_MAX_LENGTH = 150;
+/**
+ * Defines news body max length.
+ */
 export const NEWS_BODY_MAX_LENGTH = 10000;
+/**
+ * Defines image alt max length.
+ */
 export const IMAGE_ALT_MAX_LENGTH = 150;
+/**
+ * Defines gallery caption max length.
+ */
 export const GALLERY_CAPTION_MAX_LENGTH = 200;
 
+/**
+ * Defines text max length.
+ */
 export const TEXT_MAX_LENGTH = 2000;
+/**
+ * Defines card description max length.
+ */
 export const CARD_DESCRIPTION_MAX_LENGTH = 1000;
+/**
+ * Defines card title max length.
+ */
 export const CARD_TITLE_MAX_LENGTH = 150;

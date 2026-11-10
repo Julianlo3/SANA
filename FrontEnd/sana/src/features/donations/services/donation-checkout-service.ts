@@ -2,17 +2,27 @@ import { httpClient } from "@/services/api/http-client";
 import { calculateWompiFee, MAX_DONATION_COP, MIN_DONATION_COP } from "./wompi-service";
 import type { DonationFormData } from "../types/donation-types";
 
+/**
+ * Defines the wompi public key.
+ */
 const WOMPI_PUBLIC_KEY = (
   process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY ||
   "pub_test_GSU1NtKHNeU3uByOGGJcTiN0AQHmWfxn"
 ).trim();
 
+/**
+ * Defines the backend checkout type.
+ */
 type BackendCheckout = {
   reference: string;
   amountInCents: number;
   currency: "COP";
   signature: string;
 };
+
+/**
+ * Defines the donation checkout type.
+ */
 
 export type DonationCheckout = BackendCheckout & {
   amountCOP: number;

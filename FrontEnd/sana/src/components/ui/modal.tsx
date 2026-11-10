@@ -3,6 +3,9 @@
 import { useEffect } from "react";
 import { X } from "lucide-react";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   title: string;
   subtitle?: string;
@@ -12,6 +15,11 @@ type Props = {
   footer?: React.ReactNode;
 };
 
+/**
+ * Renders the modal component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function Modal({
   title,
   subtitle,

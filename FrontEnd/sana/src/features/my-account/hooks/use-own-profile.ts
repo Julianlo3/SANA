@@ -16,6 +16,10 @@ import type {
   UpdateOwnProfilePayload,
 } from "../types/my-account-types";
 
+/**
+ * Defines the profile form values type.
+ */
+
 export type ProfileFormValues = {
   fullName: string;
   phone: string;
@@ -25,8 +29,15 @@ export type ProfileFormValues = {
   municipality: string;
 };
 
+/**
+ * Defines the profile form errors type.
+ */
+
 export type ProfileFormErrors = Partial<Record<keyof ProfileFormValues, string>>;
 
+/**
+ * Defines the empty values.
+ */
 const EMPTY_VALUES: ProfileFormValues = {
   fullName: "",
   phone: "",
@@ -36,6 +47,9 @@ const EMPTY_VALUES: ProfileFormValues = {
   municipality: "",
 };
 
+/**
+ * Defines the genders.
+ */
 const GENDERS: readonly string[] = ["F", "M", "O", "P"];
 
 /**

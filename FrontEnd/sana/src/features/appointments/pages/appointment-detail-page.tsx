@@ -19,12 +19,23 @@ import {
   toColombiaDay,
 } from "../lib/appointment-format";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   appointmentId: number;
 };
 
+/**
+ * Defines the card class.
+ */
 const CARD_CLASS = "rounded-2xl border border-border bg-surface p-6";
 
+/**
+ * Renders the field component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 function Field({
   label,
   children,
@@ -43,8 +54,9 @@ function Field({
 }
 
 /**
- * HU-2.3.2 a 2.3.6: detalle de una solicitud y acciones de la asistente.
- * Nunca muestra el motivo de consulta: el backend no lo envía.
+ * Renders appointment request details and assistant actions.
+ * The consultation reason is omitted because the backend does not return it.
+ * @param props Component properties.
  */
 export default function AppointmentDetailPage({ appointmentId }: Props) {
   const detail = useAppointmentDetail(appointmentId);
@@ -89,7 +101,7 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
   const canDiscard = isPending || isAssigned;
   const ModeIcon = appointment.appType === "virtual" ? Video : MapPin;
 
-  // Se busca desde el día que prefirió la persona, salvo que ya haya pasado.
+  // Start the search on the preferred date, or today if that date has passed.
   const today = colombiaToday();
   const preferredDay = appointment.appDateIdeal
     ? toColombiaDay(appointment.appDateIdeal)

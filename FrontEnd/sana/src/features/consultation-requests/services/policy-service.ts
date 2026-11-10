@@ -1,6 +1,6 @@
 import { httpClient } from "@/services/api/http-client";
 
-/** Tipos de documento que existen en policy_documents. */
+/** Policy document types supported by the backend. */
 export type PolicyType =
   | "data_treatment"
   | "dependent_consent"
@@ -20,10 +20,12 @@ export type PolicyDocument = {
 };
 
 /**
- * Trae el texto vigente de una política (GET /policy/:type), público y sin
- * autenticación. Se usa en las casillas de autorización y en los términos
- * de agenda del psicólogo.
+ * Retrieves policy document.
+ * @param type type input.
+ * @param signal Optional. Request cancellation signal.
+ * @returns A promise resolving to the operation result.
  */
+
 export async function getPolicyDocument(
   type: PolicyType,
   signal?: AbortSignal,

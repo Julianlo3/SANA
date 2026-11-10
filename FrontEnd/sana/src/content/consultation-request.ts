@@ -1,6 +1,6 @@
 /**
- * Textos del flujo público de solicitud de cita (HU-2.2).
- * Separados de los componentes para que se puedan ajustar sin tocar código.
+ * Copy for the public appointment request flow.
+ * Kept separate from components for content updates without UI changes.
  */
 
 export const REQUEST_CONTENT = {

@@ -11,6 +11,9 @@ import DonationForm from '@/features/donations/components/donation-form';
 import DonationBannerCarousel from '@/features/donations/components/donation-banner-carousel';
 import { getPublicBanners } from '@/features/content/services/public-content-service';
 
+/**
+ * Defines page metadata.
+ */
 export const metadata: Metadata = {
   title: 'Donaciones · Fundación Dejando Huellas Felices',
   description:

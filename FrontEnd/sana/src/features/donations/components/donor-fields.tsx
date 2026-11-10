@@ -2,6 +2,9 @@
 
 import { User, Mail } from 'lucide-react';
 
+/**
+ * Defines the donor fields props interface.
+ */
 interface DonorFieldsProps {
   readonly fullName: string;
   readonly email: string;
@@ -16,6 +19,7 @@ interface DonorFieldsProps {
  * @param onFullNameChange Function to update the donor's full name
  * @param onEmailChange Function to update the donor's email
  * @returns JSX.Element
+ * @param props Component properties.
  */
 export default function DonorFields({
   fullName,

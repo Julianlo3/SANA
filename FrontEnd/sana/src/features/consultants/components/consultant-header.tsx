@@ -1,11 +1,17 @@
 import { User } from "lucide-react";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   fullName: string;
   identityDocument: string;
 };
 
-/** Encabezado compartido por las dos fichas de consultante: avatar, nombre y documento. */
+/**
+ * Shared consultant header with avatar, name, and identity document.
+ * @param props Component properties.
+ */
 export default function ConsultantHeader({ fullName, identityDocument }: Props) {
   return (
     <div className="flex items-center gap-4">

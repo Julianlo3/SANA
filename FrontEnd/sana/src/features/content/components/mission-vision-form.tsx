@@ -7,6 +7,10 @@ import { TEXT_MAX_LENGTH } from "../config/content-sections";
 import { useMissionVisionForm } from "../hooks/use-mission-vision-form";
 import LastEditNote from "./last-edit-note";
 
+/**
+ * Renders the mission vision form component.
+ * @returns Rendered component.
+ */
 export default function MissionVisionForm() {
   const {
     values,

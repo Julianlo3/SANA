@@ -1,12 +1,8 @@
 /**
- * Categorías de población vulnerable (HU-2.2, pedido del cliente 30/09).
+ * Vulnerable population categories available in the consultation request form.
  *
- * PENDIENTE DE CONFIRMAR CON EL CLIENTE: esta lista se armó con categorías
- * oficiales reconocidas en Colombia (RUV, discapacidad, etnias, adulto
- * mayor, migración), pero el cliente no dio su propia lista en la reunión.
- * Antes de producción, la fundación debe confirmar o ajustar estas
- * opciones — es información sensible y puede que la necesiten alinear con
- * algún reporte que ya hagan a una entidad.
+ * This provisional list is based on categories recognized in Colombia and
+ * requires confirmation by the foundation before production use.
  */
 
 export const VULNERABLE_POPULATION_OPTIONS = [
@@ -21,6 +17,10 @@ export const VULNERABLE_POPULATION_OPTIONS = [
   { value: "elderly", label: "Adulto mayor" },
   { value: "none", label: "Ninguna de las anteriores" },
 ] as const;
+
+/**
+ * Defines the vulnerable population category type.
+ */
 
 export type VulnerablePopulationCategory =
   (typeof VULNERABLE_POPULATION_OPTIONS)[number]["value"];

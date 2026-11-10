@@ -1,3 +1,8 @@
+/**
+ * Renders the icon button component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function IconButton({
   label,
   onClick,

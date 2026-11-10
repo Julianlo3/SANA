@@ -16,21 +16,45 @@ import {
 } from "@/features/content/services/public-content-service";
 import "@/features/content/styles/news.css";
 
+/**
+ * Defines the props type.
+ */
 type Props = { params: Promise<{ id: string }> };
 
+/**
+ * Defines the other news limit.
+ */
 const OTHER_NEWS_LIMIT = 3;
+/**
+ * Provides localized labels for news pages.
+ */
 const { news: labels } = HOME_CONTENT;
 
+/**
+ * Finds a public news item by its route identifier.
+ * @param rawId Resource identifier.
+ * @returns The matching news item, or null when the identifier is invalid or unknown.
+ */
 async function findNews(rawId: string) {
   const id = Number(rawId);
   return Number.isInteger(id) && id > 0 ? getPublicNewsItem(id) : null;
 }
 
+/**
+ * Builds metadata for the requested news item.
+ * @param params Dynamic route parameters.
+ * @returns Page metadata.
+ */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const news = await findNews((await params).id);
   return { title: `${news?.title ?? "Noticia"} | Fundación Dejando Huellas Felices` };
 }
 
+/**
+ * Renders the news detail page.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default async function NewsDetailPage({ params }: Props) {
   const news = await findNews((await params).id);
   if (!news) notFound();

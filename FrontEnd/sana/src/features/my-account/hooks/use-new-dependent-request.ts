@@ -27,9 +27,18 @@ import {
 import { ApiError } from "@/types/api-types";
 import type { OwnProfile } from "../types/my-account-types";
 
+/**
+ * Defines the card types.
+ */
 const CARD_TYPES = new Set(["CC", "TI", "CE"]);
+/**
+ * Defines the genders.
+ */
 const GENDERS = new Set(["F", "M", "O", "P"]);
 
+/**
+ * Defines the relationships.
+ */
 const RELATIONSHIPS: readonly {
   value: GuardianRelationshipId;
   label: string;
@@ -40,6 +49,9 @@ const RELATIONSHIPS: readonly {
   { value: 4, label: "Abuelo/a" },
 ];
 
+/**
+ * Defines the dependent request values type.
+ */
 type DependentRequestValues = {
   name: string;
   identityDocument: string;

@@ -2,6 +2,10 @@ import type { LucideIcon } from "lucide-react";
 import { Brain, Heart, HeartHandshake, MessageCircleHeart } from "lucide-react";
 import type { TeamGroup } from "@/features/content/types/content-types";
 
+/**
+ * Defines the card band type.
+ */
+
 export type CardBand = {
   background: string;
   glowColor: string;

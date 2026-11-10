@@ -23,6 +23,9 @@ import {
 import type { CalendarEvent } from "../types/calendar-types";
 import type { DaySummary } from "../types/psychologist-calendar-types";
 
+/**
+ * Defines the localizer.
+ */
 const localizer = dateFnsLocalizer({
   format,
   parse,
@@ -31,6 +34,11 @@ const localizer = dateFnsLocalizer({
   locales: { es },
 });
 
+/**
+ * Creates calendar styling based on the event type.
+ * @param event event input.
+ * @returns Event style properties.
+ */
 function eventStyle(event: CalendarEvent) {
   const isAppointment = event.resource.kind === "appointment";
   return {
@@ -46,8 +54,8 @@ function eventStyle(event: CalendarEvent) {
 }
 
 /**
- * Calendario de un psicólogo para la asistente. Solo vista mensual: cada día
- * muestra si tiene espacio o citas, y al tocarlo se abre el detalle del día.
+ * Renders an assistant-facing monthly calendar for a selected psychologist.
+ * Each day shows availability or appointment counts and opens its daily details.
  */
 export default function PsychologistCalendarPage() {
   const [psychologists, setPsychologists] = useState<PsychologistOption[]>([]);

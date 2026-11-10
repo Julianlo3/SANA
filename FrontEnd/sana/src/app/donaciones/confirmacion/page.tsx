@@ -5,10 +5,16 @@ import PublicHeader from '@/components/navigation/public-header';
 import PublicFooter from '@/components/navigation/public-footer';
 import DonationResultModal from '@/features/donations/components/donation-result-modal';
 
+/**
+ * Defines page metadata.
+ */
 export const metadata: Metadata = {
   title: 'Confirmación de Donación · Fundación Dejando Huellas Felices',
 };
 
+/**
+ * Defines the confirmacion page props interface.
+ */
 interface ConfirmacionPageProps {
   readonly searchParams: Promise<{ readonly id?: string }>;
 }
@@ -17,6 +23,7 @@ interface ConfirmacionPageProps {
  * Component page Confirmation Donation
  * @param searchParams Promise of object with transaction id
  * @returns JSX.Element
+ * @param props Component properties.
  */
 export default async function ConfirmacionDonacionPage({
   searchParams,

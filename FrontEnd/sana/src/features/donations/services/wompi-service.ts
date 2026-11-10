@@ -1,13 +1,34 @@
-// Tarifas públicas del Plan Avanzado Agregador de Wompi Colombia:
-// 2.65% + $700 COP + IVA sobre la tarifa, por transacción exitosa.
+// Public Wompi Colombia Advanced Aggregator plan fees:
+// 2.65% plus COP 700 plus VAT on the fee per successful transaction.
+/**
+ * Defines the wompi fee fixed.
+ */
 const WOMPI_FEE_FIXED = 700; // $700 COP
 
+/**
+ * Defines the min donation cop.
+ */
 const MIN_DONATION_COP = 1000; // Mínimo técnico en COP para procesar pasarela
+/**
+ * Defines the max donation cop.
+ */
 const MAX_DONATION_COP = 50_000_000; // Límite operativo del formulario, no legal ni de Wompi
+/**
+ * Defines the fee rate scaled.
+ */
 const FEE_RATE_SCALED = 31_535; // 2,65% * 1,19 expresado sobre 1.000.000
+/**
+ * Defines the fee scale.
+ */
 const FEE_SCALE = 1_000_000;
+/**
+ * Defines the fixed fee with iva.
+ */
 const FIXED_FEE_WITH_IVA = 833; // $700 COP + 19% de IVA
 
+/**
+ * Defines the fee breakdown type.
+ */
 type FeeBreakdown = {
   percentageFeeAmount: number;
   fixedFeeAmount: number;
@@ -44,7 +65,7 @@ function calculateTransactionFee(amountCOP: number): FeeBreakdown {
  * @returns The total amount to charge the donor so that the foundation receives the intended donation after fees
  */
 function calculateCoveredPaymentAmount(donationAmountCOP: number): number {
-  // El cálculo se hace resolviendo la ecuación:
+  // Solve the fee equation:
   // donationAmountCOP = totalWithFee - (totalWithFee * FEE_RATE_SCALED + FIXED_FEE_WITH_IVA * FEE_SCALE) / FEE_SCALE
   // donationAmountCOP = totalWithFee * (1 - FEE_RATE_SCALED / FEE_SCALE) - FIXED_FEE_WITH_IVA
   // donationAmountCOP + FIXED_FEE_WITH_IVA = totalWithFee * (1 - FEE_RATE_SCALED / FEE_SCALE)

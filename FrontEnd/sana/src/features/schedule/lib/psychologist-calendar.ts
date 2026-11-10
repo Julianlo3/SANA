@@ -6,23 +6,35 @@ import type {
   TimeRange,
 } from "../types/psychologist-calendar-types";
 
-/** Toda cita dura una hora: un hueco más corto no cuenta como espacio. */
+/** Minimum free interval required for a one-hour appointment. */
 const APPOINTMENT_MINUTES = 60;
 
-/** "HH:mm" o "HH:mm:ss" a minutos desde la medianoche. */
+/**
+ * Converts an HH:mm or HH:mm:ss value to minutes from midnight.
+ * @param time Time value.
+ * @returns Result of the operation.
+ */
 export function toMinutes(time: string): number {
   const [hours, minutes] = time.split(":").map(Number);
   return hours * 60 + minutes;
 }
 
-/** Minutos desde la medianoche a "HH:mm". */
+/**
+ * Converts minutes from midnight to HH:mm.
+ * @param minutes minutes input.
+ * @returns Result of the operation.
+ */
 export function formatMinutes(minutes: number): string {
   const hours = String(Math.floor(minutes / 60)).padStart(2, "0");
   const rest = String(minutes % 60).padStart(2, "0");
   return `${hours}:${rest}`;
 }
 
-/** AAAA-MM-DD de un Date, en hora local. */
+/**
+ * Returns the local date as YYYY-MM-DD.
+ * @param date Date value.
+ * @returns Result of the operation.
+ */
 export function dateKey(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -30,12 +42,23 @@ export function dateKey(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+/**
+ * Converts the value to date.
+ * @param key key input.
+ * @param minutes minutes input.
+ * @returns Result of the operation.
+ */
 function toDate(key: string, minutes: number): Date {
   const [year, month, day] = key.split("-").map(Number);
   return new Date(year, month - 1, day, Math.floor(minutes / 60), minutes % 60);
 }
 
-/** Resta los intervalos ocupados de los bloques y deja solo los huecos útiles. */
+/**
+ * Subtracts occupied intervals and keeps free periods long enough for an appointment.
+ * @param blocks blocks input.
+ * @param busy busy input.
+ * @returns Result of the operation.
+ */
 function subtract(blocks: TimeRange[], busy: TimeRange[]): TimeRange[] {
   const sortedBusy = [...busy].sort((a, b) => a.start - b.start);
   const free: TimeRange[] = [];
@@ -55,7 +78,11 @@ function subtract(blocks: TimeRange[], busy: TimeRange[]): TimeRange[] {
   return free.filter((range) => range.end - range.start >= APPOINTMENT_MINUTES);
 }
 
-/** Agrupa el calendario del backend por día. */
+/**
+ * Groups backend calendar intervals by day and calculates free periods.
+ * @param calendar calendar input.
+ * @returns Result of the operation.
+ */
 export function summarizeDays(
   calendar: PsychologistCalendar,
 ): Map<string, DaySummary> {
@@ -100,15 +127,21 @@ export function summarizeDays(
   return days;
 }
 
-/** Si el día tiene espacio, está lleno, o el psicólogo no abrió disponibilidad. */
+/**
+ * Returns whether the day has free time, is fully occupied, or has no availability.
+ * @param summary summary input.
+ * @returns Result of the operation.
+ */
 export function dayStatus(summary: DaySummary | undefined): DayStatus {
   if (!summary || summary.blocks.length === 0) return "none";
   return summary.free.length > 0 ? "free" : "full";
 }
 
 /**
- * Un evento por tipo y por día, para que la vista de mes quede limpia:
- * "Con espacio" si queda al menos una hora libre, y "N citas" si hay citas.
+ * Creates at most one event of each type per day for a concise month view.
+ * A day is marked available when at least one appointment-length interval remains.
+ * @param days days input.
+ * @returns Result of the operation.
  */
 export function summariesToEvents(
   days: Map<string, DaySummary>,

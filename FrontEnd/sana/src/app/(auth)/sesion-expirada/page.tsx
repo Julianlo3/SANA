@@ -2,6 +2,10 @@ import Link from "next/link";
 import { Clock, LogIn } from "lucide-react";
 import StatusCard from "@/features/auth/components/status-card";
 
+/**
+ * Renders the session expired page.
+ * @returns Rendered component.
+ */
 export default function SessionExpiredPage() {
   return (
     <StatusCard

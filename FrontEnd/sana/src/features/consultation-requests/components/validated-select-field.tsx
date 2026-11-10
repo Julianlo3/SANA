@@ -1,10 +1,16 @@
 "use client";
 
+/**
+ * Defines the select option type.
+ */
 type SelectOption = {
   readonly value: string | number;
   readonly label: string;
 };
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   readonly label: string;
   readonly value: string | number;
@@ -15,6 +21,9 @@ type Props = {
   readonly onBlur?: () => void;
 };
 
+/**
+ * Defines the input class.
+ */
 const INPUT_CLASS =
   "mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40";
 
@@ -22,6 +31,7 @@ const INPUT_CLASS =
  * A select field with validation for consultation requests.
  * @param param0 The props for the component.
  * @returns A JSX element representing the validated select field.
+ * @param props Component properties.
  */
 export default function ValidatedSelectField({
   label,

@@ -2,11 +2,17 @@
 
 import type { AppointmentMode } from "../types/consultation-request-types";
 
+/**
+ * Defines the appointment mode options.
+ */
 const APPOINTMENT_MODE_OPTIONS: { value: AppointmentMode; label: string }[] = [
   { value: "presencial", label: "Presencial" },
   { value: "virtual", label: "Virtual" },
 ];
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   value: AppointmentMode | "";
   error?: string;
@@ -14,7 +20,10 @@ type Props = {
   onBlur: () => void;
 };
 
-/** Selector de modalidad de la cita, compartido entre los dos formularios públicos. */
+/**
+ * Appointment mode selector shared by both public request forms.
+ * @param props Component properties.
+ */
 export default function AppointmentModeField({
   value,
   error,

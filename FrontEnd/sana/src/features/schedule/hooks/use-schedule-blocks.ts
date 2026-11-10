@@ -110,7 +110,7 @@ export function useScheduleBlocks() {
     [reload],
   );
 
-  // Agrega un bloque recurrente y recarga la lista de bloques.
+  // Create the recurring block and refresh the block list.
   const addRecurringBlock = useCallback(
     async (payload: CreateRecurringScheduleBlockPayload) => {
       setIsSaving(true);
@@ -131,7 +131,7 @@ export function useScheduleBlocks() {
     [reload],
   );
 
-  // Borra un bloque recurrente y recarga la lista de bloques.
+  // Delete the recurring block and refresh the block list.
   const removeRecurringBlock = useCallback(
     async (id: number) => {
       setIsSaving(true);

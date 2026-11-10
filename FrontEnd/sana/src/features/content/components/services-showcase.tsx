@@ -14,15 +14,35 @@ import ServiceBackdrop, {
 import { padNumber } from "@/features/content/format";
 import type { PublicContentCard } from "@/features/content/types/content-types";
 
+/**
+ * Defines the navy.
+ */
 const NAVY = "#134176";
+/**
+ * Defines the pink.
+ */
 const PINK = "#eb5886";
+/**
+ * Defines the ease out.
+ */
 const EASE_OUT = "cubic-bezier(0.16, 1, 0.3, 1)";
+/**
+ * Defines the desktop query.
+ */
 const DESKTOP_QUERY = "(min-width: 1024px)";
 
+/**
+ * Implements the prefers reduced motion operation.
+ */
 function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
+/**
+ * Renders the services showcase component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function ServicesShowcase({
   services,
 }: {

@@ -2,8 +2,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { FOOTER_CONTENT } from "@/content/footer";
 
+/**
+ * Defines module-level values for brand and contact and links and schedule and legal links and notice and legal.
+ */
 const { brand, contact, links, schedule, legalLinks, notice, legal } = FOOTER_CONTENT;
 
+/**
+ * Renders the public footer component.
+ * @returns Rendered component.
+ */
 export default function PublicFooter() {
   const year = new Date().getFullYear();
 

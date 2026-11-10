@@ -13,14 +13,29 @@ import {
 } from "../services/appointments-service";
 import type { Appointment } from "../types/appointment-types";
 
+/**
+ * Defines the confirm notice.
+ */
 const CONFIRM_NOTICE = "Cita confirmada.";
+/**
+ * Defines the cancel notice.
+ */
 const CANCEL_NOTICE = "Cita cancelada.";
 
+/**
+ * Implements the message from operation.
+ * @param error Error value to process.
+ * @param fallback fallback input.
+ * @returns Formatted value or validation message.
+ */
 function messageFrom(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
 }
 
-/** Lógica del detalle de una solicitud: carga, asignar, confirmar, descartar y cancelar. */
+/**
+ * Loads an appointment and exposes its assignment, confirmation, discard, and cancellation actions.
+ * @param appointmentId Resource identifier.
+ */
 export function useAppointmentDetail(appointmentId: number) {
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,7 +69,7 @@ export function useAppointmentDetail(appointmentId: number) {
     return () => controller.abort();
   }, [appointmentId]);
 
-  /** Ejecuta una acción del backend y deja la pantalla en el estado nuevo. */
+  /** Executes a backend action and updates the detail state. */
   const run = useCallback(
     async (action: () => Promise<Appointment>, successNotice: string) => {
       setIsWorking(true);
@@ -99,7 +114,7 @@ export function useAppointmentDetail(appointmentId: number) {
     );
   }, [appointmentId, run, selection]);
 
-  /** Confirma con exactamente la misma franja que se asignó. */
+  /** Confirms the appointment using the exact interval previously assigned. */
   const confirm = useCallback(async () => {
     if (!appointment) return;
 
@@ -119,7 +134,7 @@ export function useAppointmentDetail(appointmentId: number) {
     );
   }, [appointment, run]);
 
-  /** HU-2.3.6: descarta la solicitud guardando el motivo. */
+  /** Discards the request and persists the supplied reason. */
   const discard = useCallback(async () => {
     const reason = discardReason.trim();
 
@@ -134,7 +149,7 @@ export function useAppointmentDetail(appointmentId: number) {
     );
   }, [appointmentId, discardReason, run]);
 
-  /** Cancela una cita ya confirmada. El backend no admite cancelar desde otro estado. */
+  /** Cancels a confirmed appointment; other states cannot be cancelled by the backend. */
   const cancel = useCallback(async () => {
     await run(
       () => updateAppointmentStatus(appointmentId, "cancelada"),

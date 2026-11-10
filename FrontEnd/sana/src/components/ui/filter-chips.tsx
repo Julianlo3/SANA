@@ -1,21 +1,39 @@
+/**
+ * Defines the option type.
+ */
 type Option<T extends string> = {
   value: T;
   label: string;
 };
 
+/**
+ * Defines the props type.
+ */
 type Props<T extends string> = {
   readonly options: readonly Option<T>[];
   readonly value: T;
   readonly onChange: (value: T) => void;
 };
 
+/**
+ * Defines the chip base.
+ */
 const CHIP_BASE =
   "cursor-pointer rounded-full border px-4 py-1.5 text-sm font-semibold transition";
+/**
+ * Defines the chip active.
+ */
 const CHIP_ACTIVE = "border-primary bg-primary text-white";
+/**
+ * Defines the chip idle.
+ */
 const CHIP_IDLE =
   "border-border bg-surface text-text-muted hover:border-primary hover:text-primary";
 
-/** Filtro por botones: una sola opción activa a la vez. */
+/**
+ * Renders button filters with a single active option.
+ * @param props Component properties.
+ */
 export default function FilterChips<T extends string>({
   options,
   value,

@@ -17,8 +17,14 @@ import type {
   AppointmentState,
 } from "../types/appointment-types";
 
+/**
+ * Defines the filter type.
+ */
 type Filter = AppointmentState | "todas";
 
+/**
+ * Defines the filters.
+ */
 const FILTERS: { value: Filter; label: string }[] = [
   { value: "pendiente", label: "Pendientes" },
   { value: "asignada", label: "Asignadas" },
@@ -28,9 +34,8 @@ const FILTERS: { value: Filter; label: string }[] = [
 ];
 
 /**
- * HU-2.3.1: bandeja de solicitudes de la asistente.
- * Cada solicitud es una tarjeta, de la más reciente a la más antigua, y
- * nunca muestra el motivo de consulta.
+ * Renders the assistant's appointment request inbox, ordered newest first.
+ * Request cards omit the consultation reason.
  */
 export default function AppointmentsInboxPage() {
   const [filter, setFilter] = useState<Filter>("pendiente");

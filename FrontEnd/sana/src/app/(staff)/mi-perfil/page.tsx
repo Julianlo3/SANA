@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import OwnProfileSection from "@/features/my-account/components/own-profile-section";
 
+/**
+ * Defines page metadata.
+ */
 export const metadata: Metadata = {
   title: "Mi perfil | SANA",
 };

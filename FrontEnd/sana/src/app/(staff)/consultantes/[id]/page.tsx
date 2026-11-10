@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import ConsultantFullRecordPage from "@/features/consultants/pages/consultant-full-record-page";
 
+/**
+ * Defines page metadata.
+ */
 export const metadata: Metadata = { title: "Ficha del consultante | SANA" };
 
 /**

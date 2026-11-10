@@ -5,20 +5,31 @@ import type {
 } from "../types/care-record-types";
 
 /**
- * Única puerta de entrada al registro de atenciones (HU-2.5).
- * Habla con el backend real, sin mocks.
+ * Central service for psychologist appointments and care records.
  *
- * Las rutas viven aquí porque ENDPOINTS todavía trae dos entradas viejas
- * (/appointments/mine y /care-records) que no existen en el backend.
+ * Paths are defined locally because the shared endpoint catalog contains
+ * legacy routes that are not available in the backend.
  */
 const MY_APPOINTMENTS_PATH = "/appointments/my-appointments";
+/**
+ * Defines the register attention path.
+ */
 const REGISTER_ATTENTION_PATH = "/clinical-notes/register-attention";
 
+/**
+ * Implements the complete path operation.
+ * @param appId Resource identifier.
+ * @returns Formatted value or validation message.
+ */
 function completePath(appId: number): string {
   return `/appointments/${appId}/complete`;
 }
 
-/** Citas confirmadas del psicólogo, pendientes de atender y registrar. */
+/**
+ * Lists confirmed appointments awaiting care completion and documentation.
+ * @param signal Optional request cancellation signal. (optional)
+ * @returns A promise resolving to the operation result.
+ */
 export async function listPsychologistAppointments(
   signal?: AbortSignal,
 ): Promise<PsychologistAppointment[]> {
@@ -28,12 +39,18 @@ export async function listPsychologistAppointments(
   );
 }
 
-/** Paso 1: marca la cita como realizada. Solo el psicólogo asignado, y solo desde "confirmada". */
+/**
+ * Marks an appointment as completed; only its assigned psychologist can do so.
+ * @param appId Resource identifier.
+ */
 export async function completeAppointment(appId: number): Promise<void> {
   await httpClient.patch<unknown>(completePath(appId), {});
 }
 
-/** Paso 2: guarda la observación. El backend exige que la cita ya esté realizada. */
+/**
+ * Records a care note for an appointment already marked as completed.
+ * @param payload Data submitted to the operation.
+ */
 export async function recordCare(payload: RecordCarePayload): Promise<void> {
   await httpClient.post<unknown>(REGISTER_ATTENTION_PATH, payload);
 }

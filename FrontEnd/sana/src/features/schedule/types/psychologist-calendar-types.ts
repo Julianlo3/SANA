@@ -2,10 +2,10 @@ import type { ScheduleBlock } from "./schedule-types";
 
 /**
  * Respuesta de GET /schedule/psychologists/:psychologistId/calendar.
- * Solo la asistente (rol secretario) puede consultarla.
+ * Only assistants with the secretary role can access this calendar.
  */
 
-/** Un intervalo ya ocupado: una cita asignada o una ocupación manual. */
+/** Time interval occupied by an assigned appointment or a manual block. */
 export type ScheduleOccupancy = {
   id: number;
   date: string;
@@ -15,24 +15,32 @@ export type ScheduleOccupancy = {
   appointmentId: number | null;
 };
 
+/**
+ * Defines the psychologist calendar type.
+ */
+
 export type PsychologistCalendar = {
-  /** Bloques de disponibilidad puntuales del psicólogo. */
+  /** One-time availability blocks for the psychologist. */
   availability: ScheduleBlock[];
-  /** Citas y ocupaciones que ya consumen esos bloques. */
+  /** Appointments and occupancy intervals within those blocks. */
   occupancy: ScheduleOccupancy[];
 };
 
-/** Un intervalo del día, en minutos desde la medianoche. */
+/** Day interval represented as minutes from midnight. */
 export type TimeRange = {
   start: number;
   end: number;
 };
 
+/**
+ * Defines the day appointment type.
+ */
+
 export type DayAppointment = TimeRange & {
   appointmentId: number | null;
 };
 
-/** Todo lo que pasa en un día: lo que el psicólogo abrió, lo ocupado y lo que queda libre. */
+/** Daily availability, occupancy, and remaining free intervals. */
 export type DaySummary = {
   /** AAAA-MM-DD. */
   date: string;
@@ -40,5 +48,9 @@ export type DaySummary = {
   appointments: DayAppointment[];
   free: TimeRange[];
 };
+
+/**
+ * Defines the day status type.
+ */
 
 export type DayStatus = "free" | "full" | "none";

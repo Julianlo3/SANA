@@ -3,6 +3,10 @@
 import { auth0 } from "@/lib/auth0";
 import { requireAdministrator } from "@/lib/auth-guard";
 
+/**
+ * Requests the current backend authentication state for diagnostics.
+ * @returns Result of the operation.
+ */
 export async function testBackendAuthMe() {
   await requireAdministrator();
 

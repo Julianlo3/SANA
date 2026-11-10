@@ -1,4 +1,12 @@
+/**
+ * Defines the donation status type.
+ */
+
 export type DonationStatus = 'APPROVED' | 'PENDING' | 'DECLINED' | 'VOIDED' | 'ERROR';
+
+/**
+ * Defines the donation record interface.
+ */
 
 export interface DonationRecord {
   donId: number;
@@ -14,10 +22,18 @@ export interface DonationRecord {
   donCreatedAt: string;
 }
 
+/**
+ * Defines the donation form data interface.
+ */
+
 export interface DonationFormData {
   amountCOP: number;
   coverFee: boolean;
 }
+
+/**
+ * Defines the wompi checkout config interface.
+ */
 
 export interface WompiCheckoutConfig {
   currency: 'COP';
@@ -33,6 +49,10 @@ export interface WompiCheckoutConfig {
     fullName?: string;
   };
 }
+
+/**
+ * Defines the donation operation result interface.
+ */
 
 export interface DonationOperationResult {
   success: boolean;

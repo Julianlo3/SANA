@@ -57,6 +57,7 @@ const GENDER_OPTIONS = [
  * Renders a form for entering information about a dependent person, including full name, birthdate, gender, and identity document. It supports validation and error handling for each field.
  * @param param0 Props for the DependentPersonFields component
  * @returns A React component that renders a form for entering information about a dependent person, with validation and error handling for each field.
+ * @param props Component properties.
  */
 export default function DependentPersonFields({
   fullName,

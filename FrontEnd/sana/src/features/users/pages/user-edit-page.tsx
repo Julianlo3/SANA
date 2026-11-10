@@ -10,7 +10,10 @@ import { keepDigits } from "@/lib/format/text";
 import RoleSelector from "../components/role-selector";
 import { useUserEditForm } from "../hooks/use-user-edit-form";
 
-/** Formulario de edición. La lógica vive en use-user-edit-form. */
+/**
+ * User editing form page; behavior is managed by `useUserEditForm`.
+ * @param props Component properties.
+ */
 export default function UserEditPage({ userId }: { userId: number }) {
   const {
     user,

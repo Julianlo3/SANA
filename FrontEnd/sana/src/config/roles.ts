@@ -1,25 +1,24 @@
 /**
- * Catálogo de roles que el administrador puede asignar desde el panel.
+ * Catalog of roles assignable by administrators.
  *
- * Los ids y los names salen de DataBase/init-scripts/02-inserts.sql
- * (tabla public.rol). El id 3 (consultante) no está aquí porque esa persona
- * se registra desde el formulario público de solicitud de cita, no la crea
- * el administrador.
- *
- * Este arreglo es el respaldo mientras el backend expone GET /roles: la fuente
- * de verdad es la base de datos, no el frontend.
+ * IDs and names mirror `public.rol` seed data. The requester role is omitted
+ * because requesters register through the public appointment form. The backend
+ * database remains authoritative; this catalog is a frontend fallback.
  */
 
 export type RoleDefinition = {
   id: number;
-  /** Valor real de la base (rol_description), el mismo que trae roles: string[] de la sesión. */
+  /** Database role description returned in the session roles array. */
   name: string;
   label: string;
   description: string;
-  /** Exige los datos extra de la tabla public.psychologist. */
+  /** Indicates whether the role requires psychologist-specific data. */
   requiresProfessionalData: boolean;
 };
 
+/**
+ * Defines role catalog.
+ */
 export const ROLE_CATALOG: RoleDefinition[] = [
   {
     id: 4,
@@ -51,19 +50,46 @@ export const ROLE_CATALOG: RoleDefinition[] = [
   },
 ];
 
+/**
+ * Finds role by id.
+ * @param id Resource identifier.
+ * @returns Result of the operation.
+ */
+
 export function findRoleById(id: number): RoleDefinition | undefined {
   return ROLE_CATALOG.find((role) => role.id === id);
 }
+
+/**
+ * Finds role by name.
+ * @param name Name value.
+ * @returns Result of the operation.
+ */
 
 export function findRoleByName(name: string): RoleDefinition | undefined {
   return ROLE_CATALOG.find((role) => role.name === name);
 }
 
+/**
+ * Determines whether professional data is required.
+ * @param roleIds Role values used by the operation.
+ * @returns Whether the condition is satisfied.
+ */
+
 export function requiresProfessionalData(roleIds: number[]): boolean {
   return roleIds.some((id) => findRoleById(id)?.requiresProfessionalData);
 }
 
-/** Traduce los roles crudos de la sesión ("psicologo") a etiquetas legibles. */
+/**
+ * Maps raw session role names to user-facing labels.
+ * @param roleNames Role values used by the operation.
+ * @returns Result of the operation.
+ */
+/**
+ * Formats session roles as user-facing labels.
+ * @param roleNames Raw role names from the session.
+ * @returns Comma-separated role labels.
+ */
 export function formatRoleLabels(roleNames: string[]): string {
   const labels = roleNames
     .map((name) => findRoleByName(name)?.label)

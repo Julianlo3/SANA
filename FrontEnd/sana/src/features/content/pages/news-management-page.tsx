@@ -20,6 +20,10 @@ import {
 import { formatDate, toExcerpt } from "../format";
 import { useNewsManagement } from "../hooks/use-news-management";
 
+/**
+ * Renders the news management page.
+ * @returns Rendered component.
+ */
 export default function NewsManagementPage() {
   const {
     news,

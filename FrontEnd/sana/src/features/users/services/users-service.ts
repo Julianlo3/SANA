@@ -7,13 +7,24 @@ import type {
   User,
 } from "../types/user-types";
 
+/**
+ * Defines the api user role type.
+ */
 type ApiUserRole = { id: number; name: string; active: boolean };
+/**
+ * Defines the api user type.
+ */
 type ApiUser = Omit<User, "identityDocument" | "contactNumber" | "roles"> & {
   identityDocument: string | null;
   phone: string | null;
   roles: ApiUserRole[];
 };
 
+/**
+ * Implements the normalize user operation.
+ * @param user User data.
+ * @returns Result of the operation.
+ */
 function normalizeUser(user: ApiUser): User {
   return {
     ...user,
@@ -27,10 +38,23 @@ function normalizeUser(user: ApiUser): User {
   };
 }
 
+/**
+ * Retrieves users.
+ * @param signal Optional. Request cancellation signal.
+ * @returns A promise resolving to the operation result.
+ */
+
 export async function getUsers(signal?: AbortSignal): Promise<User[]> {
   const response = await httpClient.get<ApiUser[]>(ENDPOINTS.users, signal);
   return response.map(normalizeUser);
 }
+
+/**
+ * Retrieves user by id.
+ * @param id Resource identifier.
+ * @param signal Optional. Request cancellation signal.
+ * @returns A promise resolving to the operation result.
+ */
 
 export async function getUserById(
   id: number,
@@ -39,6 +63,12 @@ export async function getUserById(
   const response = await httpClient.get<ApiUser>(ENDPOINTS.user(id), signal);
   return normalizeUser(response);
 }
+
+/**
+ * Creates user.
+ * @param payload Data submitted to the operation.
+ * @returns A promise resolving to the operation result.
+ */
 
 export async function createUser(payload: CreateUserPayload): Promise<User> {
   const response = await httpClient.post<ApiUser>(ENDPOINTS.users, {
@@ -52,6 +82,12 @@ export async function createUser(payload: CreateUserPayload): Promise<User> {
   return normalizeUser(response);
 }
 
+/**
+ * Updates update user.
+ * @param id id identifier.
+ * @param payload Data sent to the operation.
+ * @returns A promise resolving to the operation result.
+ */
 export async function updateUser(
   id: number,
   payload: UpdateUserPayload,
@@ -68,6 +104,13 @@ export async function updateUser(
   return normalizeUser(response);
 }
 
+/**
+ * Implements the change user status operation.
+ * @param id Resource identifier.
+ * @param status Current status value.
+ * @param reason Optional. reason input.
+ */
+
 export async function changeUserStatus(
   id: number,
   status: EditableUserStatus,
@@ -75,6 +118,11 @@ export async function changeUserStatus(
 ): Promise<void> {
   await httpClient.patch<void>(ENDPOINTS.userStatus(id), { status, reason });
 }
+
+/**
+ * Deletes user.
+ * @param id Resource identifier.
+ */
 
 export async function deleteUser(id: number): Promise<void> {
   await httpClient.remove<void>(ENDPOINTS.user(id));

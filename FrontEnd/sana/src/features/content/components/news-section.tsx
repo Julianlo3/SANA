@@ -13,11 +13,19 @@ import {
 } from "@/features/content/hooks/use-section-motion";
 import type { NewsTeaser } from "@/features/content/types/content-types";
 
+/**
+ * Defines the news section labels type.
+ */
 type NewsSectionLabels = NewsDeckLabels &
   NewsHighlightsLabels & {
     title: string;
   };
 
+/**
+ * Renders the news section component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function NewsSection({
   news,
   labels,

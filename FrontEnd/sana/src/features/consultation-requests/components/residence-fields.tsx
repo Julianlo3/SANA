@@ -10,12 +10,15 @@ import {
   type ColombiaDepartment,
 } from "@/services/colombia-service";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   department: string;
   municipality: string;
   municipalityError?: string;
   disabled?: boolean;
-  /** "donde vives actualmente" (adulto) o "donde vive el menor" (tutor). */
+  /** Residence field labels for the requester or the dependent's guardian. */
   helperText: string;
   onDepartmentChange: (value: string) => void;
   onMunicipalityChange: (value: string) => void;
@@ -26,6 +29,7 @@ type Props = {
  * Component to select the residence zone
  * @param param0 props to pass to the component
  * @returns ResidenceFields component
+ * @param props Component properties.
  */
 export default function ResidenceFields({
   department,

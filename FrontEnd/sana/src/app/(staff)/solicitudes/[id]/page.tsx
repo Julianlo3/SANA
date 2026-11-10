@@ -3,8 +3,16 @@ import { notFound } from "next/navigation";
 import { requireAnyRole } from "@/lib/auth-guard";
 import AppointmentDetailPage from "@/features/appointments/pages/appointment-detail-page";
 
+/**
+ * Defines page metadata.
+ */
 export const metadata: Metadata = { title: "Solicitud de cita | SANA" };
 
+/**
+ * Renders the appointment detail page.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default async function AppointmentDetail({
   params,
 }: {

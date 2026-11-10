@@ -1,25 +1,37 @@
 import { ApiError } from "@/types/api-types";
 
+/**
+ * Defines the request options type.
+ */
 type RequestOptions = {
   method?: "GET" | "POST" | "PATCH" | "DELETE";
   body?: unknown;
   signal?: AbortSignal;
 };
 
+/**
+ * Defines the backend field issue type.
+ */
 type BackendFieldIssue = {
   property?: string;
   constraints?: Record<string, string>;
 };
 
+/**
+ * Defines the backend error body type.
+ */
 type BackendErrorBody = {
   message?: unknown;
   error?: unknown;
   errors?: Record<string, string>;
 } | null;
 
+/**
+ * Defines the api url.
+ */
 const API_URL = "/api/backend";
 
-/** Mensajes por código HTTP, en lenguaje de usuario. */
+/** User-facing messages mapped to HTTP status codes. */
 const STATUS_MESSAGES: Record<number, string> = {
   400: "La información enviada no es válida.",
   401: "La sesión terminó. Vuelve a iniciar sesión.",
@@ -29,7 +41,7 @@ const STATUS_MESSAGES: Record<number, string> = {
   500: "Algo falló en el servidor. Intenta de nuevo en unos minutos.",
 };
 
-/** Qué dice cada regla de validación del backend, en lenguaje de usuario. */
+/** User-facing messages mapped to backend validation constraints. */
 const CONSTRAINT_MESSAGES: Record<string, string> = {
   isNotEmpty: "Este dato es obligatorio.",
   isEmail: "Escribe un correo válido, por ejemplo nombre@correo.com.",
@@ -46,10 +58,14 @@ const CONSTRAINT_MESSAGES: Record<string, string> = {
   isBoolean: "Este dato no es válido.",
 };
 
-/** Orden en que se elige la regla a mostrar cuando un campo incumple varias. */
+/** Priority order for selecting a validation message when multiple constraints fail. */
 const CONSTRAINT_PRIORITY = Object.keys(CONSTRAINT_MESSAGES);
 
-/** Convierte la lista de campos con error que envía el backend en un mapa campo → mensaje. */
+/**
+ * Converts backend field issues into a field-to-message map.
+ * @param message Text to process.
+ * @returns Result of the operation.
+ */
 function readFieldIssues(message: unknown): Record<string, string> {
   if (!Array.isArray(message)) return {};
 
@@ -70,8 +86,11 @@ function readFieldIssues(message: unknown): Record<string, string> {
 }
 
 /**
- * Único punto por el que la aplicación habla con el backend.
- * Las pantallas nunca llaman fetch directamente.
+ * Central HTTP client for backend requests.
+ * Application pages must not call `fetch` directly.
+ * @param path path input.
+ * @param params Destructured operation parameters.
+ * @returns A promise resolving to the operation result.
  */
 export async function request<T>(
   path: string,
@@ -114,6 +133,9 @@ export async function request<T>(
   return payload as T;
 }
 
+/**
+ * Defines http client.
+ */
 export const httpClient = {
   get: <T>(path: string, signal?: AbortSignal) =>
     request<T>(path, { method: "GET", signal }),

@@ -10,7 +10,7 @@ import { keepDigits } from "@/lib/format/text";
 import RoleSelector from "../components/role-selector";
 import { useUserCreateForm } from "../hooks/use-user-create-form";
 
-/** Formulario de creación. La lógica vive en use-user-create-form. */
+/** User creation form page; behavior is managed by `useUserCreateForm`. */
 export default function UserCreatePage() {
   const {
     values,
