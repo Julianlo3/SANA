@@ -17,27 +17,31 @@ export interface AuthorizationRecord {
   psyTermsAccepted: boolean | null;
 }
 
+export const ACCOUNT_POLICY_TYPES = ['account_terms', 'terms_of_use', 'privacy_policy'] as const;
+
 const AUTHORIZATION_SELECT = `SELECT
     p.per_id AS "personId",
     p.per_name AS name,
     p.per_email AS email,
     p.per_state AS state,
-    EXISTS (
+    NOT EXISTS (
       SELECT 1
-      FROM policy_acceptance pa
-      JOIN policy_documents pd ON pd.pd_id = pa.pd_id
-      WHERE pa.per_id = p.per_id
-        AND pd.pd_type = 'data_treatment'
-        AND pd.pd_id = (
-          SELECT current_pd.pd_id
-          FROM policy_documents current_pd
-          WHERE current_pd.pd_type = 'data_treatment'
-          ORDER BY current_pd.pd_effective_from DESC, current_pd.pd_id DESC
-          LIMIT 1
-        )
-        AND pa.dep_id IS NULL
-        AND pa.cn_id IS NULL
-        AND pa.app_id IS NULL
+      FROM unnest(ARRAY[${ACCOUNT_POLICY_TYPES.map((type) => `'${type}'`).join(', ')}]::varchar[]) AS required(pd_type)
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM policy_acceptance pa
+        WHERE pa.per_id = p.per_id
+          AND pa.dep_id IS NULL
+          AND pa.cn_id IS NULL
+          AND pa.app_id IS NULL
+          AND pa.pd_id = (
+            SELECT current_pd.pd_id
+            FROM policy_documents current_pd
+            WHERE current_pd.pd_type = required.pd_type
+            ORDER BY current_pd.pd_effective_from DESC, current_pd.pd_id DESC
+            LIMIT 1
+          )
+      )
     ) AS "termsAccepted",
     CASE WHEN psy.psy_id IS NULL THEN NULL ELSE EXISTS (
       SELECT 1
@@ -196,16 +200,28 @@ export class AuthRepository {
    * @param ipAddress Optional IP address of the acceptor.
    */
   async acceptTerms(personId: number, ipAddress?: string): Promise<void> {
-    const pdId = await this.getCurrentPolicyDocumentId('data_treatment');
-    if (!pdId) {
-      throw new Error('No policy document found for type: data_treatment');
-    }
+    const currentDocuments = await this.dataSource.query<{ pd_type: string; pd_id: number }[]>(
+      `SELECT DISTINCT ON (pd_type) pd_type, pd_id
+       FROM policy_documents
+       WHERE pd_type = ANY($1::varchar[])
+       ORDER BY pd_type, pd_effective_from DESC, pd_id DESC`,
+      [ACCOUNT_POLICY_TYPES],
+    );
+
+    const pdIds = ACCOUNT_POLICY_TYPES.map((policyType) => {
+      const document = currentDocuments.find((row) => row.pd_type === policyType);
+      if (!document) {
+        throw new Error(`No policy document found for type: ${policyType}`);
+      }
+      return document.pd_id;
+    });
 
     await this.dataSource.query(
-      `INSERT INTO policy_acceptance (per_id, pd_id, pa_ip_address)
-       VALUES ($1, $2, $3)
+      `INSERT INTO policy_acceptance (per_id, pd_id, pa_ip_address, pa_channel)
+       SELECT $1, accepted.pd_id, $3, 'web'
+       FROM unnest($2::int[]) AS accepted(pd_id)
        ON CONFLICT (per_id, pd_id) WHERE dep_id IS NULL AND cn_id IS NULL AND app_id IS NULL DO NOTHING`,
-      [personId, pdId, ipAddress ?? null],
+      [personId, pdIds, ipAddress ?? null],
     );
   }
 
@@ -238,7 +254,7 @@ export class AuthRepository {
       `SELECT pd_id
        FROM policy_documents
        WHERE pd_type = $1
-       ORDER BY pd_effective_from DESC
+       ORDER BY pd_effective_from DESC, pd_id DESC
        LIMIT 1`,
       [policyType],
     );

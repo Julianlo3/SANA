@@ -24,6 +24,11 @@ const EMPTY_VALUES: CardFormValues = {
   imageUrl: "",
   imageAlt: "",
   isActive: true,
+  teamGroup: "",
+  facebookUrl: "",
+  instagramUrl: "",
+  linkedinUrl: "",
+  photoCrop: null,
 };
 
 type Editor = { mode: "create" } | { mode: "edit"; card: ContentCard } | null;
@@ -36,18 +41,33 @@ function toFormValues(card: ContentCard): CardFormValues {
     imageUrl: card.imageUrl ?? "",
     imageAlt: card.imageAlt ?? "",
     isActive: card.isActive,
+    teamGroup: card.teamGroup ?? "",
+    facebookUrl: card.facebookUrl ?? "",
+    instagramUrl: card.instagramUrl ?? "",
+    linkedinUrl: card.linkedinUrl ?? "",
+    photoCrop: card.photoCrop,
   };
 }
 
-function toPayload(values: CardFormValues): ContentCardPayload {
+function toPayload(values: CardFormValues, config: CardSectionConfig): ContentCardPayload {
   const imageUrl = values.imageUrl || null;
-  return {
+  const payload: ContentCardPayload = {
     title: values.title.trim(),
     subtitle: values.subtitle.trim() || null,
     description: values.description.trim() || null,
     imageUrl,
     imageAlt: imageUrl ? values.imageAlt.trim() : null,
     isActive: values.isActive,
+  };
+  if (!config.teamProfile) return payload;
+
+  return {
+    ...payload,
+    teamGroup: values.teamGroup || undefined,
+    facebookUrl: values.facebookUrl.trim() || null,
+    instagramUrl: values.instagramUrl.trim() || null,
+    linkedinUrl: values.linkedinUrl.trim() || null,
+    photoCrop: imageUrl ? values.photoCrop : null,
   };
 }
 
@@ -144,7 +164,7 @@ export function useContentCards(config: CardSectionConfig) {
       return;
     }
 
-    const payload = toPayload(submitted);
+    const payload = toPayload(submitted, config);
     const wasSaved = await runWrite(
       async () => {
         if (editor.mode === "create") {
@@ -165,7 +185,7 @@ export function useContentCards(config: CardSectionConfig) {
     );
 
     if (wasSaved) setEditor(null);
-  }, [changedFields, config.section, editor, runWrite, submit]);
+  }, [changedFields, config, editor, runWrite, submit]);
 
   const toggleActive = useCallback(
     (card: ContentCard) =>

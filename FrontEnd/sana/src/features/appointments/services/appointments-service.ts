@@ -7,26 +7,20 @@ import type {
   AvailabilityQuery,
   AvailabilitySlot,
   DiscardAppointmentPayload,
+  PublicAvailabilitySlot,
   PsychologistOption,
 } from "../types/appointment-types";
 
 /**
- * Única puerta de entrada a la bandeja de solicitudes (HU-2.3).
- *
- * Habla con el backend real, sin mocks. Todos los endpoints exigen el rol
- * "secretario": un administrador sin ese rol recibe 403.
- *
- * Flujo: pendiente → asignar (franja provisional) → confirmar (definitiva).
- * También se puede descartar mientras esté pendiente o asignada.
+ * Fixed UTC offset used to serialize Colombia appointment times.
  */
-
-/** Zona horaria de Colombia, sin horario de verano. Si las horas salen desfasadas, se ajusta solo aquí. */
 const COLOMBIA_UTC_OFFSET = "-05:00";
 
 /**
- * Arma el instante ISO de una franja a partir de la fecha y la hora que
- * devuelve la disponibilidad. Asignar y confirmar deben mandar el mismo
- * valor, porque el backend compara las dos fechas.
+ * Builds an ISO datetime for an availability slot in Colombia time.
+ * @param date Slot date in YYYY-MM-DD format.
+ * @param time Slot start time in HH:mm or HH:mm:ss format.
+ * @returns The ISO datetime string with the Colombia UTC offset.
  */
 export function buildSlotDateTime(date: string, time: string): string {
   const day = date.slice(0, 10);
@@ -34,7 +28,12 @@ export function buildSlotDateTime(date: string, time: string): string {
   return `${day}T${normalizedTime}${COLOMBIA_UTC_OFFSET}`;
 }
 
-/** HU-2.3.1: lista las solicitudes, las más recientes primero. */
+/**
+ * Fetches appointments, optionally filtered by state.
+ * @param state Optional appointment state filter.
+ * @param signal Optional request cancellation signal.
+ * @returns The matching appointments.
+ */
 export async function listAppointments(
   state?: AppointmentState,
   signal?: AbortSignal,
@@ -46,7 +45,12 @@ export async function listAppointments(
   return httpClient.get<Appointment[]>(url, signal);
 }
 
-/** HU-2.3.2: detalle de una solicitud, sin motivo de consulta. */
+/**
+ * Fetches an appointment by its identifier.
+ * @param id Appointment identifier.
+ * @param signal Optional request cancellation signal.
+ * @returns The requested appointment.
+ */
 export async function getAppointment(
   id: number,
   signal?: AbortSignal,
@@ -54,7 +58,11 @@ export async function getAppointment(
   return httpClient.get<Appointment>(ENDPOINTS.appointment(id), signal);
 }
 
-/** Psicólogos activos para el selector de asignación. */
+/**
+ * Fetches active psychologists available for appointment assignment.
+ * @param signal Optional request cancellation signal.
+ * @returns The active psychologist options.
+ */
 export async function listPsychologistOptions(
   signal?: AbortSignal,
 ): Promise<PsychologistOption[]> {
@@ -64,7 +72,12 @@ export async function listPsychologistOptions(
   );
 }
 
-/** HU-2.3.3 y 2.3.4: franjas libres. Una lista vacía significa que no hay cupo. */
+/**
+ * Fetches psychologist-specific appointment availability.
+ * @param query Availability search parameters.
+ * @param signal Optional request cancellation signal.
+ * @returns Available slots and their psychologists.
+ */
 export async function findAvailability(
   query: AvailabilityQuery,
   signal?: AbortSignal,
@@ -86,9 +99,32 @@ export async function findAvailability(
 }
 
 /**
- * HU-2.3.3 y 2.3.5: asigna un psicólogo y una franja provisional.
- * Sirve también para reasignar una solicitud que ya estaba asignada.
- * El backend responde 409 (SCHEDULE_SLOT_TAKEN) si la franja se ocupó.
+ * Fetches anonymized availability for marking calendar dates.
+ * @param query Availability search parameters.
+ * @param signal Optional request cancellation signal.
+ * @returns Available slots without psychologist details.
+ */
+export async function findPublicAvailability(
+  query: Pick<AvailabilityQuery, "appointmentStart" | "duration" | "delayHours">,
+  signal?: AbortSignal,
+): Promise<PublicAvailabilitySlot[]> {
+  const params = new URLSearchParams({
+    appointmentStart: query.appointmentStart,
+    duration: String(query.duration),
+    delayHours: String(query.delayHours),
+  });
+
+  return httpClient.get<PublicAvailabilitySlot[]>(
+    `${ENDPOINTS.consultantAvailability}?${params.toString()}`,
+    signal,
+  );
+}
+
+/**
+ * Assigns or reassigns an appointment to a psychologist and slot.
+ * @param id Appointment identifier.
+ * @param payload Assignment details.
+ * @returns The updated appointment.
  */
 export async function assignAppointment(
   id: number,
@@ -98,10 +134,10 @@ export async function assignAppointment(
 }
 
 /**
- * Confirma una solicitud ya asignada. Debe llevar exactamente el mismo
- * psicólogo, fecha y duración de la asignación, o el backend responde 400.
- * Al confirmar es cuando debe salir la notificación al consultante, pero hoy
- * el backend solo la deja registrada en el log.
+ * Confirms an assigned appointment using its original assignment details.
+ * @param id Appointment identifier.
+ * @param payload Confirmation details matching the assignment.
+ * @returns The confirmed appointment.
  */
 export async function confirmAppointment(
   id: number,
@@ -113,7 +149,12 @@ export async function confirmAppointment(
   );
 }
 
-/** HU-2.3.6: descarta una solicitud pendiente o asignada, guardando el motivo. */
+/**
+ * Discards a pending or assigned appointment with a reason.
+ * @param id Appointment identifier.
+ * @param payload Discard reason.
+ * @returns The discarded appointment.
+ */
 export async function discardAppointment(
   id: number,
   payload: DiscardAppointmentPayload,
@@ -124,7 +165,12 @@ export async function discardAppointment(
   );
 }
 
-/** Cambia una cita abierta a "cancelada" o "realizada". */
+/**
+ * Updates an appointment to a terminal status.
+ * @param id Appointment identifier.
+ * @param state New appointment status.
+ * @returns The updated appointment.
+ */
 export async function updateAppointmentStatus(
   id: number,
   state: "cancelada" | "realizada",

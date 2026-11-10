@@ -2,21 +2,46 @@ import {
   CARD_DESCRIPTION_MAX_LENGTH,
   CARD_TITLE_MAX_LENGTH,
   IMAGE_ALT_MAX_LENGTH,
+  SOCIAL_FIELDS,
+  SOCIAL_URL_MAX_LENGTH,
   TEXT_MAX_LENGTH,
   type CardField,
   type CardSectionConfig,
+  type SocialField,
 } from "../config/content-sections";
+import type { PhotoCrop, TeamGroup } from "../types/content-types";
 
 export type MissionVisionValues = {
   mission: string;
   vision: string;
 };
 
-export type CardFormValues = Record<CardField, string> & {
-  imageUrl: string;
-  imageAlt: string;
-  isActive: boolean;
-};
+export type CardFormValues = Record<CardField, string> &
+  Record<SocialField, string> & {
+    imageUrl: string;
+    imageAlt: string;
+    isActive: boolean;
+    teamGroup: TeamGroup | "";
+    photoCrop: PhotoCrop | null;
+  };
+
+/**
+ * Validates an optional social profile URL against the domain of its network.
+ * @param value The URL typed by the editor.
+ * @param field The social network field being validated.
+ * @returns The error message, or undefined when the URL is empty or valid.
+ */
+export function validateSocialUrl(value: string, field: SocialField): string | undefined {
+  const url = value.trim();
+  if (!url) return undefined;
+  const social = SOCIAL_FIELDS.find((item) => item.field === field);
+  if (!social) return undefined;
+  if (url.length > SOCIAL_URL_MAX_LENGTH) return `Máximo ${SOCIAL_URL_MAX_LENGTH} caracteres.`;
+  if (!social.pattern.test(url)) {
+    return `Pega el enlace completo del perfil de ${social.label} (https://…${social.domain}/…).`;
+  }
+  return undefined;
+}
 
 const HTML_TAG_PATTERN = /[<>]/;
 const SAFE_IMAGE_URL_PATTERN = /^https:\/\/[^\s"'<>]+$/i;
@@ -77,6 +102,14 @@ export function buildCardValidator(config: CardSectionConfig) {
       errors.imageAlt = `Máximo ${IMAGE_ALT_MAX_LENGTH} caracteres.`;
     } else if (HTML_TAG_PATTERN.test(values.imageAlt)) {
       errors.imageAlt = "Contiene caracteres no permitidos (< o >).";
+    }
+
+    if (config.teamProfile) {
+      if (!values.teamGroup) errors.teamGroup = "Elige el grupo al que pertenece.";
+      for (const { field } of SOCIAL_FIELDS) {
+        const socialError = validateSocialUrl(values[field], field);
+        if (socialError) errors[field] = socialError;
+      }
     }
 
     return errors;

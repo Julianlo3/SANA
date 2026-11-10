@@ -16,5 +16,10 @@ export default async function Consultants() {
     ? "psychologist"
     : "assistant";
 
-  return <ConsultantsListPage viewerRole={viewerRole} />;
+  return (
+    <ConsultantsListPage
+      viewerRole={viewerRole}
+      canCreate={user.roles.includes("secretario")}
+    />
+  );
 }

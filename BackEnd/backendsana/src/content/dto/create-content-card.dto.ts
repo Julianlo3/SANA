@@ -16,6 +16,7 @@ import {
   CONTENT_CARD_SECTIONS,
   type ContentCardSection,
 } from '../content.constants.js';
+import { TeamProfileFieldsDto } from './team-profile-fields.dto.js';
 
 const trim = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;
@@ -23,7 +24,7 @@ const trim = ({ value }: { value: unknown }) =>
 /**
  * DTO for creating a card in one of the institutional content sections.
  */
-export class CreateContentCardDto {
+export class CreateContentCardDto extends TeamProfileFieldsDto {
   @IsIn(CONTENT_CARD_SECTIONS, {
     message: `section must be one of: ${CONTENT_CARD_SECTIONS.join(', ')}`,
   })

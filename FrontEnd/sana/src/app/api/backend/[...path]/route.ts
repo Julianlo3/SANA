@@ -3,6 +3,17 @@ import { auth0 } from "@/lib/auth0";
 const BACKEND_URL = process.env.BACKEND_API_URL ?? "http://localhost:3000/api/v1";
 
 /**
+ * Client IP as reported by the hosting edge. Vercel overwrites both headers,
+ * so the browser cannot spoof them. The backend reads it through
+ * X-Forwarded-For when TRUST_PROXY_HOPS is configured.
+ */
+function clientIp(request: Request): string | undefined {
+  const realIp = request.headers.get("x-real-ip")?.trim();
+  if (realIp) return realIp;
+  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || undefined;
+}
+
+/**
  * Proxy hacia el backend. Reenvía con el token de sesión si existe, y sin
  * él si no hay sesión activa (el formulario público de solicitud de cita
  * y la consulta de políticas no requieren login). El backend decide, con
@@ -33,12 +44,15 @@ async function forward(
     ? undefined
     : await request.text();
 
+  const forwardedFor = clientIp(request);
+
   let response: Response;
   try {
     response = await fetch(target, {
       method: request.method,
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(forwardedFor ? { "X-Forwarded-For": forwardedFor } : {}),
         "Content-Type": "application/json",
         Origin: process.env.APP_BASE_URL ?? "http://localhost:5173",
       },

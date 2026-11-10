@@ -1,31 +1,35 @@
 import type { CardType, Gender } from "../types/consultation-request-types";
+import type { VulnerablePopulationCategory } from "@/config/vulnerable-population";
 
 /**
- * Reglas de validación del formulario público de solicitud (HU-2.2).
- *
- * Alineadas al backend real (BackEnd/backendsana/src/appointments/dto/create-appointment.dto.ts):
- * documento entre 6 y 12 dígitos, teléfono entre 7 y 12, tres tipos de
- * documento posibles (CC, TI, CE). El menor de edad sí necesita documento
- * (NUIP o TI, según su edad): el backend lo exige siempre, no es opcional.
- *
- * Pedido del cliente (reunión 30/09): confirmar dos veces el documento y
- * el correo, para evitar errores de tipeo en el contacto de la persona.
+ * Validation rules and types for public consultation request forms.
  */
-
+/** Regular expression for validating email addresses. */
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** Regular expression for values containing decimal digits only. */
 const ONLY_DIGITS = /^\d+$/;
+/** Regular expression for supported personal names. */
 const NAME_PATTERN = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'-]+$/;
 
+/** Minimum accepted identity document length. */
 const IDENTITY_DOCUMENT_MIN_LENGTH = 6;
+/** Maximum accepted identity document length. */
 const IDENTITY_DOCUMENT_MAX_LENGTH = 12;
+/** Minimum accepted phone number length. */
 const PHONE_MIN_LENGTH = 7;
+/** Maximum accepted phone number length. */
 const PHONE_MAX_LENGTH = 12;
+/** Maximum consultation reason length. */
 const REASON_MAX_LENGTH = 1000;
 
-/** Edad en la que la Registraduría expide la tarjeta de identidad. Antes de eso, el documento es el registro civil (NUIP). */
+/**
+ * Minimum age for a dependent identity card.
+ */
 export const IDENTITY_CARD_MIN_AGE = 7;
 
-/** Valores del formulario, comunes a los dos tipos de solicitante. */
+/**
+ * Values collected by both self and guardian request forms.
+ */
 export type RequestFormValues = {
   fullName: string;
   documentType: CardType | "";
@@ -46,13 +50,25 @@ export type RequestFormValues = {
   department: string;
   municipality: string;
   consultationReason: string;
+  /** Optional sensitive answer; only the self request sends it. */
+  vulnerablePopulation: VulnerablePopulationCategory | "";
   hasAcceptedDataPolicy: boolean;
   hasAcceptedGuardianDataPolicy: boolean;
   hasAcceptedMinorDataPolicy: boolean;
+  /** Selected evaluation slot as an ISO datetime. */
+  appDate: string;
 };
 
+/**
+ * Validation errors keyed by request form field.
+ */
 export type RequestFormErrors = Partial<Record<keyof RequestFormValues, string>>;
 
+/**
+ * Validates a full name against required length and supported characters.
+ * @param value Name value to validate.
+ * @returns A validation message, or undefined when valid.
+ */
 export function validateFullName(value: string): string | undefined {
   const name = value.trim();
 
@@ -66,12 +82,21 @@ export function validateFullName(value: string): string | undefined {
   return undefined;
 }
 
+/**
+ * Validates that a document type has been selected.
+ * @param value Selected document type.
+ * @returns A validation message, or undefined when valid.
+ */
 export function validateDocumentType(value: string): string | undefined {
   if (!value) return "Selecciona el tipo de documento.";
   return undefined;
 }
 
-/** Documento del adulto solicitante (o del acudiente). Siempre obligatorio. */
+/**
+ * Validates the requester's identity document.
+ * @param value Document number to validate.
+ * @returns A validation message, or undefined when valid.
+ */
 export function validateIdentityDocument(value: string): string | undefined {
   const document = value.trim();
 
@@ -89,7 +114,12 @@ export function validateIdentityDocument(value: string): string | undefined {
   return undefined;
 }
 
-/** Confirma que el documento escrito dos veces coincida. */
+/**
+ * Checks that the repeated identity document matches.
+ * @param document Original document number.
+ * @param confirmDocument Repeated document number.
+ * @returns A validation message, or undefined when valid.
+ */
 export function validateConfirmIdentityDocument(
   document: string,
   confirmDocument: string,
@@ -103,9 +133,9 @@ export function validateConfirmIdentityDocument(
 }
 
 /**
- * Documento del menor: el backend lo exige siempre. Antes de los 7 años es
- * el número del registro civil de nacimiento (NUIP); desde los 7, la
- * tarjeta de identidad. Es el mismo campo, la etiqueta cambia con la edad.
+ * Validates the dependent's required identity document.
+ * @param value Document number to validate.
+ * @returns A validation message, or undefined when valid.
  */
 export function validateMinorIdentityDocument(
   value: string,
@@ -126,7 +156,12 @@ export function validateMinorIdentityDocument(
   return undefined;
 }
 
-/** Confirma que el documento del menor escrito dos veces coincida. */
+/**
+ * Checks that the repeated dependent document matches.
+ * @param document Original dependent document number.
+ * @param confirmDocument Repeated dependent document number.
+ * @returns A validation message, or undefined when valid.
+ */
 export function validateConfirmMinorIdentityDocument(
   document: string,
   confirmDocument: string,
@@ -139,6 +174,11 @@ export function validateConfirmMinorIdentityDocument(
   return undefined;
 }
 
+/**
+ * Validates an email address.
+ * @param value Email address to validate.
+ * @returns A validation message, or undefined when valid.
+ */
 export function validateEmail(value: string): string | undefined {
   const email = value.trim();
 
@@ -150,7 +190,12 @@ export function validateEmail(value: string): string | undefined {
   return undefined;
 }
 
-/** Confirma que el correo escrito dos veces coincida. */
+/**
+ * Checks that the repeated email address matches.
+ * @param email Original email address.
+ * @param confirmEmail Repeated email address.
+ * @returns A validation message, or undefined when valid.
+ */
 export function validateConfirmEmail(
   email: string,
   confirmEmail: string,
@@ -163,6 +208,11 @@ export function validateConfirmEmail(
   return undefined;
 }
 
+/**
+ * Validates a phone number's required value, digits, and length.
+ * @param value Phone number to validate.
+ * @returns A validation message, or undefined when valid.
+ */
 export function validatePhone(value: string): string | undefined {
   const phone = value.trim();
 
@@ -177,6 +227,12 @@ export function validatePhone(value: string): string | undefined {
   return undefined;
 }
 
+/**
+ * Validates a birth date and ensures it is not in the future.
+ * @param value Date string to validate.
+ * @param label Field label used in the required-value message.
+ * @returns A validation message, or undefined when valid.
+ */
 export function validateBirthDate(
   value: string,
   label = "tu fecha de nacimiento",
@@ -190,7 +246,11 @@ export function validateBirthDate(
   return undefined;
 }
 
-/** El menor debe tener menos de 18 años. */
+/**
+ * Validates that the dependent is younger than 18.
+ * @param value Dependent birth date.
+ * @returns A validation message, or undefined when valid.
+ */
 export function validateMinorBirthDate(value: string): string | undefined {
   const dateError = validateBirthDate(value, "la fecha de nacimiento del menor");
   if (dateError) return dateError;
@@ -203,9 +263,9 @@ export function validateMinorBirthDate(value: string): string | undefined {
 }
 
 /**
- * El backend exige que el solicitante o acudiente sea mayor de edad
- * (REQUESTER_MUST_BE_ADULT). Aplica tanto al formulario propio como al del
- * acudiente.
+ * Validates that the requester or guardian is at least 18 years old.
+ * @param value Requester birth date.
+ * @returns A validation message, or undefined when valid.
  */
 export function validateAdultBirthDate(value: string): string | undefined {
   const dateError = validateBirthDate(value);
@@ -218,27 +278,41 @@ export function validateAdultBirthDate(value: string): string | undefined {
   return undefined;
 }
 
+/**
+ * Validates that a gender value has been selected.
+ * @param value Selected gender code.
+ * @returns A validation message, or undefined when valid.
+ */
 export function validateGender(value: string): string | undefined {
   if (!value) return "Selecciona el género.";
   return undefined;
 }
 
-/** Modalidad de la cita: el backend la exige siempre. */
+/**
+ * Validates that an appointment mode has been selected.
+ * @param value Selected appointment mode.
+ * @returns A validation message, or undefined when valid.
+ */
 export function validateAppointmentMode(value: string): string | undefined {
   if (!value) return "Selecciona si la cita es presencial o virtual.";
   return undefined;
 }
 
+/**
+ * Validates that a guardian relationship has been selected.
+ * @param value Selected relationship identifier.
+ * @returns A validation message, or undefined when valid.
+ */
 export function validateRelationship(value: number | ""): string | undefined {
   if (!value) return "Selecciona tu parentesco con el menor.";
   return undefined;
 }
 
 /**
- * Validate municipality field
- * @param department Department selected
- * @param municipality Municipality selected
- * @returns Error message or undefined
+ * Validates municipality selection when a department is provided.
+ * @param department Selected department.
+ * @param municipality Selected municipality.
+ * @returns A validation message, or undefined when valid.
  */
 export function validateMunicipality(
   department: string,
@@ -251,6 +325,11 @@ export function validateMunicipality(
   return undefined;
 }
 
+/**
+ * Validates the consultation reason length.
+ * @param value Consultation reason.
+ * @returns A validation message, or undefined when valid.
+ */
 export function validateConsultationReason(value: string): string | undefined {
   if (value.length > REASON_MAX_LENGTH) {
     return `El motivo no puede pasar de ${REASON_MAX_LENGTH} caracteres.`;
@@ -259,12 +338,33 @@ export function validateConsultationReason(value: string): string | undefined {
   return undefined;
 }
 
-/** HU-2.2.6: sin la autorización no se puede enviar la solicitud. */
+/**
+ * Validates that an evaluation appointment slot has been selected.
+ * @param value Selected slot as an ISO datetime.
+ * @returns A validation message, or undefined when valid.
+ */
+export function validateEvaluationSlot(value: string): string | undefined {
+  if (!value?.trim()) {
+    return "Selecciona un horario disponible para tu cita de evaluación.";
+  }
+  return undefined;
+}
+
+/**
+ * Validates required data processing consent.
+ * @param accepted Whether consent was accepted.
+ * @returns A validation message, or undefined when valid.
+ */
 export function validateDataPolicy(accepted: boolean): string | undefined {
   if (!accepted) return "Debes autorizar el tratamiento de datos para continuar.";
   return undefined;
 }
 
+/**
+ * Validates all fields required for a self request.
+ * @param values Current request form values.
+ * @returns Validation errors keyed by field.
+ */
 export function validateSelfRequest(values: RequestFormValues): RequestFormErrors {
   return removeEmptyErrors({
     fullName: validateFullName(values.fullName),
@@ -282,16 +382,15 @@ export function validateSelfRequest(values: RequestFormValues): RequestFormError
     appType: validateAppointmentMode(values.appType),
     municipality: validateMunicipality(values.department, values.municipality),
     consultationReason: validateConsultationReason(values.consultationReason),
+    appDate: validateEvaluationSlot(values.appDate),
     hasAcceptedDataPolicy: validateDataPolicy(values.hasAcceptedDataPolicy),
   });
 }
 
 /**
- * Valida el formulario del tutor legal.
- *
- * No se valida documentType del tutor: ese formulario solo pide el número,
- * sin tipo. Sí se valida su fecha de nacimiento, porque el backend exige
- * que el acudiente sea mayor de edad.
+ * Validates all fields required for a guardian request.
+ * @param values Current request form values.
+ * @returns Validation errors keyed by field.
  */
 export function validateGuardianRequest(values: RequestFormValues): RequestFormErrors {
   return removeEmptyErrors({
@@ -321,6 +420,7 @@ export function validateGuardianRequest(values: RequestFormValues): RequestFormE
 
     municipality: validateMunicipality(values.department, values.municipality),
     consultationReason: validateConsultationReason(values.consultationReason),
+    appDate: validateEvaluationSlot(values.appDate),
 
     hasAcceptedGuardianDataPolicy: validateDataPolicy(
       values.hasAcceptedGuardianDataPolicy,
@@ -331,6 +431,11 @@ export function validateGuardianRequest(values: RequestFormValues): RequestFormE
   });
 }
 
+/**
+ * Calculates age in full years from a birth date.
+ * @param birthDate Birth date string.
+ * @returns Age in years.
+ */
 export function calculateAge(birthDate: string): number {
   const birth = new Date(birthDate);
   const today = new Date();
@@ -345,6 +450,11 @@ export function calculateAge(birthDate: string): number {
   return age;
 }
 
+/**
+ * Removes fields without validation messages.
+ * @param errors Validation errors to filter.
+ * @returns Errors containing only non-empty messages.
+ */
 function removeEmptyErrors(errors: RequestFormErrors): RequestFormErrors {
   return Object.fromEntries(
     Object.entries(errors).filter(([, message]) => Boolean(message)),

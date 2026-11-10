@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { FOOTER_CONTENT } from "@/content/footer";
 
-const { brand, contact, links, schedule, legal } = FOOTER_CONTENT;
+const { brand, contact, links, schedule, legalLinks, notice, legal } = FOOTER_CONTENT;
 
 export default function PublicFooter() {
   const year = new Date().getFullYear();
@@ -31,19 +31,27 @@ export default function PublicFooter() {
 
         <div>
           <h3 className="font-semibold text-text">{contact.title}</h3>
-          <ul className="mt-4 space-y-2 text-sm text-text-muted">
+          <ul className="mt-3 text-sm text-text-muted lg:mt-4 lg:space-y-2">
             {contact.items.map((item) => (
-              <li key={item}>{item}</li>
+              <li key={item.label} className="flex min-h-11 items-center lg:block lg:min-h-0">
+                {"href" in item ? (
+                  <a href={item.href} className="inline-flex min-h-11 items-center break-all hover:text-primary lg:inline lg:min-h-0">
+                    {item.label}
+                  </a>
+                ) : (
+                  item.label
+                )}
+              </li>
             ))}
           </ul>
         </div>
 
         <div>
           <h3 className="font-semibold text-text">{links.title}</h3>
-          <ul className="mt-4 space-y-2 text-sm text-text-muted">
-            {links.items.map((link) => (
+          <ul className="mt-3 text-sm text-text-muted lg:mt-4 lg:space-y-2">
+            {[...links.items, ...legalLinks].map((link) => (
               <li key={link.href}>
-                <Link href={link.href} className="hover:text-primary">
+                <Link href={link.href} className="inline-flex min-h-11 items-center hover:text-primary lg:inline lg:min-h-0">
                   {link.label}
                 </Link>
               </li>
@@ -57,6 +65,23 @@ export default function PublicFooter() {
             {schedule.description}
           </p>
         </div>
+      </div>
+
+      <div className="border-t border-border px-6 py-6">
+        <p className="mx-auto max-w-4xl text-center text-xs leading-relaxed text-text-muted">
+          {notice.beforeEmail}{" "}
+          <a href={`mailto:${notice.email}`} className="font-semibold text-primary hover:text-primary-dark">
+            {notice.email}
+          </a>
+          {notice.afterEmail}{" "}
+          <Link
+            href={notice.policyLink.href}
+            className="font-semibold text-primary hover:text-primary-dark"
+          >
+            {notice.policyLink.label}
+          </Link>
+          .
+        </p>
       </div>
 
       <div className="border-t border-border px-6 py-5 text-center text-xs text-text-subtle">

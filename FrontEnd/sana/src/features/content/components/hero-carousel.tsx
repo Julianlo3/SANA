@@ -42,7 +42,7 @@ export default function HeroCarousel({
     <section
       aria-roledescription="carrusel"
       aria-label="Presentación y campañas"
-      className="relative h-[85vh] min-h-[600px] w-full overflow-hidden bg-primary-dark"
+      className="relative flex min-h-[100vw] w-full overflow-hidden bg-navy sm:h-[85vh] sm:min-h-[600px]"
       onFocus={() => setIsPaused(true)}
       onBlur={() => setIsPaused(false)}
     >
@@ -73,17 +73,17 @@ export default function HeroCarousel({
             type="button"
             aria-label="Imagen anterior"
             onClick={() => show(index - 1)}
-            className="absolute left-2 top-1/2 z-10 -translate-y-1/2 cursor-pointer p-2 text-gray-300/70 drop-shadow transition hover:text-gray-100 sm:left-6"
+            className="absolute left-0 top-1/2 z-10 -translate-y-1/2 cursor-pointer p-2 text-white/70 drop-shadow transition hover:text-white sm:left-6"
           >
-            <ChevronLeft size={40} strokeWidth={1.5} aria-hidden />
+            <ChevronLeft className="h-8 w-8 sm:h-10 sm:w-10" strokeWidth={1.5} aria-hidden />
           </button>
           <button
             type="button"
             aria-label="Imagen siguiente"
             onClick={() => show(index + 1)}
-            className="absolute right-2 top-1/2 z-10 -translate-y-1/2 cursor-pointer p-2 text-gray-300/70 drop-shadow transition hover:text-gray-100 sm:right-6"
+            className="absolute right-0 top-1/2 z-10 -translate-y-1/2 cursor-pointer p-2 text-white/70 drop-shadow transition hover:text-white sm:right-6"
           >
-            <ChevronRight size={40} strokeWidth={1.5} aria-hidden />
+            <ChevronRight className="h-8 w-8 sm:h-10 sm:w-10" strokeWidth={1.5} aria-hidden />
           </button>
         </>
       )}

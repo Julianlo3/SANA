@@ -1,4 +1,5 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import type { AcceptanceChannel } from '../acceptance-channel.js';
 
 /**
  * Entity for policy acceptance
@@ -28,4 +29,10 @@ export class PolicyAcceptance {
 
   @Column({ name: 'app_id', type: 'integer', nullable: true })
   appId?: number | null;
+
+  @Column({ name: 'pa_channel', type: 'varchar', length: 15, default: 'web' })
+  paChannel!: AcceptanceChannel;
+
+  @Column({ name: 'pa_registered_by', type: 'integer', nullable: true })
+  paRegisteredBy?: number | null;
 }

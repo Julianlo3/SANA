@@ -6,6 +6,7 @@ import PageDecor from "@/components/ui/page-decor";
 import PublicHeader from "@/components/navigation/public-header";
 import PublicFooter from "@/components/navigation/public-footer";
 import InlineMessage from "@/components/feedback/inline-message";
+import EmergencyNotice from "@/components/legal/emergency-notice";
 import TextField from "@/components/forms/text-field";
 import Button from "@/components/ui/button";
 import { REQUEST_CONTENT } from "@/content/consultation-request";
@@ -14,17 +15,18 @@ import { VULNERABLE_POPULATION_OPTIONS } from "@/config/vulnerable-population";
 import AppointmentModeField from "../components/appointment-mode-field";
 import ConfirmedField from "../components/confirmed-field";
 import DataPolicyConsent from "../components/data-policy-consent";
+import EvaluationAppointmentSection from "../components/evaluation-appointment-section";
 import ResidenceFields from "../components/residence-fields";
 import { useConsultationRequestForm } from "../hooks/use-consultation-request-form";
 import type { CardType, Gender } from "../types/consultation-request-types";
 
 /**
- * Renders the self request page, which allows users to submit a consultation request for themselves.
+ * Content configuration for the self request form.
  */
 const { selfForm } = REQUEST_CONTENT;
 
 /**
- * document types for the identity document field, including value and label pairs.
+ * Document types available in the self request form.
  */
 const DOCUMENT_TYPES: { value: CardType; label: string }[] = [
   { value: "CC", label: "Cédula de ciudadanía" },
@@ -32,7 +34,7 @@ const DOCUMENT_TYPES: { value: CardType; label: string }[] = [
 ];
 
 /**
- * Options for the gender select field, including value and label pairs.
+ * Gender options available in the self request form.
  */
 const GENDER_OPTIONS: { value: Gender; label: string }[] = [
   { value: "M", label: "Hombre" },
@@ -42,8 +44,8 @@ const GENDER_OPTIONS: { value: Gender; label: string }[] = [
 ];
 
 /**
- * Renders the self request page, which allows users to submit a consultation request for themselves.
- * @returns A React component that renders the self request page.
+ * Renders the request form for the requester.
+ * @returns The self request page.
  */
 export default function SelfRequestPage() {
   const {
@@ -58,6 +60,8 @@ export default function SelfRequestPage() {
     setGender,
     setAppointmentMode,
     toggleDataPolicy,
+    selectedSlot,
+    setSelectedSlot,
     send,
   } = useConsultationRequestForm("self");
 
@@ -88,6 +92,8 @@ export default function SelfRequestPage() {
           <p className="mt-3 text-sm text-text-muted">
             {selfForm.description}
           </p>
+
+          <EmergencyNotice className="mt-6" />
 
           <div className="mt-8 space-y-8 rounded-2xl border border-border bg-surface p-6">
             <fieldset className="space-y-5">
@@ -231,7 +237,14 @@ export default function SelfRequestPage() {
                   ¿Perteneces a alguna población vulnerable? (opcional)
                 </span>
                 <select
-                  defaultValue=""
+                  value={values.vulnerablePopulation}
+                  onChange={(event) =>
+                    setValue(
+                      "vulnerablePopulation",
+                      event.target.value as typeof values.vulnerablePopulation,
+                    )
+                  }
+                  aria-invalid={errors.vulnerablePopulation ? true : undefined}
                   className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
                 >
                   <option value="">Prefiero no decir</option>
@@ -245,6 +258,11 @@ export default function SelfRequestPage() {
                   Esta información es opcional y nos ayuda a orientar mejor la
                   atención.
                 </span>
+                {errors.vulnerablePopulation && (
+                  <span role="alert" className="mt-1.5 block text-xs text-danger">
+                    {errors.vulnerablePopulation}
+                  </span>
+                )}
               </label>
             </fieldset>
 
@@ -334,6 +352,13 @@ export default function SelfRequestPage() {
                 para confirmar la fecha y hora.
               </p>
             </fieldset>
+
+            <EvaluationAppointmentSection
+              selectedSlot={selectedSlot}
+              onSelect={setSelectedSlot}
+              error={errors.appDate}
+              disabled={isSaving}
+            />
 
             <DataPolicyConsent
               checked={values.hasAcceptedDataPolicy}

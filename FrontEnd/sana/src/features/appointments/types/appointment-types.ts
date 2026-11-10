@@ -1,14 +1,6 @@
 /**
- * Tipos de la bandeja de solicitudes de cita (HU-2.3).
- *
- * Reflejan lo que devuelve el backend real (módulo appointments): los
- * estados y las modalidades van en español porque así se guardan en la base.
- *
- * HU-2.4.1: ninguna de estas respuestas trae el motivo de consulta. Las
- * consultas del backend para la asistente no seleccionan app_reason, así que
- * no hay nada que ocultar en el frontend.
+ * Appointment lifecycle states returned by the API.
  */
-
 export type AppointmentState =
   | "pendiente"
   | "asignada"
@@ -17,21 +9,28 @@ export type AppointmentState =
   | "cancelada"
   | "realizada";
 
+/**
+ * Appointment delivery modes supported by the API.
+ */
 export type AppointmentMode = "presencial" | "virtual";
 
-/** "self": la persona pide para sí misma. "dependent": un acudiente pide para un menor. */
+/**
+ * Indicates whether the appointment is for the requester or a dependent.
+ */
 export type PatientType = "self" | "dependent";
 
-/** Una solicitud o cita, tal como la devuelve GET /appointments. */
+/**
+ * Appointment request data returned by the appointments API.
+ */
 export type Appointment = {
   appId: number;
   appState: AppointmentState;
   appType: AppointmentMode;
-  /** Fecha y hora asignada o confirmada. Es null mientras esté pendiente. */
+  /** Assigned or confirmed datetime; null while pending. */
   appDate: string | null;
-  /** Fecha que la persona prefería al pedir la cita: solo una referencia. */
+  /** Preferred appointment date supplied with the original request. */
   appDateIdeal: string | null;
-  /** Duración en minutos. */
+  /** Appointment duration in minutes. */
   appDuration: number | null;
   appDiscardReason: string | null;
   appCreatedAt: string;
@@ -49,11 +48,13 @@ export type Appointment = {
   psychologistId: number | null;
   psychologistName: string | null;
   secretaryName: string | null;
-  /** Parentesco del acudiente con el menor. Solo si patientType es "dependent". */
+  /** Guardian relationship to the dependent, when applicable. */
   relationshipDescription: string | null;
 };
 
-/** Un psicólogo activo, para el selector de asignación. */
+/**
+ * Active psychologist option available for appointment assignment.
+ */
 export type PsychologistOption = {
   psyId: number;
   name: string;
@@ -61,7 +62,9 @@ export type PsychologistOption = {
   licenseNumber: number;
 };
 
-/** Una franja libre. Varios psicólogos pueden estar libres en la misma. */
+/**
+ * Available time slot grouped with all psychologists who can take it.
+ */
 export type AvailabilitySlot = {
   date: string;
   startTime: string;
@@ -69,27 +72,43 @@ export type AvailabilitySlot = {
   psychologists: { id: number; name: string; speciality: string }[];
 };
 
-/** Parámetros de GET /schedule/availability. */
+/**
+ * Anonymized available time slot returned by the public availability API.
+ */
+export type PublicAvailabilitySlot = {
+  date: string;
+  startTime: string;
+  endTime: string;
+};
+
+/**
+ * Query parameters for the psychologist availability endpoint.
+ */
 export type AvailabilityQuery = {
-  /** Instante ISO desde el cual se busca. */
+  /** ISO datetime from which the search starts. */
   appointmentStart: string;
-  /** Duración de la cita en minutos (1 a 480). */
+  /** Appointment duration in minutes, from 1 to 480. */
   duration: number;
-  /** Ventana de búsqueda hacia adelante, en horas (1 a 24). */
+  /** Forward search window in hours, from 1 to 24. */
   delayHours: number;
-  /** Limita la búsqueda a estos psicólogos. */
+  /** Optional psychologist identifiers to include. */
   psychologistIds?: number[];
 };
 
-/** Asignar (provisional) y confirmar (definitivo) llevan lo mismo. */
+/**
+ * Shared payload for provisional assignment and appointment confirmation.
+ */
 export type AppointmentSlotPayload = {
   psyId: number;
-  /** Instante ISO de la franja. Debe ser idéntico al asignar y al confirmar. */
+  /** Slot ISO datetime; must match for assignment and confirmation. */
   appDate: string;
   appDuration: number;
 };
 
+/**
+ * Payload used to discard an appointment request.
+ */
 export type DiscardAppointmentPayload = {
-  /** Entre 1 y 500 caracteres. */
+  /** Discard reason, between 1 and 500 characters. */
   reason: string;
 };

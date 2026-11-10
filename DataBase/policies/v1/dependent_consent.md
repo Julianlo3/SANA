@@ -1,0 +1,1 @@
+Como representante del menor, autorizo de forma previa, expresa e informada a la Fundación Dejando Huellas Felices para tratar sus datos personales y los datos sensibles que decida entregar, para gestionar su cita y su atención psicológica, según la Política de Tratamiento de Datos Personales. Entiendo que los datos pueden alojarse en servidores fuera de Colombia.

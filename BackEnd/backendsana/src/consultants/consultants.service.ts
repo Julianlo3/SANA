@@ -15,6 +15,7 @@ import { Appointment } from '../users/entities/appointment.entity.js';
 import { Psychologist } from '../users/entities/psychologist.entity.js';
 import type { CreateConsultantDto } from './dto/create-consultant.dto.js';
 import type { UpdateConsultantDto } from './dto/update-consultant.dto.js';
+import type { AssistedAcceptanceChannel } from '../policy/acceptance-channel.js';
 import type {
   ConsultantResponse,
   PsychologistConsultantRecordResponse,
@@ -50,15 +51,67 @@ export class ConsultantsService {
   ) { }
 
   /**
+   * A secretary always registers the acceptance on behalf of the consultant,
+   * so the channel used to obtain it is mandatory.
+   */
+  private assertAcceptanceChannel(
+    termsAccepted: boolean | undefined,
+    channel: AssistedAcceptanceChannel | undefined,
+  ): void {
+    if (termsAccepted && !channel) {
+      throw new BadRequestException({
+        error: 'ACCEPTANCE_CHANNEL_REQUIRED',
+        message: 'Indique el canal por el que se obtuvo la autorización: telefono, whatsapp o presencial',
+      });
+    }
+  }
+
+  private async recordAssistedDataTreatment(
+    manager: EntityManager,
+    params: {
+      personId: number;
+      channel: AssistedAcceptanceChannel;
+      registeredBy: number;
+      ipAddress?: string;
+    },
+  ): Promise<void> {
+    const pdId = await manager.query<{ pd_id: number }[]>(
+      `SELECT pd_id
+       FROM policy_documents
+       WHERE pd_type = 'data_treatment'
+       ORDER BY pd_effective_from DESC
+       LIMIT 1`,
+    );
+    if (!pdId[0]?.pd_id) return;
+
+    await manager.query(
+      `INSERT INTO policy_acceptance (per_id, pd_id, pa_ip_address, pa_channel, pa_registered_by)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (per_id, pd_id) WHERE dep_id IS NULL AND cn_id IS NULL AND app_id IS NULL DO NOTHING`,
+      [
+        params.personId,
+        pdId[0].pd_id,
+        params.ipAddress ?? null,
+        params.channel,
+        params.registeredBy,
+      ],
+    );
+  }
+
+  /**
    * Creates a new consultant record.
    * @param dto The data for the new consultant record.
    * @param createdByUserId The id of the user who created the consultant record.
+   * @param ipAddress IP address of the secretary registering the acceptance.
    * @returns The newly created consultant record.
    */
   async create(
     dto: CreateConsultantDto,
     createdByUserId: number,
+    ipAddress?: string,
   ): Promise<ConsultantResponse> {
+    this.assertAcceptanceChannel(dto.termsAccepted, dto.channel);
+
     // Validar que no exista el consultante por documento de identidad
     const existingByDocument = await this.personRepository.findOne({
       where: { perIdentityDocument: dto.identityDocument },
@@ -102,23 +155,13 @@ export class ConsultantsService {
         }),
       );
 
-      // Registra la aceptación de la política de tratamiento de datos
-      if (dto.termsAccepted) {
-        const pdId = await manager.query<{ pd_id: number }[]>(
-          `SELECT pd_id
-           FROM policy_documents
-           WHERE pd_type = 'data_treatment'
-           ORDER BY pd_effective_from DESC
-           LIMIT 1`,
-        );
-        if (pdId[0]?.pd_id) {
-          await manager.query(
-            `INSERT INTO policy_acceptance (per_id, pd_id)
-             VALUES ($1, $2)
-             ON CONFLICT (per_id, pd_id) WHERE dep_id IS NULL AND cn_id IS NULL AND app_id IS NULL DO NOTHING`,
-            [created.perId, pdId[0].pd_id],
-          );
-        }
+      if (dto.termsAccepted && dto.channel) {
+        await this.recordAssistedDataTreatment(manager, {
+          personId: created.perId,
+          channel: dto.channel,
+          registeredBy: createdByUserId,
+          ipAddress,
+        });
       }
 
       this.logger.log(
@@ -360,13 +403,16 @@ export class ConsultantsService {
    * @param id The id of the consultant record to update.
    * @param dto The data for the consultant record to update.
    * @param updatedByUserId The id of the user who updated the consultant record.
+   * @param ipAddress IP address of the secretary registering the acceptance.
    * @returns The updated consultant record.
    */
   async update(
     id: number,
     dto: UpdateConsultantDto,
     updatedByUserId: number,
+    ipAddress?: string,
   ): Promise<ConsultantResponse> {
+    this.assertAcceptanceChannel(dto.termsAccepted, dto.channel);
     const person = await this.findByIdOrFail(id);
 
     // Verificar que tenga rol de consultante
@@ -409,23 +455,13 @@ export class ConsultantsService {
       if (dto.residenceZone !== undefined) personToUpdate.perResidenceZone = dto.residenceZone?.trim() ?? null;
       personToUpdate.perUpdateDate = new Date();
 
-      // Registra la aceptación de la política de tratamiento de datos
-      if (dto.termsAccepted !== undefined && dto.termsAccepted) {
-        const pdId = await manager.query<{ pd_id: number }[]>(
-          `SELECT pd_id
-           FROM policy_documents
-           WHERE pd_type = 'data_treatment'
-           ORDER BY pd_effective_from DESC
-           LIMIT 1`,
-        );
-        if (pdId[0]?.pd_id) {
-          await manager.query(
-            `INSERT INTO policy_acceptance (per_id, pd_id)
-             VALUES ($1, $2)
-             ON CONFLICT (per_id, pd_id) WHERE dep_id IS NULL AND cn_id IS NULL AND app_id IS NULL DO NOTHING`,
-            [id, pdId[0].pd_id],
-          );
-        }
+      if (dto.termsAccepted && dto.channel) {
+        await this.recordAssistedDataTreatment(manager, {
+          personId: id,
+          channel: dto.channel,
+          registeredBy: updatedByUserId,
+          ipAddress,
+        });
       }
 
       await manager.save(personToUpdate);

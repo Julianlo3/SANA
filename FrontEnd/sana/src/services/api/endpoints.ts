@@ -1,21 +1,19 @@
 /**
- * Rutas de la API en un solo lugar.
- * Siguen el estándar: inglés, minúsculas, plural y kebab-case.
+ * Centralized backend API endpoint paths.
  */
-
 export const ENDPOINTS = {
   users: "/users",
   user: (id: number) => `/users/${id}`,
   userStatus: (id: number) => `/users/${id}/status`,
   roles: "/roles",
 
-  // Solicitudes de consulta (épica 2) — endpoint público real del backend
+  // Public consultation request endpoints.
   consultationRequests: "/appointments/request",
   consultationRequest: (id: number) => `/consultation-requests/${id}`,
   residenceZones: "/residence-zones",
   availableSlots: "/consultation-requests/available-slots",
 
-  // Consultantes (HU-2.1 y HU-2.4)
+  // Consultant endpoints.
   consultants: "/consultants",
   consultantSummary: (id: number) => `/consultants/${id}`,
   consultantFullRecord: (id: number) => `/consultants/${id}/full`,
@@ -24,11 +22,11 @@ export const ENDPOINTS = {
   clinicalNotesForAppointment: (id: number) =>
     `/clinical-notes/appointment/${id}`,
 
-  // Registro de atención (HU-2.5)
+  // Care record endpoints.
   psychologistAppointments: "/appointments/mine",
   careRecords: "/care-records",
 
-  // Bandeja de la asistente (HU-2.3), contra el backend real (módulo appointments)
+  // Secretary appointment inbox endpoints.
   appointments: "/appointments",
   appointment: (id: number) => `/appointments/${id}`,
   appointmentPsychologists: "/appointments/psychologists",
@@ -58,7 +56,10 @@ export const ENDPOINTS = {
   bannerActivation: (id: number) => `/banners/${id}/activation`,
   publicBanners: "/public/banners",
 
-  // Donaciones (Wompi)
+  // Public availability endpoint for evaluation appointments.
+  consultantAvailability: "/appointments/availability",
+
+  // Donation endpoints.
   donations: "/donations",
   donationByTransactionId: (transactionId: string) => `/donations/${transactionId}`,
 } as const;

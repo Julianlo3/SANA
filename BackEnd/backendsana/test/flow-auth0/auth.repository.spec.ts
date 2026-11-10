@@ -32,7 +32,10 @@ describe('AuthRepository', () => {
       'p.per_name AS name',
     );
     expect(dataSource.query.mock.calls[0][0]).toContain(
-      "pd.pd_type = 'data_treatment'",
+      "ARRAY['account_terms', 'terms_of_use', 'privacy_policy']",
+    );
+    expect(dataSource.query.mock.calls[0][0]).not.toContain(
+      "'data_treatment'",
     );
     expect(dataSource.query.mock.calls[0][0]).not.toContain(
       'per_termns_accpted',
@@ -108,6 +111,42 @@ describe('AuthRepository', () => {
       [9],
     );
     expect(manager.query).toHaveBeenCalledTimes(2);
+  });
+
+  it('records account terms, terms of use and privacy policy with the IP in a single insert', async () => {
+    const { repository, dataSource } = setup();
+    dataSource.query
+      .mockResolvedValueOnce([
+        { pd_type: 'privacy_policy', pd_id: 5 },
+        { pd_type: 'account_terms', pd_id: 9 },
+        { pd_type: 'terms_of_use', pd_id: 6 },
+      ])
+      .mockResolvedValueOnce([]);
+
+    await repository.acceptTerms(42, '203.0.113.7');
+
+    expect(dataSource.query).toHaveBeenCalledTimes(2);
+    expect(dataSource.query.mock.calls[0][0]).toContain('DISTINCT ON (pd_type)');
+    expect(dataSource.query.mock.calls[0][1]).toEqual([
+      ['account_terms', 'terms_of_use', 'privacy_policy'],
+    ]);
+    expect(dataSource.query.mock.calls[1][0]).toContain('unnest($2::int[])');
+    expect(dataSource.query.mock.calls[1][0]).toContain("'web'");
+    expect(dataSource.query.mock.calls[1][1]).toEqual([42, [9, 6, 5], '203.0.113.7']);
+    expect(JSON.stringify(dataSource.query.mock.calls)).not.toContain('data_treatment');
+  });
+
+  it('records nothing when one of the account documents is missing', async () => {
+    const { repository, dataSource } = setup();
+    dataSource.query.mockResolvedValueOnce([
+      { pd_type: 'account_terms', pd_id: 9 },
+      { pd_type: 'privacy_policy', pd_id: 5 },
+    ]);
+
+    await expect(repository.acceptTerms(42)).rejects.toThrow(
+      'No policy document found for type: terms_of_use',
+    );
+    expect(dataSource.query).toHaveBeenCalledOnce();
   });
 });
 // Los valores del usuario se pasan como parámetros SQL, no se interpolan en la consulta.

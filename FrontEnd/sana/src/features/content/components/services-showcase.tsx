@@ -137,7 +137,7 @@ export default function ServicesShowcase({
           "linear-gradient(135deg, #fdeef3 0%, #eef7f8 55%, #e7effa 100%)",
       }}
     >
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-5">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-5">
         <div
           role="tablist"
           aria-orientation="vertical"
@@ -184,16 +184,16 @@ export default function ServicesShowcase({
                   }}
                   onClick={() => handleSelect(index)}
                   onKeyDown={handleKeyDown}
-                  className="group flex w-full cursor-pointer items-center gap-5 rounded-2xl px-5 py-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-[#eb5886]/60"
+                  className="group flex w-full cursor-pointer items-center gap-2 rounded-2xl px-4 py-4 text-left outline-none min-[380px]:gap-3 sm:gap-5 sm:px-5 focus-visible:ring-2 focus-visible:ring-[#eb5886]/60"
                 >
                   <span
-                    className="w-7 shrink-0 font-display text-sm font-bold tabular-nums transition-colors duration-300"
+                    className="w-6 shrink-0 font-display text-sm font-bold tabular-nums min-[380px]:w-7 transition-colors duration-300"
                     style={{ color: isActive ? accent.strong : "#8296ac" }}
                   >
                     {pad(index + 1)}
                   </span>
                   <span
-                    className={`flex-1 font-display text-lg font-bold leading-snug transition-[color,translate] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] sm:text-xl ${
+                    className={`min-w-0 flex-1 break-words font-display text-base font-bold leading-snug hyphens-auto transition-[color,translate] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] min-[380px]:text-lg sm:text-xl ${
                       isActive ? "translate-x-1" : "group-hover:translate-x-1"
                     }`}
                     style={{ color: isActive ? PINK : NAVY }}
@@ -219,7 +219,7 @@ export default function ServicesShowcase({
                       : "grid-rows-[0fr] opacity-0"
                   }`}
                 >
-                  <p className="overflow-hidden whitespace-pre-line px-5 pl-17 text-[15px] leading-relaxed text-text-muted">
+                  <p className="overflow-hidden whitespace-pre-line px-4 pl-12 text-[15px] min-[380px]:pl-14 sm:px-5 sm:pl-17 leading-relaxed text-text-muted">
                     <span className="block pb-5">{service.description}</span>
                   </p>
                 </div>
