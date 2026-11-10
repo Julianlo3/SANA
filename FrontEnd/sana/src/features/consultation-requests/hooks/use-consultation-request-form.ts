@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { allowsInPersonAppointments } from "@/config/residence-zones";
 import { useForm } from "@/hooks/use-form";
 import { ApiError } from "@/types/api-types";
 import { scrollToFirstError } from "../lib/scroll-to-first-error";
@@ -36,7 +37,7 @@ const EMPTY_FORM: RequestFormValues = {
   email: "",
   confirmEmail: "",
   phone: "",
-  appType: "",
+  appType: "virtual",
   relationship: "",
   minorFullName: "",
   minorBirthDate: "",
@@ -212,12 +213,23 @@ export function useConsultationRequestForm(patientType: PatientType) {
       field: K,
       value: RequestFormValues[K],
     ) => {
+      const forcesVirtualMode =
+        field === "department" &&
+        typeof value === "string" &&
+        !allowsInPersonAppointments(value);
+
       setServerErrors((current) => {
-        if (!current[field]) return current;
+        if (!current[field] && !(forcesVirtualMode && current.appType)) {
+          return current;
+        }
         const next = { ...current };
         delete next[field];
+        if (forcesVirtualMode) delete next.appType;
         return next;
       });
+      if (forcesVirtualMode) {
+        baseSetValue("appType", "virtual");
+      }
       baseSetValue(field, value);
     },
     [baseSetValue],
@@ -300,9 +312,14 @@ export function useConsultationRequestForm(patientType: PatientType) {
    */
   const setAppointmentMode = useCallback(
     (appType: AppointmentMode | "") => {
-      setValue("appType", appType);
+      setValue(
+        "appType",
+        allowsInPersonAppointments(form.values.department)
+          ? appType
+          : "virtual",
+      );
     },
-    [setValue],
+    [form.values.department, setValue],
   );
 
   /**

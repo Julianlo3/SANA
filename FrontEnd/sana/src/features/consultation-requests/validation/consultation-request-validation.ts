@@ -1,5 +1,6 @@
 import type { CardType, Gender } from "../types/consultation-request-types";
 import type { VulnerablePopulationCategory } from "@/config/vulnerable-population";
+import { allowsInPersonAppointments } from "@/config/residence-zones";
 
 /**
  * Validation rules and types for public consultation request forms.
@@ -292,12 +293,23 @@ export function validateGender(value: string): string | undefined {
 }
 
 /**
- * Validates that an appointment mode has been selected.
+ * Validates that the selected appointment mode is allowed for the department.
  * @param value Selected appointment mode.
+ * @param department Selected department.
  * @returns A validation message, or undefined when valid.
  */
-export function validateAppointmentMode(value: string): string | undefined {
+export function validateAppointmentMode(
+  value: string,
+  department?: string,
+): string | undefined {
   if (!value) return "Selecciona si la cita es presencial o virtual.";
+  if (
+    value === "presencial" &&
+    department !== undefined &&
+    !allowsInPersonAppointments(department)
+  ) {
+    return "La atención presencial solo está disponible para residentes del departamento del Huila.";
+  }
   return undefined;
 }
 
@@ -382,7 +394,7 @@ export function validateSelfRequest(values: RequestFormValues): RequestFormError
     email: validateEmail(values.email),
     confirmEmail: validateConfirmEmail(values.email, values.confirmEmail),
     phone: validatePhone(values.phone),
-    appType: validateAppointmentMode(values.appType),
+    appType: validateAppointmentMode(values.appType, values.department),
     municipality: validateMunicipality(values.department, values.municipality),
     consultationReason: validateConsultationReason(values.consultationReason),
     appDate: validateEvaluationSlot(values.appDate),
@@ -408,7 +420,7 @@ export function validateGuardianRequest(values: RequestFormValues): RequestFormE
     email: validateEmail(values.email),
     confirmEmail: validateConfirmEmail(values.email, values.confirmEmail),
     phone: validatePhone(values.phone),
-    appType: validateAppointmentMode(values.appType),
+    appType: validateAppointmentMode(values.appType, values.department),
 
     minorFullName: validateFullName(values.minorFullName),
     minorBirthDate: validateMinorBirthDate(values.minorBirthDate),

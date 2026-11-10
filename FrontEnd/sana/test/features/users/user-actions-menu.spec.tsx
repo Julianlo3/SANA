@@ -47,7 +47,7 @@ describe("user status actions", () => {
       screen.getByRole("menuitem", { name: "Desactivar cuenta" }),
     ).toBeTruthy();
     expect(
-      screen.getByRole("menuitem", { name: "Dar de baja" }),
+      screen.getByRole("menuitem", { name: "Eliminar usuario" }),
     ).toBeTruthy();
     expect(
       screen.queryByRole("menuitem", { name: "Habilitar cuenta" }),
@@ -61,7 +61,7 @@ describe("user status actions", () => {
       screen.queryByRole("menuitem", { name: "Desbloquear acceso" }),
     ).toBeNull();
     expect(
-      screen.queryByRole("menuitem", { name: "Dar de baja" }),
+      screen.queryByRole("menuitem", { name: "Eliminar usuario" }),
     ).toBeNull();
   });
 

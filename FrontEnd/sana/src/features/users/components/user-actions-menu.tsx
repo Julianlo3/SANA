@@ -104,7 +104,7 @@ export default function UserActionsMenu({
             className={`${ITEM_CLASS} text-danger hover:bg-danger-soft`}
           >
             <Archive size={15} aria-hidden />
-            Dar de baja
+            Eliminar usuario
           </button>
         </>
       )}
