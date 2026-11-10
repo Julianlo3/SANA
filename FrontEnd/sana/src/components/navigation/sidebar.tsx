@@ -18,6 +18,7 @@ import {
   ChevronDown,
   UserCircle2,
   Home,
+  BarChart3,
 } from "lucide-react";
 import { getInitials } from "@/lib/format/text";
 import { formatRoleLabels, findRoleByName } from "@/config/roles";
@@ -37,6 +38,7 @@ type NavLink = {
 const LINKS_BY_ROLE: Record<string, NavLink[]> = {
   administrador: [
     { label: "Usuarios", href: "/usuarios", icon: UserCog },
+    { label: "Reportes", href: "/reportes", icon: BarChart3 },
     { label: "Contenido", href: "/contenido", icon: FileText },
   ],
   marketing: [{ label: "Contenido", href: "/contenido", icon: FileText }],
