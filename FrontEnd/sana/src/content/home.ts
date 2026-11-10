@@ -45,16 +45,35 @@ export const HOME_CONTENT = {
   },
 
   news: {
-    title: "Últimas noticias",
+    title: "Noticias",
     seeAll: "Ver todas las noticias",
+    featured: "Destacada",
+    deck: "Noticias recientes",
+    previous: "Noticia anterior",
+    next: "Noticia siguiente",
+    goTo: "Ir a la noticia",
+    position: "Noticia",
+    readFull: "Leer nota completa",
+    readMore: "Leer más",
+    otherNews: "Otras noticias",
+    breadcrumbs: "Migas de pan",
+    home: "Inicio",
+    pagination: "Páginas de noticias",
+    previousPage: "Anterior",
+    nextPage: "Siguiente",
     pageTitle: "Noticias",
-    pageDescription:
-      "Las actividades y los logros de la fundación, de la más reciente a la más antigua.",
     back: "Volver a noticias",
+    backHome: "Volver al inicio",
   },
 
   gallery: {
     title: "Galería",
+    wall: "Fotos de la fundación en movimiento",
+    dialog: "Foto de la galería",
+    allPhotos: "Todas las fotos",
+    showAll: "Ver todas las fotos",
+    pause: "Pausar el movimiento de las fotos",
+    resume: "Reanudar el movimiento de las fotos",
   },
 
   donation: {

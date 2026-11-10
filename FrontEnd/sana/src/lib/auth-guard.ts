@@ -36,7 +36,7 @@ export async function getCurrentUser(): Promise<CurrentUser> {
     redirect("/iniciar-sesion");
   }
 
-  const accessToken = await auth0.getAccessToken();
+  const accessToken = await auth0.getAccessToken().catch(() => null);
 
   if (!accessToken?.token) {
     redirect("/sesion-expirada");

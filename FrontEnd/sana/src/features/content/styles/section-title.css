@@ -1,0 +1,23 @@
+.section-title-letter {
+  display: inline-block;
+  white-space: pre;
+  transition:
+    transform 800ms cubic-bezier(0.34, 1.56, 0.64, 1) var(--letter-delay, 0ms),
+    opacity 500ms ease-out var(--letter-delay, 0ms);
+}
+
+[data-entrance="waiting"] .section-title-letter {
+  opacity: 0;
+  transform: translateY(0.7em) rotate(8deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section-title-letter {
+    transition: none;
+  }
+
+  [data-entrance="waiting"] .section-title-letter {
+    opacity: 1;
+    transform: none;
+  }
+}
