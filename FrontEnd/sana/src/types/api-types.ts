@@ -1,19 +1,23 @@
-/** Envoltura estándar de las respuestas del backend. */
+/** Standard response envelope returned by the backend. */
 export type ApiCollection<T> = {
   data: T[];
   total?: number;
 };
 
+/**
+ * Defines the api item type.
+ */
+
 export type ApiItem<T> = {
   data: T;
 };
 
-/** Error normalizado que consumen las pantallas. */
+/** Normalized error consumed by application pages. */
 export class ApiError extends Error {
   readonly status: number;
-  /** Errores por campo devueltos por el backend, con el nombre del campo del backend. */
+  /** Field errors returned by the backend, keyed by backend field name. */
   readonly fieldErrors: Record<string, string>;
-  /** Código de error de negocio del backend (por ejemplo REQUESTER_MUST_BE_ADULT), si lo envía. */
+  /** Optional backend business error code, such as `REQUESTER_MUST_BE_ADULT`. */
   readonly code: string | null;
 
   constructor(

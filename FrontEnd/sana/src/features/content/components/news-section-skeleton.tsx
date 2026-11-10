@@ -1,5 +1,9 @@
 import NewsShell from "@/features/content/components/news-shell";
 
+/**
+ * Renders the highlights skeleton component.
+ * @returns Rendered component.
+ */
 function HighlightsSkeleton() {
   return (
     <div aria-hidden className="news-skeleton-shimmer mt-10 grid grid-cols-[3fr_2fr] items-start gap-10">
@@ -33,6 +37,10 @@ function HighlightsSkeleton() {
   );
 }
 
+/**
+ * Renders the deck skeleton component.
+ * @returns Rendered component.
+ */
 function DeckSkeleton() {
   return (
     <div aria-hidden className="news-skeleton-shimmer flex h-full flex-col md:grid md:grid-cols-2 md:gap-8">
@@ -67,6 +75,11 @@ export function NewsStageSkeleton() {
   );
 }
 
+/**
+ * Renders the news section skeleton component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function NewsSectionSkeleton({ title }: Readonly<{ title: string }>) {
   return (
     <NewsShell title={title}>

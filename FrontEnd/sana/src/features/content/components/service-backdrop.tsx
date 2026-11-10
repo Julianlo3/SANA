@@ -2,6 +2,9 @@
 
 import { useEffect, useRef } from "react";
 
+/**
+ * Defines backdrop accents.
+ */
 export const BACKDROP_ACCENTS = [
   { soft: "#fbd5e2", strong: "#eb5886" },
   { soft: "#cdeef0", strong: "#2e8c96" },
@@ -9,10 +12,19 @@ export const BACKDROP_ACCENTS = [
   { soft: "#feefc4", strong: "#d9a21b" },
 ];
 
+/**
+ * Defines module-level values for pink and teal and blue and gold.
+ */
 const [PINK, TEAL, BLUE, GOLD] = BACKDROP_ACCENTS;
 
+/**
+ * Defines the layer fade ms.
+ */
 const LAYER_FADE_MS = 700;
 
+/**
+ * Defines the blobs.
+ */
 const BLOBS = [
   {
     className: "-right-20 -top-24 h-80 w-80",
@@ -31,6 +43,9 @@ const BLOBS = [
   },
 ];
 
+/**
+ * Defines the bubbles.
+ */
 const BUBBLES = [
   { left: "8%", size: 14, duration: 9000 },
   { left: "22%", size: 28, duration: 12000 },
@@ -40,12 +55,27 @@ const BUBBLES = [
   { left: "76%", size: 12, duration: 7500 },
   { left: "88%", size: 22, duration: 10000 },
 ];
+/**
+ * Defines the bubble travel px.
+ */
 const BUBBLE_TRAVEL_PX = 620;
 
+/**
+ * Defines the rings.
+ */
 const RINGS = 3;
+/**
+ * Defines the ring ms.
+ */
 const RING_MS = 10000;
+/**
+ * Defines the orbits.
+ */
 const ORBITS = [{ size: "38rem", duration: 70000, reverse: false }];
 
+/**
+ * Defines the sparkles.
+ */
 const SPARKLES = [
   { left: "12%", top: "18%", size: 6, duration: 4200 },
   { left: "26%", top: "72%", size: 4, duration: 5200 },
@@ -59,14 +89,23 @@ const SPARKLES = [
   { left: "20%", top: "90%", size: 5, duration: 5400 },
 ];
 
+/**
+ * Defines the waves.
+ */
 const WAVES = [
   { height: "42%", opacity: 0.35, duration: 26000 },
   { height: "32%", opacity: 0.55, duration: 18000 },
   { height: "22%", opacity: 0.8, duration: 12000 },
 ];
+/**
+ * Defines the wave path.
+ */
 const WAVE_PATH =
   "M0 60 Q180 0 360 60 T720 60 T1080 60 T1440 60 T1800 60 T2160 60 T2520 60 T2880 60 V120 H0 Z";
 
+/**
+ * Defines the floaters.
+ */
 const FLOATERS = [
   { className: "left-[10%] top-[16%] h-5 w-5 rounded-md", duration: 6000 },
   { className: "left-[82%] top-[12%] h-7 w-7 rounded-full", duration: 7400 },
@@ -76,12 +115,24 @@ const FLOATERS = [
   { className: "left-[90%] top-[56%] h-5 w-5 rounded-md", duration: 6800 },
 ];
 
+/**
+ * Defines the layer motion type.
+ */
 type LayerMotion = (layer: HTMLElement) => Animation[];
 
+/**
+ * Implements the select operation.
+ * @param layer layer input.
+ * @param selector selector input.
+ */
 function select(layer: HTMLElement, selector: string) {
   return Array.from(layer.querySelectorAll(selector));
 }
 
+/**
+ * Implements the bubbles motion operation.
+ * @param layer layer input.
+ */
 const bubblesMotion: LayerMotion = (layer) => [
   ...select(layer, "[data-blob]").map((element, order) =>
     element.animate(
@@ -121,6 +172,10 @@ const bubblesMotion: LayerMotion = (layer) => [
   ),
 ];
 
+/**
+ * Implements the ripples motion operation.
+ * @param layer layer input.
+ */
 const ripplesMotion: LayerMotion = (layer) => [
   ...select(layer, "[data-ring]").map((element, order) =>
     element.animate(
@@ -158,6 +213,10 @@ const ripplesMotion: LayerMotion = (layer) => [
   ),
 ];
 
+/**
+ * Implements the waves motion operation.
+ * @param layer layer input.
+ */
 const wavesMotion: LayerMotion = (layer) => [
   ...select(layer, "[data-wave]").map((element, order) =>
     element.animate(
@@ -186,6 +245,10 @@ const wavesMotion: LayerMotion = (layer) => [
   ),
 ];
 
+/**
+ * Implements the sparkles motion operation.
+ * @param layer layer input.
+ */
 const sparklesMotion: LayerMotion = (layer) => [
   ...select(layer, "[data-sparkle]").map((element, order) =>
     element.animate(
@@ -218,6 +281,9 @@ const sparklesMotion: LayerMotion = (layer) => [
   ),
 ];
 
+/**
+ * Defines the layer motions.
+ */
 const LAYER_MOTIONS = [
   bubblesMotion,
   ripplesMotion,
@@ -225,6 +291,11 @@ const LAYER_MOTIONS = [
   sparklesMotion,
 ];
 
+/**
+ * Renders the service backdrop component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function ServiceBackdrop({ theme }: { theme: number }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const layerAnimations = useRef<Animation[][]>([]);

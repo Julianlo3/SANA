@@ -8,21 +8,16 @@ import {
 import { acceptPsychologistTerms } from "../services/psychologist-terms-service";
 import { getPolicyDocument } from "@/features/consultation-requests/services/policy-service";
 
+/**
+ * Defines the terms step type.
+ */
 type TermsStep = "psychologist" | "schedule";
 
 /**
- * El psicólogo debe aceptar DOS términos distintos, en orden, antes de
- * poder usar su calendario:
- * 1. psychologist-terms (PATCH /auth/psychologist-terms) — términos
- *    generales de psicólogo, se aceptan una sola vez.
- * 2. schedule_terms (POST /schedule/me/accept-terms) — específico de la
- *    agenda. El backend rechaza crear bloqueos si falta cualquiera de
- *    los dos, aunque ya se haya aceptado el otro.
- *
- * isLoading arranca en false cuando el primer paso (psychologist-terms)
- * todavía falta: en ese caso no hay nada que consultar todavía, así que
- * el efecto de abajo no hace ningún setState síncrono — simplemente no
- * corre su cuerpo.
+ * Coordinates acceptance of general psychologist terms and schedule terms.
+ * Both are required before the backend permits schedule block creation.
+ * Schedule status is fetched only after the general terms have been accepted.
+ * @param initialPsyTermsAccepted initial psy terms accepted input.
  */
 export function useScheduleTerms(initialPsyTermsAccepted: boolean | null) {
   const [step, setStep] = useState<TermsStep | null>(

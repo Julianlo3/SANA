@@ -4,6 +4,9 @@ import { useId, useRef, useState } from "react";
 import { Bold, Italic, Link2 } from "lucide-react";
 import MarkdownText from "./markdown-text";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   label: string;
   value: string;
@@ -15,14 +18,25 @@ type Props = {
   disabled?: boolean;
 };
 
+/**
+ * Defines the format type.
+ */
 type Format = { before: string; after: string; placeholder: string };
 
+/**
+ * Defines the formats.
+ */
 const FORMATS: Record<"bold" | "italic" | "link", Format> = {
   bold: { before: "**", after: "**", placeholder: "texto en negrita" },
   italic: { before: "*", after: "*", placeholder: "texto en cursiva" },
   link: { before: "[", after: "](https://)", placeholder: "texto del enlace" },
 };
 
+/**
+ * Renders the rich text field component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function RichTextField({
   label,
   value,

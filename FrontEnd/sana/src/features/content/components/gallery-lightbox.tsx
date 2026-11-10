@@ -12,17 +12,43 @@ import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useModalDialog } from "@/features/content/hooks/use-modal-dialog";
 import type { PublicGalleryImage } from "@/features/content/types/content-types";
 
+/**
+ * Defines the swipe distance px.
+ */
 const SWIPE_DISTANCE_PX = 60;
+/**
+ * Defines the close distance px.
+ */
 const CLOSE_DISTANCE_PX = 110;
+/**
+ * Defines the tap tolerance px.
+ */
 const TAP_TOLERANCE_PX = 10;
+/**
+ * Defines the flip ms.
+ */
 const FLIP_MS = 520;
+/**
+ * Defines the flip easing.
+ */
 const FLIP_EASING = "cubic-bezier(0.22, 1, 0.36, 1)";
 
+/**
+ * Defines the drag type.
+ */
 type Drag = { x: number; y: number; dx: number; dy: number; id: number };
 
+/**
+ * Defines the round button.
+ */
 const ROUND_BUTTON =
   "flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-white/10 transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white";
 
+/**
+ * Implements the contained rect operation.
+ * @param frame frame input.
+ * @param ratio ratio input.
+ */
 function containedRect(frame: DOMRect, ratio: number) {
   const width = Math.min(frame.width, frame.height * ratio);
   const height = width / ratio;
@@ -34,10 +60,18 @@ function containedRect(frame: DOMRect, ratio: number) {
   );
 }
 
+/**
+ * Implements the prefers reduced motion operation.
+ */
 function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
+/**
+ * Renders the gallery lightbox component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function GalleryLightbox({
   images,
   index,

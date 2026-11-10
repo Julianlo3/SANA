@@ -8,12 +8,12 @@ import type {
 } from "../types/consultant-types";
 
 /**
- * Única puerta de entrada a los datos de consultantes.
+ * Central service for consultant data access.
  *
  * HU-2.4:
- * - La asistente recibe ConsultantSummary.
- * - El psicólogo tratante recibe ConsultantFullRecord.
- * - El backend es responsable de validar los permisos.
+ * - Assistants receive `ConsultantSummary`.
+ * - Treating psychologists receive `ConsultantFullRecord`.
+ * - The backend is responsible for permission validation.
  */
 
 type ConsultantApiResponse = {
@@ -106,9 +106,11 @@ export async function listConsultantsForPsychologist(): Promise<
 /**
  * HU-2.4.5
  *
- * Bitácora de accesos a la información del consultante.
+ * Access log for consultant information.
  *
- * Es de solo lectura para el administrador.
+ * The administrator can view this log but cannot modify it.
+ * @param consultantId Resource identifier.
+ * @returns A promise resolving to the operation result.
  */
 export async function getConsultantAccessLog(
   consultantId: number,

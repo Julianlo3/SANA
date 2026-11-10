@@ -16,11 +16,18 @@ import {
   type UserFormValues,
 } from "../validation/user-validation";
 
+/**
+ * Defines the editable form values type.
+ */
+
 export type EditableFormValues = UserFormValues & {
-  /** Roles asignados que están temporalmente apagados. */
+  /** Assigned roles that are currently inactive. */
   inactiveRoleIds: number[];
 };
 
+/**
+ * Defines the empty values.
+ */
 const EMPTY_VALUES: EditableFormValues = {
   fullName: "",
   identityDocument: "",
@@ -34,7 +41,7 @@ const EMPTY_VALUES: EditableFormValues = {
   speciality: "",
 };
 
-/** Nombre en español de cada campo, para el resumen de cambios. */
+/** User-facing field labels used in the change summary. */
 const FIELD_LABELS: Record<string, string> = {
   fullName: "Nombre completo",
   contactNumber: "Número de contacto",
@@ -44,6 +51,11 @@ const FIELD_LABELS: Record<string, string> = {
   speciality: "Especialidad",
 };
 
+/**
+ * Converts the value to form values.
+ * @param user User data.
+ * @returns Result of the operation.
+ */
 function toFormValues(user: User): EditableFormValues {
   const editableRoles = user.roles.filter((role) => findRoleById(role.id));
 
@@ -64,11 +76,10 @@ function toFormValues(user: User): EditableFormValues {
 }
 
 /**
- * Lógica de la edición.
- *
- * Los campos arrancan bloqueados: la persona debe confirmar de forma explícita
- * que va a cambiar la información antes de poder escribir. Así se evita la
- * modificación accidental de una cuenta que solo se entró a consultar.
+ * Manages user editing state and submission.
+ * Fields remain locked until the editor explicitly enables changes, preventing
+ * accidental updates while reviewing an account.
+ * @param userId Resource identifier.
  */
 export function useUserEditForm(userId: number) {
   const router = useRouter();
@@ -122,7 +133,7 @@ export function useUserEditForm(userId: number) {
       setIsEditingEnabled(enabled);
       setWasSaved(false);
       setSubmitError(null);
-      // Al desmarcar se devuelve todo a como estaba: nada queda a medias.
+      // Restore initial values when editing is disabled.
       if (!enabled) reset(initialValues);
     },
     [initialValues, reset],
@@ -191,7 +202,7 @@ export function useUserEditForm(userId: number) {
     setIsSaving(true);
     setSubmitError(null);
 
-    // Solo viaja lo que efectivamente cambió.
+    // Include only fields whose values changed.
     const payload: UpdateUserPayload = {};
     const changed = new Set(changedFields as string[]);
 

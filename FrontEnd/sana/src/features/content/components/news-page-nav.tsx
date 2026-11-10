@@ -3,9 +3,15 @@ import { ArrowLeft } from "lucide-react";
 import Breadcrumbs from "@/components/navigation/breadcrumbs";
 import "../styles/news.css";
 
+/**
+ * Defines the crumb type.
+ */
 type Crumb = { label: string; href?: string };
 
-/** Top row of the news pages: a clear way back plus the breadcrumb trail. */
+/**
+ * Top row of the news pages: a clear way back plus the breadcrumb trail.
+ * @param props Component properties.
+ */
 export default function NewsPageNav({
   back,
   crumbs,

@@ -1,7 +1,13 @@
 import { httpClient } from "@/services/api/http-client";
 import type { PsychologistCalendar } from "../types/psychologist-calendar-types";
 
-/** Calendario de un psicólogo elegido por la asistente. */
+/**
+ * Retrieves psychologist calendar.
+ * @param psychologistId Resource identifier.
+ * @param signal Optional. Request cancellation signal.
+ * @returns A promise resolving to the operation result.
+ */
+
 export async function getPsychologistCalendar(
   psychologistId: number,
   signal?: AbortSignal,

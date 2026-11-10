@@ -6,6 +6,11 @@ import { X } from "lucide-react";
 import { useModalDialog } from "@/features/content/hooks/use-modal-dialog";
 import type { PublicGalleryImage } from "@/features/content/types/content-types";
 
+/**
+ * Renders the gallery all photos component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function GalleryAllPhotos({
   images,
   title,

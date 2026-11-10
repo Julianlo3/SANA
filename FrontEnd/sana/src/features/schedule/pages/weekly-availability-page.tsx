@@ -242,11 +242,12 @@ function eventStyle(
 }
 
 /**
- * Checks whether an event matches the focused appointment.
- * @param event Calendar event to inspect.
- * @param focusedAppointmentId Focused appointment identifier.
- * @returns Whether the event is the focused appointment.
+ * Checks whether an appointment matches the current focus.
+ * @param event event input.
+ * @param focusedAppointmentId Resource identifier.
+ * @returns Whether the appointment is focused.
  */
+
 function isFocusedAppointment(
   event: CalendarEvent,
   focusedAppointmentId: number | null,

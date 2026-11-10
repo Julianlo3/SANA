@@ -1,6 +1,10 @@
 import type { CSSProperties } from "react";
 import type { PhotoCrop } from "./types/content-types";
 
+/**
+ * Implements the round operation.
+ * @param value Value to process.
+ */
 const round = (value: number) => Math.round(value * 100) / 100;
 
 /**

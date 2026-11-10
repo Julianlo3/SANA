@@ -9,19 +9,22 @@ import {
 import type { AppointmentState } from "@/features/appointments/types/appointment-types";
 import type { MyRequest } from "../types/my-account-types";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   readonly request: MyRequest;
   readonly onCancel: (request: MyRequest) => void;
 };
 
-/** Estados en los que el backend deja cancelar o retirar. */
+/** Appointment states that allow cancellation or withdrawal. */
 const CANCELABLE_STATES: readonly AppointmentState[] = [
   "pendiente",
   "asignada",
   "confirmada",
 ];
 
-/** Color de la barra superior de la tarjeta según el estado de la cita. */
+/** Card accent color mapped to appointment state. */
 const STATE_ACCENT: Record<AppointmentState, string> = {
   pendiente: "#f2b134",
   asignada: "#43acb6",
@@ -31,7 +34,10 @@ const STATE_ACCENT: Record<AppointmentState, string> = {
   descartada: "#9ca3af",
 };
 
-/** Una solicitud de cita de la persona, con su estado y, si ya hay, fecha y psicólogo. */
+/**
+ * Displays a user's appointment request and its current assignment details.
+ * @param props Component properties.
+ */
 export default function RequestCard({ request, onCancel }: Props) {
   const ModeIcon = request.appType === "virtual" ? Video : MapPin;
   const canCancel = CANCELABLE_STATES.includes(request.appState);

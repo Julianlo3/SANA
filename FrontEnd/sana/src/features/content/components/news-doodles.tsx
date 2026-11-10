@@ -1,7 +1,14 @@
 import type { NewsTeaser } from "@/features/content/types/content-types";
 
+/**
+ * Defines the doodle name type.
+ */
+
 export type DoodleName = "star" | "heart" | "spiral" | "cloud" | "sun" | "squiggle";
 
+/**
+ * Defines the paths.
+ */
 const PATHS: Record<DoodleName, string> = {
   star: "M24 5c1.6 6.4 3.4 10.6 6 12.4 2.7 1.8 7 2.2 13 2.6-5 3-8.2 5.6-9 8.6-.9 3.3.6 8 3.2 14.4-5.4-3.8-9.4-5.8-12.6-5.6-3.3.2-7.2 2.6-12.8 6.6 2.2-6.2 3.2-10.8 2.2-14C13 27 9.6 24.4 4.6 21c6.2-.2 10.6-.8 13-2.6C20.2 16.6 22.2 12 24 5Z",
   heart:
@@ -14,6 +21,11 @@ const PATHS: Record<DoodleName, string> = {
   squiggle: "M4 28c4-8 8-8 10 0s6 8 10 0 6-8 10 0 6 8 10 0",
 };
 
+/**
+ * Renders the doodle component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export function Doodle({
   name,
   className = "",
@@ -40,17 +52,27 @@ export function Doodle({
   );
 }
 
+/**
+ * Defines the papers.
+ */
 const PAPERS = [
   { background: "var(--color-accent-soft)", ink: "var(--color-accent-strong)", doodle: "heart" },
   { background: "var(--color-primary-soft)", ink: "var(--color-primary-dark)", doodle: "cloud" },
   { background: "var(--color-highlight)", ink: "#a8741a", doodle: "star" },
 ] as const;
 
+/**
+ * Implements the paper for operation.
+ * @param id Resource identifier.
+ */
 function paperFor(id: number) {
   return PAPERS[Math.abs(id) % PAPERS.length];
 }
 
-/** Decorative stand-in for a news item without a picture. */
+/**
+ * Decorative stand-in for a news item without a picture.
+ * @param props Component properties.
+ */
 export function NewsPaper({
   news,
   initialClassName = "text-7xl",

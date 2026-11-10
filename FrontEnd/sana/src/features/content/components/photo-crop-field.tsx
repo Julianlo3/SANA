@@ -8,10 +8,22 @@ import { normalizePhotoCrop } from "../photo-crop";
 import type { PhotoCrop } from "../types/content-types";
 import CroppedPhoto from "./cropped-photo";
 
+/**
+ * Defines the min zoom.
+ */
 const MIN_ZOOM = 1;
+/**
+ * Defines the max zoom.
+ */
 const MAX_ZOOM = 4;
+/**
+ * Defines the preview size.
+ */
 const PREVIEW_SIZE = 112;
 
+/**
+ * Defines the field props type.
+ */
 type FieldProps = {
   imageUrl: string;
   imageAlt: string;
@@ -25,6 +37,7 @@ type FieldProps = {
 
 /**
  * Circular preview of the team member photo with a dialog to choose the visible area.
+ * @param props Component properties.
  */
 export default function PhotoCropField({
   imageUrl,
@@ -77,6 +90,9 @@ export default function PhotoCropField({
   );
 }
 
+/**
+ * Defines the dialog props type.
+ */
 type DialogProps = {
   imageUrl: string;
   initialCrop: PhotoCrop | null;
@@ -84,6 +100,11 @@ type DialogProps = {
   onApply: (crop: PhotoCrop) => void;
 };
 
+/**
+ * Renders the photo crop dialog component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 function PhotoCropDialog({ imageUrl, initialCrop, onCancel, onApply }: DialogProps) {
   const titleId = useId();
   const zoomId = useId();

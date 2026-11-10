@@ -7,10 +7,9 @@ import {
 } from '../../../src/features/users/validation/user-validation';
 
 /**
- * OWASP Tests: Panel de Usuarios (Pantalla de Administración)
+ * OWASP tests for the user administration panel.
  * ===========================================================
- * A pesar de estar en una zona restringida, todos los formularios deben validar
- * rígidamente su entrada (Defense in Depth).
+ * Forms must validate input rigorously even in restricted areas (defense in depth).
  */
 describe('OWASP Frontend Security - Crear/Editar Usuario (Form Validation)', () => {
 
@@ -46,20 +45,20 @@ describe('OWASP Frontend Security - Crear/Editar Usuario (Form Validation)', () 
     it('validateContactNumber DEBE requerir longitud exacta de 10 (seguridad de formato)', () => {
       expect(validateContactNumber('123456789')).toBeDefined();
       expect(validateContactNumber('12345678901')).toBeDefined();
-      // Formato correcto:
+      // Valid format.
       expect(validateContactNumber('3001234567')).toBeUndefined();
     });
   });
 
   describe('Restricción y control de negocio', () => {
     it('validateEmail DEBE denegar dominios inseguros o no corporativos explícitos', () => {
-      // La regla de la fundación es bloquear proveedores que no se puedan auditar si deciden usar Google
+      // Block providers that cannot be audited when Google sign-in is used.
       expect(validateEmail('test@hotmail.com')).toBeDefined();
       expect(validateEmail('test@outlook.com')).toBeDefined();
       expect(validateEmail('test@yahoo.es')).toBeDefined();
-      // Gmail debe ser permitido
+      // Gmail is allowed.
       expect(validateEmail('test@gmail.com')).toBeUndefined();
-      // Dominios propios
+      // Custom domains are allowed.
       expect(validateEmail('test@sana.org.co')).toBeUndefined();
     });
   });

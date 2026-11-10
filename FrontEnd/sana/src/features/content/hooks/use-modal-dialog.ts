@@ -1,7 +1,15 @@
 import { useEffect, useEffectEvent, type RefObject } from "react";
 
+/**
+ * Defines the focusable.
+ */
 const FOCUSABLE = "button:not([disabled]), [href], [tabindex]:not([tabindex='-1'])";
 
+/**
+ * Implements the trap tab operation.
+ * @param event event input.
+ * @param dialog dialog input.
+ */
 function trapTab(event: KeyboardEvent, dialog: HTMLElement) {
   const focusable = Array.from(
     dialog.querySelectorAll<HTMLElement>(FOCUSABLE),
@@ -23,6 +31,7 @@ function trapTab(event: KeyboardEvent, dialog: HTMLElement) {
 /**
  * Focus, Escape, Tab trapping and body scroll lock for a modal layer.
  * Only the active layer reacts to the keyboard, so dialogs can be stacked.
+ * @param params Destructured operation parameters.
  */
 export function useModalDialog({
   dialogRef,

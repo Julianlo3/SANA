@@ -1,6 +1,9 @@
 import type { CSSProperties } from "react";
 import { Doodle, type DoodleName } from "@/features/content/components/news-doodles";
 
+/**
+ * Defines the floaters.
+ */
 const FLOATERS: {
   name: DoodleName;
   className: string;
@@ -15,6 +18,10 @@ const FLOATERS: {
   { name: "squiggle", className: "bottom-[4%] right-[5%] h-10 w-14 text-accent", duration: 28, delay: -11 },
 ];
 
+/**
+ * Renders the news backdrop component.
+ * @returns Rendered component.
+ */
 export default function NewsBackdrop() {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">

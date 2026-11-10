@@ -4,20 +4,31 @@ import { useEffect, useRef } from "react";
 import { Archive, Pencil, UserCheck, UserMinus } from "lucide-react";
 import type { User, UserAction } from "../types/user-types";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   user: User;
   onSelect: (action: UserAction) => void;
   onClose: () => void;
   /**
-   * Abre el menú hacia arriba. Se usa en las últimas filas para que el panel
-   * no se salga del área visible ni tape el pie del listado.
+   * Opens the menu upward near the bottom of the list to keep it within the
+   * visible area and above the list footer.
    */
   openUpwards?: boolean;
 };
 
+/**
+ * Defines the item class.
+ */
 const ITEM_CLASS =
   "flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm transition";
 
+/**
+ * Renders the user actions menu component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function UserActionsMenu({
   user,
   onSelect,
@@ -93,7 +104,7 @@ export default function UserActionsMenu({
             className={`${ITEM_CLASS} text-danger hover:bg-danger-soft`}
           >
             <Archive size={15} aria-hidden />
-            Dar de baja
+            Eliminar usuario
           </button>
         </>
       )}

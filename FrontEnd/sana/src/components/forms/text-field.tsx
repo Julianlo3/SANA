@@ -20,7 +20,7 @@ type Props = {
   required?: boolean;
   disabled?: boolean;
   preventPaste?: boolean;
-  /** Muestra el candado: el dato no se puede cambiar nunca desde esta pantalla. */
+  /** Shows a lock indicator for values that cannot be changed on this page. */
   locked?: boolean;
 };
 
@@ -28,6 +28,7 @@ type Props = {
  * Component for a text field with label, error message, and hint. It supports various input types and modes, as well as optional features like preventing paste and locking the field.
  * @param param0 Props for the text field component
  * @returns A text field component
+ * @param props Component properties.
  */
 export default function TextField({
   label,

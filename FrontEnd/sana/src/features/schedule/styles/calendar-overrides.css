@@ -1,5 +1,4 @@
-/* Sobrescribe el look por defecto de react-big-calendar para que combine
-   con la identidad de marca (Montserrat, bordes redondeados, colores suaves). */
+/* Align react-big-calendar defaults with the brand identity and visual theme. */
 
 .rbc-calendar {
   font-family: var(--font-montserrat), sans-serif;

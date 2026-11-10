@@ -11,16 +11,35 @@ import NewsPagination, { pageHref } from "@/features/content/components/news-pag
 import { toNewsTeaser } from "@/features/content/format";
 import { getPublicNews } from "@/features/content/services/public-content-service";
 
+/**
+ * Defines page metadata.
+ */
 export const metadata: Metadata = { title: "Noticias | Fundación Dejando Huellas Felices" };
 
+/**
+ * Defines the page size.
+ */
 const PAGE_SIZE = 9;
+/**
+ * Defines the news.
+ */
 const { news } = HOME_CONTENT;
 
+/**
+ * Parses the requested news-list page number.
+ * @param rawPage Raw page query value.
+ * @returns The parsed page number, or null when the value is invalid.
+ */
 function parsePage(rawPage: string | undefined) {
   if (rawPage === undefined) return 1;
   return /^\d+$/.test(rawPage) && Number(rawPage) >= 1 ? Number(rawPage) : null;
 }
 
+/**
+ * Renders the news list page.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default async function NewsListPage({
   searchParams,
 }: {

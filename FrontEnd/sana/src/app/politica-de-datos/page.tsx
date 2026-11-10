@@ -2,12 +2,19 @@ import type { Metadata } from "next";
 import LegalDocumentPage from "@/features/legal/components/legal-document-page";
 import { getPublicPolicyDocument } from "@/features/legal/services/public-policy-service";
 
+/**
+ * Defines page metadata.
+ */
 export const metadata: Metadata = {
   title: "Política de Tratamiento de Datos Personales | Fundación Dejando Huellas Felices",
   description:
     "Cómo la Fundación Dejando Huellas Felices recoge, usa y protege los datos personales en SANA.",
 };
 
+/**
+ * Renders the privacy policy page.
+ * @returns Rendered component.
+ */
 export default async function PrivacyPolicyPage() {
   const document = await getPublicPolicyDocument("privacy_policy");
 

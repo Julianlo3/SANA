@@ -15,6 +15,9 @@ import type {
   ConsultantFullRecord,
 } from "../types/consultant-types";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   readonly consultantId: number;
 };
@@ -23,6 +26,7 @@ type Props = {
  * Displays the full record of a consultant for the authenticated psychologist.
  * @param param0 The props containing the consultant id.
  * @returns The consultant full record page.
+ * @param props Component properties.
  */
 export default function ConsultantFullRecordPage({ consultantId }: Props) {
   const { record: consultant, isLoading, loadError } = useConsultantRecord<
@@ -106,6 +110,7 @@ export default function ConsultantFullRecordPage({ consultantId }: Props) {
  * Renders a section displaying a list of appointments for a consultant.
  * @param param0 The props containing the title, appointments, and empty message.
  * @returns The appointment section component.
+ * @param props Component properties.
  */
 function AppointmentSection({
   title,

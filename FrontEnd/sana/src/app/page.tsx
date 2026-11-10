@@ -25,15 +25,28 @@ import {
   getPublicGallery,
 } from "@/features/content/services/public-content-service";
 
+/**
+ * Defines module-level values for hero and about and programs and services and team and news and gallery and donation.
+ */
 const { hero, about, programs, services, team, news, gallery, donation } =
   HOME_CONTENT;
 
+/**
+ * Defines the program icons.
+ */
 const PROGRAM_ICONS = [HeartHandshake, ShieldCheck, Users];
 
+/**
+ * Defines the colors.
+ */
 const COLORS = {
   pink: "#eb5886",
 };
 
+/**
+ * Renders the home page.
+ * @returns Rendered component.
+ */
 export default async function HomePage() {
   const [content, galleryImages, banners] = await Promise.all([
     getPublicContent(),

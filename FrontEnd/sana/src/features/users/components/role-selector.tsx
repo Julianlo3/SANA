@@ -2,17 +2,25 @@
 
 import { ROLE_CATALOG } from "@/config/roles";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   selectedRoleIds: number[];
   onToggleRole: (roleId: number) => void;
   allowMultiple?: boolean;
   error?: string;
   disabled?: boolean;
-  /** Roles asignados pero apagados. Solo se usa en la edición. */
+  /** Assigned inactive roles, used only in the edit form. */
   inactiveRoleIds?: number[];
   onToggleRoleActive?: (roleId: number) => void;
 };
 
+/**
+ * Renders the role selector component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function RoleSelector({
   selectedRoleIds,
   onToggleRole,

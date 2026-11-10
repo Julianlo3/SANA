@@ -3,6 +3,7 @@ import Image from "next/image";
 /**
  * Shows the whole news picture without cropping it. The empty space around it
  * is filled with the same picture, enlarged and blurred.
+ * @param props Component properties.
  */
 export default function NewsPhoto({
   src,

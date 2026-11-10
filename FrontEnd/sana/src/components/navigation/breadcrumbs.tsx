@@ -1,13 +1,23 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
+/**
+ * Defines the crumb type.
+ */
 type Crumb = {
   label: string;
   href?: string;
 };
 
+/**
+ * Defines the max label.
+ */
 const MAX_LABEL = 48;
 
+/**
+ * Implements the shorten operation.
+ * @param label label input.
+ */
 function shorten(label: string) {
   if (label.length <= MAX_LABEL) return label;
   const cut = label.slice(0, MAX_LABEL + 1);
@@ -15,7 +25,10 @@ function shorten(label: string) {
   return `${(lastSpace > MAX_LABEL * 0.6 ? cut.slice(0, lastSpace) : cut.slice(0, MAX_LABEL)).trimEnd()}…`;
 }
 
-/** Visible trail of links back to the parent pages; the last item is the current page. */
+/**
+ * Visible trail of links back to the parent pages; the last item is the current page.
+ * @param props Component properties.
+ */
 export default function Breadcrumbs({
   items,
   label,

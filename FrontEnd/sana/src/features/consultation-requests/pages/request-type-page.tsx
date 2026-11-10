@@ -5,9 +5,12 @@ import PublicHeader from "@/components/navigation/public-header";
 import PublicFooter from "@/components/navigation/public-footer";
 import { REQUEST_CONTENT } from "@/content/consultation-request";
 
+/**
+ * Defines the type selection.
+ */
 const { typeSelection } = REQUEST_CONTENT;
 
-/** HU-2.2.1: la persona elige para quién es la atención. */
+/** Lets the requester choose who will receive the consultation. */
 export default function RequestTypePage() {
   return (
     <div className="flex min-h-full flex-col">

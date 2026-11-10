@@ -8,17 +8,20 @@ export type CurrentUser = {
   userId: number;
   personId: number;
   email: string;
-  /** Viene de la sesión de Auth0 (session.user.name), no del backend. */
+  /** Name from the Auth0 session, not the backend response. */
   fullName: string;
   roles: string[];
   auth0Subject: string;
   state: string;
-  /** Null si el usuario no es psicólogo; true/false si lo es. */
+  /** Null for non-psychologists; otherwise indicates terms acceptance. */
   psyTermsAccepted: boolean | null;
-  /** True si aceptó la versión vigente de account_terms, terms_of_use y privacy_policy. */
+  /** Whether the current account, terms-of-use, and privacy policies were accepted. */
   termsAccepted: boolean;
 };
 
+/**
+ * Defines the api url.
+ */
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ??
   "http://localhost:3000/api/v1";
@@ -56,15 +59,14 @@ export async function getCurrentUser(): Promise<CurrentUser> {
   });
 
   /**
-   * El backend indica que la sesión/token ya no es válida.
+   * The backend reports an invalid session or access token.
    */
   if (response.status === 401) {
     redirect("/sesion-expirada");
   }
 
   /**
-   * El usuario está autenticado, pero no tiene
-   * autorización para acceder al recurso.
+   * The authenticated user is not authorized to access this resource.
    */
   if (response.status === 403) {
     redirect("/acceso-restringido");
@@ -89,10 +91,9 @@ export async function getCurrentUser(): Promise<CurrentUser> {
 }
 
 /**
- * Exige que el usuario tenga el rol de administrador.
- *
- * Si el usuario todavía no tiene roles asignados,
- * se envía a la pantalla de cuenta pendiente.
+ * Requires the user to have the administrator role.
+ * Users without assigned roles are redirected to the pending-account page.
+ * @returns A promise resolving to the operation result.
  */
 export async function requireAdministrator(): Promise<CurrentUser> {
   const user = await getCurrentUser();
@@ -109,11 +110,13 @@ export async function requireAdministrator(): Promise<CurrentUser> {
 }
 
 /**
- * Exige que el usuario tenga al menos uno de los roles indicados.
+ * Requires the user to have at least one of the specified roles.
  *
  * Ejemplo:
  *
  * requireAnyRole(["secretario", "psicologo"]);
+ * @param allowedRoles Role values used by the operation.
+ * @returns A promise resolving to the operation result.
  */
 export async function requireAnyRole(
   allowedRoles: string[],
@@ -121,16 +124,14 @@ export async function requireAnyRole(
   const user = await getCurrentUser();
 
   /**
-   * El usuario está autenticado, pero todavía
-   * no tiene ningún rol asignado.
+   * The authenticated user does not have any assigned roles yet.
    */
   if (user.roles.length === 0) {
     redirect("/cuenta-pendiente");
   }
 
   /**
-   * Verifica si al menos uno de los roles del usuario
-   * está incluido entre los roles permitidos.
+   * Checks whether the user has at least one allowed role.
    */
   const hasAllowedRole = user.roles.some((role) =>
     allowedRoles.includes(role),

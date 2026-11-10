@@ -17,12 +17,30 @@ import {
 } from "@/features/content/config/gallery-wall";
 import type { PublicGalleryImage } from "@/features/content/types/content-types";
 
+/**
+ * Defines the drag threshold px.
+ */
 const DRAG_THRESHOLD_PX = 6;
+/**
+ * Defines the max fling px s.
+ */
 const MAX_FLING_PX_S = 1800;
+/**
+ * Defines the stop response.
+ */
 const STOP_RESPONSE = 4.5;
+/**
+ * Defines the start response.
+ */
 const START_RESPONSE = 1.4;
+/**
+ * Defines the max frame s.
+ */
 const MAX_FRAME_S = 0.05;
 
+/**
+ * Defines the row motion type.
+ */
 type RowMotion = {
   x: number;
   velocity: number;
@@ -32,6 +50,9 @@ type RowMotion = {
   isDragging: boolean;
 };
 
+/**
+ * Defines the drag state type.
+ */
 type DragState = {
   row: number;
   pointerId: number;
@@ -43,11 +64,21 @@ type DragState = {
   hasMoved: boolean;
 };
 
+/**
+ * Implements the wrap operation.
+ * @param x x input.
+ * @param width width input.
+ */
 function wrap(x: number, width: number) {
   if (width <= 0) return x;
   return ((x % width) - width) % width;
 }
 
+/**
+ * Renders the gallery wall component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function GalleryWall({
   images,
   ratios,

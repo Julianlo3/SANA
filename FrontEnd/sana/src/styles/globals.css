@@ -14,12 +14,12 @@
   --color-surface-muted: #F5FAFB;
   --color-border: #E3EDEF;
 
-  /* Turquesa: acciones, enlaces y menú activo */
+  /* Teal: actions, links, and active navigation. */
   --color-primary: #43ACB6;
   --color-primary-dark: #2E8C96;
   --color-primary-soft: #E4F4F6;
 
-  /* Rosa: acentos y elementos que deben destacar */
+  /* Pink: accents and elements requiring emphasis. */
   --color-accent: #EB5886;
   --color-accent-strong: #C93C68;
   --color-accent-soft: #FDE9F0;
@@ -28,14 +28,14 @@
   --color-support-blue: #A0D6DF;
   --color-support-pink: #EF7FA2;
 
-  /* Vino: títulos de sección */
+  /* Burgundy: section headings. */
   --color-wine: #993556;
   --color-wine-dark: #7f2a47;
 
   /* Crema */
   --color-highlight: #FEEFC4;
 
-  /* Marino de marca para fondos de sección */
+  /* Brand navy: section backgrounds. */
   --color-navy: #134176;
 
   /* Estados */

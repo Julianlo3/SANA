@@ -24,6 +24,9 @@ import type {
   CreateConsultantPayload,
 } from "../types/consultant-types";
 
+/**
+ * Defines the values type.
+ */
 type Values = {
   fullName: string;
   cardType: CreateConsultantPayload["cardType"];
@@ -36,6 +39,9 @@ type Values = {
   channel: AssistedConsentChannel | "";
 };
 
+/**
+ * Defines the initial consultant form values.
+ */
 const EMPTY: Values = {
   fullName: "",
   cardType: "CC",
@@ -48,12 +54,18 @@ const EMPTY: Values = {
   channel: "",
 };
 
+/**
+ * Defines the card types.
+ */
 const CARD_TYPES: { value: CreateConsultantPayload["cardType"]; label: string }[] = [
   { value: "CC", label: "Cédula de ciudadanía" },
   { value: "CE", label: "Cédula de extranjería" },
   { value: "TI", label: "Tarjeta de identidad" },
 ];
 
+/**
+ * Defines the genders.
+ */
 const GENDERS: { value: CreateConsultantPayload["gender"]; label: string }[] = [
   { value: "M", label: "Hombre" },
   { value: "F", label: "Mujer" },
@@ -61,17 +73,31 @@ const GENDERS: { value: CreateConsultantPayload["gender"]; label: string }[] = [
   { value: "P", label: "No quiere especificar" },
 ];
 
+/**
+ * Defines the channels.
+ */
 const CHANNELS: { value: AssistedConsentChannel; label: string }[] = [
   { value: "telefono", label: "Teléfono" },
   { value: "whatsapp", label: "WhatsApp" },
   { value: "presencial", label: "Presencial" },
 ];
 
+/**
+ * Defines the phone max digits.
+ */
 const PHONE_MAX_DIGITS = 10;
 
+/**
+ * Defines the select class.
+ */
 const SELECT_CLASS =
   "mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40";
 
+/**
+ * Validates the consultant creation form.
+ * @param values Value to process.
+ * @returns Rendered component.
+ */
 function validate(values: Values) {
   return {
     fullName: validateFullName(values.fullName),
@@ -94,7 +120,7 @@ function validate(values: Values) {
 /**
  * Lets the assistant register a consultant who requested care by phone,
  * WhatsApp or in person, recording the verbal consent and its channel
- * (FDHF-WEB-AV-01, sección 8).
+ * (FDHF-WEB-AV-01, section 8).
  */
 export default function ConsultantCreatePage() {
   const router = useRouter();

@@ -22,10 +22,11 @@ export async function submitConsultationRequest(
 }
 
 /**
- * Fetches public appointment availability for the next 30 days.
- * @param signal Optional request cancellation signal.
- * @returns Available one-hour slots without psychologist details.
+ * Retrieves consultant availability.
+ * @param signal Optional. Request cancellation signal.
+ * @returns A promise resolving to the operation result.
  */
+
 export async function fetchConsultantAvailability(
   signal?: AbortSignal,
 ): Promise<ConsultantAvailabilitySlot[]> {

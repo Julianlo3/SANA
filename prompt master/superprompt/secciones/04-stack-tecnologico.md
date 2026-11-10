@@ -77,6 +77,7 @@ Vercel, Render y Neon son los despliegues activos. La ausencia de manifiestos de
 - En TypeORM/PostgreSQL, columnas enteras anulables declaran `type: 'integer'`. Mantener `synchronize: false`; cada cambio vive en SQL/migración revisable.
 - El `httpClient` envía JSON y traduce errores de validación para formularios. Tipos, validación y servicios permanecen junto a la feature.
 - Nombres técnicos, rutas, payloads y estados respetan los valores exactos del código; la interfaz se redacta en español. Usar `YYYY-MM-DD` para fecha civil e ISO 8601 con zona para instantes.
+- La documentación de símbolos en el código fuente (JSDoc de funciones, componentes, hooks, tipos/interfaces y constantes globales o de ámbito de archivo) se redacta en inglés técnico, breve y con el formato establecido en la sección 13. La documentación de producto y la interfaz permanecen en español.
 - No registrar tokens, contraseñas, documentos completos, notas clínicas ni cuerpos de correo.
 
 ## 4.7 Scripts verificados

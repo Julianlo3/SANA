@@ -7,6 +7,9 @@ import Button from "@/components/ui/button";
 import Modal from "@/components/ui/modal";
 import type { User, UserAction } from "../types/user-types";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   action: Exclude<UserAction, "edit">;
   user: User;
@@ -16,6 +19,9 @@ type Props = {
   onClose: () => void;
 };
 
+/**
+ * Defines the dialog copy type.
+ */
 type DialogCopy = {
   title: string;
   description: string;
@@ -25,6 +31,9 @@ type DialogCopy = {
   asksForReason: boolean;
 };
 
+/**
+ * Defines the copy.
+ */
 const COPY: Record<Props["action"], DialogCopy> = {
   deactivate: {
     title: "Desactivar cuenta",
@@ -55,6 +64,11 @@ const COPY: Record<Props["action"], DialogCopy> = {
   },
 };
 
+/**
+ * Renders the icon badge component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 function IconBadge({
   tone,
   children,
@@ -75,6 +89,11 @@ function IconBadge({
   );
 }
 
+/**
+ * Renders the user action dialog component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function UserActionDialog({
   action,
   user,

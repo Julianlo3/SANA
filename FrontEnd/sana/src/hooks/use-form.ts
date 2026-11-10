@@ -2,21 +2,27 @@
 
 import { useCallback, useMemo, useState } from "react";
 
+/**
+ * Defines the form errors type.
+ */
 type FormErrors<T> = Partial<Record<keyof T, string>>;
 
+/**
+ * Defines the form options type.
+ */
 type UseFormOptions<T> = {
   initialValues: T;
   validate: (values: T) => FormErrors<T>;
 };
 
 /**
- * Hook de formularios reutilizable.
+ * Reusable form state and validation hook.
  *
- * - valida en cada tecla, pero solo muestra el error de un campo cuando la
- *   persona ya lo tocó o cuando intentó guardar, para que el formulario no
- *   aparezca en rojo apenas se abre;
- * - expone qué campos cambiaron respecto al valor inicial, para no enviarle
- *   al backend lo que nadie modificó.
+ * - Validates on every change but displays field errors only after interaction
+ *   or submission.
+ * - Exposes fields changed from their initial values to avoid unnecessary
+ *   backend updates.
+ * @param params Destructured operation parameters.
  */
 export function useForm<T extends Record<string, unknown>>({
   initialValues,
@@ -65,7 +71,7 @@ export function useForm<T extends Record<string, unknown>>({
   const isValid = Object.keys(errors).length === 0;
   const isDirty = changedFields.length > 0;
 
-  /** Devuelve los valores solo si el formulario está completo. */
+  /** Returns form values only when validation succeeds. */
   const submit = useCallback((): T | null => {
     setWasSubmitted(true);
     return Object.keys(validate(values)).length === 0 ? values : null;

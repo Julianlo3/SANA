@@ -9,17 +9,28 @@ import "@/styles/globals.css";
   Montserrat en toda la aplicación, como indica el manual de marca:
   ExtraBold (800) para títulos y destacados, Regular (400) para el cuerpo.
 */
+/**
+ * Defines the montserrat.
+ */
 const montserrat = Montserrat({
   variable: "--font-brand",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
 });
 
+/**
+ * Defines page metadata.
+ */
 export const metadata: Metadata = {
   title: "SANA — Fundación Dejando Huellas Felices",
   description: "Plataforma de gestión de la fundación",
 };
 
+/**
+ * Renders the root layout page.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default async function RootLayout({
   children,
 }: {

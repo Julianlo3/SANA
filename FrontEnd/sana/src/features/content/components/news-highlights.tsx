@@ -6,12 +6,21 @@ import { SeeAllLink } from "@/features/content/components/news-shared";
 import { formatDate } from "@/features/content/format";
 import type { NewsTeaser } from "@/features/content/types/content-types";
 
+/**
+ * Defines the news highlights labels type.
+ */
+
 export type NewsHighlightsLabels = {
   featured: string;
   readFull: string;
   seeAll: string;
 };
 
+/**
+ * Renders the news row component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 function NewsRow({ news }: Readonly<{ news: NewsTeaser }>) {
   return (
     <Link
@@ -43,6 +52,7 @@ function NewsRow({ news }: Readonly<{ news: NewsTeaser }>) {
 /**
  * Desktop layout: the first news item (pinned or latest) as a large card and
  * the rest as compact rows beside it.
+ * @param props Component properties.
  */
 export default function NewsHighlights({
   news,

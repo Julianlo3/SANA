@@ -1,5 +1,11 @@
+/**
+ * Defines the decor variant type.
+ */
 type DecorVariant = "requests" | "users" | "auth" | "default";
 
+/**
+ * Defines the variants.
+ */
 const variants: Record<DecorVariant, string[]> = {
   requests: [
     "-top-28 right-20 h-72 w-72 bg-highlight",
@@ -18,6 +24,11 @@ const variants: Record<DecorVariant, string[]> = {
   default: ["-top-24 -right-24 h-80 w-80 bg-highlight"],
 };
 
+/**
+ * Renders the page decor component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function PageDecor({
   variant = "default",
 }: {

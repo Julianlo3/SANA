@@ -1,10 +1,9 @@
 import { LEGAL_LINKS } from "@/content/legal";
 
 /**
- * Enlace a la Política de Tratamiento de Datos Personales que acompaña cada
- * casilla de autorización. El texto de cada casilla y su versión vienen de
- * policy_documents (GET /policy/:type); el documento completo se publica en
- * /politica-de-datos.
+ * Links each consent control to its current policy document.
+ * Consent text and version come from `policy_documents`; the full document is
+ * published at `/politica-de-datos`.
  */
 export const DATA_POLICY = {
   url: LEGAL_LINKS.privacyPolicy.href,

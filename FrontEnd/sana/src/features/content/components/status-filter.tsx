@@ -2,13 +2,27 @@
 
 import type { PublicationStatus } from "../types/content-types";
 
+/**
+ * Defines the status filter value type.
+ */
+
 export type StatusFilterValue = PublicationStatus | "all";
 
+/**
+ * Defines the options.
+ */
 const OPTIONS: { value: StatusFilterValue; label: string }[] = [
   { value: "published", label: "Publicadas" },
   { value: "retired", label: "Retiradas" },
   { value: "all", label: "Todas" },
 ];
+
+/**
+ * Checks whether the input matches status.
+ * @param status Current status value.
+ * @param filter filter input.
+ * @returns Whether the condition is satisfied.
+ */
 
 export function matchesStatus(
   status: PublicationStatus,
@@ -17,6 +31,11 @@ export function matchesStatus(
   return filter === "all" || status === filter;
 }
 
+/**
+ * Renders the status filter component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function StatusFilter({
   value,
   onChange,

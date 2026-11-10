@@ -2,6 +2,10 @@
 
 import { useState } from 'react';
 
+/**
+ * Renders the health check component.
+ * @returns Rendered component.
+ */
 export default function HealthCheck() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);

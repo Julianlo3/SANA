@@ -9,15 +9,18 @@ import { useConsultantRecord } from "../hooks/use-consultant-record";
 import { getConsultantForAssistant } from "../services/consultants-service";
 import type { ConsultantSummary } from "../types/consultant-types";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   consultantId: number;
 };
 
 /**
- * HU-2.4.1: ficha del consultante tal como la ve la asistente.
- * No incluye motivo de consulta ni observaciones — esos campos ni siquiera
- * existen en ConsultantSummary, así que no hay nada que ocultar aquí: el
- * backend nunca los envía a este endpoint.
+ * Renders the assistant-facing consultant summary.
+ * Consultation reasons and clinical notes are excluded from `ConsultantSummary`
+ * and are never returned by this endpoint.
+ * @param props Component properties.
  */
 export default function ConsultantSummaryPage({ consultantId }: Props) {
   const { record: consultant, isLoading, loadError } = useConsultantRecord<

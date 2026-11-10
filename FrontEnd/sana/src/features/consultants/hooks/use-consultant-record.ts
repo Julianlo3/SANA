@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 
 /**
- * Patrón de carga compartido entre las dos fichas de consultante (HU-2.4.1
- * y HU-2.4.2): mismo manejo de isMounted/loading/error, cambia solo qué
- * función se llama y qué mensaje de error se muestra.
+ * Shared loading pattern for assistant and psychologist consultant records.
+ * Both variants use the same mounted, loading, and error state management.
+ * @param consultantId Resource identifier.
+ * @param fetcher Function used to retrieve the data.
+ * @param errorMessage Error message shown when the operation fails.
  */
 export function useConsultantRecord<T>(
   consultantId: number,

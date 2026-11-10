@@ -16,6 +16,10 @@ import {
 } from "../services/news-service";
 import type { News, NewsPayload } from "../types/content-types";
 
+/**
+ * Defines the news form values type.
+ */
+
 export type NewsFormValues = {
   title: string;
   body: string;
@@ -23,10 +27,21 @@ export type NewsFormValues = {
   imageAlt: string;
 };
 
+/**
+ * Defines the empty values.
+ */
 const EMPTY_VALUES: NewsFormValues = { title: "", body: "", imageUrl: "", imageAlt: "" };
 
+/**
+ * Defines the editor type.
+ */
 type Editor = { mode: "create" } | { mode: "edit"; news: News } | null;
 
+/**
+ * Converts the value to form values.
+ * @param news news input.
+ * @returns Result of the operation.
+ */
 function toFormValues(news: News): NewsFormValues {
   return {
     title: news.title,
@@ -36,6 +51,11 @@ function toFormValues(news: News): NewsFormValues {
   };
 }
 
+/**
+ * Converts the value to payload.
+ * @param values Value to process.
+ * @returns Result of the operation.
+ */
 function toPayload(values: NewsFormValues): NewsPayload {
   const imageUrl = values.imageUrl || null;
   return {
@@ -46,6 +66,11 @@ function toPayload(values: NewsFormValues): NewsPayload {
   };
 }
 
+/**
+ * Implements the validate operation.
+ * @param values Value to process.
+ * @returns Formatted value or validation message.
+ */
 function validate(values: NewsFormValues): Partial<Record<keyof NewsFormValues, string>> {
   const errors: Partial<Record<keyof NewsFormValues, string>> = {};
   if (!values.title.trim()) errors.title = "Escribe el título.";
@@ -56,6 +81,11 @@ function validate(values: NewsFormValues): Partial<Record<keyof NewsFormValues, 
   return errors;
 }
 
+/**
+ * Implements the sort news operation.
+ * @param items items input.
+ * @returns Result of the operation.
+ */
 function sortNews(items: News[]): News[] {
   return [...items].sort(
     (a, b) =>
@@ -65,10 +95,20 @@ function sortNews(items: News[]): News[] {
   );
 }
 
+/**
+ * Implements the error message operation.
+ * @param error Error value to process.
+ * @param fallback fallback input.
+ * @returns Formatted value or validation message.
+ */
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
 }
 
+/**
+ * Provides state and actions for news management.
+ * @returns Feature state, data, and action handlers.
+ */
 export function useNewsManagement() {
   const [news, setNews] = useState<News[]>([]);
   const [isLoading, setIsLoading] = useState(true);

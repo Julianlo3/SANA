@@ -29,11 +29,12 @@ export function buildSlotDateTime(date: string, time: string): string {
 }
 
 /**
- * Fetches appointments, optionally filtered by state.
- * @param state Optional appointment state filter.
- * @param signal Optional request cancellation signal.
- * @returns The matching appointments.
+ * Lists appointments.
+ * @param state Optional. Current status value.
+ * @param signal Optional. Request cancellation signal.
+ * @returns A promise resolving to the operation result.
  */
+
 export async function listAppointments(
   state?: AppointmentState,
   signal?: AbortSignal,
@@ -46,11 +47,12 @@ export async function listAppointments(
 }
 
 /**
- * Fetches an appointment by its identifier.
- * @param id Appointment identifier.
- * @param signal Optional request cancellation signal.
- * @returns The requested appointment.
+ * Retrieves appointment.
+ * @param id Resource identifier.
+ * @param signal Optional. Request cancellation signal.
+ * @returns A promise resolving to the operation result.
  */
+
 export async function getAppointment(
   id: number,
   signal?: AbortSignal,
@@ -59,10 +61,11 @@ export async function getAppointment(
 }
 
 /**
- * Fetches active psychologists available for appointment assignment.
- * @param signal Optional request cancellation signal.
- * @returns The active psychologist options.
+ * Lists psychologist options.
+ * @param signal Optional. Request cancellation signal.
+ * @returns A promise resolving to the operation result.
  */
+
 export async function listPsychologistOptions(
   signal?: AbortSignal,
 ): Promise<PsychologistOption[]> {
@@ -73,11 +76,12 @@ export async function listPsychologistOptions(
 }
 
 /**
- * Fetches psychologist-specific appointment availability.
- * @param query Availability search parameters.
- * @param signal Optional request cancellation signal.
- * @returns Available slots and their psychologists.
+ * Finds availability.
+ * @param query Operation parameters.
+ * @param signal Optional. Request cancellation signal.
+ * @returns A promise resolving to the operation result.
  */
+
 export async function findAvailability(
   query: AvailabilityQuery,
   signal?: AbortSignal,
@@ -99,11 +103,12 @@ export async function findAvailability(
 }
 
 /**
- * Fetches anonymized availability for marking calendar dates.
- * @param query Availability search parameters.
- * @param signal Optional request cancellation signal.
- * @returns Available slots without psychologist details.
+ * Finds public availability.
+ * @param query Operation parameters.
+ * @param signal Optional. Request cancellation signal.
+ * @returns A promise resolving to the operation result.
  */
+
 export async function findPublicAvailability(
   query: Pick<AvailabilityQuery, "appointmentStart" | "duration" | "delayHours">,
   signal?: AbortSignal,

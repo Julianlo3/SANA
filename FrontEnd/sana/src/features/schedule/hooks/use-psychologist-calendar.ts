@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { getPsychologistCalendar } from "../services/psychologist-calendar-service";
 import type { PsychologistCalendar } from "../types/psychologist-calendar-types";
 
+/**
+ * Defines the loaded type.
+ */
 type Loaded = {
   psychologistId: number;
   calendar: PsychologistCalendar | null;
@@ -11,9 +14,9 @@ type Loaded = {
 };
 
 /**
- * Carga el calendario del psicólogo elegido. El resultado se guarda junto
- * con el id al que pertenece, así cambiar de psicólogo no muestra datos del
- * anterior y el efecto solo actualiza el estado desde callbacks asíncronos.
+ * Loads the selected psychologist's calendar and associates it with that
+ * psychologist's ID to prevent stale data after selection changes.
+ * @param psychologistId Resource identifier.
  */
 export function usePsychologistCalendar(psychologistId: number | null) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);

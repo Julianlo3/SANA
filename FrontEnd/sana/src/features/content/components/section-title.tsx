@@ -1,11 +1,15 @@
 import type { CSSProperties } from "react";
 import "../styles/section-title.css";
 
+/**
+ * Defines the letter delay ms.
+ */
 const LETTER_DELAY_MS = 55;
 
 /**
  * Section heading whose letters rise in one by one. The animation waits while
  * an ancestor has `data-entrance="waiting"`.
+ * @param props Component properties.
  */
 export default function SectionTitle({
   id,

@@ -8,17 +8,17 @@ import {
 } from '../../../src/features/consultation-requests/validation/consultation-request-validation';
 
 /**
- * OWASP Tests: Solicitud de Citas (Pantalla Pública)
+ * OWASP tests for the public appointment request form.
  * ===================================================
- * Esta pantalla es el punto de entrada público más expuesto del sistema.
- * Las pruebas de seguridad aseguran que se rechazan intentos de inyección y
- * se aplican restricciones estrictas sobre los datos ingresados.
+ * This form is one of the system's most exposed public entry points.
+ * Security tests verify injection attempts are rejected and input constraints
+ * are enforced.
  */
 describe('OWASP Frontend Security - Solicitar Cita (Form Validation)', () => {
 
   describe('Prevención de Inyección (SQLi / XSS)', () => {
     it('validateFullName DEBE rechazar payloads XSS (<script>, HTML tags)', () => {
-      // El validador de nombres solo debe aceptar letras, acentos y espacios
+      // Name validation accepts letters, accents, and spaces only.
       expect(validateFullName('<script>alert(1)</script>')).toBeDefined();
       expect(validateFullName('Ana <b>Perez</b>')).toBeDefined();
     });

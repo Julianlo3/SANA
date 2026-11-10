@@ -19,7 +19,7 @@ Construir el sistema SANA (plataforma web de la Fundación Dejando Huellas Felic
 - R-04. Una HU se considera implementada solo cuando todos sus escenarios Gherkin (sección 7) pasan como pruebas automatizadas.
 - R-05. La ejecución sigue el orden de fases de la sección 15. No se DEBE iniciar una fase sin cerrar la anterior.
 - R-06. El sistema trata datos personales sensibles de menores de edad (Ley 1581 de 2012). Los requisitos de la sección 8 aplican a todas las fases.
-- R-07. Idioma: código (identificadores, nombres de archivos y tablas) en inglés; interfaz, mensajes de error, documentación y mensajes de commit en español.
+- R-07. Idioma: código (identificadores, nombres de archivos y tablas) en inglés; comentarios de documentación/JSDoc en el código fuente en inglés técnico y breve; interfaz, mensajes de error, documentación dirigida a usuarios y mensajes de commit en español. Los comentarios narrativos que expliquen un comportamiento puntual pueden conservar el idioma del contexto.
 - R-08. NO DEBEN usarse datos reales de consultantes en desarrollo, pruebas ni datos semilla.
 
 ## 0.4 Marcadores de la especificación

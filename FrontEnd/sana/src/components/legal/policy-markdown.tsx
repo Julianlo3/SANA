@@ -1,8 +1,14 @@
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
+/**
+ * Defines the safe url.
+ */
 const SAFE_URL = /^(https?:|mailto:|tel:|\/)/i;
 
+/**
+ * Defines the components.
+ */
 const COMPONENTS: Components = {
   h1: ({ children }) => (
     <h1 className="font-display text-3xl font-extrabold text-primary-dark sm:text-4xl">
@@ -60,6 +66,7 @@ const COMPONENTS: Components = {
 /**
  * Renders an approved legal text stored as Markdown in policy_documents.
  * Raw HTML is never rendered. Works in server and client components.
+ * @param props Component properties.
  */
 export default function PolicyMarkdown({
   children,

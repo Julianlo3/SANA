@@ -24,6 +24,11 @@ import ImageUploadField from "./image-upload-field";
 import LastEditNote from "./last-edit-note";
 import PhotoCropField from "./photo-crop-field";
 
+/**
+ * Renders the card section editor component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function CardSectionEditor({
   config,
 }: {

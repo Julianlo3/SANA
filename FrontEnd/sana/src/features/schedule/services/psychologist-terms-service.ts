@@ -1,9 +1,8 @@
 import { httpClient } from "@/services/api/http-client";
 
 /**
- * Términos generales de psicólogo (distintos de schedule_terms).
- * PATCH /auth/psychologist-terms, sin cuerpo — identifica al psicólogo
- * por el token de sesión.
+ * Accepts the general psychologist terms, separately from schedule terms.
+ * The session token identifies the psychologist; the request has no body.
  */
 export async function acceptPsychologistTerms(): Promise<void> {
   await httpClient.patch<void>("/auth/psychologist-terms", {});
