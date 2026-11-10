@@ -12,6 +12,10 @@ describe("public appointment mode validation", () => {
     expect(validateAppointmentMode("presencial", "  HUILA ")).toBeUndefined();
   });
 
+  it("preserves in-person mode when no department rule is supplied", () => {
+    expect(validateAppointmentMode("presencial")).toBeUndefined();
+  });
+
   it("rejects in-person appointments outside Huila", () => {
     expect(validateAppointmentMode("presencial", "Tolima")).toContain(
       "solo está disponible",
