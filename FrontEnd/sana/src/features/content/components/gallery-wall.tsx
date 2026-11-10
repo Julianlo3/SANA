@@ -56,7 +56,7 @@ export default function GalleryWall({
   regionLabel,
   onRatio,
   onOpen,
-}: {
+}: Readonly<{
   images: PublicGalleryImage[];
   ratios: Record<number, number>;
   isRunning: boolean;
@@ -64,7 +64,7 @@ export default function GalleryWall({
   regionLabel: string;
   onRatio: (id: number, ratio: number) => void;
   onOpen: (index: number, photo: HTMLElement) => void;
-}) {
+}>) {
   const rows = useMemo(() => buildWallRows(images.length), [images.length]);
   const viewportRefs = useRef<(HTMLDivElement | null)[]>([]);
   const trackRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -170,7 +170,7 @@ export default function GalleryWall({
 
     const onMove = (moveEvent: globalThis.PointerEvent) => {
       const current = drag.current;
-      if (!current || moveEvent.pointerId !== current.pointerId) return;
+      if (current?.pointerId !== moveEvent.pointerId) return;
       const dx = moveEvent.clientX - current.startX;
       const state = motion.current[current.row];
       if (!current.hasMoved && Math.abs(dx) < DRAG_THRESHOLD_PX) return;
@@ -187,7 +187,7 @@ export default function GalleryWall({
 
     const onEnd = (endEvent: globalThis.PointerEvent) => {
       const current = drag.current;
-      if (!current || endEvent.pointerId !== current.pointerId) return;
+      if (current?.pointerId !== endEvent.pointerId) return;
       const state = motion.current[current.row];
       if (current.hasMoved) {
         suppressClick.current = endEvent.type === "pointerup";
@@ -286,7 +286,7 @@ export default function GalleryWall({
   };
 
   return (
-    <div role="region" aria-label={regionLabel} className="gallery-wall">
+    <section aria-label={regionLabel} className="gallery-wall">
       <div className="gallery-wall-tilt">
         {rows.map((row, rowIndex) => (
           <div key={rowIndex} className="gallery-row-shell" data-row={rowIndex}>
@@ -320,6 +320,6 @@ export default function GalleryWall({
           </div>
         ))}
       </div>
-    </div>
+    </section>
   );
 }

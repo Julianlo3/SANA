@@ -24,15 +24,37 @@ export function pageHref(page: number) {
 const ITEM =
   "news-focus inline-flex h-11 min-w-11 items-center justify-center rounded-full px-3 text-sm font-bold transition";
 
+function PageItemView({ item, current }: Readonly<{ item: PageItem; current: number }>) {
+  if (item === "gap") {
+    return (
+      <span aria-hidden className="px-1 text-text-muted">
+        …
+      </span>
+    );
+  }
+  if (item === current) {
+    return (
+      <span aria-current="page" className={`${ITEM} bg-wine text-white shadow-md`}>
+        {item}
+      </span>
+    );
+  }
+  return (
+    <Link href={pageHref(item)} className={`${ITEM} text-text hover:bg-wine/10 hover:text-wine`}>
+      {item}
+    </Link>
+  );
+}
+
 export default function NewsPagination({
   page,
   totalPages,
   labels,
-}: {
+}: Readonly<{
   page: number;
   totalPages: number;
   labels: { pagination: string; previousPage: string; nextPage: string };
-}) {
+}>) {
   if (totalPages <= 1) return null;
 
   return (
@@ -54,19 +76,7 @@ export default function NewsPagination({
 
         {pageItems(page, totalPages).map((item, position) => (
           <li key={item === "gap" ? `gap-${position}` : item}>
-            {item === "gap" ? (
-              <span aria-hidden className="px-1 text-text-muted">
-                …
-              </span>
-            ) : item === page ? (
-              <span aria-current="page" className={`${ITEM} bg-wine text-white shadow-md`}>
-                {item}
-              </span>
-            ) : (
-              <Link href={pageHref(item)} className={`${ITEM} text-text hover:bg-wine/10 hover:text-wine`}>
-                {item}
-              </Link>
-            )}
+            <PageItemView item={item} current={page} />
           </li>
         ))}
 

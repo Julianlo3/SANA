@@ -11,11 +11,11 @@ export default function SectionTitle({
   id,
   text,
   className = "",
-}: {
+}: Readonly<{
   id: string;
   text: string;
   className?: string;
-}) {
+}>) {
   return (
     <h2
       id={id}

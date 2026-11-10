@@ -10,13 +10,13 @@ export default function NewsPhoto({
   sizes,
   priority = false,
   zoom = false,
-}: {
+}: Readonly<{
   src: string;
   alt: string;
   sizes: string;
   priority?: boolean;
   zoom?: boolean;
-}) {
+}>) {
   return (
     <>
       <Image

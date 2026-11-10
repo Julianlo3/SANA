@@ -144,6 +144,7 @@
 .gallery-polaroid-card:focus-visible {
   outline: 3px solid #993556;
   outline-offset: 4px;
+  transform: rotate(0deg) translateY(-10px) scale(1.06);
 }
 
 .gallery-polaroid-photo {
@@ -153,10 +154,6 @@
   height: var(--photo-h);
   overflow: hidden;
   background: #fbeaf0;
-}
-
-.gallery-polaroid-card:focus-visible {
-  transform: rotate(0deg) translateY(-10px) scale(1.06);
 }
 
 .gallery-polaroid-card:focus-visible::after {
@@ -176,7 +173,7 @@
 .gallery-blob {
   position: absolute;
   border-radius: 9999px;
-  animation-duration: 30s;
+  animation-duration: var(--blob-duration, 30s);
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
   animation-direction: alternate;
@@ -199,7 +196,7 @@
   aspect-ratio: 1;
   background: radial-gradient(circle, rgba(153, 53, 86, 0.16) 0%, rgba(153, 53, 86, 0) 68%);
   animation-name: gallery-drift-b;
-  animation-duration: 36s;
+  --blob-duration: 36s;
 }
 
 .gallery-blob-teal {
@@ -209,7 +206,7 @@
   aspect-ratio: 1;
   background: radial-gradient(circle, rgba(67, 172, 182, 0.18) 0%, rgba(67, 172, 182, 0) 68%);
   animation-name: gallery-drift-c;
-  animation-duration: 42s;
+  --blob-duration: 42s;
 }
 
 @keyframes gallery-drift-a {

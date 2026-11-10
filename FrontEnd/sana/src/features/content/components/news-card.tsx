@@ -33,7 +33,7 @@ type NewsCardProps = {
   titleAs?: "h2" | "h3";
 };
 
-function DeckCard({ news, featuredLabel, titleAs: Title = "h3" }: NewsCardProps) {
+function DeckCard({ news, featuredLabel, titleAs: Title = "h3" }: Readonly<NewsCardProps>) {
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-[22px] bg-surface p-3 shadow-[0_18px_40px_-28px_rgba(19,65,118,0.5)]">
       <div className="relative h-[47%] shrink-0 overflow-hidden rounded-[16px_16px_56px_16px/16px_16px_40px_16px] bg-primary-soft">

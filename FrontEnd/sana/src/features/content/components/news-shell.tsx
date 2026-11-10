@@ -11,13 +11,13 @@ export default function NewsShell({
   isMoving = false,
   title,
   sectionRef,
-}: {
+}: Readonly<{
   children: ReactNode;
   entrance?: string;
   isMoving?: boolean;
   title: string;
   sectionRef?: Ref<HTMLElement>;
-}) {
+}>) {
   return (
     <section
       ref={sectionRef}

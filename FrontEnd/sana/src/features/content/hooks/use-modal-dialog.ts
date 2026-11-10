@@ -8,12 +8,12 @@ function trapTab(event: KeyboardEvent, dialog: HTMLElement) {
   ).filter((element) => element.getClientRects().length > 0);
   if (focusable.length === 0) return;
   const first = focusable[0];
-  const last = focusable[focusable.length - 1];
+  const last = focusable.at(-1);
   const active = document.activeElement;
   const isOutside = !dialog.contains(active);
   if (event.shiftKey && (active === first || isOutside)) {
     event.preventDefault();
-    last.focus();
+    last?.focus();
   } else if (!event.shiftKey && (active === last || isOutside)) {
     event.preventDefault();
     first.focus();

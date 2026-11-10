@@ -36,11 +36,11 @@ export default function GallerySection({
   images,
   labels,
   emptyState,
-}: {
+}: Readonly<{
   images: PublicGalleryImage[];
   labels: GalleryLabels;
   emptyState: ReactNode;
-}) {
+}>) {
   const sectionRef = useRef<HTMLElement>(null);
   const showAllRef = useRef<HTMLButtonElement>(null);
   const { isInView, entrance } = useSectionEntrance(sectionRef);

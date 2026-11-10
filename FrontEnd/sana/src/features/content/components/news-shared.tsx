@@ -6,7 +6,7 @@ export function defaultActiveIndex(news: Pick<NewsTeaser, "isPinned">[]) {
   return Math.max(0, news.findIndex((item) => item.isPinned));
 }
 
-export function FeaturedChip({ label, className = "" }: { label: string; className?: string }) {
+export function FeaturedChip({ label, className = "" }: Readonly<{ label: string; className?: string }>) {
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full bg-highlight px-2.5 py-1 text-xs font-bold text-wine shadow-sm ${className}`}
@@ -17,7 +17,7 @@ export function FeaturedChip({ label, className = "" }: { label: string; classNa
   );
 }
 
-export function SeeAllLink({ label, className = "" }: { label: string; className?: string }) {
+export function SeeAllLink({ label, className = "" }: Readonly<{ label: string; className?: string }>) {
   return (
     <Link
       href="/noticias"

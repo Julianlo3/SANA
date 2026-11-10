@@ -69,10 +69,10 @@ type PendingEffect = { card: number; kind: "returned" | "entered" };
 export default function NewsDeck({
   news,
   labels,
-}: {
+}: Readonly<{
   news: NewsTeaser[];
   labels: NewsDeckLabels;
-}) {
+}>) {
   const count = news.length;
   const hasMany = count > 1;
   const [index, setIndex] = useState(() => defaultActiveIndex(news));
@@ -185,7 +185,7 @@ export default function NewsDeck({
     if (target !== index && !isFlying.current) show(target);
   };
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+  const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (!hasMany) return;
     if (event.key === "ArrowRight") {
       event.preventDefault();
@@ -245,7 +245,7 @@ export default function NewsDeck({
   const handlePointerUp = (event: PointerEvent<HTMLDivElement>) => {
     const current = drag.current;
     drag.current = null;
-    if (!current || current.axis !== "x") return;
+    if (current?.axis !== "x") return;
 
     const element = event.currentTarget;
     const passed =
@@ -274,11 +274,9 @@ export default function NewsDeck({
 
   return (
     <div className="flex h-full flex-col md:grid md:grid-cols-2 md:gap-8">
-      <div
-        role="region"
+      <section
         aria-roledescription="carrusel"
         aria-label={labels.deck}
-        onKeyDown={handleKeyDown}
         className="flex min-h-0 flex-1 flex-col md:h-full"
       >
         <div className="relative min-h-0 flex-1">
@@ -315,6 +313,7 @@ export default function NewsDeck({
                   <Link
                     href={`/noticias/${item.id}`}
                     draggable={false}
+                    onKeyDown={handleKeyDown}
                     className="news-focus block h-full rounded-[22px]"
                   >
                     {loaded.has(position) || !item.imageUrl ? (
@@ -343,6 +342,7 @@ export default function NewsDeck({
               type="button"
               aria-label={labels.previous}
               onClick={goPrevious}
+              onKeyDown={handleKeyDown}
               onPointerEnter={() => request(wrap(index - 1))}
               onFocus={() => request(wrap(index - 1))}
               className="news-focus flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 border-wine/30 bg-white/80 text-wine transition hover:border-wine"
@@ -361,6 +361,7 @@ export default function NewsDeck({
                     aria-label={`${labels.goTo} ${position + 1}`}
                     aria-current={position === index ? "true" : undefined}
                     onClick={() => goTo(position)}
+                    onKeyDown={handleKeyDown}
                     className="news-focus group flex h-6 w-6 cursor-pointer items-center justify-center rounded-full"
                   >
                     <span
@@ -376,6 +377,7 @@ export default function NewsDeck({
               type="button"
               aria-label={labels.next}
               onClick={goNext}
+              onKeyDown={handleKeyDown}
               onPointerEnter={() => request(wrap(index + 1))}
               onFocus={() => request(wrap(index + 1))}
               className="news-focus flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 border-wine/30 bg-white/80 text-wine transition hover:border-wine"
@@ -388,7 +390,7 @@ export default function NewsDeck({
         <p aria-live="polite" aria-atomic="true" className="sr-only">
           {announcement}
         </p>
-      </div>
+      </section>
 
       <div className="flex h-full flex-col max-md:hidden">
         {hasMany && (

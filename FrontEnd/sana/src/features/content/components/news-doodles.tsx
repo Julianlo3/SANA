@@ -18,11 +18,11 @@ export function Doodle({
   name,
   className = "",
   strokeWidth = 2,
-}: {
+}: Readonly<{
   name: DoodleName;
   className?: string;
   strokeWidth?: number;
-}) {
+}>) {
   return (
     <svg
       viewBox="0 0 48 48"
@@ -54,10 +54,10 @@ function paperFor(id: number) {
 export function NewsPaper({
   news,
   initialClassName = "text-7xl",
-}: {
+}: Readonly<{
   news: Pick<NewsTeaser, "id" | "title">;
   initialClassName?: string;
-}) {
+}>) {
   const paper = paperFor(news.id);
   const initial = Array.from(news.title.trim())[0]?.toUpperCase() ?? "";
 

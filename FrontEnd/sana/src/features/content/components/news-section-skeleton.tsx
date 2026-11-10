@@ -67,7 +67,7 @@ export function NewsStageSkeleton() {
   );
 }
 
-export default function NewsSectionSkeleton({ title }: { title: string }) {
+export default function NewsSectionSkeleton({ title }: Readonly<{ title: string }>) {
   return (
     <NewsShell title={title}>
       <NewsStageSkeleton />

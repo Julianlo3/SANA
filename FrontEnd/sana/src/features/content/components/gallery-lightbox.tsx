@@ -46,7 +46,7 @@ export default function GalleryLightbox({
   onIndexChange,
   onClose,
   label,
-}: {
+}: Readonly<{
   images: PublicGalleryImage[];
   index: number;
   ratios: Record<number, number>;
@@ -54,7 +54,7 @@ export default function GalleryLightbox({
   onIndexChange: (index: number) => void;
   onClose: () => void;
   label: string;
-}) {
+}>) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -64,8 +64,8 @@ export default function GalleryLightbox({
   const [natural, setNatural] = useState<{ id: number; ratio: number } | null>(null);
   const image = images[index];
   const hasMany = images.length > 1;
-  const ratio =
-    image && natural?.id === image.id ? natural.ratio : image ? ratios[image.id] : undefined;
+  const savedRatio = image ? ratios[image.id] : undefined;
+  const ratio = image && natural?.id === image.id ? natural.ratio : savedRatio;
 
   const show = (next: number) =>
     onIndexChange((next + images.length) % images.length);
@@ -156,11 +156,12 @@ export default function GalleryLightbox({
 
   const isHorizontalDrag = drag !== null && Math.abs(drag.dx) > Math.abs(drag.dy);
   const pullDown = drag && !isHorizontalDrag ? Math.max(drag.dy, 0) : 0;
-  const dragOffset = drag
-    ? isHorizontalDrag
+  let dragOffset: string | undefined;
+  if (drag) {
+    dragOffset = isHorizontalDrag
       ? `translate3d(${drag.dx}px, 0, 0)`
-      : `translate3d(0, ${pullDown}px, 0)`
-    : undefined;
+      : `translate3d(0, ${pullDown}px, 0)`;
+  }
 
   return (
     <div
@@ -193,6 +194,7 @@ export default function GalleryLightbox({
       </div>
 
       <div
+        role="presentation"
         className="relative min-h-0 flex-1 touch-none select-none"
         onClick={onStageClick}
         onPointerDown={onPointerDown}

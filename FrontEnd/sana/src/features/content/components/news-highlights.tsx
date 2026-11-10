@@ -12,7 +12,7 @@ export type NewsHighlightsLabels = {
   seeAll: string;
 };
 
-function NewsRow({ news }: { news: NewsTeaser }) {
+function NewsRow({ news }: Readonly<{ news: NewsTeaser }>) {
   return (
     <Link
       href={`/noticias/${news.id}`}
@@ -47,10 +47,10 @@ function NewsRow({ news }: { news: NewsTeaser }) {
 export default function NewsHighlights({
   news,
   labels,
-}: {
+}: Readonly<{
   news: NewsTeaser[];
   labels: NewsHighlightsLabels;
-}) {
+}>) {
   const [lead, ...rest] = news;
   const featured = (
     <NewsCard news={lead} featuredLabel={labels.featured} variant="featured" linkLabel={labels.readFull} />

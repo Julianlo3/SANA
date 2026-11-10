@@ -20,11 +20,11 @@ export default function Breadcrumbs({
   items,
   label,
   className = "",
-}: {
+}: Readonly<{
   items: Crumb[];
   label: string;
   className?: string;
-}) {
+}>) {
   return (
     <nav aria-label={label} className={className}>
       <ol className="flex flex-wrap items-center gap-1 text-sm">

@@ -10,11 +10,11 @@ export default function NewsPageNav({
   back,
   crumbs,
   label,
-}: {
+}: Readonly<{
   back: { href: string; label: string };
   crumbs: Crumb[];
   label: string;
-}) {
+}>) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
       <Link

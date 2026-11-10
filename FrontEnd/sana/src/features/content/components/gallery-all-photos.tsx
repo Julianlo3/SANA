@@ -12,13 +12,13 @@ export default function GalleryAllPhotos({
   isActive,
   onOpenPhoto,
   onClose,
-}: {
+}: Readonly<{
   images: PublicGalleryImage[];
   title: string;
   isActive: boolean;
   onOpenPhoto: (index: number, trigger: HTMLElement) => void;
   onClose: () => void;
-}) {
+}>) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 

@@ -22,27 +22,27 @@ export default function NewsSection({
   news,
   labels,
   emptyState,
-}: {
+}: Readonly<{
   news: NewsTeaser[];
   labels: NewsSectionLabels;
   emptyState: ReactNode;
-}) {
+}>) {
   const sectionRef = useRef<HTMLElement>(null);
   const { isInView, entrance } = useSectionEntrance(sectionRef);
   const isTabVisible = useTabVisible();
   const isDesktop = useDesktop();
   const isMoving = isInView && isTabVisible;
 
-  const stage =
-    isDesktop === null ? (
-      <NewsStageSkeleton />
-    ) : isDesktop ? (
-      <NewsHighlights news={news} labels={labels} />
-    ) : (
+  let stage: ReactNode = <NewsStageSkeleton />;
+  if (isDesktop === true) {
+    stage = <NewsHighlights news={news} labels={labels} />;
+  } else if (isDesktop === false) {
+    stage = (
       <div className="news-stage mt-8 md:mt-10">
         <NewsDeck news={news} labels={labels} />
       </div>
     );
+  }
 
   return (
     <NewsShell sectionRef={sectionRef} entrance={entrance} isMoving={isMoving} title={labels.title}>

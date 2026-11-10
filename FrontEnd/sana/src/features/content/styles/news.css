@@ -123,7 +123,7 @@
   position: absolute;
   border-radius: 9999px;
   aspect-ratio: 1;
-  animation-duration: 34s;
+  animation-duration: var(--blob-duration, 34s);
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
   animation-direction: alternate;
@@ -144,7 +144,7 @@
   width: 76vw;
   background: radial-gradient(circle, rgba(254, 239, 196, 0.9) 0%, rgba(254, 239, 196, 0) 66%);
   animation-name: news-drift-b;
-  animation-duration: 40s;
+  --blob-duration: 40s;
 }
 
 @media (min-width: 768px) {

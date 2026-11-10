@@ -30,7 +30,15 @@ export function toExcerpt(markdown: string, maxLength = 160): string {
   const cut = text.slice(0, maxLength + 1);
   const lastSpace = cut.lastIndexOf(" ");
   const words = lastSpace > maxLength * 0.6 ? cut.slice(0, lastSpace) : cut.slice(0, maxLength);
-  return `${words.replace(/[\s.,;:]+$/, "")}…`;
+  return `${trimTrailingPunctuation(words)}…`;
+}
+
+const TRAILING_CHARACTERS = new Set([" ", ".", ",", ";", ":"]);
+
+function trimTrailingPunctuation(text: string): string {
+  let end = text.length;
+  while (end > 0 && TRAILING_CHARACTERS.has(text[end - 1])) end--;
+  return text.slice(0, end);
 }
 
 export function toNewsTeaser(news: PublicNews, excerptLength = 140): NewsTeaser {
