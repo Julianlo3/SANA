@@ -1,0 +1,221 @@
+{
+  "info": {
+    "_postman_id": "0c7b57b4-0e31-4ad9-9f5e-7fcf90da438c",
+    "name": "SANA Backend API",
+    "description": "Colección para probar la API NestJS de SANA. La autenticación se obtiene directamente desde Postman mediante Auth0 con OAuth 2.0 Authorization Code + PKCE; no almacenes tokens ni secretos en este archivo. Antes del primer uso registra https://oauth.pstmn.io/v1/callback en Allowed Callback URLs de la aplicación Auth0 y define las variables auth0Domain, auth0Audience y auth0ClientId.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000/api/v1" },
+    { "key": "origin", "value": "http://localhost:5173" },
+    { "key": "auth0Domain", "value": "" },
+    { "key": "auth0Audience", "value": "" },
+    { "key": "auth0ClientId", "value": "" },
+    { "key": "auth0ClientSecret", "value": "" },
+    { "key": "userId", "value": "1" },
+    { "key": "appointmentId", "value": "1" },
+    { "key": "psychologistId", "value": "1" },
+    { "key": "consultantId", "value": "1" },
+    { "key": "contentId", "value": "1" },
+    { "key": "blockId", "value": "1" },
+    { "key": "clinicalNoteId", "value": "1" },
+    { "key": "donationTransactionId", "value": "" },
+    { "key": "gmailSetupKey", "value": "" },
+    { "key": "googleCode", "value": "" },
+    { "key": "googleState", "value": "" },
+    { "key": "wompiChecksum", "value": "" }
+  ],
+  "auth": {
+    "type": "oauth2",
+    "oauth2": [
+      { "key": "token", "value": "", "type": "string" },
+      { "key": "addTokenTo", "value": "header", "type": "string" },
+      { "key": "tokenType", "value": "Bearer", "type": "string" },
+      { "key": "headerPrefix", "value": "Bearer", "type": "string" },
+      { "key": "grant_type", "value": "authorization_code", "type": "string" },
+      { "key": "authUrl", "value": "https://{{auth0Domain}}/authorize?audience={{auth0Audience}}&prompt=login", "type": "string" },
+      { "key": "accessTokenUrl", "value": "https://{{auth0Domain}}/oauth/token", "type": "string" },
+      { "key": "clientId", "value": "{{auth0ClientId}}", "type": "string" },
+      { "key": "clientSecret", "value": "{{auth0ClientSecret}}", "type": "string" },
+      { "key": "scope", "value": "openid profile email offline_access", "type": "string" },
+      { "key": "redirect_uri", "value": "https://oauth.pstmn.io/v1/callback", "type": "string" },
+      { "key": "challengeAlgorithm", "value": "S256", "type": "string" },
+      { "key": "clientAuthentication", "value": "body", "type": "string" },
+      { "key": "autoRefreshToken", "value": true, "type": "boolean" }
+    ]
+  },
+  "item": [
+    {
+      "name": "01 · Público",
+      "auth": { "type": "noauth" },
+      "item": [
+        { "name": "API raíz", "request": { "method": "GET", "url": "{{baseUrl}}/" } },
+        { "name": "Health check", "request": { "method": "GET", "url": "{{baseUrl}}/healthz" } },
+        { "name": "Disponibilidad pública", "request": { "method": "GET", "url": "{{baseUrl}}/appointments/availability?date=2026-11-10&appType=presencial" } },
+        { "name": "Agenda pública", "request": { "method": "GET", "url": "{{baseUrl}}/schedule/public-availability?date=2026-11-10" } },
+        { "name": "Política vigente", "request": { "method": "GET", "url": "{{baseUrl}}/policy/privacy" } },
+        { "name": "Contenido público", "request": { "method": "GET", "url": "{{baseUrl}}/public/content" } },
+        { "name": "Noticias públicas", "request": { "method": "GET", "url": "{{baseUrl}}/public/news" } },
+        { "name": "Noticia pública por ID", "request": { "method": "GET", "url": "{{baseUrl}}/public/news/{{contentId}}" } },
+        { "name": "Banners públicos", "request": { "method": "GET", "url": "{{baseUrl}}/public/banners" } },
+        { "name": "Galería pública", "request": { "method": "GET", "url": "{{baseUrl}}/public/gallery-images" } },
+        {
+          "name": "Solicitar cita",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Origin", "value": "{{origin}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"requesterName\": \"Persona de prueba\",\n  \"requesterCardType\": \"CC\",\n  \"requesterIdentityDocument\": \"12345678\",\n  \"requesterContactNumber\": \"3001234567\",\n  \"requesterEmail\": \"persona@example.com\",\n  \"requesterBirthdate\": \"1990-01-01\",\n  \"requesterGender\": \"F\",\n  \"requesterTermsAccepted\": true,\n  \"patientType\": \"self\",\n  \"appType\": \"presencial\"\n}" },
+            "url": "{{baseUrl}}/appointments/request"
+          }
+        },
+        {
+          "name": "Crear checkout de donación",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Origin", "value": "{{origin}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"amountInCents\": 500000,\n  \"donorFullName\": \"Donante de prueba\",\n  \"donorEmail\": \"donante@example.com\",\n  \"termsAccepted\": true\n}" },
+            "url": "{{baseUrl}}/donations/checkout"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 · Autenticación y Gmail",
+      "item": [
+        {
+          "name": "Mi identidad",
+          "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/auth/me" }
+        },
+        {
+          "name": "Aceptar términos generales",
+          "request": { "method": "PATCH", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/auth/terms" }
+        },
+        {
+          "name": "Iniciar autorización Gmail (solo configuración)",
+          "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{baseUrl}}/auth/google?setup_key={{gmailSetupKey}}" }
+        },
+        {
+          "name": "Callback Gmail (lo invoca Google)",
+          "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{baseUrl}}/auth/google/callback?code={{googleCode}}&state={{googleState}}" }
+        }
+      ]
+    },
+    {
+      "name": "03 · Administrador",
+      "item": [
+        { "name": "Resumen de reportes", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/reports/summary" } },
+        { "name": "Listar usuarios", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/users?status=active&search=" } },
+        { "name": "Consultar usuario", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/users/{{userId}}" } },
+        {
+          "name": "Crear usuario",
+          "request": { "method": "POST", "header": [{ "key": "Origin", "value": "{{origin}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"fullName\": \"Nuevo usuario\",\n  \"email\": \"nuevo@example.com\",\n  \"identityDocument\": \"123456789\",\n  \"cardType\": \"CC\",\n  \"roleId\": 2\n}" }, "url": "{{baseUrl}}/users" }
+        },
+        { "name": "Cambiar estado usuario", "request": { "method": "PATCH", "header": [{ "key": "Origin", "value": "{{origin}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"status\": \"active\"\n}" }, "url": "{{baseUrl}}/users/{{userId}}/status" } },
+        { "name": "Actualizar usuario", "request": { "method": "PATCH", "header": [{ "key": "Origin", "value": "{{origin}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"fullName\": \"Usuario actualizado\"\n}" }, "url": "{{baseUrl}}/users/{{userId}}" } },
+        { "name": "Eliminar usuario", "request": { "method": "DELETE", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/users/{{userId}}" } },
+        { "name": "Listar donaciones", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/donations" } },
+        { "name": "Consultar donación", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/donations/{{donationTransactionId}}" } },
+        { "name": "Logs de seguridad", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/security-logs" } }
+      ]
+    },
+    {
+      "name": "04 · Secretaría",
+      "item": [
+        { "name": "Listar citas", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/appointments?state=pendiente" } },
+        { "name": "Detalle de cita", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/appointments/{{appointmentId}}" } },
+        { "name": "Psicólogos disponibles", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/appointments/psychologists" } },
+        { "name": "Confirmar cita", "request": { "method": "PATCH", "header": [{ "key": "Origin", "value": "{{origin}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"psyId\": {{psychologistId}},\n  \"appDate\": \"2026-11-10T14:00:00.000Z\",\n  \"appDuration\": 60\n}" }, "url": "{{baseUrl}}/appointments/{{appointmentId}}/confirm" } },
+        { "name": "Asignar cita", "request": { "method": "PATCH", "header": [{ "key": "Origin", "value": "{{origin}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"psyId\": {{psychologistId}},\n  \"appDate\": \"2026-11-10T14:00:00.000Z\",\n  \"appDuration\": 60\n}" }, "url": "{{baseUrl}}/appointments/{{appointmentId}}/assign" } },
+        { "name": "Descartar solicitud", "request": { "method": "PATCH", "header": [{ "key": "Origin", "value": "{{origin}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Motivo de prueba\"\n}" }, "url": "{{baseUrl}}/appointments/{{appointmentId}}/discard" } },
+        { "name": "Cancelar cita", "request": { "method": "PATCH", "header": [{ "key": "Origin", "value": "{{origin}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"state\": \"cancelada\"\n}" }, "url": "{{baseUrl}}/appointments/{{appointmentId}}/status" } },
+        { "name": "Calendario de psicólogo", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/schedule/psychologists/{{psychologistId}}/calendar?from=2026-11-01&to=2026-11-30" } },
+        { "name": "Disponibilidad para asignación", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/schedule/availability?psychologistId={{psychologistId}}&date=2026-11-10" } },
+        { "name": "Bloques de psicólogo", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/schedule/psychologists/{{psychologistId}}/blocks" } },
+        { "name": "Historial psicológico de cita", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/appointments/{{appointmentId}}/psychologist-history" } },
+        { "name": "Listar fichas de consultantes", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/consultants" } },
+        { "name": "Consultar ficha de consultante", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/consultants/{{consultantId}}" } },
+        { "name": "Crear ficha de consultante", "request": { "method": "POST", "header": [{ "key": "Origin", "value": "{{origin}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"fullName\": \"Consultante de prueba\",\n  \"identityDocument\": \"12345678\",\n  \"cardType\": \"CC\",\n  \"email\": \"consultante@example.com\"\n}" }, "url": "{{baseUrl}}/consultants" } },
+        { "name": "Actualizar ficha de consultante", "request": { "method": "PATCH", "header": [{ "key": "Origin", "value": "{{origin}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"phone\": \"3001234567\"\n}" }, "url": "{{baseUrl}}/consultants/{{consultantId}}" } }
+      ]
+    },
+    {
+      "name": "05 · Psicología",
+      "item": [
+        { "name": "Mis citas", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/appointments/my-appointments?state=confirmada" } },
+        { "name": "Detalle de cita asignada", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/appointments/my-appointments/{{appointmentId}}" } },
+        { "name": "Marcar cita realizada", "request": { "method": "PATCH", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/appointments/{{appointmentId}}/complete" } },
+        { "name": "Relaciones de dependientes", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/appointments/relationships" } },
+        { "name": "Mis bloques de agenda", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/schedule/me/blocks" } },
+        { "name": "Crear bloque", "request": { "method": "POST", "header": [{ "key": "Origin", "value": "{{origin}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"startAt\": \"2026-11-10T14:00:00.000Z\",\n  \"endAt\": \"2026-11-10T15:00:00.000Z\"\n}" }, "url": "{{baseUrl}}/schedule/me/blocks" } },
+        { "name": "Eliminar bloque", "request": { "method": "DELETE", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/schedule/me/blocks/{{blockId}}" } },
+        { "name": "Mis bloques recurrentes", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/schedule/me/recurring-blocks" } },
+        { "name": "Crear bloque recurrente", "request": { "method": "POST", "header": [{ "key": "Origin", "value": "{{origin}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"dayOfWeek\": 1,\n  \"startTime\": \"14:00\",\n  \"endTime\": \"15:00\"\n}" }, "url": "{{baseUrl}}/schedule/me/recurring-blocks" } },
+        { "name": "Aceptar términos de agenda", "request": { "method": "POST", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/schedule/me/accept-terms" } },
+        { "name": "Términos de agenda", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/schedule/me/terms-status" } },
+        { "name": "Registrar atención clínica", "request": { "method": "POST", "header": [{ "key": "Origin", "value": "{{origin}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"appId\": {{appointmentId}},\n  \"observation\": \"Observación de prueba\",\n  \"termsAccepted\": true\n}" }, "url": "{{baseUrl}}/clinical-notes/register-attention" } },
+        { "name": "Notas de una cita", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/clinical-notes/appointment/{{appointmentId}}" } },
+        { "name": "Consultar nota clínica", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/clinical-notes/{{clinicalNoteId}}" } },
+        { "name": "Auditoría de nota clínica", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/clinical-notes/{{clinicalNoteId}}/audit" } },
+        { "name": "Mis consultantes", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/consultants/mine" } },
+        { "name": "Ficha completa autorizada", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/consultants/{{consultantId}}/full" } }
+      ]
+    },
+    {
+      "name": "06 · Consultante",
+      "item": [
+        { "name": "Mi perfil", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/users/me" } },
+        { "name": "Mis solicitudes", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/appointments/my-requests" } },
+        { "name": "Cancelar mi cita", "request": { "method": "PATCH", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/appointments/{{appointmentId}}/cancel" } },
+        { "name": "Seleccionar franja", "request": { "method": "PATCH", "header": [{ "key": "Origin", "value": "{{origin}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"appDate\": \"2026-11-10T14:00:00.000Z\",\n  \"appDuration\": 60\n}" }, "url": "{{baseUrl}}/appointments/{{appointmentId}}/select-slot" } }
+      ]
+    },
+    {
+      "name": "07 · Administración de contenido",
+      "item": [
+        { "name": "Valores institucionales", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/content-items" } },
+        { "name": "Tarjetas de contenido", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/content-cards" } },
+        { "name": "Crear tarjeta", "request": { "method": "POST", "header": [{ "key": "Origin", "value": "{{origin}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"section\": \"services\",\n  \"title\": \"Tarjeta de prueba\",\n  \"content\": \"Contenido de prueba\"\n}" }, "url": "{{baseUrl}}/content-cards" } },
+        { "name": "Actualizar tarjeta", "request": { "method": "PATCH", "header": [{ "key": "Origin", "value": "{{origin}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"title\": \"Tarjeta actualizada\"\n}" }, "url": "{{baseUrl}}/content-cards/{{contentId}}" } },
+        { "name": "Eliminar tarjeta", "request": { "method": "DELETE", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/content-cards/{{contentId}}" } },
+        { "name": "Noticias administrativas", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/news" } },
+        { "name": "Crear noticia", "request": { "method": "POST", "header": [{ "key": "Origin", "value": "{{origin}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"title\": \"Noticia de prueba\",\n  \"content\": \"Contenido de prueba\"\n}" }, "url": "{{baseUrl}}/news" } },
+        { "name": "Actualizar noticia", "request": { "method": "PATCH", "header": [{ "key": "Origin", "value": "{{origin}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"title\": \"Noticia actualizada\"\n}" }, "url": "{{baseUrl}}/news/{{contentId}}" } },
+        { "name": "Publicar o retirar noticia", "request": { "method": "PATCH", "header": [{ "key": "Origin", "value": "{{origin}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"status\": \"published\"\n}" }, "url": "{{baseUrl}}/news/{{contentId}}/status" } },
+        { "name": "Fijar noticia", "request": { "method": "PATCH", "header": [{ "key": "Origin", "value": "{{origin}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"isPinned\": true\n}" }, "url": "{{baseUrl}}/news/{{contentId}}/pin" } },
+        { "name": "Eliminar noticia", "request": { "method": "DELETE", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/news/{{contentId}}" } },
+        { "name": "Banners administrativos", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/banners" } },
+        { "name": "Crear banner", "request": { "method": "POST", "header": [{ "key": "Origin", "value": "{{origin}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"title\": \"Banner de prueba\",\n  \"imageUrl\": \"https://res.cloudinary.com/example/image/upload/banner.jpg\",\n  \"alt\": \"Banner de prueba\"\n}" }, "url": "{{baseUrl}}/banners" } },
+        { "name": "Activar banner", "request": { "method": "PATCH", "header": [{ "key": "Origin", "value": "{{origin}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"isActive\": true\n}" }, "url": "{{baseUrl}}/banners/{{contentId}}/activation" } },
+        { "name": "Eliminar banner", "request": { "method": "DELETE", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/banners/{{contentId}}" } },
+        { "name": "Galería administrativa", "request": { "method": "GET", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/gallery-images" } },
+        { "name": "Crear imagen de galería", "request": { "method": "POST", "header": [{ "key": "Origin", "value": "{{origin}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"imageUrl\": \"https://res.cloudinary.com/example/image/upload/gallery.jpg\",\n  \"alt\": \"Imagen de prueba\"\n}" }, "url": "{{baseUrl}}/gallery-images" } },
+        { "name": "Cambiar estado de galería", "request": { "method": "PATCH", "header": [{ "key": "Origin", "value": "{{origin}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"status\": \"published\"\n}" }, "url": "{{baseUrl}}/gallery-images/{{contentId}}/status" } },
+        { "name": "Eliminar imagen de galería", "request": { "method": "DELETE", "header": [{ "key": "Origin", "value": "{{origin}}" }], "url": "{{baseUrl}}/gallery-images/{{contentId}}" } },
+        { "name": "Firma para cargar imagen", "request": { "method": "POST", "header": [{ "key": "Origin", "value": "{{origin}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"folder\": \"news\"\n}" }, "url": "{{baseUrl}}/image-upload-signatures" } }
+      ]
+    },
+    {
+      "name": "08 · Webhook Wompi",
+      "item": [
+        {
+          "name": "Evento de transacción (servidor a servidor)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-event-checksum", "value": "{{wompiChecksum}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"event\": \"transaction.updated\",\n  \"environment\": \"test\",\n  \"timestamp\": 1700000000,\n  \"signature\": { \"properties\": [\"transaction.id\", \"transaction.status\", \"transaction.amount_in_cents\"], \"checksum\": \"{{wompiChecksum}}\" },\n  \"data\": { \"transaction\": { \"id\": \"test-transaction-id\", \"reference\": \"SANA-DON-TEST\", \"amount_in_cents\": 500000, \"currency\": \"COP\", \"status\": \"APPROVED\" } }\n}" },
+            "url": "{{baseUrl}}/donations/webhooks/wompi"
+          }
+        }
+      ]
+    }
+  ]
+}
