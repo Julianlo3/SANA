@@ -1082,7 +1082,7 @@ export class AppointmentsRepository {
    */
   updateState(
     appId: number,
-    state: 'cancelada' | 'realizada',
+    state: 'cancelada' | 'realizada' | 'no_asistio',
   ): Promise<boolean> {
     return this.dataSource.transaction(async (manager) => {
       const updated = await manager.query<{ app_id: number }[]>(
@@ -1094,7 +1094,7 @@ export class AppointmentsRepository {
       );
       if (updated.length === 0) return false;
 
-      if (state === 'cancelada') {
+      if (state === 'cancelada' || state === 'no_asistio') {
         await manager.query(
           `DELETE FROM schedule_occupancy WHERE app_id = $1`,
           [appId],

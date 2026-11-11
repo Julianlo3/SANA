@@ -6,7 +6,8 @@ export type AppointmentState =
   | 'confirmada'
   | 'descartada'
   | 'cancelada'
-  | 'realizada';
+  | 'realizada'
+  | 'no_asistio';
 export type AppointmentType = 'presencial' | 'virtual';
 
 /** 

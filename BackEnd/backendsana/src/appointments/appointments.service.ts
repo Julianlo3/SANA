@@ -583,7 +583,7 @@ export class AppointmentsService {
   }
 
   /**
-   * Updates an appointment's status (cancelada / realizada).
+   * Updates an appointment's status (cancelada / no_asistio).
    * @param appId The ID of the appointment to update.
    * @param dto The DTO containing the status details.
    * @param secretaryUserId The ID of the secretary performing the update.
@@ -604,15 +604,15 @@ export class AppointmentsService {
       });
     }
 
-    if (dto.state !== 'cancelada') {
+    if (!['cancelada', 'no_asistio'].includes(dto.state)) {
       throw new BadRequestException({
         error: 'INVALID_APPOINTMENT_STATUS_TRANSITION',
-        message: 'El secretario solo puede cancelar citas confirmadas',
+        message: 'El secretario solo puede cancelar citas o registrar una inasistencia',
       });
     }
 
     if (appointment.appState !== 'confirmada') {
-      if (['cancelada', 'realizada', 'descartada'].includes(appointment.appState)) {
+      if (['cancelada', 'realizada', 'descartada', 'no_asistio'].includes(appointment.appState)) {
         throw new BadRequestException({
           error: 'APPOINTMENT_ALREADY_CLOSED',
           message: `La cita ya se encuentra en estado '${appointment.appState}' y no puede modificarse`,
@@ -620,22 +620,22 @@ export class AppointmentsService {
       }
       throw new BadRequestException({
         error: 'APPOINTMENT_NOT_CONFIRMED',
-        message: 'Solo se pueden cancelar citas que ya fueron confirmadas',
+        message: 'Solo se pueden cancelar citas o registrar inasistencias cuando la cita está confirmada',
       });
     }
 
-    const transitioned = await this.repo.updateState(appId, 'cancelada');
+    const transitioned = await this.repo.updateState(appId, dto.state);
     if (!transitioned) {
       throw new ConflictException({
         error: 'APPOINTMENT_STATE_CHANGED',
-        message: 'La cita cambió de estado y ya no puede cancelarse',
+        message: 'La cita cambió de estado y ya no puede actualizarse',
       });
     }
     const updated = await this.findByIdOrFail(appId);
     this.logger.log(
       `Module:appointments, Function:updateStatus, result-success: appId-${appId}, newState-${dto.state}`,
     );
-    await this.sendCancellationNotification(updated);
+    if (dto.state === 'cancelada') await this.sendCancellationNotification(updated);
     return updated;
   }
 
