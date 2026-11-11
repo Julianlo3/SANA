@@ -26,6 +26,7 @@ import { ScheduleService } from '../schedule/schedule.service.js';
 import type { PublicScheduleAvailabilityQueryDto } from '../schedule/dto/public-schedule-availability-query.dto.js';
 import type { PublicScheduleSlotDto } from '../schedule/dto/public-schedule-availability-response.dto.js';
 import { EmailService } from '../email/email.service.js';
+import { GoogleCalendarService } from '../calendar/google-calendar.service.js';
 import {
   buildAppointmentRequestedEmail,
   buildAppointmentConfirmedPatientEmail,
@@ -79,6 +80,7 @@ export class AppointmentsService {
     private readonly repo: AppointmentsRepository,
     private readonly scheduleService: ScheduleService,
     @Optional() private readonly emailService?: EmailService,
+    @Optional() private readonly calendarService?: GoogleCalendarService,
   ) { }
 
   /**
@@ -949,6 +951,33 @@ export class AppointmentsService {
         this.logger.warn(`Appointment confirmation email skipped: psychologist has no usable email (appId-${appointment.appId})`);
       }
     }
+
+    if (appointment.appDate && this.calendarService) {
+      try {
+        let psychologistEmail: string | null = null;
+        if (appointment.psychologistId) {
+          psychologistEmail = await this.repo.findPsychologistEmail(appointment.psychologistId);
+        }
+        const calendarEventId = await this.calendarService.createAppointmentEvent({
+          appId: appointment.appId,
+          patientName: appointment.patientName,
+          requesterEmail: appointment.requesterEmail,
+          psychologistName: appointment.psychologistName,
+          psychologistEmail,
+          appDate: appointment.appDate,
+          appDuration: appointment.appDuration,
+          appType: appointment.appType,
+        });
+
+        if (calendarEventId) {
+          await this.repo.saveCalendarEventId(appointment.appId, calendarEventId);
+        }
+      } catch (error) {
+        this.logger.warn(
+          `Google Calendar event could not be prepared (appId-${appointment.appId}, code-${this.notificationErrorCode(error)})`,
+        );
+      }
+    }
   }
 
   /**
@@ -1003,6 +1032,17 @@ export class AppointmentsService {
           text: psychologistCancelTemplate.text,
           html: psychologistCancelTemplate.html,
         });
+      }
+    }
+
+    if (appointment.calendarEventId && this.calendarService) {
+      try {
+        await this.calendarService.deleteAppointmentEvent(appointment.calendarEventId);
+        await this.repo.clearCalendarEventId(appointment.appId);
+      } catch (error) {
+        this.logger.warn(
+          `Google Calendar cancellation could not be processed (appId-${appointment.appId}, code-${this.notificationErrorCode(error)})`,
+        );
       }
     }
   }

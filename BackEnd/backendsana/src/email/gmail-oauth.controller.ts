@@ -16,6 +16,7 @@ import { RateLimitGuard } from '../guards/rate-limit.guard.js';
 import { RateLimit } from '../middlewares/rate-limit.decorator.js';
 
 const GMAIL_SEND_SCOPE = 'https://www.googleapis.com/auth/gmail.send';
+const CALENDAR_EVENTS_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 const STATE_TTL_MS = 10 * 60 * 1000;
 
 @Controller('auth/google')
@@ -39,7 +40,7 @@ export class GmailOAuthController {
         access_type: 'offline',
         prompt: 'consent',
         include_granted_scopes: true,
-        scope: [GMAIL_SEND_SCOPE],
+        scope: [GMAIL_SEND_SCOPE, CALENDAR_EVENTS_SCOPE],
         state,
       }),
     };

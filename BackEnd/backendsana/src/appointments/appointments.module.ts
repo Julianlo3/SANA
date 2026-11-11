@@ -11,6 +11,7 @@ import { AppointmentsService } from './appointments.service.js';
 import { AppointmentsRepository } from './appointments.repository.js';
 import { ScheduleModule } from '../schedule/schedule.module.js';
 import { EmailModule } from '../email/email.module.js';
+import { GoogleCalendarModule } from '../calendar/google-calendar.module.js';
 import { RolesGuard } from '../guards/roles.guard.js';
 import { SecurityLogModule } from '../security-logs/security-log.module.js';
 
@@ -22,6 +23,7 @@ import { SecurityLogModule } from '../security-logs/security-log.module.js';
     PolicyModule,
     ScheduleModule,
     EmailModule,
+    GoogleCalendarModule,
     TypeOrmModule.forFeature([
       Appointment,
       Dependent,
