@@ -14,15 +14,42 @@ import { CARD_BANDS } from "@/features/content/config/team-card-bands";
 import { photoFocusPosition } from "@/features/content/photo-crop";
 import type { PublicTeamCard } from "@/features/content/types/content-types";
 
+/**
+ * Defines the open ms.
+ */
 const OPEN_MS = 700;
+/**
+ * Defines the close ms.
+ */
 const CLOSE_MS = 350;
+/**
+ * Defines the ease out.
+ */
 const EASE_OUT = "cubic-bezier(0.16, 1, 0.3, 1)";
+/**
+ * Defines the ease in out.
+ */
 const EASE_IN_OUT = "cubic-bezier(0.65, 0, 0.35, 1)";
+/**
+ * Defines the origin radius.
+ */
 const ORIGIN_RADIUS = 24;
+/**
+ * Defines the panel radius.
+ */
 const PANEL_RADIUS = 28;
+/**
+ * Defines the viewport margin.
+ */
 const VIEWPORT_MARGIN = 16;
+/**
+ * Defines the photo sizes.
+ */
 const PHOTO_SIZES = "(max-width: 640px) 100vw, 720px";
 
+/**
+ * Defines the preloaded photos.
+ */
 const preloadedPhotos = new Set<string>();
 
 /**
@@ -40,6 +67,10 @@ export function preloadSpotlightPhoto(src: string) {
   image.decode().catch(() => preloadedPhotos.delete(src));
 }
 
+/**
+ * Implements the social links operation.
+ * @param member member input.
+ */
 function socialLinks(member: PublicTeamCard) {
   return [
     { url: member.facebookUrl, network: "Facebook", Icon: FacebookIcon },
@@ -48,10 +79,21 @@ function socialLinks(member: PublicTeamCard) {
   ].filter((link): link is typeof link & { url: string } => Boolean(link.url));
 }
 
+/**
+ * Defines the full clip.
+ */
 const FULL_CLIP = `inset(0px 0px 0px 0px round ${PANEL_RADIUS}px)`;
 
+/**
+ * Defines the full frame.
+ */
 const FULL_FRAME = { transform: "translate(0px, 0px)", clipPath: FULL_CLIP };
 
+/**
+ * Implements the origin frame operation.
+ * @param origin origin input.
+ * @param panel panel input.
+ */
 function originFrame(origin: HTMLElement, panel: HTMLElement) {
   const from = origin.getBoundingClientRect();
   const to = new DOMRect(
@@ -71,14 +113,31 @@ function originFrame(origin: HTMLElement, panel: HTMLElement) {
   };
 }
 
+/**
+ * Checks the inside condition.
+ * @param rect rect input.
+ * @param x x input.
+ * @param y y input.
+ */
 function isInside(rect: DOMRect, x: number, y: number) {
   return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
 }
 
+/**
+ * Implements the clamp operation.
+ * @param value Value to process.
+ * @param min min input.
+ * @param max max input.
+ */
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
+/**
+ * Renders the team member spotlight component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function TeamMemberSpotlight({
   member,
   origin,

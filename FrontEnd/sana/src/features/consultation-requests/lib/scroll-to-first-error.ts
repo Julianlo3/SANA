@@ -1,6 +1,6 @@
 /**
- * Lleva la pantalla al primer campo con error y le da el foco.
- * Busca el primer campo marcado como inválido o con un mensaje de alerta.
+ * Scrolls to and focuses the first invalid form field.
+ * Finds the first field marked invalid or associated with an alert message.
  */
 export function scrollToFirstError() {
   const target = document.querySelector<HTMLElement>(

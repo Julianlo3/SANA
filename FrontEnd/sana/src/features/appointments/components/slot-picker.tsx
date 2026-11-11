@@ -84,11 +84,12 @@ function apiErrorMessage(error: unknown, fallback: string): string {
 }
 
 /**
- * Checks whether a slot starts at or after the supplied timestamp.
- * @param slot Availability slot to inspect.
- * @param now Current timestamp in milliseconds.
- * @returns Whether the slot is still available in time.
+ * Checks the slot in future condition.
+ * @param slot slot input.
+ * @param now now input.
+ * @returns Whether the condition is satisfied.
  */
+
 function isSlotInFuture(slot: PublicAvailabilitySlot, now: number): boolean {
   return new Date(buildSlotDateTime(slot.date, slot.startTime)).getTime() >= now;
 }

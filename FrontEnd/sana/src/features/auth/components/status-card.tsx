@@ -1,7 +1,13 @@
 import PageDecor from "@/components/ui/page-decor";
 
+/**
+ * Defines the tone type.
+ */
 type Tone = "info" | "danger";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   icon: React.ReactNode;
   tone?: Tone;
@@ -10,6 +16,11 @@ type Props = {
   actions: React.ReactNode;
 };
 
+/**
+ * Renders the status card component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function StatusCard({
   icon,
   tone = "info",

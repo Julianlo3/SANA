@@ -1,11 +1,10 @@
 /**
- * Contenido de la página de inicio.
+ * Home page content.
  *
- * Todo el texto y las rutas de imagen viven aquí para que se puedan cambiar
- * sin tocar los componentes. Las rutas apuntan a /public.
+ * Text and image paths are centralized here for updates without component
+ * changes. Image paths are relative to `/public`.
  *
- * Nota: las imágenes actuales son de archivo y están pendientes de reemplazo
- * por fotografías propias de la fundación.
+ * Current stock images are placeholders for foundation-owned photography.
  */
 
 export const HOME_CONTENT = {
@@ -45,16 +44,35 @@ export const HOME_CONTENT = {
   },
 
   news: {
-    title: "Últimas noticias",
+    title: "Noticias",
     seeAll: "Ver todas las noticias",
+    featured: "Destacada",
+    deck: "Noticias recientes",
+    previous: "Noticia anterior",
+    next: "Noticia siguiente",
+    goTo: "Ir a la noticia",
+    position: "Noticia",
+    readFull: "Leer nota completa",
+    readMore: "Leer más",
+    otherNews: "Otras noticias",
+    breadcrumbs: "Migas de pan",
+    home: "Inicio",
+    pagination: "Páginas de noticias",
+    previousPage: "Anterior",
+    nextPage: "Siguiente",
     pageTitle: "Noticias",
-    pageDescription:
-      "Las actividades y los logros de la fundación, de la más reciente a la más antigua.",
     back: "Volver a noticias",
+    backHome: "Volver al inicio",
   },
 
   gallery: {
     title: "Galería",
+    wall: "Fotos de la fundación en movimiento",
+    dialog: "Foto de la galería",
+    allPhotos: "Todas las fotos",
+    showAll: "Ver todas las fotos",
+    pause: "Pausar el movimiento de las fotos",
+    resume: "Reanudar el movimiento de las fotos",
   },
 
   donation: {

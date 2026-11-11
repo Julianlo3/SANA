@@ -5,11 +5,19 @@ import { PANEL_CONTENT } from "@/content/panel";
 import { formatRoleLabels } from "@/config/roles";
 import { getInitials } from "@/lib/format/text";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   fullName: string;
   roles: string[];
 };
 
+/**
+ * Renders the panel header component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function PanelHeader({ fullName, roles }: Props) {
   return (
     <header className="flex items-center gap-4 border-b border-border px-8 py-4">

@@ -4,20 +4,35 @@ import { startTransition, useState } from "react";
 import TeamCarousel from "@/features/content/components/team-carousel";
 import type { PublicTeamCard, TeamGroup } from "@/features/content/types/content-types";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   members: PublicTeamCard[];
   titles: Record<TeamGroup, string>;
 };
 
+/**
+ * Defines the group order.
+ */
 const GROUP_ORDER: TeamGroup[] = ["staff", "professional"];
+/**
+ * Defines the default group.
+ */
 const DEFAULT_GROUP: TeamGroup = "staff";
 
+/**
+ * Implements the group of operation.
+ * @param member member input.
+ * @returns Result of the operation.
+ */
 function groupOf(member: PublicTeamCard): TeamGroup {
   return GROUP_ORDER.includes(member.teamGroup) ? member.teamGroup : DEFAULT_GROUP;
 }
 
 /**
  * Public team section split into one carousel per group; empty groups are not shown.
+ * @param props Component properties.
  */
 export default function TeamSection({ members, titles }: Props) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);

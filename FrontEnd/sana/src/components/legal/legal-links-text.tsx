@@ -1,19 +1,34 @@
 import type { ReactNode } from "react";
 import { LEGAL_LINKS } from "@/content/legal";
 
+/**
+ * Defines the links.
+ */
 const LINKS = [LEGAL_LINKS.privacyPolicy, LEGAL_LINKS.terms];
+/**
+ * Defines the pattern.
+ */
 const PATTERN = new RegExp(`(${LINKS.map((link) => link.label).join("|")})`);
 
-/** True when the text already names the privacy policy. */
+/**
+ * True when the text already names the privacy policy.
+ * @param text Text to process.
+ * @returns Result of the operation.
+ */
 export function mentionsPrivacyPolicy(text: string): boolean {
   return text.includes(LEGAL_LINKS.privacyPolicy.label);
 }
 
+/**
+ * Defines the segment type.
+ */
 type Segment = { key: string; text: string; href?: string };
 
 /**
  * Splits the text into plain parts and links. Each key combines the part's
  * position in the text with its content, so it is stable for a given text.
+ * @param text Text to process.
+ * @returns Result of the operation.
  */
 function toSegments(text: string): Segment[] {
   let offset = 0;
@@ -29,6 +44,8 @@ function toSegments(text: string): Segment[] {
 /**
  * Renders a legal text turning every mention of the privacy policy or the
  * terms into a link that opens the full document in a new tab.
+ * @param props Component properties.
+ * @returns Result of the operation.
  */
 export default function LegalLinksText({ text }: Readonly<{ text: string }>): ReactNode {
   return toSegments(text).map((segment) =>

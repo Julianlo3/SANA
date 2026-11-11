@@ -6,19 +6,25 @@ import MyAppointmentCard from "../components/my-appointment-card";
 import { useMyAppointments } from "../hooks/use-my-appointments";
 import type { MyAppointmentState } from "../types/my-appointments-types";
 
+/**
+ * Defines the filters.
+ */
 const FILTERS: { value: MyAppointmentState; label: string }[] = [
   { value: "confirmada", label: "Próximas" },
   { value: "realizada", label: "Realizadas" },
   { value: "cancelada", label: "Canceladas" },
 ];
 
+/**
+ * Defines the empty text.
+ */
 const EMPTY_TEXT: Record<MyAppointmentState, string> = {
   confirmada: "No tienes citas confirmadas por atender.",
   realizada: "Todavía no has realizado citas.",
   cancelada: "No tienes citas canceladas.",
 };
 
-/** Las citas del psicólogo, en tarjetas, con acceso directo al registro de atención. */
+/** Renders psychologist appointments as cards with direct access to care records. */
 export default function MyAppointmentsPage() {
   const { filter, changeFilter, appointments, isLoading, loadError } =
     useMyAppointments();

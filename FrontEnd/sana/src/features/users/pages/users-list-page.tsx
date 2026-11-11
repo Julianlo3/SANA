@@ -11,8 +11,8 @@ import UsersList from "../components/users-list";
 import { useUsersList } from "../hooks/use-users-list";
 
 /**
- * Pantalla de gestión de usuarios.
- * Solo compone la interfaz: la lógica vive en use-users-list.
+ * User management page.
+ * The page composes the interface; `useUsersList` owns its behavior.
  */
 export default function UsersListPage() {
   const searchParams = useSearchParams();
@@ -20,7 +20,7 @@ export default function UsersListPage() {
     () => searchParams.get("reactivated") === "1",
   );
 
-  // Limpiar el query param de la URL sin recargar la página.
+  // Remove the query parameter without reloading the page.
   useEffect(() => {
     if (!reactivatedBanner) return;
     const url = new URL(window.location.href);

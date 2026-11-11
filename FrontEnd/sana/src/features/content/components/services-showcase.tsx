@@ -11,21 +11,38 @@ import { ChevronRight } from "lucide-react";
 import ServiceBackdrop, {
   BACKDROP_ACCENTS as ACCENTS,
 } from "@/features/content/components/service-backdrop";
+import { padNumber } from "@/features/content/format";
 import type { PublicContentCard } from "@/features/content/types/content-types";
 
+/**
+ * Defines the navy.
+ */
 const NAVY = "#134176";
+/**
+ * Defines the pink.
+ */
 const PINK = "#eb5886";
+/**
+ * Defines the ease out.
+ */
 const EASE_OUT = "cubic-bezier(0.16, 1, 0.3, 1)";
+/**
+ * Defines the desktop query.
+ */
 const DESKTOP_QUERY = "(min-width: 1024px)";
 
-function pad(value: number) {
-  return String(value).padStart(2, "0");
-}
-
+/**
+ * Implements the prefers reduced motion operation.
+ */
 function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
+/**
+ * Renders the services showcase component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function ServicesShowcase({
   services,
 }: {
@@ -190,7 +207,7 @@ export default function ServicesShowcase({
                     className="w-6 shrink-0 font-display text-sm font-bold tabular-nums min-[380px]:w-7 transition-colors duration-300"
                     style={{ color: isActive ? accent.strong : "#8296ac" }}
                   >
-                    {pad(index + 1)}
+                    {padNumber(index + 1)}
                   </span>
                   <span
                     className={`min-w-0 flex-1 break-words font-display text-base font-bold leading-snug hyphens-auto transition-[color,translate] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] min-[380px]:text-lg sm:text-xl ${

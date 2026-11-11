@@ -12,6 +12,9 @@ import { useMyRequests } from "../hooks/use-my-requests";
 import { useOwnProfile } from "../hooks/use-own-profile";
 import type { MyRequest } from "../types/my-account-types";
 
+/**
+ * Defines the active states.
+ */
 const ACTIVE_STATES = new Set(["pendiente", "asignada", "confirmada"]);
 
 /**

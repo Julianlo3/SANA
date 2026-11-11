@@ -6,7 +6,13 @@ import type {
   MyAppointmentState,
 } from "../types/my-appointments-types";
 
-/** Citas del psicólogo que inició sesión, filtradas por estado. */
+/**
+ * Lists my appointments.
+ * @param state Current status value.
+ * @param signal Optional. Request cancellation signal.
+ * @returns A promise resolving to the operation result.
+ */
+
 export async function listMyAppointments(
   state: MyAppointmentState,
   signal?: AbortSignal,
@@ -18,10 +24,11 @@ export async function listMyAppointments(
 }
 
 /**
- * Fetches the clinical notes for a specific appointment. 
- * @param appointmentId The ID of the appointment for which to fetch clinical notes.
- * @returns A promise that resolves to an array of AppointmentClinicalNote objects.
+ * Retrieves appointment clinical notes.
+ * @param appointmentId Resource identifier.
+ * @returns A promise resolving to the operation result.
  */
+
 export async function getAppointmentClinicalNotes(
   appointmentId: number,
 ): Promise<AppointmentClinicalNote[]> {

@@ -3,6 +3,9 @@ import UserCard from "./user-card";
 import UserRow from "./user-row";
 import type { User, UserAction } from "../types/user-types";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   users: User[];
   openMenuUserId: number | null;
@@ -11,9 +14,14 @@ type Props = {
   onAction: (action: UserAction, user: User) => void;
 };
 
-/** A partir de esta posición el menú se abre hacia arriba. */
+/** Row index from which action menus open upward. */
 const UPWARDS_THRESHOLD = 2;
 
+/**
+ * Renders the users list component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function UsersList({
   users,
   openMenuUserId,

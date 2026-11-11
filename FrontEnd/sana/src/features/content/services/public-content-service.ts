@@ -13,9 +13,15 @@ import type {
   PublicNewsPage,
 } from "../types/content-types";
 
+/**
+ * Defines the backend url.
+ */
 const BACKEND_URL =
   process.env.BACKEND_API_URL ?? "http://localhost:3000/api/v1";
 
+/**
+ * Defines empty public content.
+ */
 export const EMPTY_PUBLIC_CONTENT: PublicContent = {
   mission: null,
   vision: null,
@@ -25,7 +31,12 @@ export const EMPTY_PUBLIC_CONTENT: PublicContent = {
   programs: [],
 };
 
-/** Server-side only. Returns null when the backend is unreachable or answers with an error. */
+/**
+ * Server-side only. Returns null when the backend is unreachable or answers with an error.
+ * @param path path input.
+ * @param tag tag input.
+ * @returns A promise resolving to the operation result.
+ */
 async function fetchPublic<T>(path: string, tag: PublicTag): Promise<T | null> {
   try {
     const response = await fetch(`${BACKEND_URL}${path}`, {
@@ -39,12 +50,24 @@ async function fetchPublic<T>(path: string, tag: PublicTag): Promise<T | null> {
   }
 }
 
+/**
+ * Retrieves public content.
+ * @returns A promise resolving to the operation result.
+ */
+
 export async function getPublicContent(): Promise<PublicContent> {
   return (
     (await fetchPublic<PublicContent>(ENDPOINTS.publicContent, PUBLIC_CONTENT_TAG)) ??
     EMPTY_PUBLIC_CONTENT
   );
 }
+
+/**
+ * Retrieves public news.
+ * @param page Optional. Page number.
+ * @param limit Optional. Maximum number of items.
+ * @returns A promise resolving to the operation result.
+ */
 
 export async function getPublicNews(page = 1, limit = 9): Promise<PublicNewsPage> {
   return (
@@ -55,11 +78,20 @@ export async function getPublicNews(page = 1, limit = 9): Promise<PublicNewsPage
   );
 }
 
+/**
+ * Retrieves public news item.
+ * @param id Resource identifier.
+ * @returns A promise resolving to the operation result.
+ */
+
 export function getPublicNewsItem(id: number): Promise<PublicNews | null> {
   return fetchPublic<PublicNews>(ENDPOINTS.publicNewsItem(id), PUBLIC_NEWS_TAG);
 }
 
-/** Not cached: banners depend on the current date, so an expired banner must disappear right away. */
+/**
+ * Not cached: banners depend on the current date, so an expired banner must disappear right away.
+ * @returns A promise resolving to the operation result.
+ */
 export async function getPublicBanners(): Promise<PublicBanner[]> {
   try {
     const response = await fetch(`${BACKEND_URL}${ENDPOINTS.publicBanners}`, {
@@ -70,6 +102,11 @@ export async function getPublicBanners(): Promise<PublicBanner[]> {
     return [];
   }
 }
+
+/**
+ * Retrieves public gallery.
+ * @returns A promise resolving to the operation result.
+ */
 
 export async function getPublicGallery(): Promise<PublicGalleryImage[]> {
   return (

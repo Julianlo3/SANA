@@ -9,6 +9,9 @@ import type { Gender } from "@/features/consultation-requests/types/consultation
 import { keepDigits } from "@/lib/format/text";
 import { useOwnProfile } from "../hooks/use-own-profile";
 
+/**
+ * Defines the gender options.
+ */
 const GENDER_OPTIONS: { value: Gender; label: string }[] = [
   { value: "M", label: "Hombre" },
   { value: "F", label: "Mujer" },
@@ -16,6 +19,9 @@ const GENDER_OPTIONS: { value: Gender; label: string }[] = [
   { value: "P", label: "No quiero especificar" },
 ];
 
+/**
+ * Defines the input class.
+ */
 const INPUT_CLASS =
   "mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:bg-surface-muted";
 

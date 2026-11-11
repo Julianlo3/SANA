@@ -18,8 +18,14 @@ import {
   Sun,
 } from "lucide-react";
 
+/**
+ * Defines the tile px.
+ */
 const TILE_PX = 440;
 
+/**
+ * Defines the watermark symbol type.
+ */
 type WatermarkSymbol = {
   Icon: LucideIcon;
   x: number;
@@ -28,6 +34,9 @@ type WatermarkSymbol = {
   rotate: number;
 };
 
+/**
+ * Defines the symbols.
+ */
 const SYMBOLS: WatermarkSymbol[] = [
   { Icon: Brain, x: 18, y: 22, size: 54, rotate: -12 },
   { Icon: Heart, x: 132, y: 8, size: 26, rotate: 14 },
@@ -53,6 +62,7 @@ const SYMBOLS: WatermarkSymbol[] = [
 
 /**
  * Repeating pattern of the foundation's symbols, drawn as a faint watermark behind a section.
+ * @param props Component properties.
  */
 export default function TeamWatermark({
   id = "team-watermark",

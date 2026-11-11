@@ -2,6 +2,11 @@ import Sidebar from "@/components/navigation/sidebar";
 import Header from "@/components/navigation/panel-header";
 import { requireAdministrator } from "@/lib/auth-guard";
 
+/**
+ * Renders the panel layout page.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default async function PanelLayout({
   children,
 }: {

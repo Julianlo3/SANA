@@ -2,6 +2,9 @@ import type { ReactNode } from "react";
 import Button from "@/components/ui/button";
 import Modal from "@/components/ui/modal";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   readonly title: string;
   readonly icon: ReactNode;
@@ -12,6 +15,11 @@ type Props = {
   readonly children: ReactNode;
 };
 
+/**
+ * Renders the appointment request dialog component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function AppointmentRequestDialog({
   title,
   icon,

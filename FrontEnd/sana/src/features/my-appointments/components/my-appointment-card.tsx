@@ -22,6 +22,9 @@ import type {
   MyAppointment,
 } from "../types/my-appointments-types";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   readonly appointment: MyAppointment;
 };
@@ -30,6 +33,7 @@ type Props = {
  * Component that displays a card with information about a single appointment.
  * @param param0 The props containing the appointment to display.
  * @returns The appointment card component.
+ * @param props Component properties.
  */
 export default function MyAppointmentCard({ appointment }: Props) {
   const ModeIcon = appointment.appType === "virtual" ? Video : MapPin;

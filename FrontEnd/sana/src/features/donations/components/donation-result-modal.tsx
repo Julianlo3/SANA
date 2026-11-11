@@ -18,6 +18,9 @@ import {
 import { formatCOP } from '../services/wompi-service';
 import type { DonationOperationResult } from '../types/donation-types';
 
+/**
+ * Defines the donation result modal props interface.
+ */
 interface DonationResultModalProps {
   readonly result: DonationOperationResult;
   readonly onReset?: () => void;
@@ -29,6 +32,7 @@ interface DonationResultModalProps {
  * @param result DonationOperationResult
  * @param onReset Function to reset the donation form
  * @returns JSX.Element
+ * @param props Component properties.
  */
 export default function DonationResultModal({
   result,

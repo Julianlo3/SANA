@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import MyRequestsSection from "@/features/my-account/components/my-requests-section";
 
+/**
+ * Defines page metadata.
+ */
 export const metadata: Metadata = {
   title: "Mis citas personales | SANA",
 };

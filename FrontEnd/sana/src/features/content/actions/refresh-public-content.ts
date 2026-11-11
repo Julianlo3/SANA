@@ -9,7 +9,10 @@ import {
   type PublicTag,
 } from "../config/content-access";
 
-/** Expires the cached public pages for the tag so the next visit shows the saved changes. */
+/**
+ * Expires the cached public pages for the tag so the next visit shows the saved changes.
+ * @param tag tag input. (optional)
+ */
 export async function refreshPublicContent(
   tag: PublicTag = PUBLIC_CONTENT_TAG,
 ): Promise<void> {

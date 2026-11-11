@@ -11,11 +11,19 @@ import {
   type MissionVisionValues,
 } from "../validation/content-validation";
 
+/**
+ * Defines the field keys.
+ */
 const FIELD_KEYS: Record<keyof MissionVisionValues, ContentItemKey> = {
   mission: "about.mission",
   vision: "about.vision",
 };
 
+/**
+ * Converts the value to form values.
+ * @param items items input.
+ * @returns Result of the operation.
+ */
 function toFormValues(items: ContentItem[]): MissionVisionValues {
   const valueOf = (key: ContentItemKey) =>
     items.find((item) => item.key === key)?.value ?? "";
@@ -25,12 +33,20 @@ function toFormValues(items: ContentItem[]): MissionVisionValues {
   };
 }
 
+/**
+ * Finds last edit.
+ * @param items items input.
+ */
 function findLastEdit(items: ContentItem[]) {
   return items
     .filter((item) => item.updatedAt && item.updatedBy)
     .sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""))[0];
 }
 
+/**
+ * Provides state and actions for mission vision form.
+ * @returns Feature state, data, and action handlers.
+ */
 export function useMissionVisionForm() {
   const [items, setItems] = useState<ContentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);

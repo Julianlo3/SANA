@@ -5,8 +5,8 @@ import * as path from 'path';
 /**
  * OWASP FrontEnd Security Checks
  * ==============================
- * Pruebas estáticas para asegurar que el frontend Next.js de SANA 
- * cumple con las directrices principales de OWASP Top 10.
+ * Static checks that verify the SANA Next.js frontend follows key OWASP Top 10
+ * security guidelines.
  */
 describe('OWASP Top 10 - FrontEnd Security', () => {
 
@@ -15,10 +15,10 @@ describe('OWASP Top 10 - FrontEnd Security', () => {
       const guardPath = path.resolve(__dirname, '../../src/lib/auth-guard.ts');
       const content = fs.readFileSync(guardPath, 'utf-8');
 
-      // Debe redirigir al login si no hay token
+      // Redirect to sign-in when no token is available.
       expect(content).toContain('redirect("/iniciar-sesion")');
       expect(content).toContain('redirect("/sesion-expirada")');
-      // Debe redirigir si el backend responde 403 (no autorizado para el rol)
+      // Redirect when the backend denies access to the user's role.
       expect(content).toContain('redirect("/acceso-restringido")');
       expect(content).toContain('status === 403');
     });
@@ -37,16 +37,16 @@ describe('OWASP Top 10 - FrontEnd Security', () => {
       const httpPath = path.resolve(__dirname, '../../src/services/api/http-client.ts');
       const content = fs.readFileSync(httpPath, 'utf-8');
 
-      // No debería haber tokens harcodeados
+      // Static credentials must not be present.
       expect(content).not.toMatch(/Authorization:\s*['"]Bearer [a-zA-Z0-9-._~+/]+=*['"]/);
-      // Debe usar credentials: "include" para enviar cookies HttpOnly
+      // Include HttpOnly cookies in requests.
       expect(content).toContain('credentials: "include"');
     });
   });
 
   describe('A03:2021 – Injection (Cross-Site Scripting - XSS)', () => {
     it('El Frontend NO DEBE usar dangerouslySetInnerHTML sin sanitización', () => {
-      // Buscar en los archivos principales si existe dangerouslySetInnerHTML
+      // Search application source files for dangerouslySetInnerHTML.
       const searchInPath = (dir: string) => {
         const files = fs.readdirSync(dir);
         let found = false;
@@ -56,10 +56,10 @@ describe('OWASP Top 10 - FrontEnd Security', () => {
             if (searchInPath(fullPath)) found = true;
           } else if (fullPath.endsWith('.tsx') || fullPath.endsWith('.ts')) {
             const content = fs.readFileSync(fullPath, 'utf-8');
-            // Si se usa dangerouslySetInnerHTML, debe haber un validador/sanitizador como DOMPurify,
-            // Aquí en modo estricto simplemente verificamos su presencia (esperando que sea falso o validado)
+            // If dangerouslySetInnerHTML is used, require a sanitizer such as DOMPurify.
+            // Strict mode checks presence and expects no unsafe usage.
             if (content.includes('dangerouslySetInnerHTML')) {
-              // Permitimos si usan un componente Markdown seguro
+              // Allow safe Markdown renderers.
               if (!content.includes('react-markdown') && !content.includes('DOMPurify')) {
                 found = true;
               }
@@ -71,7 +71,7 @@ describe('OWASP Top 10 - FrontEnd Security', () => {
 
       const srcPath = path.resolve(__dirname, '../../src');
       const hasUnsafeInnerHtml = searchInPath(srcPath);
-      expect(hasUnsafeInnerHtml).toBe(false); // Validar que React protege XSS por defecto
+      expect(hasUnsafeInnerHtml).toBe(false); // React escapes content by default.
     });
   });
 
@@ -80,9 +80,9 @@ describe('OWASP Top 10 - FrontEnd Security', () => {
       const httpPath = path.resolve(__dirname, '../../src/services/api/http-client.ts');
       const content = fs.readFileSync(httpPath, 'utf-8');
 
-      // Debe capturar errores globalmente lanzando ApiError
+      // Convert global request failures into ApiError.
       expect(content).toContain('throw new ApiError');
-      // Debe parsear el status code para mostrar mensajes seguros
+      // Parse status codes into safe user-facing messages.
       expect(content).toContain('STATUS_MESSAGES');
     });
   });

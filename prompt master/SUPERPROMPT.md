@@ -44,7 +44,7 @@ Construir el sistema SANA (plataforma web de la Fundación Dejando Huellas Felic
 - R-04. Una HU se considera implementada solo cuando todos sus escenarios Gherkin (sección 7) pasan como pruebas automatizadas.
 - R-05. La ejecución sigue el orden de fases de la sección 15. No se DEBE iniciar una fase sin cerrar la anterior.
 - R-06. El sistema trata datos personales sensibles de menores de edad (Ley 1581 de 2012). Los requisitos de la sección 8 aplican a todas las fases.
-- R-07. Idioma: código (identificadores, nombres de archivos y tablas) en inglés; interfaz, mensajes de error, documentación y mensajes de commit en español.
+- R-07. Idioma: código (identificadores, nombres de archivos y tablas) en inglés; comentarios de documentación/JSDoc en el código fuente en inglés técnico y breve; interfaz, mensajes de error, documentación dirigida a usuarios y mensajes de commit en español. Los comentarios narrativos que expliquen un comportamiento puntual pueden conservar el idioma del contexto.
 - R-08. NO DEBEN usarse datos reales de consultantes en desarrollo, pruebas ni datos semilla.
 
 ## 0.4 Marcadores de la especificación
@@ -343,6 +343,7 @@ Vercel, Render y Neon son los despliegues activos. La ausencia de manifiestos de
 - En TypeORM/PostgreSQL, columnas enteras anulables declaran `type: 'integer'`. Mantener `synchronize: false`; cada cambio vive en SQL/migración revisable.
 - El `httpClient` envía JSON y traduce errores de validación para formularios. Tipos, validación y servicios permanecen junto a la feature.
 - Nombres técnicos, rutas, payloads y estados respetan los valores exactos del código; la interfaz se redacta en español. Usar `YYYY-MM-DD` para fecha civil e ISO 8601 con zona para instantes.
+- La documentación de símbolos en el código fuente (JSDoc de funciones, componentes, hooks, tipos/interfaces y constantes globales o de ámbito de archivo) se redacta en inglés técnico, breve y con el formato establecido en la sección 13. La documentación de producto y la interfaz permanecen en español.
 - No registrar tokens, contraseñas, documentos completos, notas clínicas ni cuerpos de correo.
 
 ## 4.7 Scripts verificados
@@ -1562,6 +1563,25 @@ Esta guía define los resultados y criterios necesarios para implementar o recre
 - Añadir o actualizar pruebas para el comportamiento modificado, incluidas las validaciones del cálculo y del Server Action de donaciones, los casos de error de autenticación y la prevención de pegado.
 - Ejecutar pruebas focalizadas, ESLint y build del frontend. No modificar servicios, contratos ni archivos del backend para estos cambios.
 
+### 2026-11-09 — Rol de la IA: Frontend
+
+Este registro contextualiza la IA como agente especializado en frontend. El trabajo se limita a la aplicación frontend; respeta contratos de API existentes y no implementa ni modifica backend.
+
+#### Prompt de trabajo registrado
+
+> Rol de la IA: agente Frontend de SANA. Implementa y mantén el dashboard de reportes dentro del panel del rol Administrador, limitando todos los cambios a la aplicación frontend. Antes de agregar filtros o visualizaciones, inspecciona el contrato vigente de la API; consúmelo sin modificar el backend. Integra `GET /api/v1/reports/summary` mediante `ENDPOINTS` y `httpClient`, organiza la solución por feature (`types`, `services`, `hooks`, `pages`) y agrega la ruta `/reportes` al menú del administrador. Presenta las métricas agregadas de psicología, sistema y donaciones en tarjetas responsive; convierte `totalAmountInCents` de centavos a COP sin perder precisión. Incluye actualización manual y estados de carga/error/reintento. No inventes filtros ni series temporales si la API solo devuelve agregados acumulados. Conserva la arquitectura y estilos existentes, documenta las declaraciones nuevas con JSDoc técnico breve en inglés según la sección 13 y prueba servicio, hook, presentación, ruta y acceso del menú.
+
+#### FE-07. Dashboard de reportes administrativos
+
+- Mostrar los ocho campos entregados por el resumen actual en tres grupos extensibles: Psicología (`totalCompletedAppointments`, `averageCompletedAppointmentsPerPsychologist`, `activePsychologists`); Sistema (`totalConsultants`, `averageAppointmentsPerConsultant`); Donaciones (`totalAmountInCents`, `approvedDonations`, `peopleWhoDonated`).
+- Obtener los datos desde el endpoint existente, con tipos alineados exactamente a su respuesta y el cliente HTTP común. No añadir consultas directas desde componentes ni modificar el backend como parte de esta capacidad frontend.
+- Exponer `/reportes` en la navegación del Administrador, mantenerla dentro de la autorización/layout de panel vigente y no mostrarla para otros roles.
+- Usar diseño responsive y consistente con el panel. Ofrecer actualización manual y estados claros de carga, error y reintento; mantener los datos previamente cargados si falla una actualización.
+- Formatear números para `es-CO` y donaciones como COP desde centavos sin convertir la suma a un `number` que pueda perder precisión.
+- El resumen vigente es acumulado y no recibe período/filtros ni entrega datos agrupados por fecha. No presentar filtros inoperantes ni gráficas temporales con datos inventados; para estas últimas se requiere primero un contrato API con series temporales.
+- Criterios de aceptación: cada métrica del contrato se muestra bajo su grupo; el enlace aparece solo para Administrador; el monto se visualiza en COP; carga/error/actualización son operables y accesibles; servicio, hook, pantalla, ruta y navegación cuentan con pruebas; lint y TypeScript pasan.
+- Registro de cierre: la implementación frontend quedó integrada con el contrato vigente; se eliminó el aviso visual de que no había filtros a petición del usuario. La suite focalizada final pasó 16 pruebas; la feature de reportes obtuvo 100% de statements, branches, funciones y líneas en medición focalizada. Las pruebas de navegación cubren el acceso por rol, sin atribuir esa cifra a todo el sidebar existente.
+
 ---
 
 # 12. Pruebas y aseguramiento de calidad
@@ -1635,6 +1655,26 @@ Las pruebas e2e de usuarios deben revisarse junto con su configuración para ide
 ---
 
 # 13. Documentación a generar
+
+## 13.1 Idioma y documentación del código fuente
+
+- La documentación de código fuente debe estar en inglés técnico, corto y consistente; no documentar símbolos nuevos en español.
+- Documentar funciones, componentes, hooks, tipos/interfaces, constantes globales y otras declaraciones relevantes de ámbito de archivo.
+- Usar JSDoc con descripción, `@param` para cada parámetro y `@returns` cuando aplique:
+
+```ts
+/**
+ * <Short technical description of purpose and behavior.>
+ * @param <parameterName> <Short parameter description.>
+ * @returns <Result description.>
+ */
+```
+
+- Para tipos, interfaces y constantes sin parámetros, usar una descripción breve en inglés. No inventar `@param` o `@returns` cuando no aplican.
+- Los comentarios narrativos que expliquen un comportamiento puntual, y no documenten una API o declaración, pueden conservar el idioma del contexto.
+- La documentación dirigida a usuarios, mensajes e interfaz permanece en español.
+
+## 13.2 Entregables del proyecto
 
 | Archivo | Contenido |
 |---|---|

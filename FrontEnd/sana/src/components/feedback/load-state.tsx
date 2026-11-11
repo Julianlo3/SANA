@@ -1,12 +1,18 @@
 import InlineMessage from "@/components/feedback/inline-message";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   readonly isLoading: boolean;
   readonly error: string | null;
   readonly loadingText: string;
 };
 
-/** Mensaje de carga o de error de una lista. No muestra nada si ya terminó bien. */
+/**
+ * Renders a list loading or error message, and nothing after successful loading.
+ * @param props Component properties.
+ */
 export default function LoadState({ isLoading, error, loadingText }: Props) {
   if (error) {
     return (

@@ -8,7 +8,7 @@ import type {
   MyAppointmentState,
 } from "../types/my-appointments-types";
 
-/** Carga las citas del psicólogo y recarga al cambiar el filtro de estado. */
+/** Loads psychologist appointments and refreshes them when the state filter changes. */
 export function useMyAppointments() {
   const [filter, setFilter] = useState<MyAppointmentState>("confirmada");
   const [appointments, setAppointments] = useState<MyAppointment[]>([]);

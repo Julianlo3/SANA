@@ -19,9 +19,16 @@ import {
 import { ApiError } from "@/types/api-types";
 import type { OwnProfile } from "../types/my-account-types";
 
+/**
+ * Defines the card types.
+ */
 const CARD_TYPES: readonly string[] = ["CC", "TI", "CE"];
 
-/** Datos del perfil que el envío exige y que hoy no están completos. */
+/**
+ * Returns required profile fields that are currently incomplete.
+ * @param profile profile input.
+ * @returns Result of the operation.
+ */
 function missingProfileData(profile: OwnProfile): string[] {
   const missing: string[] = [];
 
@@ -42,9 +49,10 @@ function missingProfileData(profile: OwnProfile): string[] {
 }
 
 /**
- * Pedir una cita nueva para sí mismo, sin llenar de nuevo todo el formulario.
- * Los datos personales salen del perfil; la persona solo elige modalidad,
- * escribe el motivo y autoriza el tratamiento de datos.
+ * Creates a self-request using profile data without repeating the full form.
+ * The user selects a mode, enters a reason, and grants data-processing consent.
+ * @param profile profile input.
+ * @param onCreated on created input.
  */
 export function useNewRequest(profile: OwnProfile, onCreated: () => void) {
   const [appType, setAppType] = useState<AppointmentMode | "">("");

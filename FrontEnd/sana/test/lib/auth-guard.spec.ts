@@ -28,7 +28,7 @@ vi.mock("next/navigation", () => ({
   redirect: mocks.redirect,
 }));
 
-// Importa la función getCurrentUser después de configurar los mocks
+// Import getCurrentUser after configuring the mocks.
 import { getCurrentUser } from "../../src/lib/auth-guard";
 
 /**

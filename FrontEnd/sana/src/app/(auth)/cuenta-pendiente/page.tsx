@@ -2,6 +2,10 @@ import Link from "next/link";
 import { UserX, Mail } from "lucide-react";
 import StatusCard from "@/features/auth/components/status-card";
 
+/**
+ * Renders the notice shown when a signed-in email has no registered account.
+ * @returns The pending-account status page.
+ */
 export default function PendingAccountPage() {
   return (
     <StatusCard

@@ -534,6 +534,7 @@ export default function GuardianRequestPage() {
                 />
 
                 <AppointmentModeField
+                  department={values.department}
                   value={values.appType}
                   error={errors.appType}
                   onChange={setAppointmentMode}

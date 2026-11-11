@@ -1,6 +1,11 @@
 import { findRoleById } from "@/config/roles";
 import type { AssignedRole } from "../types/user-types";
 
+/**
+ * Renders the role tags component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function RoleTags({ roles }: { roles: AssignedRole[] }) {
   if (roles.length === 0) {
     return <span className="text-xs text-text-subtle">Sin roles</span>;

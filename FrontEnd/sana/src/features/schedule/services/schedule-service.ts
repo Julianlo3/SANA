@@ -7,13 +7,21 @@ import type {
 } from "../types/schedule-types";
 
 /**
- * Agenda del psicólogo autenticado. Habla con /schedule/me/..., sin mocks,
- * contra el backend real.
+ * Provides schedule operations for the authenticated psychologist through the
+ * `/schedule/me/...` endpoints.
+ * @param signal Optional request cancellation signal.
+ * @returns The psychologist's availability blocks.
  */
 
 export async function getMyBlocks(signal?: AbortSignal): Promise<ScheduleBlock[]> {
   return httpClient.get<ScheduleBlock[]>("/schedule/me/blocks", signal);
 }
+
+/**
+ * Creates a one-time availability block for the authenticated psychologist.
+ * @param payload Data submitted to the operation.
+ * @returns The created availability block.
+ */
 
 export async function createMyBlock(
   payload: CreateScheduleBlockPayload,
@@ -21,9 +29,20 @@ export async function createMyBlock(
   return httpClient.post<ScheduleBlock>("/schedule/me/blocks", payload);
 }
 
+/**
+ * Deletes a one-time availability block.
+ * @param id Resource identifier.
+ */
+
 export async function deleteMyBlock(id: number): Promise<void> {
   await httpClient.remove<void>(`/schedule/me/blocks/${id}`);
 }
+
+/**
+ * Retrieves recurring availability blocks for the authenticated psychologist.
+ * @param signal Optional request cancellation signal.
+ * @returns The psychologist's recurring availability blocks.
+ */
 
 export async function getMyRecurringBlocks(
   signal?: AbortSignal,
@@ -34,6 +53,12 @@ export async function getMyRecurringBlocks(
   );
 }
 
+/**
+ * Creates a recurring availability block for the authenticated psychologist.
+ * @param payload Data submitted to the operation.
+ * @returns The created recurring availability block.
+ */
+
 export async function createMyRecurringBlock(
   payload: CreateRecurringScheduleBlockPayload,
 ): Promise<RecurringScheduleBlock> {
@@ -43,11 +68,20 @@ export async function createMyRecurringBlock(
   );
 }
 
+/**
+ * Deletes a recurring availability block.
+ * @param id Resource identifier.
+ */
+
 export async function deleteMyRecurringBlock(id: number): Promise<void> {
   await httpClient.remove<void>(`/schedule/me/recurring-blocks/${id}`);
 }
 
-/** Términos de uso de la agenda (schedule_terms): el psicólogo debe aceptarlos antes de poder usar su calendario. */
+/**
+ * Retrieves whether the psychologist has accepted the schedule terms.
+ * @param signal Optional request cancellation signal.
+ * @returns The schedule terms acceptance status.
+ */
 export async function getScheduleTermsStatus(
   signal?: AbortSignal,
 ): Promise<{ hasAccepted: boolean }> {
@@ -57,6 +91,9 @@ export async function getScheduleTermsStatus(
   );
 }
 
+/**
+ * Records acceptance of the schedule terms.
+ */
 export async function acceptScheduleTerms(): Promise<void> {
   await httpClient.post<void>("/schedule/me/accept-terms", {});
 }

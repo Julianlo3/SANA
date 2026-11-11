@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   readonly value: string;
   readonly error?: string;
@@ -8,6 +11,11 @@ type Props = {
   readonly onChange: (value: string) => void;
 };
 
+/**
+ * Renders the consultation reason field component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function ConsultationReasonField({
   value,
   error,

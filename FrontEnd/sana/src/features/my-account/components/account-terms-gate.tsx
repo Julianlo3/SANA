@@ -8,6 +8,9 @@ import Button from "@/components/ui/button";
 import DataPolicyConsent from "@/features/consultation-requests/components/data-policy-consent";
 import { acceptAccountTerms } from "../services/account-terms-service";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   readonly termsAccepted: boolean;
   readonly children: ReactNode;
@@ -15,7 +18,8 @@ type Props = {
 
 /**
  * Before showing the account the first time, asks the consultant to accept
- * the current account terms (FDHF-WEB-AV-01, sección 6).
+ * the current account terms (FDHF-WEB-AV-01, section 6).
+ * @param props Component properties.
  */
 export default function AccountTermsGate({ termsAccepted, children }: Props) {
   const router = useRouter();

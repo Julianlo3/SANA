@@ -1,21 +1,19 @@
 /**
- * Tipos del dominio de consultantes (HU-2.1, HU-2.4 y HU-2.5).
+ * Data contracts for consultant profiles and care records.
  *
- * Punto central de HU-2.4: el motivo de consulta y las observaciones de
- * atención NUNCA viajan en la misma forma que ve la asistente. El backend
- * debe devolver un objeto distinto según el rol de quien pregunta — esto
- * no se resuelve ocultando campos en el frontend, porque cualquiera con
- * las herramientas del navegador vería igual lo que el backend envíe.
+ * Consultation reasons and clinical notes must not be included in the
+ * assistant-facing response. The backend returns role-specific data objects;
+ * hiding fields in the frontend would not protect them from browser access.
  */
 
 import type { ResidenceLocation } from "@/config/residence-zones";
 
-/** Estado de la ficha del consultante. */
+/** Consultant profile lifecycle state. */
 export type ConsultantStatus = "active" | "inactive";
 
 /**
- * Lo que ve la asistente administrativa (HU-2.4.1): datos de agendamiento
- * y contacto, sin motivo de consulta ni observaciones clínicas.
+ * Assistant-facing scheduling and contact data, excluding consultation
+ * reasons and clinical notes.
  */
 export type ConsultantSummary = {
   id: number;
@@ -25,20 +23,28 @@ export type ConsultantSummary = {
   phone: string;
   residence: ResidenceLocation | null;
   status: ConsultantStatus;
-  /** Psicólogo asignado, si tiene uno. */
+  /** Assigned psychologist, if any. */
   assignedPsychologistId: number | null;
   assignedPsychologistName: string | null;
-  /** Fecha de la última cita, si tuvo alguna. */
+  /** Date of the most recent appointment, if any. */
   lastAppointmentAt: string | null;
   appointmentCount: number;
   completedAppointmentCount?: number;
   waitingAppointmentCount?: number;
 };
 
+/**
+ * Defines the consultant full record type.
+ */
+
 export type ConsultantFullRecord = ConsultantSummary & {
   careRecords: CareRecordEntry[];
   appointments: ConsultantAppointment[];
 };
+
+/**
+ * Defines the consultant appointment type.
+ */
 
 export type ConsultantAppointment = {
   id: number;
@@ -56,7 +62,7 @@ export type ConsultantAppointment = {
   }[];
 };
 
-/** Una atención registrada, dentro del historial del consultante. */
+/** A recorded care entry in the consultant's history. */
 export type CareRecordEntry = {
   id: number;
   appointmentId: number;
@@ -70,7 +76,7 @@ export type CareRecordEntry = {
   recordedByPsychologistName: string;
 };
 
-/** HU-2.4.4: registro de quién consultó una ficha y cuándo. */
+/** Audit entry describing who accessed a consultant record and when. */
 export type ConsultantAccessLogEntry = {
   id: number;
   consultantId: number;
@@ -79,10 +85,10 @@ export type ConsultantAccessLogEntry = {
   userRole: string;
   accessedAt: string;
 };
-/** Canal por el que la asistente obtuvo la autorización verbal. */
+/** Channel used by the assistant to obtain verbal consent. */
 export type AssistedConsentChannel = "telefono" | "whatsapp" | "presencial";
 
-/** Payload de POST /consultants: ficha registrada por la asistente. */
+/** Payload for an assistant-created consultant profile. */
 export type CreateConsultantPayload = {
   fullName: string;
   cardType: "CC" | "TI" | "CE";

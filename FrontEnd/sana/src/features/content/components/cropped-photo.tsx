@@ -2,6 +2,9 @@ import Image from "next/image";
 import { photoCropStyle } from "../photo-crop";
 import type { PhotoCrop } from "../types/content-types";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   src: string;
   alt: string;
@@ -15,6 +18,7 @@ type Props = {
 
 /**
  * Photo that shows only the saved crop of the original image; without a crop it centers the image.
+ * @param props Component properties.
  */
 export default function CroppedPhoto({
   src,

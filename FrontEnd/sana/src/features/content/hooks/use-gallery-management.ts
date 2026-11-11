@@ -15,16 +15,31 @@ import {
 } from "../services/gallery-service";
 import type { GalleryImage } from "../types/content-types";
 
+/**
+ * Defines the gallery form values type.
+ */
+
 export type GalleryFormValues = {
   imageUrl: string;
   imageAlt: string;
   caption: string;
 };
 
+/**
+ * Defines the empty values.
+ */
 const EMPTY_VALUES: GalleryFormValues = { imageUrl: "", imageAlt: "", caption: "" };
 
+/**
+ * Defines the editor type.
+ */
 type Editor = { mode: "create" } | { mode: "edit"; image: GalleryImage } | null;
 
+/**
+ * Implements the validate operation.
+ * @param values Value to process.
+ * @returns Formatted value or validation message.
+ */
 function validate(values: GalleryFormValues): Partial<Record<keyof GalleryFormValues, string>> {
   const errors: Partial<Record<keyof GalleryFormValues, string>> = {};
   if (!values.imageUrl) errors.imageUrl = "Sube una imagen.";
@@ -32,10 +47,20 @@ function validate(values: GalleryFormValues): Partial<Record<keyof GalleryFormVa
   return errors;
 }
 
+/**
+ * Implements the error message operation.
+ * @param error Error value to process.
+ * @param fallback fallback input.
+ * @returns Formatted value or validation message.
+ */
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
 }
 
+/**
+ * Provides state and actions for gallery management.
+ * @returns Feature state, data, and action handlers.
+ */
 export function useGalleryManagement() {
   const [images, setImages] = useState<GalleryImage[]>([]);
   const [isLoading, setIsLoading] = useState(true);

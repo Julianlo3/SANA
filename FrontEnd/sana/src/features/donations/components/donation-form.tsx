@@ -17,15 +17,31 @@ import {
 } from '../services/wompi-service';
 import type { DonationOperationResult } from '../types/donation-types';
 
+/**
+ * Defines the wompi widget url.
+ */
 const WOMPI_WIDGET_URL = 'https://checkout.wompi.co/widget.js';
+/**
+ * Defines the wompi widget status event.
+ */
 const WOMPI_WIDGET_STATUS_EVENT = 'wompi-widget-status';
 
+/**
+ * Implements the subscribe to wompi widget operation.
+ * @param onStoreChange on store change input.
+ */
 const subscribeToWompiWidget = (onStoreChange: () => void) => {
   window.addEventListener(WOMPI_WIDGET_STATUS_EVENT, onStoreChange);
   return () => window.removeEventListener(WOMPI_WIDGET_STATUS_EVENT, onStoreChange);
 };
 
+/**
+ * Retrieves wompi widget snapshot.
+ */
 const getWompiWidgetSnapshot = () => Boolean(window.WidgetCheckout);
+/**
+ * Retrieves wompi widget server snapshot.
+ */
 const getWompiWidgetServerSnapshot = () => false;
 
 // Extend Window interface to include Wompi Widget
@@ -124,14 +140,14 @@ export default function DonationForm() {
 
     startPreparing(async () => {
       try {
-        // 1. El backend registra la aceptación y firma la referencia
+        // 1. The backend records consent and signs the checkout reference.
         const checkoutData = await startDonationCheckout({
           amountCOP,
           coverFee,
           termsAccepted,
         });
 
-        // 2. Configurar el widget Wompi
+        // 2. Configure the Wompi widget.
         const widgetConfig = {
           currency: checkoutData.currency,
           amountInCents: checkoutData.amountInCents,
@@ -144,11 +160,11 @@ export default function DonationForm() {
 
         const checkout = new window.WidgetCheckout!(widgetConfig);
 
-        // 3. Abrir modal de Wompi (Wompi solicita nombre, email y teléfono internamente)
+        // 3. Open the Wompi modal; the widget collects name, email, and phone.
         checkout.open((wompiResult) => {
           if (wompiResult?.transaction?.id) {
-            // El callback del widget solo informa a la interfaz. La fuente de
-            // verdad y el único lugar que registra la donación es el webhook.
+            // The widget callback updates the UI only. The webhook is the
+            // source of truth and the only place that records the donation.
             setResult({
               success: true,
               status: 'PENDING',
@@ -176,7 +192,7 @@ export default function DonationForm() {
     setTermsError(undefined);
   };
 
-  // Si ya tenemos un resultado de donación, mostramos la tarjeta de resultado
+  // Show the result modal after the donation flow completes.
   if (result) {
     return <DonationResultModal result={result} onReset={handleReset} />;
   }

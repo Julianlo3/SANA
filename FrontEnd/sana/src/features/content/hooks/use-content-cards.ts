@@ -17,6 +17,9 @@ import {
   type CardFormValues,
 } from "../validation/content-validation";
 
+/**
+ * Defines the empty values.
+ */
 const EMPTY_VALUES: CardFormValues = {
   title: "",
   subtitle: "",
@@ -31,8 +34,16 @@ const EMPTY_VALUES: CardFormValues = {
   photoCrop: null,
 };
 
+/**
+ * Defines the editor type.
+ */
 type Editor = { mode: "create" } | { mode: "edit"; card: ContentCard } | null;
 
+/**
+ * Converts the value to form values.
+ * @param card card input.
+ * @returns Result of the operation.
+ */
 function toFormValues(card: ContentCard): CardFormValues {
   return {
     title: card.title,
@@ -49,6 +60,12 @@ function toFormValues(card: ContentCard): CardFormValues {
   };
 }
 
+/**
+ * Converts the value to payload.
+ * @param values Value to process.
+ * @param config Operation configuration.
+ * @returns Result of the operation.
+ */
 function toPayload(values: CardFormValues, config: CardSectionConfig): ContentCardPayload {
   const imageUrl = values.imageUrl || null;
   const payload: ContentCardPayload = {
@@ -71,10 +88,21 @@ function toPayload(values: CardFormValues, config: CardSectionConfig): ContentCa
   };
 }
 
+/**
+ * Implements the error message operation.
+ * @param error Error value to process.
+ * @param fallback fallback input.
+ * @returns Formatted value or validation message.
+ */
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
 }
 
+/**
+ * Provides state and actions for content cards.
+ * @param config Operation configuration.
+ * @returns Feature state, data, and action handlers.
+ */
 export function useContentCards(config: CardSectionConfig) {
   const [cards, setCards] = useState<ContentCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);

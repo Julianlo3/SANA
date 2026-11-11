@@ -8,7 +8,11 @@ import {
 } from "../config/content-sections";
 import type { ImageFolder, ImageUploadSignature } from "../types/content-types";
 
-/** Returns an error message when the file cannot be uploaded, or null when it is valid. */
+/**
+ * Returns an error message when the file cannot be uploaded, or null when it is valid.
+ * @param file file input.
+ * @returns Result of the operation.
+ */
 export function validateImageFile(file: File): string | null {
   if (!IMAGE_ALLOWED_TYPES.includes(file.type) || file.size > IMAGE_MAX_BYTES) {
     return IMAGE_RULES_MESSAGE;
@@ -16,7 +20,12 @@ export function validateImageFile(file: File): string | null {
   return null;
 }
 
-/** Uploads the file straight to Cloudinary with a signature issued by the backend. */
+/**
+ * Uploads the file straight to Cloudinary with a signature issued by the backend.
+ * @param file file input.
+ * @param folder folder input.
+ * @returns A promise resolving to the operation result.
+ */
 export async function uploadImage(file: File, folder: ImageFolder): Promise<string> {
   const signature = await httpClient.post<ImageUploadSignature>(
     ENDPOINTS.imageUploadSignatures,

@@ -8,7 +8,7 @@ import {
 } from "../services/my-account-service";
 import type { MyRequest } from "../types/my-account-types";
 
-/** Solicitudes de cita de la persona que inició sesión, y la acción de cancelarlas. */
+/** Loads the signed-in user's appointment requests and exposes cancellation actions. */
 export function useMyRequests() {
   const [requests, setRequests] = useState<MyRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,14 +43,14 @@ export function useMyRequests() {
     return () => controller.abort();
   }, [reloadKey]);
 
-  /** Recarga la lista y deja un aviso de éxito debajo. */
+  /** Reloads the request list and displays a success notice. */
   const reload = useCallback((message: string) => {
     setNotice(message);
     setActionError(null);
     setReloadKey((current) => current + 1);
   }, []);
 
-  /** Cancela o retira la solicitud y recarga la lista. Devuelve si salió bien. */
+  /** Cancels or withdraws a request, reloads the list, and reports success. */
   const cancel = useCallback(async (request: MyRequest): Promise<boolean> => {
     setCancelingId(request.appId);
     setActionError(null);

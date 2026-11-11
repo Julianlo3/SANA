@@ -9,16 +9,24 @@ import UserStatusBadge from "./user-status-badge";
 import { USER_ROW_AVATAR_CLASSES, USER_NAME_CLASSES } from "./user-item-styles";
 import type { User, UserAction } from "../types/user-types";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   user: User;
   isMenuOpen: boolean;
-  /** Abre el menú hacia arriba cuando la fila está al final de la tabla. */
+  /** Opens the menu upward when this row is near the bottom of the table. */
   openMenuUpwards: boolean;
   onToggleMenu: () => void;
   onCloseMenu: () => void;
   onAction: (action: UserAction, user: User) => void;
 };
 
+/**
+ * Renders the user row component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function UserRow({
   user,
   isMenuOpen,
