@@ -1,0 +1,80 @@
+/* The backdrop fades in and out of the page color, with no visible edges. */
+.values-backdrop {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 22%, #000 78%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 22%, #000 78%, transparent 100%);
+}
+
+/* Mobile: the line zigzags between alternating nodes (left, right, left…). */
+@media (max-width: 767.98px) {
+  .values-stop::before,
+  .values-stop::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    border: 0 dashed var(--color-support-blue);
+  }
+
+  /* Runs down from the node and across to the next node side. */
+  .values-stop:not(:last-child)::after {
+    top: 44px;
+    bottom: 14px;
+    left: 20.5px;
+    right: 20.5px;
+    border-bottom-width: 3px;
+  }
+
+  .values-stop:nth-child(odd):not(:last-child)::after {
+    right: 42.5px;
+    border-left-width: 3px;
+    border-bottom-left-radius: 22px;
+  }
+
+  .values-stop:nth-child(even):not(:last-child)::after {
+    left: 42.5px;
+    border-right-width: 3px;
+    border-bottom-right-radius: 22px;
+  }
+
+  /* Curve joining the horizontal line to the node. */
+  .values-stop:not(:first-child)::before {
+    top: -17px;
+    height: 17px;
+    width: 22px;
+    border-top-width: 3px;
+  }
+
+  .values-stop:nth-child(even):not(:first-child)::before {
+    right: 20.5px;
+    border-right-width: 3px;
+    border-top-right-radius: 22px;
+  }
+
+  .values-stop:nth-child(odd):not(:first-child)::before {
+    left: 20.5px;
+    border-left-width: 3px;
+    border-top-left-radius: 22px;
+  }
+}
+
+.values-float {
+  transform: rotate(var(--float-rotate, 0deg));
+  animation: values-float var(--float-duration, 20s) ease-in-out var(--float-delay, 0s) infinite alternate;
+}
+
+@keyframes values-float {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(calc(var(--float-rotate, 0deg) - 8deg));
+  }
+  50% {
+    transform: translate3d(14px, -18px, 0) rotate(calc(var(--float-rotate, 0deg) + 10deg));
+  }
+  100% {
+    transform: translate3d(-10px, 8px, 0) rotate(calc(var(--float-rotate, 0deg) - 2deg));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .values-float {
+    animation: none;
+  }
+}

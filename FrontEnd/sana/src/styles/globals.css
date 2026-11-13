@@ -27,6 +27,7 @@
   /* Apoyo */
   --color-support-blue: #A0D6DF;
   --color-support-pink: #EF7FA2;
+  --color-support-blue-soft: #D9EFF2;
 
   /* Burgundy: section headings. */
   --color-wine: #993556;
@@ -51,4 +52,76 @@
 
   --font-sans: var(--font-brand);
   --font-display: var(--font-brand);
+}
+
+/* Mission and vision cards: rotating gradient border. */
+@property --mv-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes mv-spin {
+  to {
+    --mv-angle: 360deg;
+  }
+}
+
+@keyframes mv-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@layer components {
+  .mv-card {
+    position: relative;
+    border: 3px solid transparent;
+    background:
+      var(--mv-fill) padding-box,
+      conic-gradient(
+          from var(--mv-angle),
+          var(--color-primary),
+          var(--color-support-blue),
+          var(--color-accent),
+          var(--color-support-pink),
+          var(--color-primary)
+        )
+        border-box;
+    transition:
+      transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+      box-shadow 0.35s;
+  }
+
+  .mv-card--mission {
+    --mv-fill: linear-gradient(
+      135deg,
+      var(--color-primary-soft),
+      var(--color-surface) 55%,
+      var(--color-support-blue-soft)
+    );
+  }
+
+  .mv-card--vision {
+    --mv-fill: linear-gradient(
+      135deg,
+      var(--color-accent-soft),
+      var(--color-surface) 55%,
+      var(--color-highlight)
+    );
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .mv-card {
+      animation: mv-spin 8s linear infinite;
+    }
+
+    .mv-card:hover,
+    .mv-card:focus-within {
+      transform: translateY(-6px);
+      box-shadow: 0 26px 40px -24px rgb(19 65 118 / 0.45);
+      animation-duration: 2.5s;
+    }
+  }
 }
