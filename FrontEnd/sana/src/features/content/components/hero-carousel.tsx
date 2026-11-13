@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode, type TouchEvent } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const ROTATION_MS = 5000;
+const SWIPE_MIN_PX = 40;
 
 export type HeroSlide = {
   key: string;
@@ -38,6 +39,27 @@ export default function HeroCarousel({
   const show = (next: number) =>
     setIndex((next + slides.length) % slides.length);
 
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+
+  function handleTouchStart(event: TouchEvent<HTMLElement>) {
+    const touch = event.touches[0];
+    touchStart.current = { x: touch.clientX, y: touch.clientY };
+  }
+
+  // A swipe counts only when it is mostly horizontal and passes the threshold.
+  function handleTouchEnd(event: TouchEvent<HTMLElement>) {
+    const start = touchStart.current;
+    touchStart.current = null;
+    if (!hasMany || !start) return;
+
+    const touch = event.changedTouches[0];
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    if (Math.abs(dx) <= SWIPE_MIN_PX || Math.abs(dx) <= Math.abs(dy)) return;
+
+    show(dx < 0 ? index + 1 : index - 1);
+  }
+
   return (
     <section
       aria-roledescription="carrusel"
@@ -45,6 +67,8 @@ export default function HeroCarousel({
       className="relative flex min-h-[100vw] w-full overflow-hidden bg-navy sm:h-[85vh] sm:min-h-[600px]"
       onFocus={() => setIsPaused(true)}
       onBlur={() => setIsPaused(false)}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       {slides.map((slide, position) => (
         <div
@@ -67,23 +91,32 @@ export default function HeroCarousel({
 
       {children}
 
+      {/* Invisible edge tap zones; the arrow shows only on keyboard focus. */}
       {hasMany && (
         <>
           <button
             type="button"
             aria-label="Imagen anterior"
             onClick={() => show(index - 1)}
-            className="absolute left-0 top-1/2 z-10 -translate-y-1/2 cursor-pointer p-2 text-white/70 drop-shadow transition hover:text-white sm:left-6"
+            className="group absolute inset-y-0 left-0 z-10 flex w-[15%] cursor-pointer items-center justify-start pl-2 text-white outline-none sm:w-[12%] sm:pl-6"
           >
-            <ChevronLeft className="h-8 w-8 sm:h-10 sm:w-10" strokeWidth={1.5} aria-hidden />
+            <ChevronLeft
+              className="h-8 w-8 opacity-0 drop-shadow group-focus-visible:opacity-100 sm:h-10 sm:w-10"
+              strokeWidth={1.5}
+              aria-hidden
+            />
           </button>
           <button
             type="button"
             aria-label="Imagen siguiente"
             onClick={() => show(index + 1)}
-            className="absolute right-0 top-1/2 z-10 -translate-y-1/2 cursor-pointer p-2 text-white/70 drop-shadow transition hover:text-white sm:right-6"
+            className="group absolute inset-y-0 right-0 z-10 flex w-[15%] cursor-pointer items-center justify-end pr-2 text-white outline-none sm:w-[12%] sm:pr-6"
           >
-            <ChevronRight className="h-8 w-8 sm:h-10 sm:w-10" strokeWidth={1.5} aria-hidden />
+            <ChevronRight
+              className="h-8 w-8 opacity-0 drop-shadow group-focus-visible:opacity-100 sm:h-10 sm:w-10"
+              strokeWidth={1.5}
+              aria-hidden
+            />
           </button>
         </>
       )}
