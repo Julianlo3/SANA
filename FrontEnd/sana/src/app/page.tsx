@@ -7,11 +7,11 @@ import {
   Users,
   CalendarCheck,
 } from "lucide-react";
-import { Wave } from "@/components/ui/shapes";
 import PublicHeader from "@/components/navigation/public-header";
 import PublicFooter from "@/components/navigation/public-footer";
 import PendingContentNotice from "@/components/feedback/pending-content-notice";
 import { HOME_CONTENT } from "@/content/home";
+import AboutSection from "@/features/content/components/about-section";
 import GallerySection from "@/features/content/components/gallery-section";
 import HeroCarousel from "@/features/content/components/hero-carousel";
 import HomeNews from "@/features/content/components/home-news";
@@ -19,13 +19,14 @@ import NewsSectionSkeleton from "@/features/content/components/news-section-skel
 import ServicesShowcase from "@/features/content/components/services-showcase";
 import TeamSection from "@/features/content/components/team-section";
 import TeamWatermark from "@/features/content/components/team-watermark";
+import ValuesPath from "@/features/content/components/values-path";
 import {
   getPublicBanners,
   getPublicContent,
   getPublicGallery,
 } from "@/features/content/services/public-content-service";
 
-const { hero, about, programs, services, team, news, gallery, donation } =
+const { hero, programs, services, team, news, gallery, donation } =
   HOME_CONTENT;
 
 const PROGRAM_ICONS = [HeartHandshake, ShieldCheck, Users];
@@ -81,87 +82,14 @@ export default async function HomePage() {
           </div>
         </HeroCarousel>
 
-        {/* QUIÉNES SOMOS — blanco, acentos rosa */}
-        <section id="about" className="mx-auto max-w-6xl px-6 py-20">
-          <div className="grid gap-12 lg:grid-cols-2">
-            <div className="relative aspect-[4/3] overflow-hidden rounded-3xl">
-              <Image
-                src={about.image.src}
-                alt={about.image.alt}
-                fill
-                sizes="(max-width: 1024px) 100vw, 50vw"
-                className="object-cover"
-              />
-            </div>
+        {/* QUIÉNES SOMOS — image band, mission and vision */}
+        <AboutSection mission={content.mission} vision={content.vision} />
 
-            <div className="flex flex-col justify-center">
-              <h2
-                className="font-display text-4xl font-extrabold"
-                style={{ color: COLORS.pink }}
-              >
-                {about.title}
-              </h2>
-
-              {[
-                { title: about.missionTitle, text: content.mission },
-                { title: about.visionTitle, text: content.vision },
-              ].map((block) => (
-                <div key={block.title} className="mt-6">
-                  <h3 className="font-display text-xl font-bold text-text">
-                    {block.title}
-                  </h3>
-                  {block.text ? (
-                    <p className="mt-2 whitespace-pre-line leading-relaxed text-text-muted">
-                      {block.text}
-                    </p>
-                  ) : (
-                    <PendingContentNotice className="mt-3" />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-14">
-            <h3
-              className="font-display text-2xl font-bold"
-              style={{ color: COLORS.pink }}
-            >
-              {about.valuesTitle}
-            </h3>
-
-            {content.values.length > 0 ? (
-              <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {content.values.map((value) => (
-                  <article
-                    key={value.id}
-                    className="rounded-2xl border border-border bg-surface p-5"
-                  >
-                    <h4 className="font-semibold text-text">{value.title}</h4>
-                    {value.description && (
-                      <p className="mt-2 text-sm leading-relaxed text-text-muted">
-                        {value.description}
-                      </p>
-                    )}
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <PendingContentNotice className="mt-4" />
-            )}
-          </div>
-        </section>
+        {/* VALORES — path over a symbol backdrop */}
+        <ValuesPath values={content.values} />
 
         {/* PROGRAMAS — celeste */}
-        <section
-          id="programs"
-          className="relative overflow-hidden bg-support-blue py-24"
-        >
-          <Wave
-            aria-hidden
-            className="absolute inset-x-0 -top-px w-full rotate-180 text-background"
-          />
-
+        <section id="programs" className="bg-support-blue py-20">
           <div className="relative mx-auto max-w-6xl px-6">
             <h2 className="text-center font-display text-4xl font-extrabold text-navy">
               {programs.title}
@@ -197,11 +125,6 @@ export default async function HomePage() {
               })}
             </div>
           </div>
-
-          <Wave
-            aria-hidden
-            className="absolute inset-x-0 -bottom-px w-full text-background"
-          />
         </section>
 
         {/* SERVICIOS — blanco */}
