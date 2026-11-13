@@ -9,6 +9,7 @@ export type AppointmentState =
   | 'realizada'
   | 'no_asistio';
 export type AppointmentType = 'presencial' | 'virtual';
+export type AppointmentKind = 'valoracion' | 'paquete';
 
 /** 
  * Map to table appointments in the database
@@ -38,6 +39,12 @@ export class Appointment {
 
   @Column({ name: 'app_state', type: 'varchar', length: 15 })
   appState!: AppointmentState;
+
+  @Column({ name: 'app_kind', type: 'varchar', length: 12, default: 'valoracion' })
+  appKind!: AppointmentKind;
+
+  @Column({ name: 'cp_id', type: 'integer', nullable: true })
+  carePackageId!: number | null;
 
   @Column({ name: 'app_type', type: 'varchar', length: 15 })
   appType!: AppointmentType;

@@ -44,6 +44,8 @@ export interface AppointmentDependentParams {
 export interface AppointmentRow {
   appId: number;
   appState: string;
+  appKind: 'valoracion' | 'paquete';
+  carePackageId: number | null;
   appType: string;
   appDate: string | null;
   appDuration: number | null;
@@ -71,6 +73,8 @@ export interface AppointmentRow {
 export interface RequesterAppointmentRow {
   appId: number;
   appState: string;
+  appKind: 'valoracion' | 'paquete';
+  carePackageId: number | null;
   appType: string;
   appDate: string | null;
   appDuration: number | null;
@@ -124,6 +128,8 @@ export class AppointmentsRepository {
       `SELECT
           a.app_id                                   AS "appId",
           a.app_state                                AS "appState",
+          a.app_kind                                 AS "appKind",
+          a.cp_id                                    AS "carePackageId",
           a.app_type                                 AS "appType",
           a.app_date                                 AS "appDate",
           a.app_duration                             AS "appDuration",
@@ -172,6 +178,8 @@ export class AppointmentsRepository {
       `SELECT
           a.app_id AS "appId",
           a.app_state AS "appState",
+          a.app_kind AS "appKind",
+          a.cp_id AS "carePackageId",
           a.app_type AS "appType",
           a.app_date AS "appDate",
           a.app_duration AS "appDuration",
@@ -202,6 +210,8 @@ export class AppointmentsRepository {
       `SELECT
           a.app_id                                   AS "appId",
           a.app_state                                AS "appState",
+          a.app_kind                                 AS "appKind",
+          a.cp_id                                    AS "carePackageId",
           a.app_type                                 AS "appType",
           a.app_date                                 AS "appDate",
           a.app_duration                             AS "appDuration",
@@ -250,6 +260,8 @@ export class AppointmentsRepository {
       `SELECT
           a.app_id                                   AS "appId",
           a.app_state                                AS "appState",
+          a.app_kind                                 AS "appKind",
+          a.cp_id                                    AS "carePackageId",
           a.app_type                                 AS "appType",
           a.app_date                                 AS "appDate",
           a.app_duration                             AS "appDuration",
@@ -306,6 +318,8 @@ export class AppointmentsRepository {
       `SELECT
           a.app_id                                   AS "appId",
           a.app_state                                AS "appState",
+          a.app_kind                                 AS "appKind",
+          a.cp_id                                    AS "carePackageId",
           a.app_type                                 AS "appType",
           a.app_date                                 AS "appDate",
           a.app_duration                             AS "appDuration",
