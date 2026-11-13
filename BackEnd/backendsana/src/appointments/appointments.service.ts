@@ -26,6 +26,7 @@ import { ScheduleService } from '../schedule/schedule.service.js';
 import type { PublicScheduleAvailabilityQueryDto } from '../schedule/dto/public-schedule-availability-query.dto.js';
 import type { PublicScheduleSlotDto } from '../schedule/dto/public-schedule-availability-response.dto.js';
 import { EmailService } from '../email/email.service.js';
+import { GoogleCalendarService } from '../calendar/google-calendar.service.js';
 import {
   buildAppointmentRequestedEmail,
   buildAppointmentConfirmedPatientEmail,
@@ -79,6 +80,7 @@ export class AppointmentsService {
     private readonly repo: AppointmentsRepository,
     private readonly scheduleService: ScheduleService,
     @Optional() private readonly emailService?: EmailService,
+    @Optional() private readonly calendarService?: GoogleCalendarService,
   ) { }
 
   /**
@@ -583,7 +585,7 @@ export class AppointmentsService {
   }
 
   /**
-   * Updates an appointment's status (cancelada / realizada).
+   * Updates an appointment's status (cancelada / no_asistio).
    * @param appId The ID of the appointment to update.
    * @param dto The DTO containing the status details.
    * @param secretaryUserId The ID of the secretary performing the update.
@@ -604,15 +606,15 @@ export class AppointmentsService {
       });
     }
 
-    if (dto.state !== 'cancelada') {
+    if (!['cancelada', 'no_asistio'].includes(dto.state)) {
       throw new BadRequestException({
         error: 'INVALID_APPOINTMENT_STATUS_TRANSITION',
-        message: 'El secretario solo puede cancelar citas confirmadas',
+        message: 'El secretario solo puede cancelar citas o registrar una inasistencia',
       });
     }
 
     if (appointment.appState !== 'confirmada') {
-      if (['cancelada', 'realizada', 'descartada'].includes(appointment.appState)) {
+      if (['cancelada', 'realizada', 'descartada', 'no_asistio'].includes(appointment.appState)) {
         throw new BadRequestException({
           error: 'APPOINTMENT_ALREADY_CLOSED',
           message: `La cita ya se encuentra en estado '${appointment.appState}' y no puede modificarse`,
@@ -620,22 +622,22 @@ export class AppointmentsService {
       }
       throw new BadRequestException({
         error: 'APPOINTMENT_NOT_CONFIRMED',
-        message: 'Solo se pueden cancelar citas que ya fueron confirmadas',
+        message: 'Solo se pueden cancelar citas o registrar inasistencias cuando la cita está confirmada',
       });
     }
 
-    const transitioned = await this.repo.updateState(appId, 'cancelada');
+    const transitioned = await this.repo.updateState(appId, dto.state);
     if (!transitioned) {
       throw new ConflictException({
         error: 'APPOINTMENT_STATE_CHANGED',
-        message: 'La cita cambió de estado y ya no puede cancelarse',
+        message: 'La cita cambió de estado y ya no puede actualizarse',
       });
     }
     const updated = await this.findByIdOrFail(appId);
     this.logger.log(
       `Module:appointments, Function:updateStatus, result-success: appId-${appId}, newState-${dto.state}`,
     );
-    await this.sendCancellationNotification(updated);
+    if (dto.state === 'cancelada') await this.sendCancellationNotification(updated);
     return updated;
   }
 
@@ -949,6 +951,33 @@ export class AppointmentsService {
         this.logger.warn(`Appointment confirmation email skipped: psychologist has no usable email (appId-${appointment.appId})`);
       }
     }
+
+    if (appointment.appDate && this.calendarService) {
+      try {
+        let psychologistEmail: string | null = null;
+        if (appointment.psychologistId) {
+          psychologistEmail = await this.repo.findPsychologistEmail(appointment.psychologistId);
+        }
+        const calendarEventId = await this.calendarService.createAppointmentEvent({
+          appId: appointment.appId,
+          patientName: appointment.patientName,
+          requesterEmail: appointment.requesterEmail,
+          psychologistName: appointment.psychologistName,
+          psychologistEmail,
+          appDate: appointment.appDate,
+          appDuration: appointment.appDuration,
+          appType: appointment.appType,
+        });
+
+        if (calendarEventId) {
+          await this.repo.saveCalendarEventId(appointment.appId, calendarEventId);
+        }
+      } catch (error) {
+        this.logger.warn(
+          `Google Calendar event could not be prepared (appId-${appointment.appId}, code-${this.notificationErrorCode(error)})`,
+        );
+      }
+    }
   }
 
   /**
@@ -1003,6 +1032,17 @@ export class AppointmentsService {
           text: psychologistCancelTemplate.text,
           html: psychologistCancelTemplate.html,
         });
+      }
+    }
+
+    if (appointment.calendarEventId && this.calendarService) {
+      try {
+        await this.calendarService.deleteAppointmentEvent(appointment.calendarEventId);
+        await this.repo.clearCalendarEventId(appointment.appId);
+      } catch (error) {
+        this.logger.warn(
+          `Google Calendar cancellation could not be processed (appId-${appointment.appId}, code-${this.notificationErrorCode(error)})`,
+        );
       }
     }
   }

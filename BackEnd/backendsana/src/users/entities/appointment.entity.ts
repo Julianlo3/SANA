@@ -6,7 +6,8 @@ export type AppointmentState =
   | 'confirmada'
   | 'descartada'
   | 'cancelada'
-  | 'realizada';
+  | 'realizada'
+  | 'no_asistio';
 export type AppointmentType = 'presencial' | 'virtual';
 
 /** 
@@ -49,6 +50,9 @@ export class Appointment {
 
   @Column({ name: 'app_duration', type: 'integer', nullable: true })
   appDuration!: number | null;
+
+  @Column({ name: 'app_calendar_event_id', type: 'varchar', length: 255, nullable: true })
+  calendarEventId!: string | null;
 
   @Column({ name: 'app_created_at', type: 'timestamptz', default: () => 'now()' })
   appCreatedAt!: Date;
