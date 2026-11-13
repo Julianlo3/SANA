@@ -1,5 +1,13 @@
+/**
+ * Defines the icon props type.
+ */
 type IconProps = { size?: number };
 
+/**
+ * Renders the facebook icon component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export function FacebookIcon({ size = 18 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
@@ -8,6 +16,11 @@ export function FacebookIcon({ size = 18 }: IconProps) {
   );
 }
 
+/**
+ * Renders the instagram icon component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export function InstagramIcon({ size = 18 }: IconProps) {
   return (
     <svg
@@ -28,6 +41,11 @@ export function InstagramIcon({ size = 18 }: IconProps) {
   );
 }
 
+/**
+ * Renders the linkedin icon component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export function LinkedinIcon({ size = 18 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>

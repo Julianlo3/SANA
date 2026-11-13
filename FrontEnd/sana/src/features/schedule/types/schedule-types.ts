@@ -1,14 +1,11 @@
 /**
- * Tipos de la agenda del psicólogo (modelo de bloqueos, confirmado contra
- * el backend real tras "feat: overhaul schedule workflow").
+ * Data contracts for psychologist schedule blocks.
  *
- * El modelo es el opuesto al que se discutió primero en el daily: todo
- * cuenta como disponible por defecto, y el psicólogo bloquea las horas en
- * las que NO puede atender — puntuales o recurrentes. No hay concepto de
- * "marcar mañana/tarde como disponible".
+ * Time is available by default; psychologists create one-time or recurring
+ * blocks for periods when they cannot take appointments.
  */
 
-/** Un bloqueo de una fecha concreta. Si appointmentId no es null, es una cita ya asignada, no un bloqueo manual: no se puede borrar desde aquí. */
+/** One-time blocked interval; a non-null appointmentId identifies a non-removable appointment. */
 export type ScheduleBlock = {
   id: number;
   date: string;
@@ -17,7 +14,7 @@ export type ScheduleBlock = {
   appointmentId: number | null;
 };
 
-/** Una regla que se repite cada semana, con vigencia desde/hasta. */
+/** Weekly recurring block with an optional validity end date. */
 export type RecurringScheduleBlock = {
   id: number;
   dayOfWeek: number;
@@ -29,11 +26,19 @@ export type RecurringScheduleBlock = {
   hasAppointments: boolean;
 };
 
+/**
+ * Defines the create schedule block payload type.
+ */
+
 export type CreateScheduleBlockPayload = {
   date: string;
   startTime: string;
   endTime: string;
 };
+
+/**
+ * Defines the create recurring schedule block payload type.
+ */
 
 export type CreateRecurringScheduleBlockPayload = {
   dayOfWeek: number;

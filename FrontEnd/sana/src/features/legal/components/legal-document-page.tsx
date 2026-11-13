@@ -4,6 +4,9 @@ import PublicHeader from "@/components/navigation/public-header";
 import { LEGAL_CONTACT } from "@/content/legal";
 import type { PolicyDocument } from "@/features/consultation-requests/services/policy-service";
 
+/**
+ * Defines the date format.
+ */
 const DATE_FORMAT = new Intl.DateTimeFormat("es-CO", {
   day: "numeric",
   month: "long",
@@ -11,7 +14,10 @@ const DATE_FORMAT = new Intl.DateTimeFormat("es-CO", {
   timeZone: "America/Bogota",
 });
 
-/** Public page that shows the current version of a legal document. */
+/**
+ * Public page that shows the current version of a legal document.
+ * @param props Component properties.
+ */
 export default function LegalDocumentPage({
   document,
   unavailableTitle,

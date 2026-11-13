@@ -1,9 +1,18 @@
 import ReactMarkdown from "react-markdown";
 
+/**
+ * Defines the allowed elements.
+ */
 const ALLOWED_ELEMENTS = ["p", "strong", "em", "a", "br"];
+/**
+ * Defines the safe url.
+ */
 const SAFE_URL = /^(https?:|mailto:)/i;
 
-/** Renders the limited Markdown used in news: bold, italic and links. Raw HTML is never rendered. */
+/**
+ * Renders the limited Markdown used in news: bold, italic and links. Raw HTML is never rendered.
+ * @param props Component properties.
+ */
 export default function MarkdownText({
   children,
   className = "",

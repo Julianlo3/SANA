@@ -10,15 +10,21 @@ import {
 import type { PsychologistAppointment } from "../types/care-record-types";
 import { validateObservation } from "../validation/care-record-validation";
 
+/**
+ * Implements the message from operation.
+ * @param error Error value to process.
+ * @param fallback fallback input.
+ * @returns Formatted value or validation message.
+ */
 function messageFrom(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
 }
 
 /**
- * Lógica del registro de atención. Marcar como realizada y guardar la
- * observación son dos llamadas. Si la primera funciona y la segunda falla,
- * se recuerda la cita para reintentar solo la segunda, sin volver a
- * marcarla.
+ * Manages care record submission as separate completion and note requests.
+ * If note registration fails after completion, preserves the appointment ID
+ * so only the note request needs to be retried.
+ * @param preselectedId Resource identifier.
  */
 export function useRecordCare(preselectedId: number | null) {
   const [appointments, setAppointments] = useState<PsychologistAppointment[]>(

@@ -5,30 +5,35 @@ import LegalLinksText, { mentionsPrivacyPolicy } from "@/components/legal/legal-
 import { DATA_POLICY } from "@/config/data-policy";
 import { getPolicyDocument, type PolicyType } from "../services/policy-service";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   checked: boolean;
   onChange: (checked: boolean) => void;
   error?: string;
-  /** Tipo de casilla cuyo texto vigente se muestra (GET /policy/:type). */
+  /** Policy type used to fetch the current consent text. */
   policyType?: PolicyType;
   /**
-   * Texto aprobado de una casilla que se registra con otro tipo (por ejemplo,
-   * la casilla del acudiente o las de nueva solicitud desde la cuenta).
-   * Cuando se da, no se consulta el backend.
+   * Approved consent text recorded under a different policy type.
+   * When provided, no policy request is made.
    */
   label?: string;
   disabled?: boolean;
 };
 
+/**
+ * Defines the load state type.
+ */
 type LoadState =
   | { status: "loading" }
   | { status: "ready"; content: string }
   | { status: "error" };
 
 /**
- * Casilla de autorización: muestra solo el texto corto de la casilla y un
- * enlace a la política completa, que abre en otra pestaña. Nunca muestra
- * el documento completo.
+ * Renders a consent checkbox with its short text and a link to the full policy.
+ * The policy document opens in a new tab and is not embedded in the form.
+ * @param props Component properties.
  */
 export default function DataPolicyConsent({
   checked,

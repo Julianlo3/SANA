@@ -1,4 +1,8 @@
-/** Iniciales para el avatar, máximo dos letras. */
+/**
+ * Returns up to two initials for an avatar label.
+ * @param fullName Name value.
+ * @returns Result of the operation.
+ */
 export function getInitials(fullName: string): string {
   return fullName
     .trim()
@@ -8,8 +12,11 @@ export function getInitials(fullName: string): string {
     .join("");
 }
 
-/** Deja solo dígitos: se usa en documento y número de contacto. */
+/**
+ * Removes non-digit characters from identity and contact values.
+ * @param value Value to process.
+ * @returns Result of the operation.
+ */
 export function keepDigits(value: string): string {
   return value.replace(/\D/g, "");
 }
-

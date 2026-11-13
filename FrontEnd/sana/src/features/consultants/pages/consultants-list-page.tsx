@@ -12,6 +12,9 @@ import {
 } from "../services/consultants-service";
 import type { ConsultantSummary } from "../types/consultant-types";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   viewerRole: "assistant" | "psychologist";
   /** Only the secretary can register a consultant (POST /consultants). */
@@ -22,6 +25,7 @@ type Props = {
  * Displays a list of consultants based on the viewer's role.
  * @param param0 The props containing the viewer's role.
  * @returns The consultants list page.
+ * @param props Component properties.
  */
 export default function ConsultantsListPage({
   viewerRole,

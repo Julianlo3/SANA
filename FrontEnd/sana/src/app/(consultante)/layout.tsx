@@ -8,6 +8,7 @@ import AccountTermsGate from "@/features/my-account/components/account-terms-gat
  * Layout component for the requester views.
  * @param param0 The props containing the children to render within the layout.
  * @returns A React component that renders the layout for requester views, including a header with navigation links and user information.
+ * @param props Component properties.
  */
 export default async function RequesterLayout({
   children,

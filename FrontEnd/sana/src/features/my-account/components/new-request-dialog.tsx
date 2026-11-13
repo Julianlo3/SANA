@@ -8,13 +8,19 @@ import AppointmentRequestDialog from "./appointment-request-dialog";
 import { useNewRequest } from "../hooks/use-new-request";
 import type { OwnProfile } from "../types/my-account-types";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   readonly profile: OwnProfile;
   readonly onCreated: () => void;
   readonly onClose: () => void;
 };
 
-/** Ventana para pedir una cita nueva para sí mismo, con los datos del perfil. */
+/**
+ * Dialog for creating a self-request from the user's saved profile data.
+ * @param props Component properties.
+ */
 export default function NewRequestDialog({
   profile,
   onCreated,

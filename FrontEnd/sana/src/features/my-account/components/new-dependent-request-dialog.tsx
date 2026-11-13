@@ -12,6 +12,9 @@ import AppointmentRequestDialog from "./appointment-request-dialog";
 import { useNewDependentRequest } from "../hooks/use-new-dependent-request";
 import type { OwnProfile } from "../types/my-account-types";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   readonly profile: OwnProfile;
   readonly onCreated: () => void;
@@ -22,6 +25,7 @@ type Props = {
  * Component for creating a new dependent request. It displays a modal dialog where the user can fill in the details of the dependent and submit the request.
  * @param param0 The props containing the user's profile, a callback for when the request is created, and a callback for closing the dialog.
  * @returns A React component that renders a modal dialog for creating a new dependent request.
+ * @param props Component properties.
  */
 export default function NewDependentRequestDialog({
   profile,

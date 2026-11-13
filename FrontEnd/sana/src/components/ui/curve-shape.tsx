@@ -1,10 +1,16 @@
+/**
+ * Defines the props type.
+ */
 type Props = {
   className?: string;
   flip?: boolean;
   style?: React.CSSProperties;
 };
 
-/** Línea curva orgánica, para decorar los bordes del hero. */
+/**
+ * Renders an organic curve used to decorate hero section edges.
+ * @param props Component properties.
+ */
 export default function CurveShape({ className, flip = false, style }: Props) {
   return (
     <svg

@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { requireAdministrator } from "@/lib/auth-guard";
 import UsersListPage from "@/features/users/pages/users-list-page";
 
+/**
+ * Defines page metadata.
+ */
 export const metadata: Metadata = { title: "Usuarios | SANA" };
 
 /**

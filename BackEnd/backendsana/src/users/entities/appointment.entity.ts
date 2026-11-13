@@ -6,8 +6,10 @@ export type AppointmentState =
   | 'confirmada'
   | 'descartada'
   | 'cancelada'
-  | 'realizada';
+  | 'realizada'
+  | 'no_asistio';
 export type AppointmentType = 'presencial' | 'virtual';
+export type AppointmentKind = 'valoracion' | 'paquete';
 
 /** 
  * Map to table appointments in the database
@@ -38,6 +40,12 @@ export class Appointment {
   @Column({ name: 'app_state', type: 'varchar', length: 15 })
   appState!: AppointmentState;
 
+  @Column({ name: 'app_kind', type: 'varchar', length: 12, default: 'valoracion' })
+  appKind!: AppointmentKind;
+
+  @Column({ name: 'cp_id', type: 'integer', nullable: true })
+  carePackageId!: number | null;
+
   @Column({ name: 'app_type', type: 'varchar', length: 15 })
   appType!: AppointmentType;
 
@@ -49,6 +57,9 @@ export class Appointment {
 
   @Column({ name: 'app_duration', type: 'integer', nullable: true })
   appDuration!: number | null;
+
+  @Column({ name: 'app_calendar_event_id', type: 'varchar', length: 255, nullable: true })
+  calendarEventId!: string | null;
 
   @Column({ name: 'app_created_at', type: 'timestamptz', default: () => 'now()' })
   appCreatedAt!: Date;

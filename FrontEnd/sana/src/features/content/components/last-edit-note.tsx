@@ -1,6 +1,11 @@
 import { History } from "lucide-react";
 import { formatDateTime } from "../format";
 
+/**
+ * Renders the last edit note component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function LastEditNote({
   name,
   updatedAt,

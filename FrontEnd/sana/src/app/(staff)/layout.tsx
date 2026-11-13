@@ -2,12 +2,16 @@ import Sidebar from "@/components/navigation/sidebar";
 import Header from "@/components/navigation/panel-header";
 import { requireAnyRole } from "@/lib/auth-guard";
 
+/**
+ * Defines the staff roles.
+ */
 const STAFF_ROLES = ["secretario", "psicologo", "administrador", "marketing", "consultante"];
 
 /**
  * Layout for staff members.
  * @param param0 The layout children.
  * @returns The layout.
+ * @param props Component properties.
  */
 export default async function StaffLayout({
   children,

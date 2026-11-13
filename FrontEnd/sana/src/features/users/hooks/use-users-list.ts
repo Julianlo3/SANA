@@ -10,12 +10,15 @@ import {
 } from "../services/users-service";
 import type { EditableUserStatus, User, UserAction } from "../types/user-types";
 
+/**
+ * Defines the status by action.
+ */
 const STATUS_BY_ACTION: Partial<Record<UserAction, EditableUserStatus>> = {
   deactivate: "inactive",
   enable: "active",
 };
 
-/** Toda la lógica del listado: carga, búsqueda, menús y acciones. */
+/** Manages user list loading, search, menus, and actions. */
 export function useUsersList() {
   const router = useRouter();
 

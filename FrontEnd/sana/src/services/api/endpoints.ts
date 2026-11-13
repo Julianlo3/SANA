@@ -6,6 +6,7 @@ export const ENDPOINTS = {
   user: (id: number) => `/users/${id}`,
   userStatus: (id: number) => `/users/${id}/status`,
   roles: "/roles",
+  reportsSummary: "/reports/summary",
 
   // Public consultation request endpoints.
   consultationRequests: "/appointments/request",

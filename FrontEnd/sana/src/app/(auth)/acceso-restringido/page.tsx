@@ -2,6 +2,10 @@ import Link from "next/link";
 import { Lock, Mail } from "lucide-react";
 import StatusCard from "@/features/auth/components/status-card";
 
+/**
+ * Renders the status page for accounts that are blocked or deactivated.
+ * @returns The restricted-access status page.
+ */
 export default function RestrictedAccessPage() {
   return (
     <StatusCard

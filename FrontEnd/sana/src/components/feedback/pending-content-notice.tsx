@@ -1,5 +1,10 @@
 import { Clock } from "lucide-react";
 
+/**
+ * Renders the pending content notice component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function PendingContentNotice({
   className = "",
 }: {

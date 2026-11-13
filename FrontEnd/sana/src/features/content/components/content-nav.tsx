@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+/**
+ * Defines the links.
+ */
 const LINKS = [
   { href: "/contenido/institucional", label: "Institucional" },
   { href: "/contenido/noticias", label: "Noticias" },
@@ -10,6 +13,10 @@ const LINKS = [
   { href: "/contenido/banners", label: "Banners" },
 ];
 
+/**
+ * Renders the content nav component.
+ * @returns Rendered component.
+ */
 export default function ContentNav() {
   const pathname = usePathname();
 

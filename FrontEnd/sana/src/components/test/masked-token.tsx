@@ -3,15 +3,29 @@
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 
+/**
+ * Defines the visible start.
+ */
 const VISIBLE_START = 12;
+/**
+ * Defines the visible end.
+ */
 const VISIBLE_END = 6;
 
+/**
+ * Implements the mask token operation.
+ * @param token token input.
+ * @returns Formatted value or validation message.
+ */
 function maskToken(token: string): string {
   if (token.length <= VISIBLE_START + VISIBLE_END) return "•".repeat(token.length);
   return `${token.slice(0, VISIBLE_START)}…${token.slice(-VISIBLE_END)}`;
 }
 
-/** Shows an access token masked by default, with a button to reveal it. */
+/**
+ * Shows an access token masked by default, with a button to reveal it.
+ * @param props Component properties.
+ */
 export default function MaskedToken({ token }: Readonly<{ token: string }>) {
   const [isVisible, setIsVisible] = useState(false);
 

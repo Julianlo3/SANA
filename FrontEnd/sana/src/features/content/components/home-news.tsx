@@ -4,6 +4,9 @@ import NewsSection from "@/features/content/components/news-section";
 import { toNewsTeaser } from "@/features/content/format";
 import { getPublicNews } from "@/features/content/services/public-content-service";
 
+/**
+ * Defines the home news limit.
+ */
 const HOME_NEWS_LIMIT = 4;
 
 /** Server side: loads the latest news and sends only teasers to the client section. */

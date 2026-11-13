@@ -32,6 +32,7 @@ const INCREMENT_OPTIONS = [
  * @param value Amount of the donation
  * @param onChange Function to update the amount of the donation
  * @returns JSX.Element
+ * @param props Component properties.
  */
 export default function AmountSelector({ value, onChange }: AmountSelectorProps) {
   const [isEditingManually, setIsEditingManually] = useState(false);
@@ -50,7 +51,7 @@ export default function AmountSelector({ value, onChange }: AmountSelectorProps)
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Permitir sólo dígitos enteros
+    // Allow whole-number digits only.
     const clean = e.target.value.replace(/\D/g, '');
     const maxInputLength = String(MAX_DONATION_COP).length + 1;
     if (clean.length > String(MAX_DONATION_COP).length) {

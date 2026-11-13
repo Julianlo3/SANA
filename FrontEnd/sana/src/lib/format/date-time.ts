@@ -1,12 +1,15 @@
 /**
- * El backend entrega fechas ISO 8601 UTC. El formato para pantalla se resuelve
- * aquí, nunca se guarda ya formateado en el modelo de datos.
+ * The backend returns ISO 8601 UTC timestamps. Display formatting belongs here;
+ * formatted values must not be stored in data models.
  */
 
 const RELATIVE_FORMATTER = new Intl.RelativeTimeFormat("es-CO", {
   numeric: "auto",
 });
 
+/**
+ * Defines the units.
+ */
 const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ["year", 1000 * 60 * 60 * 24 * 365],
   ["month", 1000 * 60 * 60 * 24 * 30],
@@ -15,6 +18,11 @@ const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ["minute", 1000 * 60],
 ];
 
+/**
+ * Formats format relative date.
+ * @param isoDate Date value.
+ * @returns Formatted value or validation message.
+ */
 export function formatRelativeDate(isoDate: string | null): string {
   if (!isoDate) return "Nunca ha entrado";
 

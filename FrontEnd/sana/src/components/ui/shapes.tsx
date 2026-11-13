@@ -1,7 +1,15 @@
+/**
+ * Defines the shape props type.
+ */
 type ShapeProps = {
   className?: string;
 };
 
+/**
+ * Renders the paw print component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export function PawPrint({ className }: ShapeProps) {
   return (
     <svg viewBox="0 0 64 64" fill="currentColor" className={className} aria-hidden>
@@ -14,6 +22,11 @@ export function PawPrint({ className }: ShapeProps) {
   );
 }
 
+/**
+ * Renders the star component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export function Star({ className }: ShapeProps) {
   return (
     <svg viewBox="0 0 32 32" fill="currentColor" className={className} aria-hidden>
@@ -22,6 +35,11 @@ export function Star({ className }: ShapeProps) {
   );
 }
 
+/**
+ * Renders the cloud component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export function Cloud({ className }: ShapeProps) {
   return (
     <svg viewBox="0 0 120 60" fill="currentColor" className={className} aria-hidden>
@@ -30,6 +48,11 @@ export function Cloud({ className }: ShapeProps) {
   );
 }
 
+/**
+ * Renders the balloon component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export function Balloon({ className }: ShapeProps) {
   return (
     <svg viewBox="0 0 48 72" className={className} aria-hidden>
@@ -45,6 +68,11 @@ export function Balloon({ className }: ShapeProps) {
   );
 }
 
+/**
+ * Renders the wave component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export function Wave({ className }: ShapeProps) {
   return (
     <svg

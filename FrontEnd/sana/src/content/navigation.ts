@@ -1,4 +1,4 @@
-/** Textos y enlaces de la navegación pública. */
+/** Labels and links for public navigation. */
 
 export const PUBLIC_NAV = {
   logo: {

@@ -2,11 +2,24 @@
 
 import { useEffect, useState, useSyncExternalStore, type RefObject } from "react";
 
+/**
+ * Defines the entrance type.
+ */
 type Entrance = "idle" | "waiting" | "shown";
 
+/**
+ * Defines the reduced motion query.
+ */
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+/**
+ * Defines the desktop query.
+ */
 const DESKTOP_QUERY = "(min-width: 1024px)";
 
+/**
+ * Implements the subscribe media operation.
+ * @param query Operation parameters.
+ */
 function subscribeMedia(query: string) {
   return (onChange: () => void) => {
     const media = window.matchMedia(query);
@@ -15,14 +28,28 @@ function subscribeMedia(query: string) {
   };
 }
 
+/**
+ * Defines the subscribe reduced motion.
+ */
 const subscribeReducedMotion = subscribeMedia(REDUCED_MOTION_QUERY);
+/**
+ * Defines the subscribe desktop.
+ */
 const subscribeDesktop = subscribeMedia(DESKTOP_QUERY);
 
+/**
+ * Implements the subscribe visibility operation.
+ * @param onChange on change input.
+ */
 function subscribeVisibility(onChange: () => void) {
   document.addEventListener("visibilitychange", onChange);
   return () => document.removeEventListener("visibilitychange", onChange);
 }
 
+/**
+ * Provides state and actions for reduced motion.
+ * @returns Feature state, data, and action handlers.
+ */
 export function useReducedMotion() {
   return useSyncExternalStore(
     subscribeReducedMotion,
@@ -31,7 +58,10 @@ export function useReducedMotion() {
   );
 }
 
-/** Null while hydrating, so the server markup and the first client render stay the same. */
+/**
+ * Null while hydrating, so the server markup and the first client render stay the same.
+ * @returns Result of the operation.
+ */
 export function useDesktop(): boolean | null {
   return useSyncExternalStore<boolean | null>(
     subscribeDesktop,
@@ -40,6 +70,10 @@ export function useDesktop(): boolean | null {
   );
 }
 
+/**
+ * Provides state and actions for tab visible.
+ * @returns Feature state, data, and action handlers.
+ */
 export function useTabVisible() {
   return useSyncExternalStore(
     subscribeVisibility,
@@ -51,6 +85,7 @@ export function useTabVisible() {
 /**
  * Tracks whether a section is on screen and whether its entrance animation
  * should wait (it started off screen) or has been shown.
+ * @param ref ref input.
  */
 export function useSectionEntrance(ref: RefObject<HTMLElement | null>) {
   const [isInView, setIsInView] = useState(false);

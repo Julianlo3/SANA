@@ -1,19 +1,15 @@
 import type { Appointment } from "@/features/appointments/types/appointment-types";
 
 /**
- * Tipos del registro de atención (HU-2.5).
+ * Data contracts for appointment completion and care records.
  *
- * El psicólogo marca una cita confirmada como realizada y deja una
- * observación general, opcional. El backend hace estos dos pasos por
- * separado: primero PATCH /appointments/:id/complete y luego
- * POST /clinical-notes/register-attention, que solo acepta citas ya
- * realizadas (HU-2.5.7).
+ * Psychologists complete confirmed appointments and may add an optional
+ * observation. The backend handles completion and note registration as
+ * separate operations; notes are accepted only for completed appointments.
  */
 
 /**
- * Una cita en la agenda del psicólogo, tal como la devuelve
- * GET /appointments/my-appointments. Se asume que trae los mismos campos
- * base que la lista de la asistente.
+ * Appointment shape returned by the psychologist's appointment endpoint.
  */
 export type PsychologistAppointment = Pick<
   Appointment,
@@ -26,11 +22,11 @@ export type PsychologistAppointment = Pick<
   | "patientName"
 >;
 
-/** Lo que se envía a POST /clinical-notes/register-attention. */
+/** Payload for registering a clinical care note. */
 export type RecordCarePayload = {
   appId: number;
-  /** Opcional (HU-2.5.2 y HU-2.5.3): puede guardarse sin observación. */
+  /** Optional observation; the care record may be saved without it. */
   observation?: string;
-  /** El backend rechaza el registro si no llega en true. */
+  /** Must be true or the backend rejects the registration. */
   termsAccepted: true;
 };

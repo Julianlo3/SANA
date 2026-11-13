@@ -5,11 +5,17 @@ import type {
   TimeRange,
 } from "../types/psychologist-calendar-types";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   readonly date: Date;
   readonly summary: DaySummary | undefined;
 };
 
+/**
+ * Defines the status.
+ */
 const STATUS = {
   free: { label: "Tiene espacio", background: "#fbeaf0", color: "#993556" },
   full: { label: "Sin espacio", background: "#e6f1fb", color: "#134176" },
@@ -20,6 +26,11 @@ const STATUS = {
   },
 } as const;
 
+/**
+ * Formats long date.
+ * @param date Date value.
+ * @returns Formatted value or validation message.
+ */
 function formatLongDate(date: Date): string {
   const text = new Intl.DateTimeFormat("es-CO", {
     weekday: "long",
@@ -30,6 +41,11 @@ function formatLongDate(date: Date): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+/**
+ * Renders the section component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 function Section({
   title,
   children,
@@ -47,6 +63,11 @@ function Section({
   );
 }
 
+/**
+ * Renders the row component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 function Row({ children }: { readonly children: React.ReactNode }) {
   return (
     <li className="flex items-center gap-2 text-sm text-text">
@@ -56,11 +77,19 @@ function Row({ children }: { readonly children: React.ReactNode }) {
   );
 }
 
+/**
+ * Implements the range text operation.
+ * @param range range input.
+ * @returns Formatted value or validation message.
+ */
 function rangeText(range: TimeRange): string {
   return `${formatMinutes(range.start)} – ${formatMinutes(range.end)}`;
 }
 
-/** Detalle de un día: citas, bloques de disponibilidad y horas libres. */
+/**
+ * Renders a day's appointments, availability blocks, and free intervals.
+ * @param props Component properties.
+ */
 export default function DayDetail({ date, summary }: Props) {
   const status = STATUS[dayStatus(summary)];
   const blocks = summary?.blocks ?? [];

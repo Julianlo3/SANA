@@ -3,6 +3,10 @@
 import { useState } from 'react';
 import { testBackendAuthMe } from '@/app/(test)/test/actions';
 
+/**
+ * Renders the auth0 backend test component.
+ * @returns Rendered component.
+ */
 export default function Auth0BackendTest() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);

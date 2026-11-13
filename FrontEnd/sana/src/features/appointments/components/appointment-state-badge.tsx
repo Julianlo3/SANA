@@ -1,7 +1,7 @@
 import { APPOINTMENT_STATE_LABELS } from "../lib/appointment-format";
 import type { AppointmentState } from "../types/appointment-types";
 
-/** Colores por estado: son señales funcionales, no de identidad de marca. */
+/** Status colors communicate appointment state rather than brand identity. */
 const STATE_STYLES: Record<AppointmentState, string> = {
   pendiente: "bg-highlight text-[#8A6A18]",
   asignada: "bg-primary-soft text-primary-dark",
@@ -11,6 +11,11 @@ const STATE_STYLES: Record<AppointmentState, string> = {
   realizada: "bg-primary-soft text-primary-dark",
 };
 
+/**
+ * Renders the appointment state badge component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function AppointmentStateBadge({
   state,
 }: {

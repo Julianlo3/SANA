@@ -9,6 +9,9 @@ import UserStatusBadge from "./user-status-badge";
 import { USER_CARD_AVATAR_CLASSES, USER_NAME_CLASSES } from "./user-item-styles";
 import type { User, UserAction } from "../types/user-types";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   user: User;
   isMenuOpen: boolean;
@@ -18,6 +21,11 @@ type Props = {
   onAction: (action: UserAction, user: User) => void;
 };
 
+/**
+ * Renders the user card component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function UserCard({
   user,
   isMenuOpen,

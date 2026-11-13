@@ -8,6 +8,11 @@ import Button from "@/components/ui/button";
 import { formatDateTime } from "@/features/appointments/lib/appointment-format";
 import { useRecordCare } from "../hooks/use-record-care";
 
+/**
+ * Parses and validates an appointment identifier from the route.
+ * @param value Value to process.
+ * @returns The positive appointment identifier, or null when invalid.
+ */
 function parseAppointmentId(value: string | null): number | null {
   if (!value) return null;
   const parsed = Number(value);
@@ -15,9 +20,8 @@ function parseAppointmentId(value: string | null): number | null {
 }
 
 /**
- * HU-2.5: el psicólogo atiende una cita confirmada, la marca como realizada
- * y deja una observación general, opcional. El backend solo acepta la
- * observación sobre citas ya realizadas (HU-2.5.7), por eso son dos pasos.
+ * Lets psychologists complete a confirmed appointment and optionally record
+ * a care note. The backend requires completion before note registration.
  */
 export default function RecordCarePage() {
   const router = useRouter();

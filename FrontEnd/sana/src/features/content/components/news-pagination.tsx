@@ -2,9 +2,17 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import "../styles/news.css";
 
+/**
+ * Defines the page item type.
+ */
 type PageItem = number | "gap";
 
-/** Page numbers around the current one, always keeping the first and the last. */
+/**
+ * Page numbers around the current one, always keeping the first and the last.
+ * @param current current input.
+ * @param total total input.
+ * @returns Result of the operation.
+ */
 function pageItems(current: number, total: number): PageItem[] {
   const pages = new Set([1, total, current - 1, current, current + 1]);
   const sorted = [...pages].filter((page) => page >= 1 && page <= total).sort((a, b) => a - b);
@@ -17,13 +25,26 @@ function pageItems(current: number, total: number): PageItem[] {
   });
 }
 
+/**
+ * Builds the URL for a news-list page.
+ * @param page Page number.
+ * @returns The news-list URL.
+ */
 export function pageHref(page: number) {
   return page <= 1 ? "/noticias" : `/noticias?page=${page}`;
 }
 
+/**
+ * Defines shared styles for news pagination items.
+ */
 const ITEM =
   "news-focus inline-flex h-11 min-w-11 items-center justify-center rounded-full px-3 text-sm font-bold transition";
 
+/**
+ * Renders the page item view component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 function PageItemView({ item, current }: Readonly<{ item: PageItem; current: number }>) {
   if (item === "gap") {
     return (
@@ -46,6 +67,11 @@ function PageItemView({ item, current }: Readonly<{ item: PageItem; current: num
   );
 }
 
+/**
+ * Renders the news pagination component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function NewsPagination({
   page,
   totalPages,

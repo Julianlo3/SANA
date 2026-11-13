@@ -4,6 +4,9 @@ import Modal from "@/components/ui/modal";
 import { formatDateTime } from "@/features/appointments/lib/appointment-format";
 import type { MyRequest } from "../types/my-account-types";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   readonly request: MyRequest;
   readonly isSaving: boolean;
@@ -11,7 +14,10 @@ type Props = {
   readonly onClose: () => void;
 };
 
-/** Pide confirmación antes de cancelar una cita o retirar una solicitud. */
+/**
+ * Requests confirmation before cancelling an appointment or withdrawing a request.
+ * @param props Component properties.
+ */
 export default function CancelRequestDialog({
   request,
   isSaving,

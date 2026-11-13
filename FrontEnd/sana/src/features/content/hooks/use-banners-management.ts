@@ -12,6 +12,10 @@ import {
 } from "../services/banners-service";
 import type { Banner, BannerPayload } from "../types/content-types";
 
+/**
+ * Defines the banner form values type.
+ */
+
 export type BannerFormValues = {
   title: string;
   imageUrl: string;
@@ -19,6 +23,9 @@ export type BannerFormValues = {
   isActive: boolean;
 };
 
+/**
+ * Defines the empty values.
+ */
 const EMPTY_VALUES: BannerFormValues = {
   title: "",
   imageUrl: "",
@@ -26,8 +33,16 @@ const EMPTY_VALUES: BannerFormValues = {
   isActive: false,
 };
 
+/**
+ * Defines the editor type.
+ */
 type Editor = { mode: "create" } | { mode: "edit"; banner: Banner } | null;
 
+/**
+ * Converts the value to form values.
+ * @param banner banner input.
+ * @returns Result of the operation.
+ */
 function toFormValues(banner: Banner): BannerFormValues {
   return {
     title: banner.title,
@@ -37,6 +52,11 @@ function toFormValues(banner: Banner): BannerFormValues {
   };
 }
 
+/**
+ * Converts the value to payload.
+ * @param values Value to process.
+ * @returns Result of the operation.
+ */
 function toPayload(values: BannerFormValues): BannerPayload {
   const imageUrl = values.imageUrl || null;
   return {
@@ -46,6 +66,11 @@ function toPayload(values: BannerFormValues): BannerPayload {
   };
 }
 
+/**
+ * Implements the validate operation.
+ * @param values Value to process.
+ * @returns Formatted value or validation message.
+ */
 function validate(values: BannerFormValues): Partial<Record<keyof BannerFormValues, string>> {
   const errors: Partial<Record<keyof BannerFormValues, string>> = {};
   if (!values.title.trim()) errors.title = "Escribe el título.";
@@ -54,14 +79,29 @@ function validate(values: BannerFormValues): Partial<Record<keyof BannerFormValu
   return errors;
 }
 
+/**
+ * Implements the count active operation.
+ * @param items items input.
+ * @returns Result of the operation.
+ */
 function countActive(items: Banner[]): number {
   return items.filter((item) => item.isActive).length;
 }
 
+/**
+ * Implements the error message operation.
+ * @param error Error value to process.
+ * @param fallback fallback input.
+ * @returns Formatted value or validation message.
+ */
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
 }
 
+/**
+ * Provides state and actions for banners management.
+ * @returns Feature state, data, and action handlers.
+ */
 export function useBannersManagement() {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [maxActive, setMaxActive] = useState(5);

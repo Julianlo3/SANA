@@ -12,13 +12,23 @@ import ImageUploadField from "../components/image-upload-field";
 import LastEditNote from "../components/last-edit-note";
 import { useBannersManagement } from "../hooks/use-banners-management";
 
+/**
+ * Defines the banner title max length.
+ */
 const BANNER_TITLE_MAX_LENGTH = 120;
 
+/**
+ * Defines the state styles.
+ */
 const STATE_STYLES = {
   active: { label: "Activo", className: "bg-success-soft text-success" },
   inactive: { label: "Inactivo", className: "border border-border text-text-subtle" },
 };
 
+/**
+ * Renders the banners management page.
+ * @returns Rendered component.
+ */
 export default function BannersManagementPage() {
   const {
     banners,

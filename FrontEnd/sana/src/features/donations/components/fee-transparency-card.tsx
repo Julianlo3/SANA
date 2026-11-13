@@ -24,6 +24,7 @@ interface FeeTransparencyCardProps {
  * @param coverFee Whether the donation covers the fee
  * @param onToggleCoverFee Function to update whether the donation covers the fee
  * @returns JSX.Element
+ * @param props Component properties.
  */
 export default function FeeTransparencyCard({
   amountCOP,

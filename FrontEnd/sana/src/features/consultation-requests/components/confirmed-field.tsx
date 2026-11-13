@@ -26,6 +26,7 @@ type Props = {
  * A field that requires the user to confirm the value by entering it twice. The second field prevents pasting for security reasons.
  * @param param0 an object containing the props for the component
  * @returns a React component that renders two text fields, one for the original value and one for the confirmation value
+ * @param props Component properties.
  */
 export default function ConfirmedField({
   label,

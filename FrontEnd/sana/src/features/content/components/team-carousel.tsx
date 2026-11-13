@@ -12,21 +12,57 @@ import type {
   TeamGroup,
 } from "@/features/content/types/content-types";
 
+/**
+ * Defines the rotation ms.
+ */
 const ROTATION_MS = 3000;
+/**
+ * Defines the slide ms.
+ */
 const SLIDE_MS = 900;
+/**
+ * Defines the fade out ms.
+ */
 const FADE_OUT_MS = 400;
+/**
+ * Defines the fade in ms.
+ */
 const FADE_IN_MS = 600;
+/**
+ * Defines the fade in delay ms.
+ */
 const FADE_IN_DELAY_MS = 300;
+/**
+ * Defines the return fade ms.
+ */
 const RETURN_FADE_MS = 250;
+/**
+ * Defines the hover intent ms.
+ */
 const HOVER_INTENT_MS = 220;
+/**
+ * Defines the photo size px.
+ */
 const PHOTO_SIZE_PX = 160;
 
+/**
+ * Implements the gap for operation.
+ * @param visible visible input.
+ */
 function gapFor(visible: number) {
   return visible <= 2 ? 16 : 24;
 }
 
+/**
+ * Defines the card state type.
+ */
 type CardState = "open" | "returning" | "in-view" | "out-of-view";
 
+/**
+ * Implements the card transition operation.
+ * @param animate animate input.
+ * @param state Current status value.
+ */
 function cardTransition(animate: boolean, state: CardState) {
   if (!animate) return "none";
   const scale = `scale ${SLIDE_MS}ms cubic-bezier(0.65, 0, 0.35, 1)`;
@@ -39,6 +75,9 @@ function cardTransition(animate: boolean, state: CardState) {
   return `${opacity}, ${scale}`;
 }
 
+/**
+ * Defines the spotlight type.
+ */
 type Spotlight = {
   member: PublicTeamCard;
   origin: HTMLElement;
@@ -46,6 +85,9 @@ type Spotlight = {
   isClosing: boolean;
 };
 
+/**
+ * Implements the visible count operation.
+ */
 function useVisibleCount() {
   const [count, setCount] = useState(4);
 
@@ -69,6 +111,11 @@ function useVisibleCount() {
   return count;
 }
 
+/**
+ * Renders the team carousel component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function TeamCarousel({
   members,
   group,

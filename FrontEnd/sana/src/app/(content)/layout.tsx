@@ -4,6 +4,11 @@ import ContentNav from "@/features/content/components/content-nav";
 import { CONTENT_ROLES } from "@/features/content/config/content-access";
 import { requireAnyRole } from "@/lib/auth-guard";
 
+/**
+ * Renders the content layout page.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default async function ContentLayout({
   children,
 }: {

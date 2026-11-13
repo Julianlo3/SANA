@@ -18,6 +18,10 @@ import {
 } from "../config/content-sections";
 import { useGalleryManagement } from "../hooks/use-gallery-management";
 
+/**
+ * Renders the gallery management page.
+ * @returns Rendered component.
+ */
 export default function GalleryManagementPage() {
   const {
     images,

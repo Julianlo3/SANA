@@ -1,5 +1,8 @@
 import type { UserStatus } from "../types/user-types";
 
+/**
+ * Defines the status styles.
+ */
 const STATUS_STYLES: Record<UserStatus, string> = {
   active: "bg-success-soft text-success",
   inactive: "bg-surface-muted text-text-subtle",
@@ -7,6 +10,9 @@ const STATUS_STYLES: Record<UserStatus, string> = {
   pending: "bg-surface-muted text-text-subtle",
 };
 
+/**
+ * Defines the status labels.
+ */
 const STATUS_LABELS: Record<UserStatus, string> = {
   active: "Activo",
   inactive: "Inactivo",
@@ -14,6 +20,11 @@ const STATUS_LABELS: Record<UserStatus, string> = {
   pending: "Pendiente",
 };
 
+/**
+ * Renders the user status badge component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function UserStatusBadge({ status }: { status: UserStatus }) {
   return (
     <span

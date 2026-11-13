@@ -4,8 +4,15 @@ import { useEffect, useRef, useState, type ReactNode, type TouchEvent } from "re
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+/**
+ * Defines the rotation ms.
+ */
 const ROTATION_MS = 5000;
 const SWIPE_MIN_PX = 40;
+
+/**
+ * Defines the hero slide type.
+ */
 
 export type HeroSlide = {
   key: string;
@@ -13,6 +20,11 @@ export type HeroSlide = {
   alt: string;
 };
 
+/**
+ * Renders the hero carousel component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function HeroCarousel({
   slides,
   children,

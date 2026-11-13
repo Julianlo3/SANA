@@ -318,6 +318,7 @@ export default function SelfRequestPage() {
               </legend>
 
               <AppointmentModeField
+                department={values.department}
                 value={values.appType}
                 error={errors.appType}
                 onChange={setAppointmentMode}

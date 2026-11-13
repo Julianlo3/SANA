@@ -6,13 +6,23 @@ import CardSectionEditor from "../components/card-section-editor";
 import MissionVisionForm from "../components/mission-vision-form";
 import { CARD_SECTIONS } from "../config/content-sections";
 
+/**
+ * Defines the mission vision tab.
+ */
 const MISSION_VISION_TAB = "mission-vision";
 
+/**
+ * Defines the tabs.
+ */
 const TABS = [
   { id: MISSION_VISION_TAB, label: "Misión y visión" },
   ...CARD_SECTIONS.map((config) => ({ id: config.section, label: config.label })),
 ];
 
+/**
+ * Renders the institutional content page.
+ * @returns Rendered component.
+ */
 export default function InstitutionalContentPage() {
   const [activeTab, setActiveTab] = useState<string>(MISSION_VISION_TAB);
   const activeSection = CARD_SECTIONS.find(

@@ -1,11 +1,16 @@
 import { auth0 } from "@/lib/auth0";
 
+/**
+ * Defines the backend url.
+ */
 const BACKEND_URL = process.env.BACKEND_API_URL ?? "http://localhost:3000/api/v1";
 
 /**
  * Client IP as reported by the hosting edge. Vercel overwrites both headers,
  * so the browser cannot spoof them. The backend reads it through
  * X-Forwarded-For when TRUST_PROXY_HOPS is configured.
+ * @param request HTTP request to process.
+ * @returns Result of the operation.
  */
 function clientIp(request: Request): string | undefined {
   const realIp = request.headers.get("x-real-ip")?.trim();
@@ -14,14 +19,13 @@ function clientIp(request: Request): string | undefined {
 }
 
 /**
- * Proxy hacia el backend. Reenvía con el token de sesión si existe, y sin
- * él si no hay sesión activa (el formulario público de solicitud de cita
- * y la consulta de políticas no requieren login). El backend decide, con
- * sus propios guards, si la ruta necesita autenticación: si la necesita y
- * no llega token, responde 401 por su cuenta.
+ * Proxies requests to the backend with the session token when available.
+ * Public endpoints can be forwarded without a session; backend guards remain
+ * responsible for enforcing authentication and authorization.
  *
- * auth0.getAccessToken() lanza AccessTokenError cuando no hay sesión, en
- * vez de devolver null — por eso va en try/catch, no en un if.
+ * `auth0.getAccessToken()` throws `AccessTokenError` when no session exists.
+ * @param request HTTP request to process.
+ * @param context Route execution context.
  */
 async function forward(
   request: Request,
@@ -34,7 +38,7 @@ async function forward(
     const accessToken = await auth0.getAccessToken();
     token = accessToken?.token;
   } catch {
-    // Sin sesión activa: se reenvía sin Authorization. El backend decide.
+    // Forward requests without Authorization when no session is active.
     token = undefined;
   }
 
@@ -77,7 +81,19 @@ async function forward(
   });
 }
 
+/**
+ * Forwards GET requests to the backend.
+ */
 export const GET = forward;
+/**
+ * Forwards POST requests to the backend.
+ */
 export const POST = forward;
+/**
+ * Forwards PATCH requests to the backend.
+ */
 export const PATCH = forward;
+/**
+ * Forwards DELETE requests to the backend.
+ */
 export const DELETE = forward;

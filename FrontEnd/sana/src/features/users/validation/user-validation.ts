@@ -1,13 +1,12 @@
 import { requiresProfessionalData } from "../../../config/roles";
 
 /**
- * Reglas de validación de usuarios.
+ * User form validation rules.
  *
- * Vive aparte de las pantallas para que la misma regla sirva al formulario de
- * creación, al de edición y a cualquier prueba, sin duplicar código.
+ * Rules are shared by create and edit forms and their tests.
  *
- * Pedido del cliente (reunión 30/09): confirmar dos veces el documento de
- * identidad y el correo al crear la cuenta, para evitar errores de tipeo.
+ * Identity documents and email addresses are confirmed during account
+ * creation to reduce typing errors.
  */
 
 export type UserFormValues = {
@@ -22,16 +21,29 @@ export type UserFormValues = {
   speciality: string;
 };
 
+/**
+ * Defines the user form errors type.
+ */
+
 export type UserFormErrors = Partial<Record<keyof UserFormValues, string>>;
 
+/**
+ * Defines the email pattern.
+ */
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/**
+ * Defines the only digits.
+ */
 const ONLY_DIGITS = /^\d+$/;
+/**
+ * Defines the name pattern.
+ */
 const NAME_PATTERN = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'-]+$/;
 
 /**
- * Proveedores que no permiten iniciar sesión con Google.
- * No se valida contra una lista blanca de dominios porque la fundación puede
- * usar correos propios administrados con Google Workspace.
+ * Identity providers that do not support Google sign-in.
+ * Email validation does not use a domain allowlist because the foundation may
+ * use custom domains managed through Google Workspace.
  */
 const NON_GOOGLE_PROVIDERS = [
   "hotmail.com",
@@ -43,6 +55,11 @@ const NON_GOOGLE_PROVIDERS = [
   "icloud.com",
 ];
 
+/**
+ * Validates validate full name.
+ * @param value Value to process.
+ * @returns Formatted value or validation message.
+ */
 export function validateFullName(value: string): string | undefined {
   const name = value.trim();
 
@@ -54,6 +71,11 @@ export function validateFullName(value: string): string | undefined {
   return undefined;
 }
 
+/**
+ * Validates validate identity document.
+ * @param value Value to process.
+ * @returns Formatted value or validation message.
+ */
 export function validateIdentityDocument(value: string): string | undefined {
   const document = value.trim();
 
@@ -68,7 +90,13 @@ export function validateIdentityDocument(value: string): string | undefined {
   return undefined;
 }
 
-/** HU nueva (30/09): confirma que los dos campos de documento coincidan. */
+/**
+ * Validates confirm identity document.
+ * @param document document input.
+ * @param confirmDocument confirm document input.
+ * @returns Formatted value or validation message.
+ */
+
 export function validateConfirmIdentityDocument(
   document: string,
   confirmDocument: string,
@@ -81,6 +109,11 @@ export function validateConfirmIdentityDocument(
   return undefined;
 }
 
+/**
+ * Validates validate email.
+ * @param value Value to process.
+ * @returns Formatted value or validation message.
+ */
 export function validateEmail(value: string): string | undefined {
   const email = value.trim().toLowerCase();
 
@@ -95,7 +128,13 @@ export function validateEmail(value: string): string | undefined {
   return undefined;
 }
 
-/** HU nueva (30/09): confirma que los dos campos de correo coincidan. */
+/**
+ * Validates confirm email.
+ * @param email email input.
+ * @param confirmEmail confirm email input.
+ * @returns Formatted value or validation message.
+ */
+
 export function validateConfirmEmail(
   email: string,
   confirmEmail: string,
@@ -108,6 +147,11 @@ export function validateConfirmEmail(
   return undefined;
 }
 
+/**
+ * Validates validate contact number.
+ * @param value Value to process.
+ * @returns Formatted value or validation message.
+ */
 export function validateContactNumber(value: string): string | undefined {
   const phone = value.trim();
 
@@ -120,11 +164,22 @@ export function validateContactNumber(value: string): string | undefined {
   return undefined;
 }
 
+/**
+ * Validates validate role ids.
+ * @param roleIds Role values used by the operation.
+ * @returns Formatted value or validation message.
+ */
 export function validateRoleIds(roleIds: number[]): string | undefined {
   if (roleIds.length === 0) return "Asigna al menos un rol.";
   return undefined;
 }
 
+/**
+ * Validates validate license number.
+ * @param value Value to process.
+ * @param roleIds Role values used by the operation.
+ * @returns Formatted value or validation message.
+ */
 export function validateLicenseNumber(
   value: string,
   roleIds: number[],
@@ -138,6 +193,12 @@ export function validateLicenseNumber(
   return undefined;
 }
 
+/**
+ * Validates validate speciality.
+ * @param value Value to process.
+ * @param roleIds Role values used by the operation.
+ * @returns Formatted value or validation message.
+ */
 export function validateSpeciality(
   value: string,
   roleIds: number[],
@@ -148,7 +209,11 @@ export function validateSpeciality(
   return undefined;
 }
 
-/** Valida el formulario de creación y devuelve solo los campos con error. */
+/**
+ * Validates the create form and returns only fields with errors.
+ * @param values Value to process.
+ * @returns Result of the operation.
+ */
 export function validateUserForm(values: UserFormValues): UserFormErrors {
   return removeEmptyErrors({
     fullName: validateFullName(values.fullName),
@@ -167,8 +232,10 @@ export function validateUserForm(values: UserFormValues): UserFormErrors {
 }
 
 /**
- * En edición el correo y el documento no se tocan, así que esas reglas
- * (incluida la confirmación) quedan fuera.
+ * Email and identity document fields are immutable during editing, so their
+ * validation rules, including confirmation, are excluded.
+ * @param values Value to process.
+ * @returns Result of the operation.
  */
 export function validateUserEditForm(values: UserFormValues): UserFormErrors {
   return removeEmptyErrors({
@@ -180,6 +247,11 @@ export function validateUserEditForm(values: UserFormValues): UserFormErrors {
   });
 }
 
+/**
+ * Removes empty errors.
+ * @param errors Error value to process.
+ * @returns Result of the operation.
+ */
 function removeEmptyErrors(errors: UserFormErrors): UserFormErrors {
   return Object.fromEntries(
     Object.entries(errors).filter(([, message]) => Boolean(message)),

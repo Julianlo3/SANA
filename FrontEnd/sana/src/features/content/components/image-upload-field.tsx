@@ -13,6 +13,9 @@ import {
 import { uploadImage, validateImageFile } from "../services/image-upload-service";
 import type { ImageFolder } from "../types/content-types";
 
+/**
+ * Defines the props type.
+ */
 type Props = {
   folder: ImageFolder;
   imageUrl: string | null;
@@ -25,6 +28,11 @@ type Props = {
   onUploadingChange?: (isUploading: boolean) => void;
 };
 
+/**
+ * Renders the image upload field component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function ImageUploadField({
   folder,
   imageUrl,

@@ -11,10 +11,18 @@ import {
 } from "../config/content-sections";
 import type { PhotoCrop, TeamGroup } from "../types/content-types";
 
+/**
+ * Defines the mission vision values type.
+ */
+
 export type MissionVisionValues = {
   mission: string;
   vision: string;
 };
+
+/**
+ * Defines the card form values type.
+ */
 
 export type CardFormValues = Record<CardField, string> &
   Record<SocialField, string> & {
@@ -43,21 +51,41 @@ export function validateSocialUrl(value: string, field: SocialField): string | u
   return undefined;
 }
 
+/**
+ * Defines the html tag pattern.
+ */
 const HTML_TAG_PATTERN = /[<>]/;
+/**
+ * Defines the safe image url pattern.
+ */
 const SAFE_IMAGE_URL_PATTERN = /^https:\/\/[^\s"'<>]+$/i;
 
+/**
+ * Defines the card field max length.
+ */
 const CARD_FIELD_MAX_LENGTH: Record<CardField, number> = {
   title: CARD_TITLE_MAX_LENGTH,
   subtitle: CARD_TITLE_MAX_LENGTH,
   description: CARD_DESCRIPTION_MAX_LENGTH,
 };
 
+/**
+ * Validates text.
+ * @param value Value to process.
+ * @param maxLength max length input.
+ * @returns Formatted value or validation message.
+ */
 function validateText(value: string, maxLength: number): string | undefined {
   if (value.length > maxLength) return `Máximo ${maxLength} caracteres.`;
   if (HTML_TAG_PATTERN.test(value)) return "Contiene caracteres no permitidos (< o >).";
   return undefined;
 }
 
+/**
+ * Validates validate mission vision.
+ * @param values Value to process.
+ * @returns Formatted value or validation message.
+ */
 export function validateMissionVision(
   values: MissionVisionValues,
 ): Partial<Record<keyof MissionVisionValues, string>> {
@@ -75,6 +103,11 @@ export function validateMissionVision(
   return errors;
 }
 
+/**
+ * Builds build card validator.
+ * @param config Operation configuration.
+ * @returns Result of the operation.
+ */
 export function buildCardValidator(config: CardSectionConfig) {
   return (values: CardFormValues): Partial<Record<keyof CardFormValues, string>> => {
     const errors: Partial<Record<keyof CardFormValues, string>> = {};

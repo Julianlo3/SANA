@@ -1,19 +1,33 @@
 import { AlertCircle, CheckCircle2, Info, X } from "lucide-react";
 
+/**
+ * Defines the tone type.
+ */
 type Tone = "info" | "error" | "success";
 
+/**
+ * Defines the tone styles.
+ */
 const TONE_STYLES: Record<Tone, string> = {
   info: "bg-primary-soft text-text-muted",
   error: "bg-danger-soft text-danger",
   success: "bg-success-soft text-success",
 };
 
+/**
+ * Defines the tone icons.
+ */
 const TONE_ICONS: Record<Tone, typeof Info> = {
   info: Info,
   error: AlertCircle,
   success: CheckCircle2,
 };
 
+/**
+ * Renders the inline message component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 export default function InlineMessage({
   tone = "info",
   children,
@@ -21,7 +35,9 @@ export default function InlineMessage({
 }: {
   tone?: Tone;
   children: React.ReactNode;
-  /** Si se pasa, muestra un botón × para descartar el mensaje. */
+  /**
+   * Optional handler that enables a dismiss button.
+   */
   onDismiss?: () => void;
 }) {
   const Icon = TONE_ICONS[tone];

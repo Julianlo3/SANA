@@ -59,3 +59,22 @@ Esta guía define los resultados y criterios necesarios para implementar o recre
 
 - Añadir o actualizar pruebas para el comportamiento modificado, incluidas las validaciones del cálculo y del Server Action de donaciones, los casos de error de autenticación y la prevención de pegado.
 - Ejecutar pruebas focalizadas, ESLint y build del frontend. No modificar servicios, contratos ni archivos del backend para estos cambios.
+
+### 2026-11-09 — Rol de la IA: Frontend
+
+Este registro contextualiza la IA como agente especializado en frontend. El trabajo se limita a la aplicación frontend; respeta contratos de API existentes y no implementa ni modifica backend.
+
+#### Prompt de trabajo registrado
+
+> Rol de la IA: agente Frontend de SANA. Implementa y mantén el dashboard de reportes dentro del panel del rol Administrador, limitando todos los cambios a la aplicación frontend. Antes de agregar filtros o visualizaciones, inspecciona el contrato vigente de la API; consúmelo sin modificar el backend. Integra `GET /api/v1/reports/summary` mediante `ENDPOINTS` y `httpClient`, organiza la solución por feature (`types`, `services`, `hooks`, `pages`) y agrega la ruta `/reportes` al menú del administrador. Presenta las métricas agregadas de psicología, sistema y donaciones en tarjetas responsive; convierte `totalAmountInCents` de centavos a COP sin perder precisión. Incluye actualización manual y estados de carga/error/reintento. No inventes filtros ni series temporales si la API solo devuelve agregados acumulados. Conserva la arquitectura y estilos existentes, documenta las declaraciones nuevas con JSDoc técnico breve en inglés según la sección 13 y prueba servicio, hook, presentación, ruta y acceso del menú.
+
+#### FE-07. Dashboard de reportes administrativos
+
+- Mostrar los ocho campos entregados por el resumen actual en tres grupos extensibles: Psicología (`totalCompletedAppointments`, `averageCompletedAppointmentsPerPsychologist`, `activePsychologists`); Sistema (`totalConsultants`, `averageAppointmentsPerConsultant`); Donaciones (`totalAmountInCents`, `approvedDonations`, `peopleWhoDonated`).
+- Obtener los datos desde el endpoint existente, con tipos alineados exactamente a su respuesta y el cliente HTTP común. No añadir consultas directas desde componentes ni modificar el backend como parte de esta capacidad frontend.
+- Exponer `/reportes` en la navegación del Administrador, mantenerla dentro de la autorización/layout de panel vigente y no mostrarla para otros roles.
+- Usar diseño responsive y consistente con el panel. Ofrecer actualización manual y estados claros de carga, error y reintento; mantener los datos previamente cargados si falla una actualización.
+- Formatear números para `es-CO` y donaciones como COP desde centavos sin convertir la suma a un `number` que pueda perder precisión.
+- El resumen vigente es acumulado y no recibe período/filtros ni entrega datos agrupados por fecha. No presentar filtros inoperantes ni gráficas temporales con datos inventados; para estas últimas se requiere primero un contrato API con series temporales.
+- Criterios de aceptación: cada métrica del contrato se muestra bajo su grupo; el enlace aparece solo para Administrador; el monto se visualiza en COP; carga/error/actualización son operables y accesibles; servicio, hook, pantalla, ruta y navegación cuentan con pruebas; lint y TypeScript pasan.
+- Registro de cierre: la implementación frontend quedó integrada con el contrato vigente; se eliminó el aviso visual de que no había filtros a petición del usuario. La suite focalizada final pasó 16 pruebas; la feature de reportes obtuvo 100% de statements, branches, funciones y líneas en medición focalizada. Las pruebas de navegación cubren el acceso por rol, sin atribuir esa cifra a todo el sidebar existente.

@@ -8,6 +8,9 @@ import { formatDate } from "../format";
 import type { NewsTeaser } from "../types/content-types";
 import "../styles/news.css";
 
+/**
+ * Defines the linked variants.
+ */
 const LINKED_VARIANTS = {
   list: {
     sizes: "(min-width: 1152px) 360px, (min-width: 640px) 50vw, calc(100vw - 48px)",
@@ -25,14 +28,25 @@ const LINKED_VARIANTS = {
   },
 };
 
+/**
+ * Defines the frame colors.
+ */
 const FRAME_COLORS = ["var(--color-primary)", "var(--color-support-pink)", "#d9a21b"];
 
+/**
+ * Defines the news card props type.
+ */
 type NewsCardProps = {
   news: NewsTeaser;
   featuredLabel: string;
   titleAs?: "h2" | "h3";
 };
 
+/**
+ * Renders the deck card component.
+ * @param props Component properties.
+ * @returns Rendered component.
+ */
 function DeckCard({ news, featuredLabel, titleAs: Title = "h3" }: Readonly<NewsCardProps>) {
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-[22px] bg-surface p-3 shadow-[0_18px_40px_-28px_rgba(19,65,118,0.5)]">
@@ -67,6 +81,7 @@ function DeckCard({ news, featuredLabel, titleAs: Title = "h3" }: Readonly<NewsC
 /**
  * Card for a news item. The deck uses the paper note face; the list and the
  * featured item on the home page are links with a full-bleed photo.
+ * @param props Component properties.
  */
 export default function NewsCard({
   variant,

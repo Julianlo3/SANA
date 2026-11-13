@@ -1,8 +1,8 @@
 import { GENERAL_NOTICE, LEGAL_CONTACT, LEGAL_LINKS } from "./legal";
 
 /**
- * Contenido del pie de página.
- * El horario de atención sigue pendiente de confirmar con la fundación.
+ * Public footer content.
+ * The foundation's business hours still require confirmation.
  */
 
 export const FOOTER_CONTENT = {

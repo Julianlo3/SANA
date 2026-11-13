@@ -1,10 +1,16 @@
 import { TriangleAlert } from "lucide-react";
 import { EMERGENCY_NOTICE } from "@/content/legal";
 
+/**
+ * Defines the phone link.
+ */
 const PHONE_LINK =
   "font-bold underline underline-offset-2 hover:text-primary-dark";
 
-/** Notice shown at the top of the appointment request forms. */
+/**
+ * Notice shown at the top of the appointment request forms.
+ * @param props Component properties.
+ */
 export default function EmergencyNotice({
   className = "",
 }: Readonly<{ className?: string }>) {

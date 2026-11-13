@@ -3,6 +3,9 @@ import Link from "next/link";
 import { Mail, MapPin, Phone, type LucideIcon } from "lucide-react";
 import { FOOTER_CONTENT } from "@/content/footer";
 
+/**
+ * Defines module-level values for brand and contact and links and schedule and legal links and notice and legal.
+ */
 const { brand, contact, links, schedule, legalLinks, notice, legal } = FOOTER_CONTENT;
 
 const CONTACT_ICONS: Record<(typeof contact.items)[number]["icon"], LucideIcon> = {
@@ -27,6 +30,10 @@ function EmailText({ email }: Readonly<{ email: string }>) {
   );
 }
 
+/**
+ * Renders the public footer component.
+ * @returns Rendered component.
+ */
 export default function PublicFooter() {
   const year = new Date().getFullYear();
 

@@ -44,6 +44,8 @@ export interface AppointmentDependentParams {
 export interface AppointmentRow {
   appId: number;
   appState: string;
+  appKind: 'valoracion' | 'paquete';
+  carePackageId: number | null;
   appType: string;
   appDate: string | null;
   appDuration: number | null;
@@ -65,11 +67,14 @@ export interface AppointmentRow {
   psychologistName: string | null;
   secretaryName: string | null;
   relationshipDescription: string | null;
+  calendarEventId: string | null;
 }
 
 export interface RequesterAppointmentRow {
   appId: number;
   appState: string;
+  appKind: 'valoracion' | 'paquete';
+  carePackageId: number | null;
   appType: string;
   appDate: string | null;
   appDuration: number | null;
@@ -123,6 +128,8 @@ export class AppointmentsRepository {
       `SELECT
           a.app_id                                   AS "appId",
           a.app_state                                AS "appState",
+          a.app_kind                                 AS "appKind",
+          a.cp_id                                    AS "carePackageId",
           a.app_type                                 AS "appType",
           a.app_date                                 AS "appDate",
           a.app_duration                             AS "appDuration",
@@ -146,7 +153,8 @@ export class AppointmentsRepository {
           a.psy_id                                   AS "psychologistId",
           psy_per.per_name                           AS "psychologistName",
           sec_per.per_name                           AS "secretaryName",
-          rel.rel_description                        AS "relationshipDescription"
+          rel.rel_description                        AS "relationshipDescription",
+          a.app_calendar_event_id                    AS "calendarEventId"
         FROM appointments a
         JOIN person req ON req.per_id = a.req_id
         LEFT JOIN dependents dep ON dep.dep_id = a.app_patient_dependent_id
@@ -170,6 +178,8 @@ export class AppointmentsRepository {
       `SELECT
           a.app_id AS "appId",
           a.app_state AS "appState",
+          a.app_kind AS "appKind",
+          a.cp_id AS "carePackageId",
           a.app_type AS "appType",
           a.app_date AS "appDate",
           a.app_duration AS "appDuration",
@@ -200,6 +210,8 @@ export class AppointmentsRepository {
       `SELECT
           a.app_id                                   AS "appId",
           a.app_state                                AS "appState",
+          a.app_kind                                 AS "appKind",
+          a.cp_id                                    AS "carePackageId",
           a.app_type                                 AS "appType",
           a.app_date                                 AS "appDate",
           a.app_duration                             AS "appDuration",
@@ -223,7 +235,8 @@ export class AppointmentsRepository {
           a.psy_id                                   AS "psychologistId",
           psy_per.per_name                           AS "psychologistName",
           sec_per.per_name                           AS "secretaryName",
-          rel.rel_description                        AS "relationshipDescription"
+          rel.rel_description                        AS "relationshipDescription",
+          a.app_calendar_event_id                    AS "calendarEventId"
         FROM appointments a
         JOIN person req ON req.per_id = a.req_id
         LEFT JOIN dependents dep ON dep.dep_id = a.app_patient_dependent_id
@@ -247,6 +260,8 @@ export class AppointmentsRepository {
       `SELECT
           a.app_id                                   AS "appId",
           a.app_state                                AS "appState",
+          a.app_kind                                 AS "appKind",
+          a.cp_id                                    AS "carePackageId",
           a.app_type                                 AS "appType",
           a.app_date                                 AS "appDate",
           a.app_duration                             AS "appDuration",
@@ -270,7 +285,8 @@ export class AppointmentsRepository {
           a.psy_id                                   AS "psychologistId",
           psy_per.per_name                           AS "psychologistName",
           sec_per.per_name                           AS "secretaryName",
-          rel.rel_description                        AS "relationshipDescription"
+          rel.rel_description                        AS "relationshipDescription",
+          a.app_calendar_event_id                    AS "calendarEventId"
         FROM appointments a
         JOIN person req ON req.per_id = a.req_id
         LEFT JOIN dependents dep ON dep.dep_id = a.app_patient_dependent_id
@@ -302,6 +318,8 @@ export class AppointmentsRepository {
       `SELECT
           a.app_id                                   AS "appId",
           a.app_state                                AS "appState",
+          a.app_kind                                 AS "appKind",
+          a.cp_id                                    AS "carePackageId",
           a.app_type                                 AS "appType",
           a.app_date                                 AS "appDate",
           a.app_duration                             AS "appDuration",
@@ -325,7 +343,8 @@ export class AppointmentsRepository {
           a.psy_id                                   AS "psychologistId",
           psy_per.per_name                           AS "psychologistName",
           sec_per.per_name                           AS "secretaryName",
-          rel.rel_description                        AS "relationshipDescription"
+          rel.rel_description                        AS "relationshipDescription",
+          a.app_calendar_event_id                    AS "calendarEventId"
         FROM appointments a
         JOIN person req ON req.per_id = a.req_id
         LEFT JOIN dependents dep ON dep.dep_id = a.app_patient_dependent_id
@@ -1082,7 +1101,7 @@ export class AppointmentsRepository {
    */
   updateState(
     appId: number,
-    state: 'cancelada' | 'realizada',
+    state: 'cancelada' | 'realizada' | 'no_asistio',
   ): Promise<boolean> {
     return this.dataSource.transaction(async (manager) => {
       const updated = await manager.query<{ app_id: number }[]>(
@@ -1094,7 +1113,7 @@ export class AppointmentsRepository {
       );
       if (updated.length === 0) return false;
 
-      if (state === 'cancelada') {
+      if (state === 'cancelada' || state === 'no_asistio') {
         await manager.query(
           `DELETE FROM schedule_occupancy WHERE app_id = $1`,
           [appId],
@@ -1350,4 +1369,26 @@ export class AppointmentsRepository {
     );
   }
 
+  /**
+   * Saves the Google Calendar event ID associated with an appointment.
+   * @param appId The ID of the appointment.
+   * @param eventId The Google Calendar event ID.
+   */
+  async saveCalendarEventId(appId: number, eventId: string): Promise<void> {
+    await this.dataSource.query(
+      `UPDATE appointments SET app_calendar_event_id = $1 WHERE app_id = $2`,
+      [eventId, appId],
+    );
+  }
+
+  /**
+   * Clears the Google Calendar event ID when an event is cancelled or deleted.
+   * @param appId The ID of the appointment.
+   */
+  async clearCalendarEventId(appId: number): Promise<void> {
+    await this.dataSource.query(
+      `UPDATE appointments SET app_calendar_event_id = NULL WHERE app_id = $1`,
+      [appId],
+    );
+  }
 }
