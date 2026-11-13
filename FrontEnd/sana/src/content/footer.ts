@@ -19,10 +19,15 @@ export const FOOTER_CONTENT = {
   contact: {
     title: "Contacto",
     items: [
-      { label: LEGAL_CONTACT.city },
-      { label: LEGAL_CONTACT.email, href: `mailto:${LEGAL_CONTACT.email}` },
+      { icon: "location", label: LEGAL_CONTACT.city },
       {
-        label: LEGAL_CONTACT.phone,
+        icon: "email",
+        label: LEGAL_CONTACT.email,
+        href: `mailto:${LEGAL_CONTACT.email}`,
+      },
+      {
+        icon: "phone",
+        label: `+57 ${LEGAL_CONTACT.phone}`,
         href: `tel:+57${LEGAL_CONTACT.phone.replaceAll(" ", "")}`,
       },
     ],
