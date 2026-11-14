@@ -1,0 +1,56 @@
+name: API documentation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'BackEnd/backendsana/**'
+      - '.github/workflows/api-documentation.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'BackEnd/backendsana/**'
+      - '.github/workflows/api-documentation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-documentation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: BackEnd/backendsana
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: BackEnd/backendsana/package-lock.json
+      - run: npm ci --ignore-scripts
+      - name: Build backend for OpenAPI
+        run: npm run build
+      - name: Generate OpenAPI contract
+        run: node dist/openapi/generate-openapi.js
+      - name: Lint OpenAPI contract
+        run: npx @redocly/cli lint openapi/openapi.json
+      - name: Build interactive HTML documentation
+        run: npx @redocly/cli build-docs openapi/openapi.json --output reports/openapi/index.html
+      - name: Prepare documentation artifact
+        run: |
+          mkdir -p reports/site
+          cp reports/openapi/index.html reports/site/index.html
+          cp openapi/openapi.json reports/site/openapi.json
+      - name: Upload OpenAPI HTML report
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-html-documentation
+          path: BackEnd/backendsana/reports/site/
+          if-no-files-found: error
+          retention-days: 30
