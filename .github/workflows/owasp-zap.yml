@@ -1,0 +1,54 @@
+name: OWASP ZAP DAST
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'BackEnd/**'
+      - 'FrontEnd/**'
+      - '.github/workflows/owasp-zap.yml'
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'URL HTTPS del entorno de staging que se analizará'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zap-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  baseline:
+    # A DAST scan belongs against a deployed, non-production staging environment.
+    # Configure ZAP_TARGET_URL as a repository variable, or supply it manually.
+    if: ${{ inputs.target_url != '' || vars.ZAP_TARGET_URL != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      ZAP_TARGET_URL: ${{ inputs.target_url || vars.ZAP_TARGET_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run passive baseline scan
+        uses: zaproxy/action-baseline@v0.15.0
+        with:
+          target: ${{ env.ZAP_TARGET_URL }}
+          fail_action: true
+          artifact_name: owasp-zap-html-report
+          cmd_options: '-r zap-report.html -J zap-report.json'
+      - name: Upload ZAP HTML and JSON reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: owasp-zap-reports
+          path: |
+            report_html.html
+            zap-report.html
+            zap-report.json
+          if-no-files-found: warn
+          retention-days: 30
