@@ -161,12 +161,13 @@ export default function RecordCarePage() {
 
                   <label className="block">
                     <span className="text-sm font-medium text-text">
-                      Número de citas sugeridas (opcional)
+                      Número de citas sugeridas
                     </span>
                     <input
                       type="number"
                       min={1}
                       step={1}
+                      required
                       value={care.suggestedSessionLimit}
                       disabled={care.isSaving}
                       onChange={(event) =>

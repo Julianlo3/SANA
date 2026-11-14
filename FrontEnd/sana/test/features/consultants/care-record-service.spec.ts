@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ENDPOINTS } from "@/services/api/endpoints";
 import { httpClient } from "@/services/api/http-client";
-import { completeAppointment } from "@/features/consultants/services/care-record-service";
+import {
+  completeAppointment,
+  suggestPackageAfterAssessment,
+} from "@/features/consultants/services/care-record-service";
 
 vi.mock("@/services/api/http-client", () => ({
   httpClient: {
@@ -14,14 +17,18 @@ vi.mock("@/services/api/http-client", () => ({
 describe("completeAppointment", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("submits the priority and optional session suggestion for an assessment", async () => {
-    const suggestion = { priority: "alta" as const, sessionLimit: 6 };
-    vi.mocked(httpClient.patch).mockResolvedValueOnce(undefined);
+  it("submits the assessment recommendation to the package suggestion endpoint", async () => {
+    const suggestion = {
+      assessmentAppointmentId: 44,
+      priority: "alta" as const,
+      sessionLimit: 6,
+    };
+    vi.mocked(httpClient.post).mockResolvedValueOnce({});
 
-    await completeAppointment(44, suggestion);
+    await suggestPackageAfterAssessment(suggestion);
 
-    expect(httpClient.patch).toHaveBeenCalledWith(
-      ENDPOINTS.appointmentComplete(44),
+    expect(httpClient.post).toHaveBeenCalledWith(
+      ENDPOINTS.carePackageSuggest,
       suggestion,
     );
   });

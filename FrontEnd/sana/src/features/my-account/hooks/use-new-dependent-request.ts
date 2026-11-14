@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { getDepartmentFromResidenceZone } from "@/config/residence-zones";
 import { submitConsultationRequest } from "@/features/consultation-requests/services/consultation-requests-service";
 import type {
   AppointmentMode,
@@ -118,6 +119,9 @@ export function useNewDependentRequest(
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const missing = useMemo(() => getMissingProfileData(profile), [profile]);
+  const residenceDepartment = getDepartmentFromResidenceZone(
+    profile.residenceZone,
+  );
   const errors = useMemo(
     () => ({
       name: validateFullName(values.name),
@@ -129,11 +133,11 @@ export function useNewDependentRequest(
       birthdate: validateMinorBirthDate(values.birthdate),
       gender: validateGender(values.gender),
       relationship: validateRelationship(values.relationship),
-      appType: validateAppointmentMode(appType),
+      appType: validateAppointmentMode(appType, residenceDepartment),
       reason: validateConsultationReason(reason),
       accepted: validateDataPolicy(accepted),
     }),
-    [values, appType, reason, accepted],
+    [values, appType, reason, accepted, residenceDepartment],
   );
 
   const visibleErrors = wasSubmitted
@@ -215,6 +219,7 @@ export function useNewDependentRequest(
     accepted,
     setAccepted,
     errors: visibleErrors,
+    residenceDepartment,
     isSaving,
     submitError,
     submit,

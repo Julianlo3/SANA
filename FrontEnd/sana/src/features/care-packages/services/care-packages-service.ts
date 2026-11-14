@@ -3,55 +3,95 @@ import { httpClient } from "@/services/api/http-client";
 import { buildSlotDateTime, getColombiaToday } from "@/lib/date/slot-datetime";
 import type { ConsultantAvailabilitySlot } from "@/features/consultation-requests/types/consultation-request-types";
 import type {
+  ApproveCarePackagePayload,
   CarePackage,
   CarePackageAppointmentPayload,
-  CarePackageRequest,
+  CarePackageSuggestion,
   CreateCarePackagePayload,
+  RejectCarePackagePayload,
+  SuggestCarePackagePayload,
+  SuggestCarePackageResult,
 } from "../types/care-package-types";
 
 /**
- * The backend currently exposes package creation, details, availability,
- * session booking, finalization, and cancellation. The suggestion queue,
- * rejection action, and consultant package listing routes are assumed future
- * frontend contracts.
+ * Lists persisted care packages for secretary management.
+ * @param signal Optional request cancellation signal.
+ * @returns A promise resolving to the care package list.
  */
+export async function listCarePackages(
+  signal?: AbortSignal,
+): Promise<CarePackage[]> {
+  return httpClient.get<CarePackage[]>(ENDPOINTS.carePackages, signal);
+}
 
 /**
- * Lists package suggestions awaiting a secretary's decision.
- * @param signal Optional request cancellation signal.
- * @returns A promise resolving to the pending package suggestions.
+ * Submits a psychologist's package suggestion for secretary review.
+ * @param payload Assessment, suggested session count, priority, and optional note.
+ * @returns A promise resolving to the created suggested package.
  */
-export async function listCarePackageRequests(
+export async function suggestCarePackage(
+  payload: SuggestCarePackagePayload,
+): Promise<SuggestCarePackageResult> {
+  return httpClient.post<SuggestCarePackageResult>(
+    ENDPOINTS.carePackageSuggest,
+    payload,
+  );
+}
+
+/**
+ * Lists suggested packages awaiting secretary review.
+ * @param signal Optional request cancellation signal.
+ * @returns A promise resolving to the suggestions in priority order.
+ */
+export async function listCarePackageSuggestions(
   signal?: AbortSignal,
-): Promise<CarePackageRequest[]> {
-  return httpClient.get<CarePackageRequest[]>(
-    ENDPOINTS.carePackageRequests,
+): Promise<CarePackageSuggestion[]> {
+  return httpClient.get<CarePackageSuggestion[]>(
+    ENDPOINTS.carePackageSuggestions,
     signal,
   );
 }
 
 /**
- * Creates the active package approved by the secretary.
+ * Creates a package directly as secretary.
  * @param payload Package details selected by the secretary.
- * @returns A promise resolving when the package is created.
+ * @returns A promise resolving to the created package.
  */
 export async function createCarePackage(
   payload: CreateCarePackagePayload,
-): Promise<void> {
-  await httpClient.post<unknown>(ENDPOINTS.carePackages, payload);
+): Promise<CarePackage> {
+  return httpClient.post<CarePackage>(ENDPOINTS.carePackages, payload);
 }
 
 /**
- * Rejects a package suggestion associated with an assessment.
- * @param assessmentAppointmentId Identifier of the assessment appointment.
- * @returns A promise resolving when the suggestion is rejected.
+ * Approves a suggested package, optionally applying secretary edits.
+ * @param carePackageId Identifier of the suggested package.
+ * @param payload Optional revised priority and session count.
+ * @returns A promise resolving to the activated package.
  */
-export async function rejectCarePackageRequest(
-  assessmentAppointmentId: number,
-): Promise<void> {
-  await httpClient.post<unknown>(
-    ENDPOINTS.carePackageRequestReject(assessmentAppointmentId),
-    {},
+export async function approveCarePackage(
+  carePackageId: number,
+  payload: ApproveCarePackagePayload,
+): Promise<CarePackage> {
+  return httpClient.patch<CarePackage>(
+    ENDPOINTS.carePackageApprove(carePackageId),
+    payload,
+  );
+}
+
+/**
+ * Rejects a suggested package with a required reason.
+ * @param carePackageId Identifier of the suggested package.
+ * @param payload Rejection reason.
+ * @returns A promise resolving to the rejected package.
+ */
+export async function rejectCarePackage(
+  carePackageId: number,
+  payload: RejectCarePackagePayload,
+): Promise<CarePackage> {
+  return httpClient.patch<CarePackage>(
+    ENDPOINTS.carePackageReject(carePackageId),
+    payload,
   );
 }
 

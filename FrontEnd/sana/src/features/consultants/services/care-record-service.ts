@@ -1,7 +1,8 @@
 import { httpClient } from "@/services/api/http-client";
 import { ENDPOINTS } from "@/services/api/endpoints";
+import { suggestCarePackage } from "@/features/care-packages/services/care-packages-service";
+import type { SuggestCarePackagePayload } from "@/features/care-packages/types/care-package-types";
 import type {
-  PackageSuggestionPayload,
   PsychologistAppointment,
   RecordCarePayload,
 } from "../types/care-record-types";
@@ -33,19 +34,26 @@ export async function listPsychologistAppointments(
 }
 
 /**
- * Marks an appointment as completed; only its assigned psychologist can do so.
+ * Marks a non-assessment appointment as completed.
  * @param appId Identifier of the appointment to complete.
- * @param packageSuggestion Optional priority and session count for an assessment.
  * @returns A promise resolving when the appointment is completed.
  */
 export async function completeAppointment(
   appId: number,
-  packageSuggestion?: PackageSuggestionPayload,
 ): Promise<void> {
-  await httpClient.patch<unknown>(
-    ENDPOINTS.appointmentComplete(appId),
-    packageSuggestion ?? {},
-  );
+  await httpClient.patch<unknown>(ENDPOINTS.appointmentComplete(appId), {});
+}
+
+/**
+ * Marks an assessment as completed and creates its package suggestion.
+ * The backend performs both operations atomically.
+ * @param payload Assessment identifier and psychologist recommendation.
+ * @returns A promise resolving to the suggested package.
+ */
+export async function suggestPackageAfterAssessment(
+  payload: SuggestCarePackagePayload,
+): Promise<void> {
+  await suggestCarePackage(payload);
 }
 
 /**

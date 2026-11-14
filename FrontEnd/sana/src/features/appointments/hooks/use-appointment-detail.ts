@@ -9,9 +9,13 @@ import {
   confirmAppointment,
   discardAppointment,
   getAppointment,
+  getPatientPsychologistHistory,
   updateAppointmentStatus,
 } from "../services/appointments-service";
-import type { Appointment } from "../types/appointment-types";
+import type {
+  Appointment,
+  PatientPsychologistHistory,
+} from "../types/appointment-types";
 
 /**
  * Defines the confirm notice.
@@ -40,6 +44,11 @@ export function useAppointmentDetail(appointmentId: number) {
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [psychologistHistoryState, setPsychologistHistoryState] = useState<{
+    appointmentId: number;
+    history: PatientPsychologistHistory[];
+    error: string | null;
+  }>({ appointmentId, history: [], error: null });
 
   const [isWorking, setIsWorking] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -64,6 +73,34 @@ export function useAppointmentDetail(appointmentId: number) {
       })
       .finally(() => {
         if (!controller.signal.aborted) setIsLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [appointmentId]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    getPatientPsychologistHistory(appointmentId, controller.signal)
+      .then((result) => {
+        if (!controller.signal.aborted) {
+          setPsychologistHistoryState({
+            appointmentId,
+            history: result,
+            error: null,
+          });
+        }
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setPsychologistHistoryState({
+          appointmentId,
+          history: [],
+          error: messageFrom(
+            error,
+            "No pudimos cargar la racha de atención de este paciente.",
+          ),
+        });
       });
 
     return () => controller.abort();
@@ -204,6 +241,14 @@ export function useAppointmentDetail(appointmentId: number) {
     appointment,
     isLoading,
     loadError,
+    psychologistHistory:
+      psychologistHistoryState.appointmentId === appointmentId
+        ? psychologistHistoryState.history
+        : [],
+    psychologistHistoryError:
+      psychologistHistoryState.appointmentId === appointmentId
+        ? psychologistHistoryState.error
+        : null,
     isWorking,
     actionError,
     notice,

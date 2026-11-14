@@ -71,6 +71,18 @@ export type PsychologistOption = {
 };
 
 /**
+ * Completed appointment history and current streak for a psychologist with
+ * the patient identified by a secretary-managed appointment.
+ */
+export type PatientPsychologistHistory = {
+  psyId: number;
+  psychologistName: string;
+  totalAppointments: number;
+  currentStreak: number;
+  lastAppointmentDate: string;
+};
+
+/**
  * Available time slot grouped with all psychologists who can take it.
  */
 export type AvailabilitySlot = {

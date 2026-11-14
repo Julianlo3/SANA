@@ -36,12 +36,15 @@ export const ENDPOINTS = {
   appointmentDiscard: (id: number) => `/appointments/${id}/discard`,
   appointmentComplete: (id: number) => `/appointments/${id}/complete`,
   appointmentStatus: (id: number) => `/appointments/${id}/status`,
+  appointmentPsychologistHistory: (id: number) =>
+    `/appointments/${id}/psychologist-history`,
   scheduleAvailability: "/schedule/availability",
   carePackages: "/care-packages",
-  carePackageRequests: "/care-packages/requests",
-  carePackageRequestReject: (appointmentId: number) =>
-    `/care-packages/requests/${appointmentId}/reject`,
-  carePackagesMine: "/care-packages/my",
+  carePackageSuggest: "/care-packages/suggest",
+  carePackageSuggestions: "/care-packages/suggestions",
+  carePackageApprove: (id: number) => `/care-packages/${id}/approve`,
+  carePackageReject: (id: number) => `/care-packages/${id}/reject`,
+  carePackagesMine: "/care-packages/my-packages",
   carePackage: (id: number) => `/care-packages/${id}`,
   carePackageAvailability: (id: number) =>
     `/care-packages/${id}/availability`,

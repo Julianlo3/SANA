@@ -7,6 +7,7 @@ import {
   completeAppointment,
   listPsychologistAppointments,
   recordCare,
+  suggestPackageAfterAssessment,
 } from "../services/care-record-service";
 import type { PsychologistAppointment } from "../types/care-record-types";
 import { validateObservation } from "../validation/care-record-validation";
@@ -127,36 +128,42 @@ export function useRecordCare(preselectedId: number | null) {
     if (
       isAssessment &&
       (!packagePriority ||
-        (parsedSessionLimit !== undefined &&
-          (!Number.isInteger(parsedSessionLimit) || parsedSessionLimit < 1)))
+        parsedSessionLimit === undefined ||
+        !Number.isInteger(parsedSessionLimit) ||
+        parsedSessionLimit < 1)
     ) {
       setSubmitError(
-        "Selecciona la prioridad y escribe un número de citas sugeridas válido.",
+        "Selecciona la prioridad e indica un número entero de citas sugeridas mayor que cero.",
       );
       return;
     }
     const packageSuggestion =
-      isAssessment && packagePriority
+      isAssessment && packagePriority && parsedSessionLimit !== undefined
         ? {
+            assessmentAppointmentId: appId,
             priority: packagePriority,
-            ...(parsedSessionLimit === undefined
-              ? {}
-              : { sessionLimit: parsedSessionLimit }),
+            sessionLimit: parsedSessionLimit,
           }
-        : undefined;
+        : null;
 
     setIsSaving(true);
     setSubmitError(null);
 
     if (!completedIds.includes(appId)) {
       try {
-        await completeAppointment(appId, packageSuggestion);
+        if (packageSuggestion) {
+          await suggestPackageAfterAssessment(packageSuggestion);
+        } else {
+          await completeAppointment(appId);
+        }
         setCompletedIds((current) => [...current, appId]);
       } catch (error: unknown) {
         setSubmitError(
           messageFrom(
             error,
-            "No pudimos marcar la cita como realizada. Intenta de nuevo.",
+            packageSuggestion
+              ? "No pudimos guardar la prioridad y sugerir el paquete."
+              : "No pudimos marcar la cita como realizada. Intenta de nuevo.",
           ),
         );
         setIsSaving(false);

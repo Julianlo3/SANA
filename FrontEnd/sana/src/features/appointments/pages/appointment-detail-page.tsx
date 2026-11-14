@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo } from "react";
 import { ArrowLeft, Lock, MapPin, Video } from "lucide-react";
 import InlineMessage from "@/components/feedback/inline-message";
 import Button from "@/components/ui/button";
@@ -61,6 +62,18 @@ function Field({
 export default function AppointmentDetailPage({ appointmentId }: Props) {
   const detail = useAppointmentDetail(appointmentId);
   const { appointment } = detail;
+  const streakByPsychologistId = useMemo(
+    () =>
+      new Map<number, number>(
+        detail.psychologistHistory.map(
+          (history): [number, number] => [
+            history.psyId,
+            history.currentStreak,
+          ],
+        ),
+      ),
+    [detail.psychologistHistory],
+  );
 
   const backLink = (
     <Link
@@ -111,7 +124,6 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
   const selectedPsychologist = detail.selection?.slot.psychologists.find(
     (psychologist) => psychologist.id === detail.selection?.psychologistId,
   );
-
   return (
     <div className="mx-auto max-w-3xl">
       {backLink}
@@ -274,10 +286,19 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
             </p>
 
             <div className="mt-5">
+              {detail.psychologistHistoryError && (
+                <div className="mb-4">
+                  <InlineMessage tone="error">
+                    {detail.psychologistHistoryError} Puedes continuar sin ese
+                    dato.
+                  </InlineMessage>
+                </div>
+              )}
               <SlotPicker
                 defaultDate={defaultDate}
                 selection={detail.selection}
                 onSelect={detail.setSelection}
+                streakByPsychologistId={streakByPsychologistId}
                 disabled={detail.isWorking}
               />
             </div>

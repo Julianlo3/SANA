@@ -3,12 +3,12 @@ import { requireAnyRole } from "@/lib/auth-guard";
 import CarePackageRequestsPage from "@/features/care-packages/pages/care-package-requests-page";
 
 export const metadata: Metadata = {
-  title: "Solicitudes de paquetes | SANA",
+  title: "Paquetes de atención | SANA",
 };
 
 /**
- * Renders the secretary package-request inbox.
- * @returns The package-request page.
+ * Renders the secretary package management page.
+ * @returns The package management page.
  */
 export default async function CarePackageRequestsRoute() {
   await requireAnyRole(["secretario"]);

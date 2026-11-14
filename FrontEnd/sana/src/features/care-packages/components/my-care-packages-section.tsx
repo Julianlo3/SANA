@@ -9,16 +9,18 @@ import { listMyRequests } from "@/features/my-account/services/my-account-servic
 import type { MyRequest } from "@/features/my-account/types/my-account-types";
 import CarePackageBooking from "./care-package-booking";
 import { listMyCarePackages } from "../services/care-packages-service";
-import type { CarePackage, PackagePriority } from "../types/care-package-types";
+import type { CarePackage } from "../types/care-package-types";
 
-const PRIORITY_LABELS: Record<PackagePriority, string> = {
-  alta: "Alta",
-  media: "Media",
-  baja: "Baja",
+const PACKAGE_STATE_LABELS: Record<CarePackage["state"], string> = {
+  sugerido: "Pendiente de aprobación",
+  activo: "Activo",
+  rechazado: "No aprobado",
+  finalizado: "Finalizado",
+  cancelado: "Cancelado",
 };
 
 /**
- * Displays active care packages, their appointments and session progress.
+ * Displays care packages, their appointments and session progress.
  * @returns The signed-in consultant's active package section.
  */
 export default function MyCarePackagesSection() {
@@ -67,10 +69,6 @@ export default function MyCarePackagesSection() {
     return () => controller.abort();
   }, [reloadKey]);
 
-  const visiblePackages = packages.filter(
-    (carePackage) => carePackage.state === "activo",
-  );
-
   return (
     <section id="mis-paquetes">
       <div className="flex items-center gap-3">
@@ -82,7 +80,8 @@ export default function MyCarePackagesSection() {
             Mis paquetes de atención
           </h2>
           <p className="mt-1 text-sm text-text-muted">
-            Consulta tus sesiones y solicita una cita disponible.
+            Consulta el estado de tus paquetes, el avance de las sesiones y
+            solicita nuevas citas cuando estén activos.
           </p>
         </div>
       </div>
@@ -103,14 +102,14 @@ export default function MyCarePackagesSection() {
       )}
 
       {!isLoading && !loadError && (
-        visiblePackages.length === 0 ? (
+        packages.length === 0 ? (
           <p className="mt-5 rounded-2xl border border-dashed border-border bg-surface px-5 py-8 text-center text-sm text-text-subtle">
-            Aún no tienes paquetes activos. Cuando la secretaría confirme uno,
-            aparecerá aquí.
+            Aún no tienes paquetes de atención. Cuando la secretaría revise una
+            sugerencia, aparecerá aquí.
           </p>
         ) : (
           <div className="mt-5 space-y-5">
-            {visiblePackages.map((carePackage) => {
+            {packages.map((carePackage) => {
               const appointments = requests
                 .filter(
                   (request) =>
@@ -119,14 +118,9 @@ export default function MyCarePackagesSection() {
                 .sort((left, right) =>
                   (left.appDate ?? "").localeCompare(right.appDate ?? ""),
                 );
-              const completedCount = appointments.filter(
-                (request) => request.appState === "realizada",
-              ).length;
-              const occupiedCount = appointments.filter((request) =>
-                ["realizada", "asignada", "confirmada"].includes(
-                  request.appState,
-                ),
-              ).length;
+              const occupiedCount =
+                carePackage.completedSessions + carePackage.reservedSessions;
+              const canBook = carePackage.state === "activo";
 
               return (
                 <article
@@ -138,9 +132,15 @@ export default function MyCarePackagesSection() {
                       <p className="text-xs font-bold uppercase tracking-wider text-primary">
                         Paquete #{carePackage.id}
                       </p>
-                      <h3 className="mt-1 font-display text-xl font-bold text-text">
-                        Prioridad {PRIORITY_LABELS[carePackage.priority].toLowerCase()}
-                      </h3>
+                      <p className="mt-1 text-sm font-medium text-text-muted">
+                        {carePackage.patientType === "dependent"
+                          ? "Dependiente"
+                          : "Consultante"}
+                        : {carePackage.patientName}
+                      </p>
+                      <p className="mt-1 text-sm font-medium text-text-muted">
+                        {PACKAGE_STATE_LABELS[carePackage.state]}
+                      </p>
                       {carePackage.psychologistName && (
                         <p className="mt-1 text-sm text-text-muted">
                           Psicólogo: {carePackage.psychologistName}
@@ -148,9 +148,22 @@ export default function MyCarePackagesSection() {
                       )}
                     </div>
                     <p className="rounded-full bg-primary-soft px-4 py-2 text-sm font-bold text-primary-dark">
-                      {completedCount}/{carePackage.sessionLimit} citas realizadas
+                      {carePackage.completedSessions}/{carePackage.sessionLimit} citas realizadas
                     </p>
                   </div>
+
+                  {carePackage.state === "sugerido" && (
+                    <p className="mt-4 rounded-xl border border-border bg-surface-muted/50 px-4 py-3 text-sm text-text-muted">
+                      El psicólogo sugirió este paquete. La secretaría debe
+                      revisarlo antes de que puedas agendar citas.
+                    </p>
+                  )}
+                  {carePackage.state === "rechazado" &&
+                    carePackage.rejectionReason && (
+                      <p className="mt-4 rounded-xl border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger">
+                        Motivo: {carePackage.rejectionReason}
+                      </p>
+                    )}
 
                   {appointments.length > 0 ? (
                     <ul className="mt-5 divide-y divide-border rounded-xl border border-border">
@@ -181,7 +194,7 @@ export default function MyCarePackagesSection() {
                     </p>
                   )}
 
-                  {occupiedCount < carePackage.sessionLimit && (
+                  {canBook && occupiedCount < carePackage.sessionLimit && (
                     <>
                       <button
                         type="button"
@@ -212,6 +225,11 @@ export default function MyCarePackagesSection() {
                         />
                       )}
                     </>
+                  )}
+                  {canBook && occupiedCount >= carePackage.sessionLimit && (
+                    <p className="mt-5 text-sm font-medium text-text-muted">
+                      Ya alcanzaste el número de citas de este paquete.
+                    </p>
                   )}
                 </article>
               );
