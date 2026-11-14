@@ -30,6 +30,7 @@ Variables`). También se puede indicar una URL temporal al lanzar manualmente el
 workflow. Sin una de esas dos opciones, el job se omite para evitar que un
 workflow escanee por error producción o una URL no autorizada.
 
-El flujo usa el baseline pasivo y falla ante alertas configuradas por ZAP. Para
-ajustar falsos positivos, agregue un archivo de reglas ZAP versionado y páselo
-al action; no se incluyen exclusiones por defecto.
+El flujo usa el baseline pasivo y conserva los reportes HTML, JSON y Markdown
+para revisión. Tras clasificar los hallazgos, agregue un archivo de reglas ZAP
+versionado para convertir las reglas relevantes en bloqueantes; no se incluyen
+exclusiones por defecto.
