@@ -2,7 +2,6 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { AppModule } from '../app.module.js';
 
 // This command creates the contract without starting an HTTP server or database.
 // They are placeholders solely to satisfy the application's environment validation.
@@ -21,6 +20,9 @@ Object.assign(process.env, {
 });
 
 try {
+  // AppModule imports ConfigModule. It must be loaded only after the temporary
+  // values above exist, otherwise ConfigModule validates the empty CI env.
+  const { AppModule } = await import('../app.module.js');
   console.info('[openapi] Creating the Nest application context.');
   // Prevent Nest from calling process.exit(1) before the catch block can show
   // the actual bootstrap error in CI logs.
