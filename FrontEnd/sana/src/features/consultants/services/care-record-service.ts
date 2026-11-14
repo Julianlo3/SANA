@@ -1,5 +1,7 @@
 import { httpClient } from "@/services/api/http-client";
+import { ENDPOINTS } from "@/services/api/endpoints";
 import type {
+  PackageSuggestionPayload,
   PsychologistAppointment,
   RecordCarePayload,
 } from "../types/care-record-types";
@@ -12,23 +14,14 @@ import type {
  */
 const MY_APPOINTMENTS_PATH = "/appointments/my-appointments";
 /**
- * Defines the register attention path.
+ * Endpoint used to register a clinical note.
  */
 const REGISTER_ATTENTION_PATH = "/clinical-notes/register-attention";
 
 /**
- * Implements the complete path operation.
- * @param appId Resource identifier.
- * @returns Formatted value or validation message.
- */
-function completePath(appId: number): string {
-  return `/appointments/${appId}/complete`;
-}
-
-/**
  * Lists confirmed appointments awaiting care completion and documentation.
- * @param signal Optional request cancellation signal. (optional)
- * @returns A promise resolving to the operation result.
+ * @param signal Optional request cancellation signal.
+ * @returns A promise resolving to the psychologist's confirmed appointments.
  */
 export async function listPsychologistAppointments(
   signal?: AbortSignal,
@@ -41,15 +34,24 @@ export async function listPsychologistAppointments(
 
 /**
  * Marks an appointment as completed; only its assigned psychologist can do so.
- * @param appId Resource identifier.
+ * @param appId Identifier of the appointment to complete.
+ * @param packageSuggestion Optional priority and session count for an assessment.
+ * @returns A promise resolving when the appointment is completed.
  */
-export async function completeAppointment(appId: number): Promise<void> {
-  await httpClient.patch<unknown>(completePath(appId), {});
+export async function completeAppointment(
+  appId: number,
+  packageSuggestion?: PackageSuggestionPayload,
+): Promise<void> {
+  await httpClient.patch<unknown>(
+    ENDPOINTS.appointmentComplete(appId),
+    packageSuggestion ?? {},
+  );
 }
 
 /**
  * Records a care note for an appointment already marked as completed.
- * @param payload Data submitted to the operation.
+ * @param payload Clinical note data and terms acceptance.
+ * @returns A promise resolving when the note is recorded.
  */
 export async function recordCare(payload: RecordCarePayload): Promise<void> {
   await httpClient.post<unknown>(REGISTER_ATTENTION_PATH, payload);

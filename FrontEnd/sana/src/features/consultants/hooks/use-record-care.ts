@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ApiError } from "@/types/api-types";
+import type { PackagePriority } from "@/features/care-packages/types/care-package-types";
 import {
   completeAppointment,
   listPsychologistAppointments,
@@ -11,10 +12,10 @@ import type { PsychologistAppointment } from "../types/care-record-types";
 import { validateObservation } from "../validation/care-record-validation";
 
 /**
- * Implements the message from operation.
- * @param error Error value to process.
- * @param fallback fallback input.
- * @returns Formatted value or validation message.
+ * Converts an operation error into a user-facing message.
+ * @param error Error returned by the attempted operation.
+ * @param fallback Message used when the error is not an API error.
+ * @returns The API error message or the supplied fallback.
  */
 function messageFrom(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
@@ -24,7 +25,8 @@ function messageFrom(error: unknown, fallback: string): string {
  * Manages care record submission as separate completion and note requests.
  * If note registration fails after completion, preserves the appointment ID
  * so only the note request needs to be retried.
- * @param preselectedId Resource identifier.
+ * @param preselectedId Optional appointment identifier selected by the route.
+ * @returns Appointment data, form state, validation messages, and save handlers.
  */
 export function useRecordCare(preselectedId: number | null) {
   const [appointments, setAppointments] = useState<PsychologistAppointment[]>(
@@ -39,6 +41,8 @@ export function useRecordCare(preselectedId: number | null) {
     string | undefined
   >();
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [packagePriority, setPackagePriority] = useState<PackagePriority | "">("");
+  const [suggestedSessionLimit, setSuggestedSessionLimit] = useState("");
 
   const [completedIds, setCompletedIds] = useState<number[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -73,18 +77,35 @@ export function useRecordCare(preselectedId: number | null) {
   const selectedAppointment = appointments.find(
     (appointment) => appointment.appId === selectedId,
   );
+  const isAssessment = selectedAppointment?.appKind === "valoracion";
 
+  /**
+   * Selects an appointment and resets assessment-specific form values.
+   * @param id Appointment identifier, or null to clear the selection.
+   * @returns Nothing.
+   */
   const selectAppointment = useCallback((id: number | null) => {
     setSelectedId(id);
+    setPackagePriority("");
+    setSuggestedSessionLimit("");
     setObservationError(undefined);
     setSubmitError(null);
   }, []);
 
+  /**
+   * Updates the optional care observation.
+   * @param value New observation text.
+   * @returns Nothing.
+   */
   const changeObservation = useCallback((value: string) => {
     setObservation(value);
     setObservationError(undefined);
   }, []);
 
+  /**
+   * Completes the appointment and records its clinical note.
+   * @returns A promise that resolves when saving finishes.
+   */
   const save = useCallback(async () => {
     if (!selectedAppointment) return;
 
@@ -99,12 +120,37 @@ export function useRecordCare(preselectedId: number | null) {
       return;
     }
 
+    const parsedSessionLimit =
+      suggestedSessionLimit.trim() === ""
+        ? undefined
+        : Number(suggestedSessionLimit);
+    if (
+      isAssessment &&
+      (!packagePriority ||
+        (parsedSessionLimit !== undefined &&
+          (!Number.isInteger(parsedSessionLimit) || parsedSessionLimit < 1)))
+    ) {
+      setSubmitError(
+        "Selecciona la prioridad y escribe un número de citas sugeridas válido.",
+      );
+      return;
+    }
+    const packageSuggestion =
+      isAssessment && packagePriority
+        ? {
+            priority: packagePriority,
+            ...(parsedSessionLimit === undefined
+              ? {}
+              : { sessionLimit: parsedSessionLimit }),
+          }
+        : undefined;
+
     setIsSaving(true);
     setSubmitError(null);
 
     if (!completedIds.includes(appId)) {
       try {
-        await completeAppointment(appId);
+        await completeAppointment(appId, packageSuggestion);
         setCompletedIds((current) => [...current, appId]);
       } catch (error: unknown) {
         setSubmitError(
@@ -138,7 +184,15 @@ export function useRecordCare(preselectedId: number | null) {
     } finally {
       setIsSaving(false);
     }
-  }, [selectedAppointment, observation, termsAccepted, completedIds]);
+  }, [
+    selectedAppointment,
+    observation,
+    termsAccepted,
+    completedIds,
+    isAssessment,
+    packagePriority,
+    suggestedSessionLimit,
+  ]);
 
   return {
     appointments,
@@ -151,6 +205,11 @@ export function useRecordCare(preselectedId: number | null) {
     observationError,
     termsAccepted,
     setTermsAccepted,
+    isAssessment,
+    packagePriority,
+    setPackagePriority,
+    suggestedSessionLimit,
+    setSuggestedSessionLimit,
     isSaving,
     submitError,
     wasSaved,

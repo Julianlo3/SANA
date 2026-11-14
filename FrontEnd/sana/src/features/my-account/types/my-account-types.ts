@@ -1,5 +1,6 @@
 import type {
   AppointmentMode,
+  AppointmentKind,
   AppointmentState,
   PatientType,
 } from "@/features/appointments/types/appointment-types";
@@ -39,6 +40,10 @@ export type UpdateOwnProfilePayload = {
 export type MyRequest = {
   appId: number;
   appState: AppointmentState;
+  /** Distinguishes initial assessments from package sessions. */
+  appKind: AppointmentKind;
+  /** Linked package identifier, or null for an assessment. */
+  carePackageId: number | null;
   appType: AppointmentMode;
   appDate: string | null;
   appDuration: number | null;

@@ -13,6 +13,10 @@ export type AppointmentState =
  * Appointment delivery modes supported by the API.
  */
 export type AppointmentMode = "presencial" | "virtual";
+/**
+ * Identifies whether an appointment is an initial assessment or a package session.
+ */
+export type AppointmentKind = "valoracion" | "paquete";
 
 /**
  * Indicates whether the appointment is for the requester or a dependent.
@@ -25,6 +29,10 @@ export type PatientType = "self" | "dependent";
 export type Appointment = {
   appId: number;
   appState: AppointmentState;
+  /** Distinguishes initial assessments from package sessions. */
+  appKind: AppointmentKind;
+  /** Linked package identifier, or null for an assessment. */
+  carePackageId: number | null;
   appType: AppointmentMode;
   /** Assigned or confirmed datetime; null while pending. */
   appDate: string | null;

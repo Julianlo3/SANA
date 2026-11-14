@@ -15,6 +15,8 @@ export type PsychologistAppointment = Pick<
   Appointment,
   | "appId"
   | "appState"
+  | "appKind"
+  | "carePackageId"
   | "appType"
   | "appDate"
   | "appDuration"
@@ -29,4 +31,14 @@ export type RecordCarePayload = {
   observation?: string;
   /** Must be true or the backend rejects the registration. */
   termsAccepted: true;
+};
+
+/**
+ * Assumed future completion payload used to create a pending package suggestion.
+ */
+export type PackageSuggestionPayload = {
+  /** Priority selected during the assessment. */
+  priority: "alta" | "media" | "baja";
+  /** Optional psychologist recommendation for the package size. */
+  sessionLimit?: number;
 };

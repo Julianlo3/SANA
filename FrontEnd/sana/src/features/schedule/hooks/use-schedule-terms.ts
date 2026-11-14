@@ -14,10 +14,9 @@ import { getPolicyDocument } from "@/features/consultation-requests/services/pol
 type TermsStep = "psychologist" | "schedule";
 
 /**
- * Coordinates acceptance of general psychologist terms and schedule terms.
- * Both are required before the backend permits schedule block creation.
- * Schedule status is fetched only after the general terms have been accepted.
- * @param initialPsyTermsAccepted initial psy terms accepted input.
+ * Coordinates acceptance of the psychologist's schedule terms.
+ * @param initialPsyTermsAccepted Whether the user profile reports prior acceptance.
+ * @returns Acceptance state, policy content, error state, and acceptance handler.
  */
 export function useScheduleTerms(initialPsyTermsAccepted: boolean | null) {
   const [step, setStep] = useState<TermsStep | null>(
@@ -29,6 +28,7 @@ export function useScheduleTerms(initialPsyTermsAccepted: boolean | null) {
   const [policyContent, setPolicyContent] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(() => Boolean(initialPsyTermsAccepted));
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [acceptError, setAcceptError] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
 
   useEffect(() => {
@@ -70,17 +70,26 @@ export function useScheduleTerms(initialPsyTermsAccepted: boolean | null) {
     };
   }, [step]);
 
+  /**
+   * Accepts the required terms and updates the calendar gate immediately.
+   * @returns A promise that resolves when acceptance finishes.
+   */
   const accept = useCallback(async () => {
     setIsAccepting(true);
+    setAcceptError(null);
     try {
       if (step === "psychologist") {
         await acceptPsychologistTerms();
-        setStep("schedule");
+        // This endpoint records schedule_terms acceptance, so the calendar can open immediately.
+        setHasAccepted(true);
+        setStep(null);
       } else if (step === "schedule") {
         await acceptScheduleTerms();
         setHasAccepted(true);
         setStep(null);
       }
+    } catch {
+      setAcceptError("No pudimos guardar tu aceptación. Intenta de nuevo.");
     } finally {
       setIsAccepting(false);
     }
@@ -91,6 +100,7 @@ export function useScheduleTerms(initialPsyTermsAccepted: boolean | null) {
     policyContent,
     isLoading,
     loadError,
+    acceptError,
     isAccepting,
     accept,
   };

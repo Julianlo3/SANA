@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import MyRequestsSection from "@/features/my-account/components/my-requests-section";
+import MyCarePackagesSection from "@/features/care-packages/components/my-care-packages-section";
 
 /**
  * Defines page metadata.
@@ -18,6 +19,7 @@ export default function StaffMyAppointmentsPage() {
   return (
     <div className="space-y-10">
       <MyRequestsSection />
+      <MyCarePackagesSection />
     </div>
   );
 }

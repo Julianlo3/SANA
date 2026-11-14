@@ -34,8 +34,19 @@ export const ENDPOINTS = {
   appointmentAssign: (id: number) => `/appointments/${id}/assign`,
   appointmentConfirm: (id: number) => `/appointments/${id}/confirm`,
   appointmentDiscard: (id: number) => `/appointments/${id}/discard`,
+  appointmentComplete: (id: number) => `/appointments/${id}/complete`,
   appointmentStatus: (id: number) => `/appointments/${id}/status`,
   scheduleAvailability: "/schedule/availability",
+  carePackages: "/care-packages",
+  carePackageRequests: "/care-packages/requests",
+  carePackageRequestReject: (appointmentId: number) =>
+    `/care-packages/requests/${appointmentId}/reject`,
+  carePackagesMine: "/care-packages/my",
+  carePackage: (id: number) => `/care-packages/${id}`,
+  carePackageAvailability: (id: number) =>
+    `/care-packages/${id}/availability`,
+  carePackageAppointments: (id: number) =>
+    `/care-packages/${id}/my-appointments`,
 
   contentItems: "/content-items",
   contentCards: "/content-cards",

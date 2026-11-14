@@ -103,6 +103,8 @@ export type GuardianRequestPayload = {
 
 /**
  * Discriminated union of supported consultation request payloads.
+ * Public requests are persisted as valuations by the backend's app_kind default;
+ * the current create-request DTO does not accept appKind or cpId.
  */
 export type ConsultationRequestPayload =
   | SelfRequestPayload

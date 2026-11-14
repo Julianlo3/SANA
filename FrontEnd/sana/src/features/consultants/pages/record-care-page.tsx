@@ -10,7 +10,7 @@ import { useRecordCare } from "../hooks/use-record-care";
 
 /**
  * Parses and validates an appointment identifier from the route.
- * @param value Value to process.
+ * @param value Appointment identifier from the route query.
  * @returns The positive appointment identifier, or null when invalid.
  */
 function parseAppointmentId(value: string | null): number | null {
@@ -22,6 +22,7 @@ function parseAppointmentId(value: string | null): number | null {
 /**
  * Lets psychologists complete a confirmed appointment and optionally record
  * a care note. The backend requires completion before note registration.
+ * @returns The appointment completion and care-record form.
  */
 export default function RecordCarePage() {
   const router = useRouter();
@@ -119,6 +120,64 @@ export default function RecordCarePage() {
 
           {care.selectedAppointment && (
             <>
+              {care.isAssessment && (
+                <section className="space-y-4 rounded-xl border border-primary/20 bg-primary-soft/20 p-4">
+                  <div>
+                    <h2 className="text-sm font-bold text-primary-dark">
+                      Sugerencia de paquete
+                    </h2>
+                    <p className="mt-1 text-xs leading-relaxed text-text-muted">
+                      La secretaría revisará la prioridad y definirá el número
+                      final de citas del paquete.
+                    </p>
+                  </div>
+
+                  <label className="block">
+                    <span className="text-sm font-medium text-text">
+                      Prioridad
+                    </span>
+                    <select
+                      value={care.packagePriority}
+                      disabled={care.isSaving}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        if (
+                          value === "alta" ||
+                          value === "media" ||
+                          value === "baja" ||
+                          value === ""
+                        ) {
+                          care.setPackagePriority(value);
+                        }
+                      }}
+                      className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed"
+                    >
+                      <option value="">Selecciona la prioridad</option>
+                      <option value="alta">Alta</option>
+                      <option value="media">Media</option>
+                      <option value="baja">Baja</option>
+                    </select>
+                  </label>
+
+                  <label className="block">
+                    <span className="text-sm font-medium text-text">
+                      Número de citas sugeridas (opcional)
+                    </span>
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={care.suggestedSessionLimit}
+                      disabled={care.isSaving}
+                      onChange={(event) =>
+                        care.setSuggestedSessionLimit(event.target.value)
+                      }
+                      className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed"
+                    />
+                  </label>
+                </section>
+              )}
+
               <label className="block">
                 <span className="text-sm font-medium text-text">
                   Observación general (opcional)
