@@ -1,164 +1,54 @@
-
 name: Backend CI
 
 on:
   pull_request:
-    branches:
-      - main
+    branches: [main]
     paths:
-      - "BackEnd/backendsana/**"
-      - ".github/workflows/backend-ci.yml"
-
+      - 'BackEnd/backendsana/**'
+      - '.github/workflows/backend-ci.yml'
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
-      - "BackEnd/backendsana/**"
-      - ".github/workflows/backend-ci.yml"
-
+      - 'BackEnd/backendsana/**'
+      - '.github/workflows/backend-ci.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
-jobs:
-  backend:
-    name: Validate Backend
-    runs-on: ubuntu-latest
+concurrency:
+  group: backend-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
+jobs:
+  validate:
+    name: Validate backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: BackEnd/backendsana
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: BackEnd/backendsana/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Create reports directory
-        run: mkdir -p reports
-
-      # Análisis estático
-      - name: Run Oxlint
+      - run: npm ci --ignore-scripts
+      - name: Lint
         run: npm run lint
-
-      # Verificación de tipos
-      - name: Check TypeScript
+      - name: Type-check
         run: npx tsc --noEmit
-
-      # Pruebas y cobertura
-      - name: Run tests with coverage
-        run: >
-          npm run test:cov --
-          --coverage.reporter=text
-          --coverage.reporter=lcov
-          --coverage.reporter=html
-          --coverage.reporter=cobertura
-          --coverage.reporter=json-summary
-
-      # Subir cobertura a Codecov
-      - name: Upload Backend coverage to Codecov
-        if: always()
-        uses: codecov/codecov-action@v5
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: BackEnd/backendsana/coverage/lcov.info
-          flags: backend
-          name: backend-coverage
-          fail_ci_if_error: false
-
-      # Auditoría de dependencias
-      - name: Audit dependencies
-        run: npm audit --audit-level=high --json > reports/npm-audit.json
-
-      # Compilación
-      - name: Build NestJS
+      - name: Test with HTML coverage
+        run: npm run test:cov -- --coverage.reporter=html --coverage.reporter=lcov --coverage.reporter=json-summary
+      - name: Build
         run: npm run build
-
-      # Resumen visual de cobertura
-      - name: Generate coverage summary
-        if: always()
-        run: |
-          node <<'NODE'
-          const fs = require('fs');
-
-          const file = 'coverage/coverage-summary.json';
-          const summary = process.env.GITHUB_STEP_SUMMARY;
-
-          let markdown = '## Backend - Cobertura de pruebas\n\n';
-
-          if (!fs.existsSync(file)) {
-            markdown += 'No se generó el reporte de cobertura.\n';
-          } else {
-            const report = JSON.parse(fs.readFileSync(file, 'utf8'));
-            const total = report.total;
-
-            markdown += '| Métrica | Cubierto | Total | Cobertura |\n';
-            markdown += '|---|---:|---:|---:|\n';
-
-            for (const key of ['lines', 'statements', 'functions', 'branches']) {
-              const metric = total[key];
-              if (!metric) continue;
-
-              markdown += `| ${key} | ${metric.covered} | ${metric.total} | ${metric.pct}% |\n`;
-            }
-          }
-
-          fs.appendFileSync(summary, markdown);
-          NODE
-
-      # Resumen visual de vulnerabilidades
-      - name: Generate dependency security summary
-        if: always()
-        run: |
-          node <<'NODE'
-          const fs = require('fs');
-
-          const file = 'reports/npm-audit.json';
-          const summary = process.env.GITHUB_STEP_SUMMARY;
-
-          let markdown = '## Backend - Auditoría de dependencias\n\n';
-
-          if (!fs.existsSync(file)) {
-            markdown += 'No se encontró el reporte de auditoría.\n';
-          } else {
-            try {
-              const report = JSON.parse(fs.readFileSync(file, 'utf8'));
-              const v = report.metadata?.vulnerabilities || {};
-
-              markdown += '| Severidad | Vulnerabilidades |\n';
-              markdown += '|---|---:|\n';
-
-              for (const level of ['critical', 'high', 'moderate', 'low', 'info']) {
-                markdown += `| ${level} | ${v[level] || 0} |\n`;
-              }
-
-              markdown += `\n**Total:** ${v.total || 0}\n`;
-            } catch {
-              markdown += 'No fue posible interpretar el reporte JSON.\n';
-            }
-          }
-
-          fs.appendFileSync(summary, markdown);
-          NODE
-
-      # Publicar reportes
-      - name: Upload backend reports
+      - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: backend-reports
-          path: |
-            BackEnd/backendsana/coverage/
-            BackEnd/backendsana/reports/
+          name: backend-coverage-html
+          path: BackEnd/backendsana/coverage/
           if-no-files-found: warn
           retention-days: 30

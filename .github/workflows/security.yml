@@ -1,0 +1,116 @@
+name: Security
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'BackEnd/backendsana/**'
+      - 'FrontEnd/sana/**'
+      - '.github/workflows/security.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'BackEnd/backendsana/**'
+      - 'FrontEnd/sana/**'
+      - '.github/workflows/security.yml'
+  schedule:
+    - cron: '23 2 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          deny-licenses: GPL-2.0-only, GPL-3.0-only, AGPL-3.0-only
+
+  dependency-audit:
+    name: Dependency audit (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: backend
+            directory: BackEnd/backendsana
+          - name: frontend
+            directory: FrontEnd/sana
+    defaults:
+      run:
+        working-directory: ${{ matrix.directory }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: ${{ matrix.directory }}/package-lock.json
+      - run: npm ci --ignore-scripts
+      - name: Create JSON audit report
+        id: audit
+        run: |
+          mkdir -p reports/security
+          set +e
+          npm audit --omit=dev --audit-level=high --json > reports/security/npm-audit.json
+          audit_exit_code=$?
+          echo "exit_code=$audit_exit_code" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Create HTML audit report
+        if: always()
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          let report = {};
+          try { report = JSON.parse(fs.readFileSync('reports/security/npm-audit.json', 'utf8')); } catch {}
+          const levels = ['critical', 'high', 'moderate', 'low', 'info'];
+          const counts = report.metadata?.vulnerabilities ?? {};
+          const escape = value => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          const rows = levels.map(level => `<tr><td>${level}</td><td>${counts[level] ?? 0}</td></tr>`).join('');
+          const details = Object.entries(report.vulnerabilities ?? {}).map(([name, item]) => `<tr><td>${escape(name)}</td><td>${escape(item.severity)}</td><td>${escape(item.title)}</td></tr>`).join('');
+          fs.writeFileSync('reports/security/npm-audit.html', `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>npm audit</title><style>body{font:16px system-ui;margin:2rem;color:#172033}main{max-width:1000px;margin:auto}table{border-collapse:collapse;width:100%}th,td{padding:.65rem;text-align:left;border-bottom:1px solid #dbe3ef}th{background:#edf2f7}h1{color:#0f3d73}</style></head><body><main><h1>Auditoría de dependencias: ${escape(process.env.PROJECT_NAME)}</h1><p>Generado por npm audit (solo dependencias de producción).</p><h2>Resumen</h2><table><tr><th>Severidad</th><th>Hallazgos</th></tr>${rows}</table><h2>Detalle</h2><table><tr><th>Paquete</th><th>Severidad</th><th>Descripción</th></tr>${details || '<tr><td colspan="3">No se reportaron vulnerabilidades.</td></tr>'}</table></main></body></html>`);
+          NODE
+        env:
+          PROJECT_NAME: ${{ matrix.name }}
+      - name: Upload HTML audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}-dependency-audit-html
+          path: ${{ matrix.directory }}/reports/security/
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Enforce high severity policy
+        if: always()
+        env:
+          AUDIT_EXIT_CODE: ${{ steps.audit.outputs.exit_code }}
+        run: test "$AUDIT_EXIT_CODE" = "0"
+
+  codeql:
+    name: CodeQL (JavaScript and TypeScript)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript
+          queries: security-extended,security-and-quality
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v4
+      - name: Analyze
+        uses: github/codeql-action/analyze@v4

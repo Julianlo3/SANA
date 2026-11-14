@@ -1,0 +1,41 @@
+name: Code documentation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'BackEnd/backendsana/**'
+      - '.github/workflows/code-documentation.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'BackEnd/backendsana/**'
+      - '.github/workflows/code-documentation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  typedoc:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: BackEnd/backendsana
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: BackEnd/backendsana/package-lock.json
+      - run: npm ci --ignore-scripts
+      - name: Generate TypeDoc HTML
+        run: npm run docs:code
+      - name: Upload code documentation
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-typedoc-html
+          path: BackEnd/backendsana/reports/code-docs/
+          if-no-files-found: error
+          retention-days: 30
