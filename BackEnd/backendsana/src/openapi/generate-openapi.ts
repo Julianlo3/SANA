@@ -20,18 +20,29 @@ Object.assign(process.env, {
     process.env.AUTH0_CLAIM_NAMESPACE ?? 'https://sana.example.com',
 });
 
-const app = await NestFactory.create(AppModule, { logger: false });
-app.setGlobalPrefix('api/v1');
+try {
+  console.info('[openapi] Creating the Nest application context.');
+  const app = await NestFactory.create(AppModule, { logger: false });
+  app.setGlobalPrefix('api/v1');
 
-const config = new DocumentBuilder()
-  .setTitle('SANA API')
-  .setDescription('Contrato HTTP generado automáticamente desde el backend SANA.')
-  .setVersion(process.env.npm_package_version ?? '0.0.0')
-  .addServer('https://api.sana.example.com', 'Servidor de producción (referencia)')
-  .addBearerAuth()
-  .build();
+  const config = new DocumentBuilder()
+    .setTitle('SANA API')
+    .setDescription('Contrato HTTP generado automáticamente desde el backend SANA.')
+    .setVersion(process.env.npm_package_version ?? '0.0.0')
+    .addServer('https://api.sana.example.com', 'Servidor de producción (referencia)')
+    .addBearerAuth()
+    .build();
 
-const document = SwaggerModule.createDocument(app, config, { deepScanRoutes: true });
-await mkdir('openapi', { recursive: true });
-await writeFile(join('openapi', 'openapi.json'), `${JSON.stringify(document, null, 2)}\n`);
-await app.close();
+  console.info('[openapi] Discovering routes and generating the contract.');
+  const document = SwaggerModule.createDocument(app, config, { deepScanRoutes: true });
+  await mkdir('openapi', { recursive: true });
+  await writeFile(
+    join('openapi', 'openapi.json'),
+    `${JSON.stringify(document, null, 2)}\n`,
+  );
+  await app.close();
+  console.info('[openapi] Contract written to openapi/openapi.json.');
+} catch (error) {
+  console.error('[openapi] Contract generation failed.', error);
+  process.exitCode = 1;
+}
