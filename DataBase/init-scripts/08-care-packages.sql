@@ -5,19 +5,48 @@ CREATE TABLE IF NOT EXISTS public.care_packages (
   cp_patient_dependent_id integer NULL REFERENCES public.dependents(dep_id),
   cp_assessment_app_id integer NOT NULL REFERENCES public.appointments(app_id),
   psy_id integer NOT NULL REFERENCES public.psychologist(psy_id),
-  sec_id integer NOT NULL REFERENCES public.person(per_id),
+  sec_id integer NULL REFERENCES public.person(per_id),
   cp_session_limit integer NOT NULL CHECK (cp_session_limit > 0),
   cp_priority varchar(10) NOT NULL CHECK (cp_priority IN ('alta', 'media', 'baja')),
-  cp_state varchar(12) NOT NULL DEFAULT 'activo' CHECK (cp_state IN ('activo', 'finalizado', 'cancelado')),
+  cp_state varchar(12) NOT NULL DEFAULT 'sugerido' CHECK (cp_state IN ('sugerido', 'activo', 'rechazado', 'finalizado', 'cancelado')),
   cp_created_at timestamptz NOT NULL DEFAULT now(),
+  cp_reviewed_at timestamptz NULL,
   cp_closed_at timestamptz NULL,
   cp_closed_by integer NULL REFERENCES public.person(per_id),
   cp_close_reason text NULL,
+  cp_suggestion_comment text NULL,
+  cp_rejection_reason text NULL,
+  cp_suggested_session_limit integer NULL,
+  cp_suggested_priority varchar(10) NULL CHECK (cp_suggested_priority IS NULL OR cp_suggested_priority IN ('alta', 'media', 'baja')),
   CONSTRAINT care_package_patient_ck CHECK (
     (cp_patient_person_id IS NOT NULL AND cp_patient_dependent_id IS NULL)
     OR (cp_patient_person_id IS NULL AND cp_patient_dependent_id IS NOT NULL)
   )
 );
+
+-- Migraciones idempotentes para bases de datos existentes
+ALTER TABLE public.care_packages
+  ALTER COLUMN sec_id DROP NOT NULL;
+
+ALTER TABLE public.care_packages
+  DROP CONSTRAINT IF EXISTS care_packages_cp_state_check;
+
+ALTER TABLE public.care_packages
+  ADD CONSTRAINT care_packages_cp_state_check
+  CHECK (cp_state IN ('sugerido', 'activo', 'rechazado', 'finalizado', 'cancelado'));
+
+ALTER TABLE public.care_packages
+  ALTER COLUMN cp_state SET DEFAULT 'sugerido';
+
+ALTER TABLE public.care_packages
+  ADD COLUMN IF NOT EXISTS cp_reviewed_at timestamptz NULL,
+  ADD COLUMN IF NOT EXISTS cp_suggestion_comment text NULL,
+  ADD COLUMN IF NOT EXISTS cp_rejection_reason text NULL,
+  ADD COLUMN IF NOT EXISTS cp_suggested_session_limit integer NULL,
+  ADD COLUMN IF NOT EXISTS cp_suggested_priority varchar(10) NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS care_package_assessment_app_uq
+  ON public.care_packages(cp_assessment_app_id);
 
 ALTER TABLE public.appointments
   ADD COLUMN IF NOT EXISTS cp_id integer NULL REFERENCES public.care_packages(cp_id),
