@@ -34,8 +34,10 @@ jobs:
           cache: npm
           cache-dependency-path: BackEnd/backendsana/package-lock.json
       - run: npm ci --ignore-scripts
+      - name: Build backend for OpenAPI
+        run: npm run build
       - name: Generate OpenAPI contract
-        run: npm run openapi:generate
+        run: node dist/openapi/generate-openapi.js
       - name: Lint OpenAPI contract
         run: npx @redocly/cli lint openapi/openapi.json
       - name: Build interactive HTML documentation
