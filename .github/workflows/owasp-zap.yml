@@ -41,6 +41,7 @@ jobs:
           # Baseline reports passive findings. Enforce individual rules only
           # after they have been triaged in a versioned ZAP rules file.
           fail_action: false
+          allow_issue_writing: false
           artifact_name: owasp-zap-html-report
       - name: Upload ZAP HTML and JSON reports
         if: always()
