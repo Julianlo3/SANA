@@ -22,7 +22,12 @@ Object.assign(process.env, {
 
 try {
   console.info('[openapi] Creating the Nest application context.');
-  const app = await NestFactory.create(AppModule, { logger: false });
+  // Prevent Nest from calling process.exit(1) before the catch block can show
+  // the actual bootstrap error in CI logs.
+  const app = await NestFactory.create(AppModule, {
+    logger: false,
+    abortOnError: false,
+  });
   app.setGlobalPrefix('api/v1');
 
   const config = new DocumentBuilder()
