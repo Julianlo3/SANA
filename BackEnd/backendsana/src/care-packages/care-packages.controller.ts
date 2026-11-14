@@ -3,6 +3,7 @@ import type { Request } from 'express'; import { JwtAuthGuard } from '../auth/jw
 @Controller('care-packages') @UseGuards(OriginGuard,JwtAuthGuard,RolesGuard)
 export class CarePackagesController { constructor(private readonly service:CarePackagesService) {}
  @Post() @Roles(UserRole.Secretary) create(@Body() dto:CreateCarePackageDto,@Req() r:Request&{user:any}){return this.service.create(dto,r.user.personId)}
+ @Get() @Roles(UserRole.Secretary) findAll(){return this.service.findAll()}
  @Get(':id') @Roles(UserRole.Secretary,UserRole.Psychologist) find(@Param('id',ParseIntPipe) id:number){return this.service.find(id)}
  @Get(':id/availability') @Roles(UserRole.Requester) availability(@Param('id',ParseIntPipe) id:number,@Query() q:any,@Req() r:Request&{user:any}){return this.service.availability(id,r.user.personId,q)}
  @Post(':id/appointments') @Roles(UserRole.Secretary) schedule(@Param('id',ParseIntPipe) id:number,@Body() dto:SchedulePackageAppointmentDto,@Req() r:Request&{user:any}){return this.service.scheduleAppointment(id,dto,{secretaryId:r.user.personId})}

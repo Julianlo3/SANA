@@ -17,6 +17,32 @@ export class CarePackagesService {
       return rows[0];
     });
   }
+  /** Lists every package for the secretary's management view. */
+  async findAll() {
+    return this.db.query<any[]>(
+      `SELECT
+         cp.cp_id AS "id",
+         cp.cp_state AS state,
+         cp.cp_session_limit AS "sessionLimit",
+         cp.cp_priority AS priority,
+         cp.cp_created_at AS "createdAt",
+         cp.cp_closed_at AS "closedAt",
+         cp.psy_id AS "psychologistId",
+         psy.per_name AS "psychologistName",
+         CASE WHEN cp.cp_patient_dependent_id IS NOT NULL THEN 'dependent' ELSE 'self' END AS "patientType",
+         COALESCE(dep.dep_name, patient.per_name) AS "patientName",
+         COUNT(a.app_id) FILTER (WHERE a.app_state = 'realizada')::int AS "completedSessions",
+         COUNT(a.app_id) FILTER (WHERE a.app_state IN ('asignada', 'confirmada'))::int AS "reservedSessions"
+       FROM care_packages cp
+       LEFT JOIN appointments assessment ON assessment.app_id = cp.cp_assessment_app_id
+       LEFT JOIN person patient ON patient.per_id = cp.cp_patient_person_id
+       LEFT JOIN dependents dep ON dep.dep_id = cp.cp_patient_dependent_id
+       LEFT JOIN person psy ON psy.per_id = cp.psy_id
+       LEFT JOIN appointments a ON a.cp_id = cp.cp_id
+       GROUP BY cp.cp_id, psy.per_name, dep.dep_name, patient.per_name
+       ORDER BY CASE cp.cp_state WHEN 'activo' THEN 0 ELSE 1 END, cp.cp_created_at DESC`,
+    );
+  }
   async find(id:number) { const row=(await this.db.query<any[]>(`SELECT cp_id AS "id",cp_state AS state,cp_session_limit AS "sessionLimit",cp_priority AS priority,psy_id AS "psychologistId",cp_patient_person_id AS "patientPersonId",cp_patient_dependent_id AS "patientDependentId" FROM care_packages WHERE cp_id=$1`,[id]))[0]; if(!row) throw new NotFoundException('Paquete no encontrado'); return row; }
   async availability(id:number, requesterId:number, query:any) { const p=await this.find(id); const allowed=await this.db.query<any[]>(`SELECT 1 FROM care_packages cp LEFT JOIN requester_dependent rd ON rd.dep_id=cp.cp_patient_dependent_id WHERE cp.cp_id=$1 AND (cp.cp_patient_person_id=$2 OR rd.req_id=$2)`,[id,requesterId]); if(!allowed.length) throw new NotFoundException('Paquete no encontrado'); return this.schedule.findAvailability({...query, psychologistIds:String(p.psychologistId)}); }
   async scheduleAppointment(id: number, dto: SchedulePackageAppointmentDto, actor: { requesterId?: number; secretaryId?: number }) {
