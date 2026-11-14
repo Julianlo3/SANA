@@ -1125,6 +1125,31 @@ export class AppointmentsRepository {
   }
 
   /**
+   * Auto-completes a care package if all its sessions are completed.
+   * @param appId The completed appointment ID.
+   */
+  async autoCompleteCarePackage(appId: number): Promise<void> {
+    await this.dataSource.query(
+      `UPDATE care_packages cp
+       SET cp_state = 'finalizado',
+           cp_closed_at = now(),
+           cp_close_reason = 'Completadas todas las sesiones del paquete'
+       WHERE cp.cp_id = (SELECT cp_id FROM appointments WHERE app_id = $1)
+         AND cp.cp_state = 'activo'
+         AND (
+           SELECT COUNT(*)::int
+           FROM appointments a
+           WHERE a.cp_id = cp.cp_id AND a.app_state = 'realizada'
+         ) >= cp.cp_session_limit
+         AND NOT EXISTS (
+           SELECT 1 FROM appointments a
+           WHERE a.cp_id = cp.cp_id AND a.app_state IN ('asignada', 'confirmada')
+         )`,
+      [appId],
+    );
+  }
+
+  /**
    * Cancels a confirmed appointment only when it belongs to the requester, and removes its schedule occupancy.
    * @param appId The ID of the appointment to cancel.
    * @param requesterId The ID of the person requesting the cancellation.

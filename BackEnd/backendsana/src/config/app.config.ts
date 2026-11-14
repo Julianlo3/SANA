@@ -13,9 +13,15 @@ export const appConfig = (): TypeOrmModuleOptions => ({
   password: process.env.DATABASE_PASSWORD,
   database: process.env.DATABASE_NAME,
   ssl:
-    process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
+    process.env.DATABASE_SSL === 'true'
+      ? { rejectUnauthorized: false }
+      : false,
   autoLoadEntities: true,
   synchronize: false,
+
+  // Evita conectarse a PostgreSQL al generar OpenAPI.
+  manualInitialization:
+    process.env.GENERATE_OPENAPI === 'true',
 });
 
 /**

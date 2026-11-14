@@ -1,0 +1,16 @@
+/* Oculta los bloques de descripción vacíos que generan saltos dobles */
+dd.tsd-member-summary:empty {
+  display: none !important;
+}
+
+/* Lista más compacta y limpia de módulos/elementos */
+.tsd-member-summaries {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.tsd-member-summary {
+  margin: 0 !important;
+}
+

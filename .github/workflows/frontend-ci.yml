@@ -1,0 +1,54 @@
+name: Frontend CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'FrontEnd/sana/**'
+      - '.github/workflows/frontend-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'FrontEnd/sana/**'
+      - '.github/workflows/frontend-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: FrontEnd/sana
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: FrontEnd/sana/package-lock.json
+      - run: npm ci --ignore-scripts
+      - name: Lint
+        run: npm run lint
+      - name: Type-check
+        run: npx tsc --noEmit
+      - name: Test with HTML coverage
+        run: npx vitest run --coverage --coverage.reporter=html --coverage.reporter=lcov --coverage.reporter=json-summary
+      - name: Build
+        run: npm run build
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage-html
+          path: FrontEnd/sana/coverage/
+          if-no-files-found: warn
+          retention-days: 30

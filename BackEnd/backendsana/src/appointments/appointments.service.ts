@@ -847,8 +847,56 @@ export class AppointmentsService {
     }
     const updated = await this.findByIdOrFail(appId);
 
+    try {
+      await this.repo.autoCompleteCarePackage(appId);
+    } catch (e) {
+      this.logger.warn(`Failed to auto-complete care package for appId-${appId}: ${e}`);
+    }
+
     this.logger.log(
       `Module:appointments, Function:markAsCompleted, result-success: appId-${appId}, psychologistId-${psychologistId}`,
+    );
+
+    return updated;
+  }
+
+  /**
+   * Protected endpoint: Psychologist marks an appointment as no-show (no_asistio).
+   * @param appId The ID of the appointment to mark as no-show.
+   * @param psychologistId The ID of the psychologist marking it.
+   * @returns A promise resolving to the updated appointment.
+   */
+  async markAsNoShow(
+    appId: number,
+    psychologistId: number,
+  ): Promise<AppointmentRow> {
+    const appointment = await this.findByIdOrFail(appId);
+
+    if (appointment.psychologistId !== psychologistId) {
+      throw new BadRequestException({
+        error: 'NOT_ASSIGNED_PSYCHOLOGIST',
+        message: 'Solo el psicólogo asignado puede registrar la inasistencia a la cita',
+      });
+    }
+
+    if (appointment.appState !== 'confirmada') {
+      throw new BadRequestException({
+        error: 'APPOINTMENT_NOT_CONFIRMED',
+        message: 'Solo se pueden registrar inasistencias en citas confirmadas',
+      });
+    }
+
+    const transitioned = await this.repo.updateState(appId, 'no_asistio');
+    if (!transitioned) {
+      throw new ConflictException({
+        error: 'APPOINTMENT_STATE_CHANGED',
+        message: 'La cita cambió de estado y ya no puede marcarse como no asistida',
+      });
+    }
+    const updated = await this.findByIdOrFail(appId);
+
+    this.logger.log(
+      `Module:appointments, Function:markAsNoShow, result-success: appId-${appId}, psychologistId-${psychologistId}`,
     );
 
     return updated;

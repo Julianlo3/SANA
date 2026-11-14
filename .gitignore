@@ -6,3 +6,5 @@ build/
 coverage/
 *.zip
 *.tsbuildinfo
+BackEnd/backendsana/openapi/
+BackEnd/backendsana/reports/

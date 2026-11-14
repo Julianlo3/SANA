@@ -194,6 +194,25 @@ export class AppointmentsController {
   }
 
   /**
+   * Protected endpoint: Psychologist marks an appointment as no-show (no_asistio).
+   * @param request The HTTP request object.
+   * @param id The ID of the appointment to mark as no-show.
+   * @returns A promise resolving to the updated appointment.
+   */
+  @Patch(':id/no-show')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Psychologist)
+  markAsNoShow(
+    @Req() request: Request & { user: AuthenticatedUser },
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    this.logger.log(
+      `Module:appointments, Function:markAsNoShow, result-start: appId-${id}, psychologistId-${request.user.personId}`,
+    );
+    return this.appointmentsService.markAsNoShow(id, request.user.personId);
+  }
+
+  /**
    * Protected endpoint: Psychologist gets their assigned appointments.
    * Only returns accepted (confirmada) appointments by default, unless filtered by state.
    * @param request The HTTP request object.
