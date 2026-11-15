@@ -28,6 +28,22 @@ function setup() {
 }
 
 describe('CarePackagesService', () => {
+  describe('findAll', () => {
+    it('groups the patient identity fields selected by the package list query', async () => {
+      const { service, queryMock } = setup();
+      queryMock.mockResolvedValueOnce([]);
+
+      await service.findAll();
+
+      const [query] = queryMock.mock.calls[0];
+      expect(query).toContain('dep.dep_id');
+      expect(query).toContain('patient.per_id');
+      expect(query).toMatch(
+        /GROUP BY\s+cp\.cp_id,\s+psy\.per_name,\s+dep\.dep_name,\s+dep\.dep_id,\s+patient\.per_name,\s+patient\.per_id/,
+      );
+    });
+  });
+
   describe('suggest', () => {
     it('throws NotFoundException when valuation appointment does not exist', async () => {
       const { service, queryMock } = setup();

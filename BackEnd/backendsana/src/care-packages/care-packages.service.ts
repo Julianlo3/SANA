@@ -372,7 +372,13 @@ export class CarePackagesService {
        LEFT JOIN person psy ON psy.per_id = cp.psy_id
        LEFT JOIN appointments a ON a.cp_id = cp.cp_id
        ${stateFilter}
-       GROUP BY cp.cp_id, psy.per_name, dep.dep_name, patient.per_name
+       GROUP BY
+         cp.cp_id,
+         psy.per_name,
+         dep.dep_name,
+         dep.dep_id,
+         patient.per_name,
+         patient.per_id
        ORDER BY
          CASE cp.cp_state
            WHEN 'sugerido' THEN 1

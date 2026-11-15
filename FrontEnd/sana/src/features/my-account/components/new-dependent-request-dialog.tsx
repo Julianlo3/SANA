@@ -101,6 +101,7 @@ export default function NewDependentRequestDialog({
         </fieldset>
 
         <AppointmentModeField
+          department={request.residenceDepartment}
           value={request.appType}
           error={request.errors.appType}
           onChange={request.setAppType}

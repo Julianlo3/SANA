@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { CalendarCheck, Home, LogOut, UserRound } from "lucide-react";
+import { CalendarCheck, Home, LogOut, PackageCheck, UserRound } from "lucide-react";
 import { requireAnyRole } from "@/lib/auth-guard";
 import AccountTermsGate from "@/features/my-account/components/account-terms-gate";
 
@@ -57,6 +57,13 @@ export default async function RequesterLayout({
           >
             <UserRound size={14} aria-hidden />
             Mis datos
+          </Link>
+          <Link
+            href="/mi-cuenta#mis-paquetes"
+            className="inline-flex items-center gap-1 rounded-full px-3 py-2 text-xs font-bold text-white transition hover:bg-white/10"
+          >
+            <PackageCheck size={14} aria-hidden />
+            Mis paquetes
           </Link>
           <span className="hidden text-sm font-semibold text-white sm:block">
             {user.fullName}

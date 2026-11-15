@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { getDepartmentFromResidenceZone } from "@/config/residence-zones";
 import { submitConsultationRequest } from "@/features/consultation-requests/services/consultation-requests-service";
 import type {
   AppointmentMode,
@@ -63,14 +64,17 @@ export function useNewRequest(profile: OwnProfile, onCreated: () => void) {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const missing = useMemo(() => missingProfileData(profile), [profile]);
+  const residenceDepartment = getDepartmentFromResidenceZone(
+    profile.residenceZone,
+  );
 
   const errors = useMemo(
     () => ({
-      appType: validateAppointmentMode(appType),
+      appType: validateAppointmentMode(appType, residenceDepartment),
       reason: validateConsultationReason(reason),
       accepted: validateDataPolicy(accepted),
     }),
-    [appType, reason, accepted],
+    [appType, reason, accepted, residenceDepartment],
   );
 
   const visibleErrors = wasSubmitted
@@ -123,6 +127,7 @@ export function useNewRequest(profile: OwnProfile, onCreated: () => void) {
     accepted,
     setAccepted,
     errors: visibleErrors,
+    residenceDepartment,
     isSaving,
     submitError,
     submit,

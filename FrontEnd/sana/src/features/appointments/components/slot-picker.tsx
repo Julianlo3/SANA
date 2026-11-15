@@ -59,6 +59,8 @@ type Props = {
   readonly selection: SlotSelection | null;
   /** Updates or clears the current selection. */
   readonly onSelect: (selection: SlotSelection | null) => void;
+  /** Current patient-specific streaks, keyed by psychologist identifier. */
+  readonly streakByPsychologistId?: ReadonlyMap<number, number>;
   /** Disables all calendar and selection interactions. */
   readonly disabled?: boolean;
 };
@@ -121,6 +123,7 @@ export default function SlotPicker({
   defaultDate,
   selection,
   onSelect,
+  streakByPsychologistId,
   disabled = false,
 }: Props) {
   const today = colombiaToday();
@@ -527,6 +530,12 @@ export default function SlotPicker({
                         {psychologist.speciality && (
                           <span className="ml-1 text-xs opacity-80">
                             · {psychologist.speciality}
+                          </span>
+                        )}
+                        {streakByPsychologistId?.has(psychologist.id) && (
+                          <span className="ml-1 text-xs opacity-80">
+                            · racha{" "}
+                            {streakByPsychologistId.get(psychologist.id)}
                           </span>
                         )}
                       </button>

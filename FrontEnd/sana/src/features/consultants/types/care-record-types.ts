@@ -15,6 +15,8 @@ export type PsychologistAppointment = Pick<
   Appointment,
   | "appId"
   | "appState"
+  | "appKind"
+  | "carePackageId"
   | "appType"
   | "appDate"
   | "appDuration"

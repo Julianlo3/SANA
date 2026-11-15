@@ -441,6 +441,11 @@ export default function WeeklyAvailabilityPage({ psyTermsAccepted }: Props) {
             "Cargando términos…"
           )}
         </div>
+        {terms.acceptError && (
+          <div className="mt-4">
+            <InlineMessage tone="error">{terms.acceptError}</InlineMessage>
+          </div>
+        )}
         <div className="mt-6">
           <Button onClick={terms.accept} disabled={terms.isAccepting}>
             {terms.isAccepting ? "Guardando…" : "Acepto y continúo"}

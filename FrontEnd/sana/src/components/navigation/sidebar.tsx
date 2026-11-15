@@ -56,6 +56,7 @@ const LINKS_BY_ROLE: Record<string, NavLink[]> = {
     { label: "Solicitudes", href: "/solicitudes", icon: Inbox },
     { label: "Calendario", href: "/calendario", icon: Calendar },
     { label: "Consultantes", href: "/consultantes", icon: Users },
+    { label: "Paquetes", href: "/paquetes", icon: ClipboardCheck },
   ],
 
 };

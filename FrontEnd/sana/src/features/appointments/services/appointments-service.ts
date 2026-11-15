@@ -7,6 +7,7 @@ import type {
   AvailabilityQuery,
   AvailabilitySlot,
   DiscardAppointmentPayload,
+  PatientPsychologistHistory,
   PublicAvailabilitySlot,
   PsychologistOption,
 } from "../types/appointment-types";
@@ -58,6 +59,22 @@ export async function getAppointment(
   signal?: AbortSignal,
 ): Promise<Appointment> {
   return httpClient.get<Appointment>(ENDPOINTS.appointment(id), signal);
+}
+
+/**
+ * Retrieves completed appointment history for the patient in an appointment.
+ * @param id Appointment identifier used by the backend to identify the patient.
+ * @param signal Optional request cancellation signal.
+ * @returns Psychologist history and current streaks for that patient.
+ */
+export async function getPatientPsychologistHistory(
+  id: number,
+  signal?: AbortSignal,
+): Promise<PatientPsychologistHistory[]> {
+  return httpClient.get<PatientPsychologistHistory[]>(
+    ENDPOINTS.appointmentPsychologistHistory(id),
+    signal,
+  );
 }
 
 /**
