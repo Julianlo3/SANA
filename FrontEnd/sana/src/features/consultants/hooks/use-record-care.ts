@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ApiError } from "@/types/api-types";
-import type { PackagePriority } from "@/features/care-packages/types/care-package-types";
+import type {
+  PackagePriority,
+  SuggestCarePackagePayload,
+} from "@/features/care-packages/types/care-package-types";
 import {
   completeAppointment,
   listPsychologistAppointments,
@@ -20,6 +23,62 @@ import { validateObservation } from "../validation/care-record-validation";
  */
 function messageFrom(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
+}
+
+function getPackageSuggestion(
+  appId: number,
+  isAssessment: boolean,
+  packagePriority: PackagePriority | "",
+  suggestedSessionLimit: string,
+): {
+  suggestion: SuggestCarePackagePayload | null;
+  validationError?: string;
+} {
+  if (!isAssessment) return { suggestion: null };
+
+  const parsedSessionLimit =
+    suggestedSessionLimit.trim() === ""
+      ? undefined
+      : Number(suggestedSessionLimit);
+  if (
+    !packagePriority ||
+    parsedSessionLimit === undefined ||
+    !Number.isInteger(parsedSessionLimit) ||
+    parsedSessionLimit < 1
+  ) {
+    return {
+      suggestion: null,
+      validationError:
+        "Selecciona la prioridad e indica un número entero de citas sugeridas mayor que cero.",
+    };
+  }
+
+  return {
+    suggestion: {
+      assessmentAppointmentId: appId,
+      priority: packagePriority,
+      sessionLimit: parsedSessionLimit,
+    },
+  };
+}
+
+async function completeAppointmentForRecord(
+  appId: number,
+  packageSuggestion: SuggestCarePackagePayload | null,
+): Promise<void> {
+  if (packageSuggestion) {
+    await suggestPackageAfterAssessment(packageSuggestion);
+    return;
+  }
+  await completeAppointment(appId);
+}
+
+function completionErrorFallback(
+  packageSuggestion: SuggestCarePackagePayload | null,
+): string {
+  return packageSuggestion
+    ? "No pudimos guardar la prioridad y sugerir el paquete."
+    : "No pudimos marcar la cita como realizada. Intenta de nuevo.";
 }
 
 /**
@@ -121,49 +180,30 @@ export function useRecordCare(preselectedId: number | null) {
       return;
     }
 
-    const parsedSessionLimit =
-      suggestedSessionLimit.trim() === ""
-        ? undefined
-        : Number(suggestedSessionLimit);
-    if (
-      isAssessment &&
-      (!packagePriority ||
-        parsedSessionLimit === undefined ||
-        !Number.isInteger(parsedSessionLimit) ||
-        parsedSessionLimit < 1)
-    ) {
-      setSubmitError(
-        "Selecciona la prioridad e indica un número entero de citas sugeridas mayor que cero.",
-      );
+    const packageSuggestionResult = getPackageSuggestion(
+      appId,
+      isAssessment,
+      packagePriority,
+      suggestedSessionLimit,
+    );
+    if (packageSuggestionResult.validationError) {
+      setSubmitError(packageSuggestionResult.validationError);
       return;
     }
-    const packageSuggestion =
-      isAssessment && packagePriority && parsedSessionLimit !== undefined
-        ? {
-            assessmentAppointmentId: appId,
-            priority: packagePriority,
-            sessionLimit: parsedSessionLimit,
-          }
-        : null;
+    const packageSuggestion = packageSuggestionResult.suggestion;
 
     setIsSaving(true);
     setSubmitError(null);
 
     if (!completedIds.includes(appId)) {
       try {
-        if (packageSuggestion) {
-          await suggestPackageAfterAssessment(packageSuggestion);
-        } else {
-          await completeAppointment(appId);
-        }
+        await completeAppointmentForRecord(appId, packageSuggestion);
         setCompletedIds((current) => [...current, appId]);
       } catch (error: unknown) {
         setSubmitError(
           messageFrom(
             error,
-            packageSuggestion
-              ? "No pudimos guardar la prioridad y sugerir el paquete."
-              : "No pudimos marcar la cita como realizada. Intenta de nuevo.",
+            completionErrorFallback(packageSuggestion),
           ),
         );
         setIsSaving(false);

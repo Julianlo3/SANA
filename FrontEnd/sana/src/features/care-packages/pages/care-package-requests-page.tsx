@@ -47,6 +47,14 @@ const STATE_LABELS: Record<CarePackageState, string> = {
   cancelado: "Cancelado",
 };
 
+const STATE_ACCENT_CLASSES: Record<CarePackageState, string> = {
+  sugerido: "bg-accent",
+  activo: "bg-success-soft",
+  rechazado: "bg-border",
+  finalizado: "bg-primary",
+  cancelado: "bg-border",
+};
+
 const PRIORITY_LABELS: Record<PackagePriority, string> = {
   alta: "Alta",
   media: "Media",
@@ -313,15 +321,7 @@ export default function CarePackageRequestsPage() {
             >
               <div
                 aria-hidden
-                className={`h-1.5 ${
-                  carePackage.state === "sugerido"
-                    ? "bg-accent"
-                    : carePackage.state === "activo"
-                    ? "bg-success-soft"
-                    : carePackage.state === "finalizado"
-                      ? "bg-primary"
-                      : "bg-border"
-                }`}
+                className={`h-1.5 ${STATE_ACCENT_CLASSES[carePackage.state]}`}
               />
               <div className="p-5">
                 <div className="flex items-start justify-between gap-3">
