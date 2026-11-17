@@ -21,12 +21,14 @@ import { UserRole } from '../models/user-role.enum.js';
 import { ConsultantsService } from './consultants.service.js';
 import { CreateConsultantDto } from './dto/create-consultant.dto.js';
 import { UpdateConsultantDto } from './dto/update-consultant.dto.js';
+import { ApiControllerDocs } from '../openapi/api-controller-docs.decorator.js';
 
 /**
  * Consultant controller
  * All endpoints are protected for the secretary role
  */
 @Controller('consultants')
+@ApiControllerDocs('Consultants', true)
 @UseGuards(OriginGuard, JwtAuthGuard, RolesGuard)
 @Roles(UserRole.Secretary)
 export class ConsultantsController {

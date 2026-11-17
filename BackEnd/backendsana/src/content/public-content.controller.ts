@@ -2,11 +2,13 @@ import { Controller, Get, UseGuards } from '@nestjs/common';
 import { RateLimitGuard } from '../guards/rate-limit.guard.js';
 import { RateLimit } from '../middlewares/rate-limit.decorator.js';
 import { ContentService } from './content.service.js';
+import { ApiControllerDocs } from '../openapi/api-controller-docs.decorator.js';
 
 /**
  * Read-only endpoints for the public site. No session required.
  */
 @Controller('public/content')
+@ApiControllerDocs('Public content')
 @UseGuards(RateLimitGuard)
 @RateLimit({ limit: 120, windowSeconds: 60 })
 export class PublicContentController {

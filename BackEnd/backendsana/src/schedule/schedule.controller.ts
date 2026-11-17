@@ -22,11 +22,13 @@ import { ScheduleService } from './schedule.service.js';
 import { PolicyService } from '../policy/policy.service.js';
 import { CreateScheduleBlockDto } from './dto/create-schedule-block.dto.js';
 import { CreateRecurringScheduleBlockDto } from './dto/create-recurring-schedule-block.dto.js';
+import { ApiControllerDocs } from '../openapi/api-controller-docs.decorator.js';
 
 /**
  * Controller for managing schedule blocks and recurring schedule blocks for psychologists.
  */
 @Controller('schedule')
+@ApiControllerDocs('Psychologist schedule', true)
 @UseGuards(OriginGuard, JwtAuthGuard, RolesGuard)
 @Roles(UserRole.Psychologist)
 export class ScheduleController {

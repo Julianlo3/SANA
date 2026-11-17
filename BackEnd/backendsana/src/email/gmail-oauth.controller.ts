@@ -12,20 +12,28 @@ import { ConfigService } from '@nestjs/config';
 import { google } from 'googleapis';
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Response } from 'express';
+import { ApiQuery } from '@nestjs/swagger';
 import { RateLimitGuard } from '../guards/rate-limit.guard.js';
 import { RateLimit } from '../middlewares/rate-limit.decorator.js';
+import { ApiControllerDocs } from '../openapi/api-controller-docs.decorator.js';
 
 const GMAIL_SEND_SCOPE = 'https://www.googleapis.com/auth/gmail.send';
 const CALENDAR_EVENTS_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 const STATE_TTL_MS = 10 * 60 * 1000;
 
 @Controller('auth/google')
+@ApiControllerDocs('Google OAuth setup')
 @UseGuards(RateLimitGuard)
 export class GmailOAuthController {
   constructor(private readonly configService: ConfigService) {}
 
   /** Starts the one-time OAuth consent flow used to configure Gmail delivery. */
   @Get()
+  @ApiQuery({
+    name: 'setup_key',
+    required: true,
+    description: 'One-time setup secret configured by the administrator.',
+  })
   @RateLimit({ limit: 5, windowSeconds: 300 })
   start(@Query('setup_key') setupKey: string) {
     const config = this.readConfig();
@@ -48,6 +56,21 @@ export class GmailOAuthController {
 
   /** Exchanges Google's one-time authorization code for a Gmail refresh token. */
   @Get('callback')
+  @ApiQuery({
+    name: 'code',
+    required: false,
+    description: 'Authorization code returned by Google.',
+  })
+  @ApiQuery({
+    name: 'state',
+    required: false,
+    description: 'Signed, time-limited state returned by the OAuth flow.',
+  })
+  @ApiQuery({
+    name: 'error',
+    required: false,
+    description: 'OAuth error returned by Google, if authorization failed.',
+  })
   @RateLimit({ limit: 10, windowSeconds: 300 })
   async callback(
     @Query('code') code: string | undefined,

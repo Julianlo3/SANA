@@ -4,13 +4,13 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'BackEnd/backendsana/**'
-      - '.github/workflows/api-documentation.yml'
+      - "BackEnd/backendsana/**"
+      - ".github/workflows/api-documentation.yml"
   push:
     branches: [main]
     paths:
-      - 'BackEnd/backendsana/**'
-      - '.github/workflows/api-documentation.yml'
+      - "BackEnd/backendsana/**"
+      - ".github/workflows/api-documentation.yml"
   workflow_dispatch:
 
 permissions:
@@ -34,14 +34,8 @@ jobs:
           cache: npm
           cache-dependency-path: BackEnd/backendsana/package-lock.json
       - run: npm ci --ignore-scripts
-      - name: Build backend for OpenAPI
-        run: npm run build
-      - name: Generate OpenAPI contract
-        run: node dist/openapi/generate-openapi.js
-      - name: Lint OpenAPI contract
-        run: npx @redocly/cli lint openapi/openapi.json
-      - name: Build interactive HTML documentation
-        run: npx @redocly/cli build-docs openapi/openapi.json --output reports/openapi/index.html
+      - name: Generate and validate OpenAPI documentation
+        run: npm run docs:api
       - name: Prepare documentation artifact
         run: |
           mkdir -p reports/site

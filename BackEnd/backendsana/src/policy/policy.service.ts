@@ -101,10 +101,8 @@ export class PolicyService {
 
   /**
    * Checks if a person has accepted a specific policy type.
-   * @param personId The ID of the person.
-   * @param policyType The type of policy to check.
-   * @param dependentId Optional dependent ID to check acceptance for.
-   * @param appointmentId Optional appointment ID to check acceptance for.
+   * @param params The person, policy type, and optional dependent or
+   * appointment context to check.
    * @returns A promise that resolves to true if accepted, false otherwise.
    */
   async hasAcceptedPolicy(params: {

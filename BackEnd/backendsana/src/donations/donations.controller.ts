@@ -10,6 +10,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiBody, ApiParam } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { OriginGuard } from '../guards/origin.guard.js';
@@ -20,8 +21,10 @@ import { Roles } from '../middlewares/roles.decorator.js';
 import { UserRole } from '../models/user-role.enum.js';
 import { DonationsService } from './donations.service.js';
 import { CreateDonationCheckoutDto } from './dto/create-donation-checkout.dto.js';
+import { ApiControllerDocs } from '../openapi/api-controller-docs.decorator.js';
 
 @Controller('donations')
+@ApiControllerDocs('Donations')
 export class DonationsController {
   constructor(private readonly donationsService: DonationsService) {}
 
@@ -45,6 +48,10 @@ export class DonationsController {
    * POST /api/v1/donations/webhooks/wompi
    */
   @Post('webhooks/wompi')
+  @ApiBody({
+    description: 'Signed Wompi transaction event payload.',
+    schema: { type: 'object', additionalProperties: true },
+  })
   @HttpCode(HttpStatus.OK)
   receiveWompiEvent(
     @Headers('x-event-checksum') checksum: string | undefined,
@@ -59,6 +66,7 @@ export class DonationsController {
    * GET /api/v1/donations
    */
   @Get()
+  @ApiBearerAuth()
   @UseGuards(OriginGuard, JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Administrator)
   findAll() {
@@ -70,6 +78,12 @@ export class DonationsController {
    * GET /api/v1/donations/:transactionId
    */
   @Get(':transactionId')
+  @ApiBearerAuth()
+  @ApiParam({
+    name: 'transactionId',
+    description: 'Wompi transaction identifier.',
+    type: String,
+  })
   @UseGuards(OriginGuard, JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Administrator)
   findByTransactionId(@Param('transactionId') transactionId: string) {

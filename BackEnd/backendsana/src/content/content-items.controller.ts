@@ -9,11 +9,13 @@ import { Section } from '../middlewares/section.decorator.js';
 import { UserRole } from '../models/user-role.enum.js';
 import { ContentService } from './content.service.js';
 import { UpdateContentItemsDto } from './dto/update-content-items.dto.js';
+import { ApiControllerDocs } from '../openapi/api-controller-docs.decorator.js';
 
 /**
  * Controller for single-value institutional content (mission and vision).
  */
 @Controller('content-items')
+@ApiControllerDocs('Content items', true)
 @UseGuards(OriginGuard, JwtAuthGuard, RolesGuard)
 @Roles(UserRole.Administrator, UserRole.Marketing)
 @Section('Content Management')

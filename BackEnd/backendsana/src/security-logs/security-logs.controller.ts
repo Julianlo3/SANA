@@ -5,12 +5,14 @@ import { RolesGuard } from '../guards/roles.guard.js';
 import { Roles } from '../middlewares/roles.decorator.js';
 import { UserRole } from '../models/user-role.enum.js';
 import { SecurityLogService } from './security-log.service.js';
+import { ApiControllerDocs } from '../openapi/api-controller-docs.decorator.js';
 
 /**
  * Controller for security logs management.
  * Access restricted to administrators only.
  */
 @Controller('security-logs')
+@ApiControllerDocs('Security logs', true)
 @UseGuards(OriginGuard, JwtAuthGuard, RolesGuard)
 @Roles(UserRole.Administrator)
 export class SecurityLogsController {

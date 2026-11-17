@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { ScheduleService } from '../schedule/schedule.service.js';
+import type { CarePackageAvailabilityQueryDto } from './dto/care-package.dto.js';
 import type {
   ApproveCarePackageDto,
   CloseCarePackageDto,
@@ -510,7 +511,7 @@ export class CarePackagesService {
   async availability(
     id: number,
     actor: { requesterId?: number; secretaryId?: number },
-    query: any,
+    query: CarePackageAvailabilityQueryDto,
   ) {
     const p = await this.find(id, actor);
     return this.schedule.findAvailability({

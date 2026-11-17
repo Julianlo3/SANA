@@ -23,11 +23,13 @@ import { UserRole } from '../../models/user-role.enum.js';
 import { UpdatePublicationStatusDto } from '../news/news.dto.js';
 import { CreateGalleryImageDto, UpdateGalleryImageDto } from './gallery.dto.js';
 import { GalleryService } from './gallery.service.js';
+import { ApiControllerDocs } from '../../openapi/api-controller-docs.decorator.js';
 
 /**
  * Controller for managing gallery images from the admin panel.
  */
 @Controller('gallery-images')
+@ApiControllerDocs('Gallery management', true)
 @UseGuards(OriginGuard, JwtAuthGuard, RolesGuard)
 @Roles(UserRole.Administrator, UserRole.Marketing)
 @Section('Content Management')
