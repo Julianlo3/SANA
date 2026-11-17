@@ -14,6 +14,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
+import { ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard, OptionalJwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { OriginGuard } from '../guards/origin.guard.js';
 import { RolesGuard } from '../guards/roles.guard.js';
@@ -30,11 +31,13 @@ import { TakeSlotDto } from './dto/take-slot.dto.js';
 import { PublicScheduleAvailabilityQueryDto } from '../schedule/dto/public-schedule-availability-query.dto.js';
 import { RateLimit } from '../middlewares/rate-limit.decorator.js';
 import { RateLimitGuard } from '../guards/rate-limit.guard.js';
+import { ApiControllerDocs } from '../openapi/api-controller-docs.decorator.js';
 
 /**
  * controller for handling appointment-related HTTP requests.
  */
 @Controller('appointments')
+@ApiControllerDocs('Appointments')
 @UseGuards(OriginGuard)
 export class AppointmentsController {
   private readonly logger = new Logger(AppointmentsController.name);
@@ -82,6 +85,7 @@ export class AppointmentsController {
    * @returns A promise resolving to the list of available relationships.
    */
   @Get('relationships')
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Psychologist)
   findRelationships() {
@@ -95,6 +99,12 @@ export class AppointmentsController {
    * @returns A promise resolving to the list of appointments.
    */
   @Get()
+  @ApiBearerAuth()
+  @ApiQuery({
+    name: 'state',
+    required: false,
+    description: 'Filter appointments by their current state.',
+  })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Secretary)
   findAll(@Query('state') state?: string) {
@@ -107,6 +117,7 @@ export class AppointmentsController {
    * @returns A promise resolving to the list of requested appointments.
    */
   @Get('my-requests')
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Requester)
   findMyRequests(@Req() request: Request & { user: AuthenticatedUser }) {
@@ -121,6 +132,7 @@ export class AppointmentsController {
    * @returns A promise resolving to the withdrawn or cancelled appointment.
    */
   @Patch(':id/cancel')
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Requester)
   cancelOwnAppointment(
@@ -145,6 +157,7 @@ export class AppointmentsController {
    * @returns A promise resolving to the result message.
    */
   @Patch(':id/select-slot')
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Requester)
   selectSlot(
@@ -167,6 +180,7 @@ export class AppointmentsController {
    * @returns A promise resolving to the list of available psychologists.
    */
   @Get('psychologists')
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Secretary)
   findPsychologists() {
@@ -181,6 +195,7 @@ export class AppointmentsController {
    * @returns A promise resolving to the updated appointment.
    */
   @Patch(':id/complete')
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Psychologist)
   markAsCompleted(
@@ -200,6 +215,7 @@ export class AppointmentsController {
    * @returns A promise resolving to the updated appointment.
    */
   @Patch(':id/no-show')
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Psychologist)
   markAsNoShow(
@@ -220,6 +236,13 @@ export class AppointmentsController {
    * @returns A promise resolving to the list of appointments.
    */
   @Get('my-appointments')
+  @ApiBearerAuth()
+  @ApiQuery({
+    name: 'state',
+    required: false,
+    enum: ['confirmada', 'realizada', 'cancelada'],
+    description: 'Filter the psychologist appointments by state.',
+  })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Psychologist)
   findMyAppointments(
@@ -235,6 +258,7 @@ export class AppointmentsController {
    * @returns A promise resolving to the appointment details.
    */
   @Get(':id')
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Secretary)
   findOne(@Param('id', ParseIntPipe) id: number) {
@@ -250,6 +274,7 @@ export class AppointmentsController {
    * @returns A promise resolving to the confirmed appointment.
    */
   @Patch(':id/confirm')
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Secretary)
   confirm(
@@ -275,6 +300,7 @@ export class AppointmentsController {
    * @returns A promise resolving to the assigned appointment.
    */
   @Patch(':id/assign')
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Secretary)
   assign(
@@ -297,6 +323,7 @@ export class AppointmentsController {
    * @returns A promise resolving to the discarded appointment.
    */
   @Patch(':id/discard')
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Secretary)
   discard(
@@ -315,6 +342,7 @@ export class AppointmentsController {
    * @returns A promise resolving to the updated appointment.
    */
   @Patch(':id/status')
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Secretary)
   updateStatus(
@@ -335,6 +363,7 @@ export class AppointmentsController {
    * @returns A promise resolving to the psychologist history for that patient.
    */
   @Get(':id/psychologist-history')
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Secretary)
   findPatientPsychologistHistory(@Param('id', ParseIntPipe) id: number) {
@@ -349,6 +378,7 @@ export class AppointmentsController {
    * @returns A promise resolving to the appointment details.
    */
   @Get('my-appointments/:id')
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Psychologist)
   findMyAppointmentById(

@@ -25,11 +25,13 @@ import { ContentService } from './content.service.js';
 import { ContentCardsQueryDto } from './dto/content-cards-query.dto.js';
 import { CreateContentCardDto } from './dto/create-content-card.dto.js';
 import { UpdateContentCardDto } from './dto/update-content-card.dto.js';
+import { ApiControllerDocs } from '../openapi/api-controller-docs.decorator.js';
 
 /**
  * Controller for list-based institutional content: values, team, services and programs.
  */
 @Controller('content-cards')
+@ApiControllerDocs('Content cards', true)
 @UseGuards(OriginGuard, JwtAuthGuard, RolesGuard)
 @Roles(UserRole.Administrator, UserRole.Marketing)
 @Section('Content Management')

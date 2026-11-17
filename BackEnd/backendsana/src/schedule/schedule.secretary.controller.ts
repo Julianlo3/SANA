@@ -13,11 +13,13 @@ import { Roles } from '../middlewares/roles.decorator.js';
 import { UserRole } from '../models/user-role.enum.js';
 import { ScheduleService } from './schedule.service.js';
 import { ScheduleAvailabilityQueryDto } from './dto/schedule-availability-query.dto.js';
+import { ApiControllerDocs } from '../openapi/api-controller-docs.decorator.js';
 
 /**
  * Controller for handling scheduling-related HTTP requests for secretaries.
  */
 @Controller('schedule')
+@ApiControllerDocs('Secretary schedule', true)
 @UseGuards(OriginGuard, JwtAuthGuard, RolesGuard)
 @Roles(UserRole.Secretary)
 export class ScheduleSecretaryController {

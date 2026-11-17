@@ -1,8 +1,9 @@
 import { Controller, Get } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AppService } from './app.service.js';
+import { ApiControllerDocs } from './openapi/api-controller-docs.decorator.js';
 
-@ApiTags('Health')
+@ApiControllerDocs('Health')
 @Controller()
 /** Exposes the lightweight root and health-check endpoints for the API. */
 export class AppController {

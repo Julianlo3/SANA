@@ -10,16 +10,16 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
 import { OriginGuard } from '../guards/origin.guard.js';
 import { RateLimitGuard } from '../guards/rate-limit.guard.js';
 import type { AuthenticatedUser } from './auth.interface.js';
 import { Section } from '../middlewares/section.decorator.js';
 import { AuthService } from './auth.service.js';
+import { ApiControllerDocs } from '../openapi/api-controller-docs.decorator.js';
 
-@ApiTags('Authentication')
-@ApiBearerAuth()
+@ApiControllerDocs('Authentication', true)
 @Controller('auth')
 @Section('Authentication Service')
 @UseGuards(OriginGuard, RateLimitGuard)

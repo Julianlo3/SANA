@@ -3,7 +3,8 @@ import { DataSource, EntityManager } from 'typeorm';
 import { toBogotaParts } from '../schedule/schedule.repository.js';
 import type { AcceptanceChannel } from '../policy/acceptance-channel.js';
 
-type QueryExecutor = DataSource | EntityManager;
+/** Query executor accepted by appointment repository methods. */
+export type QueryExecutor = DataSource | EntityManager;
 
 export interface AppointmentRequesterParams {
   name: string;

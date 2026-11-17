@@ -3,11 +3,13 @@ import { RateLimitGuard } from '../../guards/rate-limit.guard.js';
 import { RateLimit } from '../../middlewares/rate-limit.decorator.js';
 import { PublicNewsQueryDto } from './news.dto.js';
 import { NewsService } from './news.service.js';
+import { ApiControllerDocs } from '../../openapi/api-controller-docs.decorator.js';
 
 /**
  * Read-only news endpoints for the public site. Only published news are returned.
  */
 @Controller('public/news')
+@ApiControllerDocs('Public news')
 @UseGuards(RateLimitGuard)
 @RateLimit({ limit: 120, windowSeconds: 60 })
 export class PublicNewsController {

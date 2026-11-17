@@ -14,11 +14,13 @@ import { Section } from '../../middlewares/section.decorator.js';
 import { UserRole } from '../../models/user-role.enum.js';
 import { CloudinaryService } from './cloudinary.service.js';
 import { CreateImageUploadSignatureDto } from './create-image-upload-signature.dto.js';
+import { ApiControllerDocs } from '../../openapi/api-controller-docs.decorator.js';
 
 /**
  * Issues signatures so the admin panel can upload images directly to Cloudinary.
  */
 @Controller('image-upload-signatures')
+@ApiControllerDocs('Image uploads', true)
 @UseGuards(OriginGuard, JwtAuthGuard, RolesGuard)
 @Roles(UserRole.Administrator, UserRole.Marketing)
 @Section('Content Management')
