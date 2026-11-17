@@ -35,8 +35,9 @@ const STATE_ACCENT: Record<AppointmentState, string> = {
 };
 
 /**
- * Displays a user's appointment request and its current assignment details.
- * @param props Component properties.
+ * Renders a card displaying the details of a request, including its state, type, date, and associated actions such as cancellation or withdrawal.
+ * @param param0 The props object containing the request and onCancel callback.
+ * @returns The JSX element representing the request card.
  */
 export default function RequestCard({ request, onCancel }: Props) {
   const ModeIcon = request.appType === "virtual" ? Video : MapPin;

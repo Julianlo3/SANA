@@ -24,13 +24,25 @@ import { hasActiveSelfCarePackage } from "../lib/appointment-request-eligibility
 import type { MyRequest } from "../types/my-account-types";
 
 /**
- * Defines the active states.
+ * Set of appointment states considered "active" for the purpose of displaying them in the active appointments section.
  */
 const ACTIVE_STATES = new Set(["pendiente", "asignada", "confirmada"]);
+/**
+ * Number of appointments to display per page in the "My Requests" section.
+ */
 const APPOINTMENTS_PER_PAGE = 4;
+/**
+ * Filter value representing all patients in the "My Requests" section.
+ */
 const ALL_PATIENTS_FILTER = "all";
+/**
+ * Filter value representing the current user (self) in the "My Requests" section.
+ */
 const SELF_PATIENT_FILTER = "self";
 
+/**
+ * Type representing the possible patient filters in the "My Requests" section. It can be "all" for all patients, "self" for the current user, or "dependent:<name>" for a specific dependent.
+ */
 type PatientFilter =
   | typeof ALL_PATIENTS_FILTER
   | typeof SELF_PATIENT_FILTER
@@ -50,7 +62,10 @@ function isPatientFilter(value: string): value is PatientFilter {
 }
 
 /**
- * Uses appointment creation time to break ties, newest first.
+ * Orders appointments by creation date, newest first. Used as a tiebreaker for other comparators.
+ * @param left First appointment.
+ * @param right Second appointment.
+ * @returns A comparator result.
  */
 function compareByCreatedAt(left: MyRequest, right: MyRequest): number {
   return right.appCreatedAt.localeCompare(left.appCreatedAt);
@@ -58,6 +73,9 @@ function compareByCreatedAt(left: MyRequest, right: MyRequest): number {
 
 /**
  * Orders active appointments by scheduled date, with undated appointments first.
+ * @param left First appointment.
+ * @param right Second appointment.
+ * @returns A comparator result.
  */
 function compareActiveAppointments(left: MyRequest, right: MyRequest): number {
   if (left.appDate === null && right.appDate !== null) return -1;
@@ -71,7 +89,10 @@ function compareActiveAppointments(left: MyRequest, right: MyRequest): number {
 }
 
 /**
- * Orders historical appointments by date, newest first.
+ * Orders historical appointments by scheduled date, newest first. Undated appointments are ordered by creation date.
+ * @param left First appointment.
+ * @param right Second appointment.
+ * @returns A comparator result.
  */
 function compareHistoricalAppointments(
   left: MyRequest,
@@ -110,9 +131,8 @@ function activeSummary(count: number): string {
 }
 
 /**
- * Reusable section that displays the consultant's appointments/requests,
- * along with the actions to cancel or create a new one. Requires the
- * user to have the "consultant" role in the backend.
+ * Renders the "My Requests" section of the user account page, displaying active and historical appointment requests, along with options to create new requests or cancel existing ones.
+ * @returns The JSX element representing the "My Requests" section.
  */
 export default function MyRequestsSection() {
   const profile = useOwnProfile();

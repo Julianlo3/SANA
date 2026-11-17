@@ -15,8 +15,9 @@ type Props = {
 };
 
 /**
- * Requests confirmation before cancelling an appointment or withdrawing a request.
- * @param props Component properties.
+ * Renders a dialog for confirming the cancellation of a request.
+ * @param param0 The props object containing the request, isSaving boolean, onConfirm callback, and onClose callback.
+ * @returns The JSX element representing the cancel request dialog.
  */
 export default function CancelRequestDialog({
   request,
