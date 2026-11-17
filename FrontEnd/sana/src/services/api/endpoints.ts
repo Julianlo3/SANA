@@ -7,6 +7,11 @@ export const ENDPOINTS = {
   userStatus: (id: number) => `/users/${id}/status`,
   roles: "/roles",
   reportsSummary: "/reports/summary",
+  reportsGeneral: "/reports/general",
+  reportsAppointmentsEvolution: "/reports/appointments-evolution",
+  reportsAttendance: "/reports/attendance",
+  reportsDonationsHistory: "/reports/donations-history",
+  reportsDonationsEvolution: "/reports/donations-evolution",
 
   // Public consultation request endpoints.
   consultationRequests: "/appointments/request",
