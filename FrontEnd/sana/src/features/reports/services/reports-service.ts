@@ -6,6 +6,55 @@ import type {
 } from "../types/report-types";
 
 type ReportKind = ReportResponse["kind"];
+type ReportData<Kind extends ReportKind> = Extract<
+  ReportResponse,
+  { kind: Kind }
+>["data"];
+type ReportLoader = (
+  url: string,
+  signal?: AbortSignal,
+) => Promise<ReportResponse>;
+
+/**
+ * Wraps typed report data in its discriminated response.
+ * @param fetchData Typed endpoint data loader.
+ * @param createResponse Builds the response for the matching report type.
+ * @returns A loader that returns the matching report response.
+ */
+function createReportLoader<Kind extends ReportKind>(
+  fetchData: (
+    url: string,
+    signal?: AbortSignal,
+  ) => Promise<ReportData<Kind>>,
+  createResponse: (
+    data: ReportData<Kind>,
+  ) => Extract<ReportResponse, { kind: Kind }>,
+): ReportLoader {
+  return async (url, signal) => createResponse(await fetchData(url, signal));
+}
+
+const reportLoaders = {
+  general: createReportLoader<"general">(
+    (url, signal) => httpClient.get<ReportData<"general">>(url, signal),
+    (data) => ({ kind: "general", data }),
+  ),
+  appointments: createReportLoader<"appointments">(
+    (url, signal) => httpClient.get<ReportData<"appointments">>(url, signal),
+    (data) => ({ kind: "appointments", data }),
+  ),
+  attendance: createReportLoader<"attendance">(
+    (url, signal) => httpClient.get<ReportData<"attendance">>(url, signal),
+    (data) => ({ kind: "attendance", data }),
+  ),
+  "donations-history": createReportLoader<"donations-history">(
+    (url, signal) => httpClient.get<ReportData<"donations-history">>(url, signal),
+    (data) => ({ kind: "donations-history", data }),
+  ),
+  "donations-evolution": createReportLoader<"donations-evolution">(
+    (url, signal) => httpClient.get<ReportData<"donations-evolution">>(url, signal),
+    (data) => ({ kind: "donations-evolution", data }),
+  ),
+} satisfies Record<ReportKind, ReportLoader>;
 
 /**
  * Adds a query parameter when its value is defined and non-empty.
@@ -126,47 +175,5 @@ export async function getReport(
   signal?: AbortSignal,
 ): Promise<ReportResponse> {
   const url = buildReportUrl(kind, query);
-
-  switch (kind) {
-    case "general":
-      return {
-        kind,
-        data: await httpClient.get<Extract<ReportResponse, { kind: "general" }>["data"]>(
-          url,
-          signal,
-        ),
-      };
-    case "appointments":
-      return {
-        kind,
-        data: await httpClient.get<Extract<ReportResponse, { kind: "appointments" }>["data"]>(
-          url,
-          signal,
-        ),
-      };
-    case "attendance":
-      return {
-        kind,
-        data: await httpClient.get<Extract<ReportResponse, { kind: "attendance" }>["data"]>(
-          url,
-          signal,
-        ),
-      };
-    case "donations-history":
-      return {
-        kind,
-        data: await httpClient.get<Extract<ReportResponse, { kind: "donations-history" }>["data"]>(
-          url,
-          signal,
-        ),
-      };
-    case "donations-evolution":
-      return {
-        kind,
-        data: await httpClient.get<Extract<ReportResponse, { kind: "donations-evolution" }>["data"]>(
-          url,
-          signal,
-        ),
-      };
-  }
+  return reportLoaders[kind](url, signal);
 }
