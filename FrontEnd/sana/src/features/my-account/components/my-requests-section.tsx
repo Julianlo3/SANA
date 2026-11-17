@@ -50,6 +50,39 @@ function isPatientFilter(value: string): value is PatientFilter {
 }
 
 /**
+ * Uses appointment creation time to break ties, newest first.
+ */
+function compareByCreatedAt(left: MyRequest, right: MyRequest): number {
+  return right.appCreatedAt.localeCompare(left.appCreatedAt);
+}
+
+/**
+ * Orders active appointments by scheduled date, with undated appointments first.
+ */
+function compareActiveAppointments(left: MyRequest, right: MyRequest): number {
+  if (left.appDate === null && right.appDate !== null) return -1;
+  if (left.appDate !== null && right.appDate === null) return 1;
+
+  const dateOrder =
+    left.appDate && right.appDate
+      ? Date.parse(left.appDate) - Date.parse(right.appDate)
+      : 0;
+  return dateOrder || compareByCreatedAt(left, right);
+}
+
+/**
+ * Orders historical appointments by date, newest first.
+ */
+function compareHistoricalAppointments(
+  left: MyRequest,
+  right: MyRequest,
+): number {
+  const leftDate = Date.parse(left.appDate ?? left.appCreatedAt);
+  const rightDate = Date.parse(right.appDate ?? right.appCreatedAt);
+  return rightDate - leftDate || compareByCreatedAt(left, right);
+}
+
+/**
  * Sorts active appointments before history, then orders each group by relevance.
  * @param left First appointment.
  * @param right Second appointment.
@@ -60,25 +93,9 @@ function compareAppointments(left: MyRequest, right: MyRequest): number {
   const rightIsActive = ACTIVE_STATES.has(right.appState);
 
   if (leftIsActive !== rightIsActive) return leftIsActive ? -1 : 1;
-
-  if (leftIsActive) {
-    if (!left.appDate && right.appDate) return -1;
-    if (left.appDate && !right.appDate) return 1;
-    if (!left.appDate && !right.appDate) {
-      return right.appCreatedAt.localeCompare(left.appCreatedAt);
-    }
-
-    if (left.appDate && right.appDate) {
-      const dateOrder = Date.parse(left.appDate) - Date.parse(right.appDate);
-      return dateOrder || right.appCreatedAt.localeCompare(left.appCreatedAt);
-    }
-
-    return right.appCreatedAt.localeCompare(left.appCreatedAt);
-  }
-
-  const leftDate = Date.parse(left.appDate ?? left.appCreatedAt);
-  const rightDate = Date.parse(right.appDate ?? right.appCreatedAt);
-  return rightDate - leftDate || right.appCreatedAt.localeCompare(left.appCreatedAt);
+  return leftIsActive
+    ? compareActiveAppointments(left, right)
+    : compareHistoricalAppointments(left, right);
 }
 
 /**
@@ -245,15 +262,14 @@ export default function MyRequestsSection() {
                 Un espacio para acompañar tu bienestar y organizar la atención
                 de tu familia.
               </p>
-              <p
-                role="status"
+              <output
                 className="mt-3 inline-flex items-center gap-2 rounded-full bg-white/75 px-3 py-1.5 text-sm font-medium text-primary-dark"
               >
                 <CalendarDays size={15} aria-hidden />
                 {requests.isLoading
                   ? "Cargando tus citas…"
                   : activeSummary(activeCount)}
-              </p>
+              </output>
             </div>
           </div>
 
@@ -283,23 +299,21 @@ export default function MyRequestsSection() {
         </div>
 
         {arePackagesLoading && (
-          <p
+          <output
             id="self-request-package-loading"
-            role="status"
-            className="mt-4 text-sm text-text-muted"
+            className="mt-4 block text-sm text-text-muted"
           >
             Verificando si tienes un paquete activo…
-          </p>
+          </output>
         )}
         {selfHasActivePackage && (
-          <p
+          <output
             id="self-request-package-notice"
-            role="status"
-            className="mt-4 text-sm text-text-muted"
+            className="mt-4 block text-sm text-text-muted"
           >
             Tienes un paquete activo. Podrás solicitar una nueva valoración
             cuando el paquete se cierre.
-          </p>
+          </output>
         )}
         {packagesLoadError && (
           <div
