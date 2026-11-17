@@ -8,6 +8,81 @@ import type {
 type ReportKind = ReportResponse["kind"];
 
 /**
+ * Adds a query parameter when its value is defined and non-empty.
+ * @param params URL query parameters to update.
+ * @param key Query parameter name.
+ * @param value Optional parameter value.
+ * @returns Nothing.
+ */
+function setQueryParam(
+  params: URLSearchParams,
+  key: string,
+  value: string | number | undefined,
+): void {
+  if (value === undefined || value === "" || value === 0) return;
+  params.set(key, String(value));
+}
+
+/**
+ * Adds appointment-specific filters to the query.
+ * @param params URL query parameters to update.
+ * @param query Shared report query.
+ * @returns Nothing.
+ */
+function addAppointmentFilters(
+  params: URLSearchParams,
+  query: ReportQuery,
+): void {
+  params.set("dateBasis", query.dateBasis ?? "scheduled");
+  setQueryParam(params, "state", query.state);
+  setQueryParam(params, "modality", query.modality);
+  setQueryParam(params, "kind", query.kind);
+  setQueryParam(params, "psyId", query.psyId);
+}
+
+/**
+ * Adds attendance-specific filters to the query.
+ * @param params URL query parameters to update.
+ * @param query Shared report query.
+ * @returns Nothing.
+ */
+function addAttendanceFilters(
+  params: URLSearchParams,
+  query: ReportQuery,
+): void {
+  setQueryParam(params, "modality", query.modality);
+  setQueryParam(params, "kind", query.kind);
+  setQueryParam(params, "psyId", query.psyId);
+}
+
+/**
+ * Adds donation-history filters to the query.
+ * @param params URL query parameters to update.
+ * @param query Shared report query.
+ * @returns Nothing.
+ */
+function addDonationHistoryFilters(
+  params: URLSearchParams,
+  query: ReportQuery,
+): void {
+  setQueryParam(params, "status", query.status);
+  setQueryParam(params, "paymentMethod", query.paymentMethod);
+}
+
+/**
+ * Adds donation-evolution filters to the query.
+ * @param params URL query parameters to update.
+ * @param query Shared report query.
+ * @returns Nothing.
+ */
+function addDonationEvolutionFilters(
+  params: URLSearchParams,
+  query: ReportQuery,
+): void {
+  setQueryParam(params, "paymentMethod", query.paymentMethod);
+}
+
+/**
  * Builds an endpoint URL with shared and report-specific filters.
  * @param kind Report endpoint to query.
  * @param query Date range and report filters.
@@ -23,29 +98,17 @@ function buildReportUrl(kind: ReportKind, query: ReportQuery): string {
   };
   const params = new URLSearchParams({ preset: query.preset });
 
-  if (query.startDate) params.set("startDate", query.startDate);
-  if (query.endDate) params.set("endDate", query.endDate);
+  setQueryParam(params, "startDate", query.startDate);
+  setQueryParam(params, "endDate", query.endDate);
 
-  if (kind === "appointments") {
-    params.set("dateBasis", query.dateBasis ?? "scheduled");
-    if (query.state) params.set("state", query.state);
-    if (query.modality) params.set("modality", query.modality);
-    if (query.kind) params.set("kind", query.kind);
-    if (query.psyId) params.set("psyId", String(query.psyId));
-  }
-
-  if (kind === "attendance") {
-    if (query.modality) params.set("modality", query.modality);
-    if (query.kind) params.set("kind", query.kind);
-    if (query.psyId) params.set("psyId", String(query.psyId));
-  }
-
-  if (kind === "donations-history" || kind === "donations-evolution") {
-    if (query.status && kind === "donations-history") {
-      params.set("status", query.status);
-    }
-    if (query.paymentMethod) params.set("paymentMethod", query.paymentMethod);
-  }
+  const appendFilters: Record<ReportKind, () => void> = {
+    general: () => undefined,
+    appointments: () => addAppointmentFilters(params, query),
+    attendance: () => addAttendanceFilters(params, query),
+    "donations-history": () => addDonationHistoryFilters(params, query),
+    "donations-evolution": () => addDonationEvolutionFilters(params, query),
+  };
+  appendFilters[kind]();
 
   return `${endpointByKind[kind]}?${params.toString()}`;
 }

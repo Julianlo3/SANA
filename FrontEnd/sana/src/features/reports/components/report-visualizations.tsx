@@ -19,7 +19,9 @@ export type ReportMetric = {
  * @param metrics Metric values and supporting details.
  * @returns Summary metric cards.
  */
-export function MetricGrid({ metrics }: { metrics: ReportMetric[] }) {
+export function MetricGrid({
+  metrics,
+}: Readonly<{ metrics: ReportMetric[] }>) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {metrics.map((metric) => (
@@ -47,10 +49,10 @@ export function MetricGrid({ metrics }: { metrics: ReportMetric[] }) {
 export function ChartCard({
   title,
   children,
-}: {
+}: Readonly<{
   title: string;
   children: ReactNode;
-}) {
+}>) {
   return (
     <section className="min-w-0 rounded-2xl border border-border bg-surface p-5">
       <h3 className="font-display text-lg font-bold text-primary-dark">{title}</h3>
@@ -90,14 +92,14 @@ export function TrendChart({
   dateLabels = true,
   showDataPoints = true,
   expanded = false,
-}: {
+}: Readonly<{
   labels: string[];
   series: TrendSeries[];
   valueLabel?: (value: number) => string;
   dateLabels?: boolean;
   showDataPoints?: boolean;
   expanded?: boolean;
-}) {
+}>) {
   const allValues = series.flatMap((item) =>
     item.values.filter((value): value is number => value !== null),
   );
@@ -124,9 +126,11 @@ export function TrendChart({
       : left + (index / (labels.length - 1)) * (right - left);
   const yFor = (value: number) =>
     bottom - (value / maxValue) * (bottom - top);
-  const labelIndexes = expanded
-    ? labels.map((_, index) => index)
-    : [...new Set([0, Math.floor((labels.length - 1) / 2), labels.length - 1])];
+  const labelIndexes = labels.map((_, index) => index).filter((index) => {
+    if (expanded) return true;
+    const midpoint = Math.floor((labels.length - 1) / 2);
+    return index === 0 || index === midpoint || index === labels.length - 1;
+  });
   const gridFractions = expanded ? [0, 0.25, 0.5, 0.75, 1] : [0, 0.5, 1];
 
   return (
@@ -227,27 +231,28 @@ export function TrendChart({
             );
           })}
           {dateLabels &&
-            labelIndexes.map((index) => (
-              <text
-                key={labels[index]}
-                x={xFor(index)}
-                y={expanded ? "330" : "158"}
-                textAnchor={
-                  expanded
-                    ? "middle"
-                    : index === 0
-                      ? "start"
-                      : index === labels.length - 1
-                        ? "end"
-                        : "middle"
-                }
-                fill="var(--color-text-subtle)"
-                fontSize={expanded ? "12" : "9"}
-                fontWeight={expanded ? "600" : "400"}
-              >
-                {formatDateLabel(labels[index], /^\d{4}-\d{2}$/.test(labels[index]))}
-              </text>
-            ))}
+            labelIndexes.map((index) => {
+              let textAnchor: "start" | "middle" | "end" = "middle";
+              if (!expanded && index === 0) {
+                textAnchor = "start";
+              } else if (!expanded && index === labels.length - 1) {
+                textAnchor = "end";
+              }
+
+              return (
+                <text
+                  key={labels[index]}
+                  x={xFor(index)}
+                  y={expanded ? "330" : "158"}
+                  textAnchor={textAnchor}
+                  fill="var(--color-text-subtle)"
+                  fontSize={expanded ? "12" : "9"}
+                  fontWeight={expanded ? "600" : "400"}
+                >
+                  {formatDateLabel(labels[index], /^\d{4}-\d{2}$/.test(labels[index]))}
+                </text>
+              );
+            })}
         </svg>
       </div>
     </div>
@@ -265,11 +270,11 @@ export function BreakdownBars({
   items,
   emptyMessage = "No hay datos para este periodo.",
   onSelect,
-}: {
+}: Readonly<{
   items: { label: string; value: number; detail: string }[];
   emptyMessage?: string;
   onSelect?: (index: number) => void;
-}) {
+}>) {
   if (!items.length) {
     return (
       <p className="rounded-xl bg-surface-muted px-4 py-8 text-center text-sm text-text-subtle">
@@ -326,10 +331,10 @@ export function BreakdownBars({
 export function VerticalBreakdownBars({
   items,
   emptyMessage = "No hay datos para este periodo.",
-}: {
+}: Readonly<{
   items: { label: string; value: number; detail: string }[];
   emptyMessage?: string;
-}) {
+}>) {
   if (!items.length) {
     return (
       <p className="rounded-xl bg-surface-muted px-4 py-8 text-center text-sm text-text-subtle">
@@ -422,11 +427,11 @@ export function ReportTable({
   headers,
   rows,
   arrowPagination = false,
-}: {
+}: Readonly<{
   headers: string[];
   rows: ReportTableRow[];
   arrowPagination?: boolean;
-}) {
+}>) {
   const [page, setPage] = useState(0);
   const pageSize = 10;
   const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));

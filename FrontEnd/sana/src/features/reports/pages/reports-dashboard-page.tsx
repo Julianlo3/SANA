@@ -203,7 +203,9 @@ function getMoneyComparisonDetail(
  * @param metrics Metric values and details.
  * @returns Summary metric cards.
  */
-function SummaryMetrics({ metrics }: { metrics: ReportMetric[] }) {
+function SummaryMetrics({
+  metrics,
+}: Readonly<{ metrics: ReportMetric[] }>) {
   return <MetricGrid metrics={metrics} />;
 }
 
@@ -212,7 +214,9 @@ function SummaryMetrics({ metrics }: { metrics: ReportMetric[] }) {
  * @param report General report response.
  * @returns General report content.
  */
-function GeneralReportView({ report }: { report: GeneralManagementReport }) {
+function GeneralReportView({
+  report,
+}: Readonly<{ report: GeneralManagementReport }>) {
   const appointmentTimeline = report.timeline.filter(
     (item) => item.appointmentsCount > 0,
   );
@@ -298,10 +302,10 @@ function GeneralReportView({ report }: { report: GeneralManagementReport }) {
 function AppointmentsReportView({
   report,
   selectedState,
-}: {
+}: Readonly<{
   report: AppointmentsEvolutionReport;
   selectedState?: string;
-}) {
+}>) {
   const rows: ReportTableRow[] = report.records.map((record) => {
     const date =
       report.dateBasis === "created" ? record.createdAt : record.scheduledDate;
@@ -442,16 +446,17 @@ function AppointmentsReportView({
 function AttendanceReportView({
   report,
   onSelectPsychologist,
-}: {
+}: Readonly<{
   report: AttendanceReport;
   onSelectPsychologist: (psyId: number) => void;
-}) {
+}>) {
   const { metrics } = report;
   const comparison = metrics.comparisonWithPreviousAttendanceRate;
-  const compareDetail =
-    comparison.difference === null
-      ? "Sin comparación disponible"
-      : `${comparison.difference > 0 ? "+" : ""}${formatNumber(comparison.difference)} puntos porcentuales vs. periodo anterior`;
+  let compareDetail = "Sin comparación disponible";
+  if (comparison.difference !== null) {
+    const sign = comparison.difference > 0 ? "+" : "";
+    compareDetail = `${sign}${formatNumber(comparison.difference)} puntos porcentuales vs. periodo anterior`;
+  }
   const psychologistRows: ReportTableRow[] = report.byPsychologist.map((item) => ({
     id: item.psyId ?? item.psychologistName,
     cells: [
@@ -607,11 +612,11 @@ function DonationsHistoryView({
   report,
   selectedDonorKey,
   onDonorKeyChange,
-}: {
+}: Readonly<{
   report: DonationsHistoryReport;
   selectedDonorKey: string;
   onDonorKeyChange: (donorKey: string) => void;
-}) {
+}>) {
   const { summary } = report;
   const donorOptions = getDonorFilterOptions(report.transactions);
   const effectiveDonorKey = donorOptions.some(
@@ -745,9 +750,9 @@ function DonationsHistoryView({
  */
 function DonationsEvolutionView({
   report,
-}: {
+}: Readonly<{
   report: DonationsEvolutionReport;
-}) {
+}>) {
   const { summary, comparisonWithPrevious } = report;
   const monthlyTrend = buildMonthlyDonationTrend(report.timeline, report.period);
   const metrics: ReportMetric[] = [
@@ -857,7 +862,7 @@ function ReportFilters({
   onChange,
   onSelectPsychologist,
   onClearPsychologist,
-}: {
+}: Readonly<{
   activeKind: ReportKind;
   query: ReportQuery;
   psychologists: PsychologistFilterOption[];
@@ -865,7 +870,7 @@ function ReportFilters({
   onChange: (next: ReportQuery) => void;
   onSelectPsychologist: (psyId: number) => void;
   onClearPsychologist: () => void;
-}) {
+}>) {
   const select = (
     label: string,
     value: string,
@@ -1050,11 +1055,11 @@ function PaymentMethodFilter({
   value,
   options,
   onApply,
-}: {
+}: Readonly<{
   value: string;
   options: PaymentMethodOption[];
   onApply: (value: string) => void;
-}) {
+}>) {
   const selectedLabel =
     options.find(
       (option) => option.value.toLocaleLowerCase("es-CO") === value.toLocaleLowerCase("es-CO"),
@@ -1100,30 +1105,30 @@ function PaymentMethodFilter({
           />
         </label>
         {suggestionsOpen && matchingOptions.length > 0 && (
-          <ul
+          <div
             id="payment-method-options"
             role="listbox"
+            aria-label="Medios de pago disponibles"
             className="absolute z-20 mt-1 max-h-52 w-full overflow-y-auto rounded-xl border border-border bg-surface py-1 shadow-lg"
           >
             {matchingOptions.map((option) => (
-              <li key={option.value} role="presentation">
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={option.value === value}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => {
-                    setDraft(option.label);
-                    setSuggestionsOpen(false);
-                    onApply(option.value);
-                  }}
-                  className="w-full px-3 py-2 text-left text-sm text-text hover:bg-surface-muted"
-                >
-                  {option.label}
-                </button>
-              </li>
+              <button
+                key={option.value}
+                type="button"
+                role="option"
+                aria-selected={option.value === value}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  setDraft(option.label);
+                  setSuggestionsOpen(false);
+                  onApply(option.value);
+                }}
+                className="w-full px-3 py-2 text-left text-sm text-text hover:bg-surface-muted"
+              >
+                {option.label}
+              </button>
             ))}
-          </ul>
+          </div>
         )}
       </div>
       <button
@@ -1229,14 +1234,17 @@ export default function ReportsDashboardPage() {
     response?.kind === "donations-history"
       ? getPaymentMethodOptions(response.data)
       : null;
-  const availablePaymentMethods =
+  let availablePaymentMethods = reportPaymentMethodOptions ?? [];
+  if (paymentMethodOptions.length) {
+    availablePaymentMethods = paymentMethodOptions;
+  }
+  if (
     reportPaymentMethodOptions &&
     query.paymentMethod === undefined &&
     query.status === undefined
-      ? reportPaymentMethodOptions
-      : paymentMethodOptions.length
-        ? paymentMethodOptions
-        : reportPaymentMethodOptions ?? [];
+  ) {
+    availablePaymentMethods = reportPaymentMethodOptions;
+  }
 
   const period = getReportPeriod(response);
   const activeTab = TABS.find((tab) => tab.kind === activeSection) ?? TABS[0];

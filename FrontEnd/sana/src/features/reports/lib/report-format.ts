@@ -77,17 +77,18 @@ export function formatSignedPercent(value: number | null): string {
  * @returns Localized date label, or the original value if invalid.
  */
 export function formatDateLabel(value: string, monthOnly = false): string {
-  const dateValue = /^\d{4}-\d{2}$/.test(value)
-    ? `${value}-15T12:00:00`
-    : /^\d{4}-\d{2}-\d{2}$/.test(value)
-      ? `${value}T12:00:00`
-      : value;
+  let dateValue = value;
+  if (/^\d{4}-\d{2}$/.test(value)) {
+    dateValue = `${value}-15T12:00:00`;
+  } else if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    dateValue = `${value}T12:00:00`;
+  }
   const date = new Date(dateValue);
   if (Number.isNaN(date.getTime())) return value;
 
   return new Intl.DateTimeFormat("es-CO", {
     day: monthOnly ? undefined : "numeric",
-    month: monthOnly ? "short" : "short",
+    month: "short",
     year: "numeric",
     timeZone: "America/Bogota",
   }).format(date);

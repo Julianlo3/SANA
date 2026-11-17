@@ -43,16 +43,14 @@ function getMonthRange(startDate: string, endDate: string): string[] {
   const [startYear, startMonth] = firstMonth.split("-").map(Number);
   const [endYear, endMonth] = lastMonth.split("-").map(Number);
   const months: string[] = [];
-  let year = startYear;
-  let month = startMonth;
+  let monthIndex = startYear * 12 + startMonth - 1;
+  const lastMonthIndex = endYear * 12 + endMonth - 1;
 
-  while (year < endYear || (year === endYear && month <= endMonth)) {
+  while (monthIndex <= lastMonthIndex) {
+    const year = Math.floor(monthIndex / 12);
+    const month = (monthIndex % 12) + 1;
     months.push(`${year}-${String(month).padStart(2, "0")}`);
-    month += 1;
-    if (month > 12) {
-      year += 1;
-      month = 1;
-    }
+    monthIndex += 1;
   }
 
   return months;

@@ -57,4 +57,25 @@ describe("reports service", () => {
       undefined,
     );
   });
+
+  it("applies donation status only to history reports", async () => {
+    vi.mocked(httpClient.get).mockResolvedValue({});
+    const query = {
+      preset: "last_month" as const,
+      status: "PENDING",
+      paymentMethod: "NEQUI",
+    };
+
+    await getReport("donations-history", query);
+    expect(httpClient.get).toHaveBeenLastCalledWith(
+      `${ENDPOINTS.reportsDonationsHistory}?preset=last_month&status=PENDING&paymentMethod=NEQUI`,
+      undefined,
+    );
+
+    await getReport("donations-evolution", query);
+    expect(httpClient.get).toHaveBeenLastCalledWith(
+      `${ENDPOINTS.reportsDonationsEvolution}?preset=last_month&paymentMethod=NEQUI`,
+      undefined,
+    );
+  });
 });
