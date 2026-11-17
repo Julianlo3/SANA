@@ -10,13 +10,16 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
+import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
 import { OriginGuard } from '../guards/origin.guard.js';
 import { RateLimitGuard } from '../guards/rate-limit.guard.js';
 import type { AuthenticatedUser } from './auth.interface.js';
 import { Section } from '../middlewares/section.decorator.js';
 import { AuthService } from './auth.service.js';
+import { ApiControllerDocs } from '../openapi/api-controller-docs.decorator.js';
 
+@ApiControllerDocs('Authentication', true)
 @Controller('auth')
 @Section('Authentication Service')
 @UseGuards(OriginGuard, RateLimitGuard)
@@ -32,6 +35,9 @@ export class AuthController {
    */
   @Get('me')
   @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Returns current user profile' })
+  @ApiResponse({ status: 200, description: 'Returns current user profile' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   me(@Req() request: Request & { user: AuthenticatedUser }) {
     this.logger.log(
       `Module:auth, Function:me, result-success: userId-${request.user.userId}, email-${request.user.email}, roles-[${request.user.roles.join(',')}]`,
@@ -47,6 +53,9 @@ export class AuthController {
   @Patch('terms')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Accepts terms and conditions' })
+  @ApiResponse({ status: 200, description: 'Accepts terms and conditions' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async acceptTerms(@Req() request: Request & { user: AuthenticatedUser }) {
     this.logger.log(
       `Module:auth, Function:acceptTerms, result-start: userId-${request.user.userId}, personId-${request.user.personId}`,
@@ -67,6 +76,9 @@ export class AuthController {
   @Patch('psychologist-terms')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Accepts psychologist terms' })
+  @ApiResponse({ status: 200, description: 'Accepts psychologist terms' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async acceptPsychologistTerms(
     @Req() request: Request & { user: AuthenticatedUser },
   ) {
@@ -90,6 +102,9 @@ export class AuthController {
   @Delete('sessions/current')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Logs out current session' })
+  @ApiResponse({ status: 204, description: 'Logs out current session' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   logout(@Req() request: Request & { user: AuthenticatedUser }): void {
     this.logger.log(
       `Module:auth, Function:logout, result-success: userId-${request.user.userId}, email-${request.user.email}`,

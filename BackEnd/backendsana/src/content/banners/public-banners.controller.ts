@@ -2,11 +2,13 @@ import { Controller, Get, UseGuards } from '@nestjs/common';
 import { RateLimitGuard } from '../../guards/rate-limit.guard.js';
 import { RateLimit } from '../../middlewares/rate-limit.decorator.js';
 import { BannersService } from './banners.service.js';
+import { ApiControllerDocs } from '../../openapi/api-controller-docs.decorator.js';
 
 /**
  * Read-only banners endpoint for the public site. Only active banners are returned.
  */
 @Controller('public/banners')
+@ApiControllerDocs('Public banners')
 @UseGuards(RateLimitGuard)
 @RateLimit({ limit: 120, windowSeconds: 60 })
 export class PublicBannersController {

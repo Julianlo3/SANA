@@ -110,7 +110,6 @@ export class AuthRepository {
   /**
    * Finds an authorization record by the user's provider ID.
    * @param providerId The provider ID to search for.
-   * @param providerName The provider name (default: 'auth0').
    * @returns A promise resolving to the authorization record or null if not found.
    */
   async findByProviderId(providerId: string): Promise<AuthorizationRecord | null> {

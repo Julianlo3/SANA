@@ -9,12 +9,14 @@ import { RateLimitGuard } from '../guards/rate-limit.guard.js';
 import { RateLimit } from '../middlewares/rate-limit.decorator.js';
 import { ScheduleService } from './schedule.service.js';
 import { PublicScheduleAvailabilityQueryDto } from './dto/public-schedule-availability-query.dto.js';
+import { ApiControllerDocs } from '../openapi/api-controller-docs.decorator.js';
 
 /**
  * Controller for public schedule availability queries for consultants.
  * Returns only dates and time ranges in summary, without psychologist information.
  */
 @Controller('schedule')
+@ApiControllerDocs('Public schedule')
 @UseGuards(OriginGuard)
 export class SchedulePublicController {
   constructor(private readonly scheduleService: ScheduleService) {}

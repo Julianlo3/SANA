@@ -3,6 +3,33 @@ import { join } from 'node:path';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
+type ApiResponseDescription = { description?: string; $ref?: string };
+type ApiOperationDescription = {
+  summary?: string;
+  responses: Record<string, ApiResponseDescription>;
+};
+
+function isApiOperation(value: unknown): value is ApiOperationDescription {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    !('responses' in value) ||
+    typeof value.responses !== 'object' ||
+    value.responses === null
+  ) {
+    return false;
+  }
+
+  return Object.values(value.responses).every(
+    (response) =>
+      typeof response === 'object' &&
+      response !== null &&
+      (!('description' in response) ||
+        typeof response.description === 'string') &&
+      (!('$ref' in response) || typeof response.$ref === 'string'),
+  );
+}
+
 // This command creates the contract without starting an HTTP server or database.
 // They are placeholders solely to satisfy the application's environment validation.
 Object.assign(process.env, {
@@ -34,14 +61,43 @@ try {
 
   const config = new DocumentBuilder()
     .setTitle('SANA API')
-    .setDescription('Contrato HTTP generado automáticamente desde el backend SANA.')
+    .setDescription('HTTP API contract generated automatically from the SANA backend.')
     .setVersion(process.env.npm_package_version ?? '0.0.0')
-    .addServer('https://api.sana.example.com', 'Servidor de producción (referencia)')
-    .addBearerAuth()
+    .addServer(
+      process.env.OPENAPI_SERVER_URL ?? 'http://localhost:3000',
+      process.env.OPENAPI_SERVER_URL
+        ? 'Configured API server'
+        : 'Local development server',
+    )
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        description: 'Paste the access token issued by the identity provider.',
+      },
+      'bearer',
+    )
     .build();
 
   console.info('[openapi] Discovering routes and generating the contract.');
   const document = SwaggerModule.createDocument(app, config, { deepScanRoutes: true });
+  document.security = [];
+  for (const pathItem of Object.values(document.paths)) {
+    if (!pathItem) continue;
+    for (const operation of Object.values(pathItem)) {
+      if (!isApiOperation(operation)) continue;
+      for (const [status, response] of Object.entries(operation.responses)) {
+        if (!/^2\d\d$/.test(status) || '$ref' in response || response.description) {
+          continue;
+        }
+        response.description =
+          status === '204'
+            ? 'The operation succeeded and returned no content.'
+            : operation.summary ?? 'Successful response.';
+      }
+    }
+  }
   await mkdir('openapi', { recursive: true });
   await writeFile(
     join('openapi', 'openapi.json'),

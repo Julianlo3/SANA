@@ -20,12 +20,14 @@ import { Roles } from '../middlewares/roles.decorator.js';
 import { UserRole } from '../models/user-role.enum.js';
 import { ClinicalNotesService } from './clinical-notes.service.js';
 import { RegisterAttentionDto } from './dto/register-attention.dto.js';
+import { ApiControllerDocs } from '../openapi/api-controller-docs.decorator.js';
 
 /**
  * Controller for managing clinical notes
  * Access restricted to psychologists only
  */
 @Controller('clinical-notes')
+@ApiControllerDocs('Clinical notes', true)
 @UseGuards(OriginGuard, JwtAuthGuard, RolesGuard)
 @Roles(UserRole.Psychologist)
 export class ClinicalNotesController {

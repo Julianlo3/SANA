@@ -813,7 +813,7 @@ export class AppointmentsService {
   /**
    * Marks an appointment as completed (realizada).
    * @param appId The ID of the appointment to mark as completed.
-   * @param psychologistUserId The ID of the psychologist marking it as completed.
+   * @param psychologistId The ID of the psychologist marking it as completed.
    * @returns A promise resolving to the updated appointment.
    */
   async markAsCompleted(

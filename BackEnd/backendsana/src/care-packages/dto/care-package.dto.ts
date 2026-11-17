@@ -1,3 +1,4 @@
+import { PickType } from '@nestjs/swagger';
 import {
   IsEnum,
   IsInt,
@@ -7,6 +8,12 @@ import {
   IsString,
   MaxLength,
 } from 'class-validator';
+import { ScheduleAvailabilityQueryDto } from '../../schedule/dto/schedule-availability-query.dto.js';
+
+export class CarePackageAvailabilityQueryDto extends PickType(
+  ScheduleAvailabilityQueryDto,
+  ['appointmentStart', 'duration', 'delayHours'] as const,
+) {}
 
 export class SuggestCarePackageDto {
   @IsInt()

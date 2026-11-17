@@ -14,12 +14,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
+import { ApiOperation, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { OriginGuard } from '../guards/origin.guard.js';
 import { RolesGuard } from '../guards/roles.guard.js';
 import type { AuthenticatedUser } from '../auth/auth.interface.js';
 import { Roles } from '../middlewares/roles.decorator.js';
 import { UserRole } from '../models/user-role.enum.js';
+import { ApiControllerDocs } from '../openapi/api-controller-docs.decorator.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateOwnProfileDto } from './dto/update-own-profile.dto.js';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto.js';
@@ -36,6 +38,7 @@ const SELF_SERVICE_ROLES = [
 
 /** Exposes protected endpoints for user administration and self-service profiles. */
 @Controller('users')
+@ApiControllerDocs('Users', true)
 @UseGuards(OriginGuard, JwtAuthGuard, RolesGuard)
 @Roles(UserRole.Administrator)
 export class UsersController {
@@ -43,6 +46,7 @@ export class UsersController {
 
   @Get('me')
   @Roles(...SELF_SERVICE_ROLES)
+  @ApiOperation({ summary: "Get the authenticated user's profile" })
   /** Returns the current authenticated user's profile. */
   getOwnProfile(@Req() request: Request & { user: AuthenticatedUser }) {
     return this.usersService.getOwnProfile(
@@ -53,6 +57,7 @@ export class UsersController {
 
   @Patch('me')
   @Roles(...SELF_SERVICE_ROLES)
+  @ApiOperation({ summary: "Update the authenticated user's profile" })
   /** Updates the profile fields that the authenticated user may manage. */
   updateOwnProfile(
     @Req() request: Request & { user: AuthenticatedUser },
@@ -67,6 +72,7 @@ export class UsersController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create a user account' })
   /** Creates a user account on behalf of an administrator. */
   create(
     @Req() request: Request & { user: AuthenticatedUser },
@@ -76,6 +82,18 @@ export class UsersController {
   }
 
   @Get()
+  @ApiOperation({ summary: 'List users' })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['active', 'inactive'],
+    description: 'Filter users by account status.',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    description: 'Search users by name or contact details.',
+  })
   /** Lists users, optionally filtered by state or free-text search. */
   findAll(
     @Query('status') status?: 'active' | 'inactive',
@@ -85,18 +103,24 @@ export class UsersController {
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Get a user by ID' })
+  @ApiParam({ name: 'id', description: 'Person identifier.', type: Number })
   /** Retrieves a user by its person identifier. */
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.usersService.findOne(id);
   }
 
   @Patch(':id')
+  @ApiOperation({ summary: 'Update a user' })
+  @ApiParam({ name: 'id', description: 'Person identifier.', type: Number })
   /** Updates the administrator-managed fields of a user. */
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUserDto) {
     return this.usersService.update(id, dto);
   }
 
   @Patch(':id/status')
+  @ApiOperation({ summary: "Update a user's account status" })
+  @ApiParam({ name: 'id', description: 'Person identifier.', type: Number })
   /** Changes a user's account status and records the responsible administrator. */
   updateStatus(
     @Req() request: Request & { user: AuthenticatedUser },
@@ -108,6 +132,8 @@ export class UsersController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a user' })
+  @ApiParam({ name: 'id', description: 'Person identifier.', type: Number })
   /** Removes a user and records the administrator who performed the action. */
   remove(
     @Req() request: Request & { user: AuthenticatedUser },

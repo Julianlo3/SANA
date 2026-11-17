@@ -21,9 +21,11 @@ import type {
   ReportsSummary,
 } from './reports.interface.js';
 import { ReportsService } from './reports.service.js';
+import { ApiControllerDocs } from '../openapi/api-controller-docs.decorator.js';
 
 /** Exposes administrative, aggregate-only database reports. */
 @Controller('reports')
+@ApiControllerDocs('Reports', true)
 @Section('Reports')
 @UseGuards(OriginGuard, JwtAuthGuard, RolesGuard)
 @Roles(UserRole.Administrator)

@@ -26,11 +26,13 @@ import {
   UpdateBannerDto,
 } from './banners.dto.js';
 import { BannersService } from './banners.service.js';
+import { ApiControllerDocs } from '../../openapi/api-controller-docs.decorator.js';
 
 /**
  * Controller for managing home page banners from the admin panel.
  */
 @Controller('banners')
+@ApiControllerDocs('Banner management', true)
 @UseGuards(OriginGuard, JwtAuthGuard, RolesGuard)
 @Roles(UserRole.Administrator, UserRole.Marketing)
 @Section('Content Management')

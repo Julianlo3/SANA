@@ -10,6 +10,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { ApiParam, ApiQuery } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { OriginGuard } from '../guards/origin.guard.js';
@@ -18,8 +19,10 @@ import { Roles } from '../middlewares/roles.decorator.js';
 import { UserRole } from '../models/user-role.enum.js';
 import type { AuthenticatedUser } from '../auth/auth.interface.js';
 import { CarePackagesService } from './care-packages.service.js';
+import { ApiControllerDocs } from '../openapi/api-controller-docs.decorator.js';
 import {
   ApproveCarePackageDto,
+  CarePackageAvailabilityQueryDto,
   CloseCarePackageDto,
   CreateCarePackageDto,
   RejectCarePackageDto,
@@ -28,6 +31,7 @@ import {
 } from './dto/care-package.dto.js';
 
 @Controller('care-packages')
+@ApiControllerDocs('Care packages', true)
 @UseGuards(OriginGuard, JwtAuthGuard, RolesGuard)
 export class CarePackagesController {
   constructor(private readonly service: CarePackagesService) {}
@@ -66,6 +70,11 @@ export class CarePackagesController {
    * Secretary lists all packages (with optional ?state= filter).
    */
   @Get()
+  @ApiQuery({
+    name: 'state',
+    required: false,
+    description: 'Filter care packages by their current state.',
+  })
   @Roles(UserRole.Secretary)
   findAll(@Query('state') state?: string) {
     return this.service.findAll(state);
@@ -75,6 +84,7 @@ export class CarePackagesController {
    * Secretary approves a suggested package.
    */
   @Patch(':id/approve')
+  @ApiParam({ name: 'id', description: 'Care package identifier.', type: Number })
   @Roles(UserRole.Secretary)
   approve(
     @Param('id', ParseIntPipe) id: number,
@@ -88,6 +98,7 @@ export class CarePackagesController {
    * Secretary rejects a suggested package.
    */
   @Patch(':id/reject')
+  @ApiParam({ name: 'id', description: 'Care package identifier.', type: Number })
   @Roles(UserRole.Secretary)
   reject(
     @Param('id', ParseIntPipe) id: number,
@@ -113,6 +124,7 @@ export class CarePackagesController {
    * Details of a package.
    */
   @Get(':id')
+  @ApiParam({ name: 'id', description: 'Care package identifier.', type: Number })
   @Roles(UserRole.Secretary, UserRole.Psychologist, UserRole.Requester)
   find(
     @Param('id', ParseIntPipe) id: number,
@@ -125,10 +137,11 @@ export class CarePackagesController {
    * Availability for the package psychologist.
    */
   @Get(':id/availability')
+  @ApiParam({ name: 'id', description: 'Care package identifier.', type: Number })
   @Roles(UserRole.Requester, UserRole.Secretary)
   availability(
     @Param('id', ParseIntPipe) id: number,
-    @Query() q: any,
+    @Query() q: CarePackageAvailabilityQueryDto,
     @Req() r: Request & { user: AuthenticatedUser },
   ) {
     return this.service.availability(
@@ -142,6 +155,7 @@ export class CarePackagesController {
    * Secretary schedules an appointment inside the package.
    */
   @Post(':id/appointments')
+  @ApiParam({ name: 'id', description: 'Care package identifier.', type: Number })
   @Roles(UserRole.Secretary)
   schedule(
     @Param('id', ParseIntPipe) id: number,
@@ -157,6 +171,7 @@ export class CarePackagesController {
    * Consultant schedules an appointment inside their package.
    */
   @Post(':id/my-appointments')
+  @ApiParam({ name: 'id', description: 'Care package identifier.', type: Number })
   @Roles(UserRole.Requester)
   scheduleOwn(
     @Param('id', ParseIntPipe) id: number,
@@ -172,6 +187,7 @@ export class CarePackagesController {
    * Secretary finalizes a package.
    */
   @Patch(':id/finalize')
+  @ApiParam({ name: 'id', description: 'Care package identifier.', type: Number })
   @Roles(UserRole.Secretary)
   finalize(
     @Param('id', ParseIntPipe) id: number,
@@ -185,6 +201,7 @@ export class CarePackagesController {
    * Secretary cancels a package.
    */
   @Patch(':id/cancel')
+  @ApiParam({ name: 'id', description: 'Care package identifier.', type: Number })
   @Roles(UserRole.Secretary)
   cancel(
     @Param('id', ParseIntPipe) id: number,

@@ -27,11 +27,13 @@ import {
   UpdatePublicationStatusDto,
 } from './news.dto.js';
 import { NewsService } from './news.service.js';
+import { ApiControllerDocs } from '../../openapi/api-controller-docs.decorator.js';
 
 /**
  * Controller for managing news from the admin panel.
  */
 @Controller('news')
+@ApiControllerDocs('News management', true)
 @UseGuards(OriginGuard, JwtAuthGuard, RolesGuard)
 @Roles(UserRole.Administrator, UserRole.Marketing)
 @Section('Content Management')

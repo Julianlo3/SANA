@@ -102,12 +102,14 @@ export class UpdateNewsPinDto {
 }
 
 export class PublicNewsQueryDto {
+  /** One-based result page. */
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   page?: number;
 
+  /** Number of news items per page, from 1 to 30. */
   @IsOptional()
   @Type(() => Number)
   @IsInt()
