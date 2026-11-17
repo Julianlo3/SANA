@@ -38,11 +38,27 @@ export default function OwnProfileSection() {
       : "—";
 
   return (
-    <section id="mis-datos">
-      <h2 className="flex items-center gap-2 font-display text-2xl font-bold text-primary-dark">
-        <UserRound size={22} aria-hidden />
-        Mis datos
-      </h2>
+    <section
+      id="mis-datos"
+      aria-labelledby="own-profile-heading"
+      className="rounded-3xl border border-border bg-surface p-5 shadow-sm sm:p-7"
+    >
+      <header className="flex items-start gap-3">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary-dark">
+          <UserRound size={20} aria-hidden />
+        </span>
+        <div>
+          <h2
+            id="own-profile-heading"
+            className="font-display text-2xl font-bold text-primary-dark"
+          >
+            Mis datos
+          </h2>
+          <p className="mt-1 text-sm leading-relaxed text-text-muted">
+            Mantén actualizada tu información para facilitar el acompañamiento.
+          </p>
+        </div>
+      </header>
 
       {profile.isLoading && (
         <p className="mt-6 text-sm text-text-subtle">
@@ -57,7 +73,7 @@ export default function OwnProfileSection() {
       )}
 
       {profile.profile && (
-        <div className="mt-6 space-y-5 rounded-2xl border border-border bg-surface p-6 shadow-sm">
+        <div className="mt-6 space-y-5">
           <TextField
             label="Nombre completo"
             required

@@ -1,6 +1,9 @@
 import { ENDPOINTS } from "@/services/api/endpoints";
 import { httpClient } from "@/services/api/http-client";
-import { buildSlotDateTime, getColombiaToday } from "@/lib/date/slot-datetime";
+import {
+  buildSlotDateTime,
+  COLOMBIA_UTC_OFFSET,
+} from "@/lib/date/slot-datetime";
 import type { ConsultantAvailabilitySlot } from "@/features/consultation-requests/types/consultation-request-types";
 import type {
   ApproveCarePackagePayload,
@@ -12,6 +15,11 @@ import type {
   SuggestCarePackagePayload,
   SuggestCarePackageResult,
 } from "../types/care-package-types";
+
+/** Availability range shown by the package calendar, in hours. */
+const PACKAGE_AVAILABILITY_HOURS = 720;
+/** Duration of one care package session in minutes. */
+const PACKAGE_SESSION_DURATION_MINUTES = 60;
 
 /**
  * Lists persisted care packages for secretary management.
@@ -116,16 +124,26 @@ export async function getCarePackageAvailability(
   carePackageId: number,
   signal?: AbortSignal,
 ): Promise<ConsultantAvailabilitySlot[]> {
-  const today = getColombiaToday();
+  const offsetHours = Number(COLOMBIA_UTC_OFFSET.slice(0, 3));
+  const nextColombiaHour = new Date(
+    Date.now() + offsetHours * 60 * 60 * 1000,
+  );
+  nextColombiaHour.setUTCHours(nextColombiaHour.getUTCHours() + 1, 0, 0, 0);
+
+  const firstSlotStart = buildSlotDateTime(
+    nextColombiaHour.toISOString().slice(0, 10),
+    nextColombiaHour.toISOString().slice(11, 19),
+  );
   const params = new URLSearchParams({
-    appointmentStart: buildSlotDateTime(today, "00:00:00"),
-    delayHours: "720",
-    duration: "60",
+    appointmentStart: firstSlotStart,
+    delayHours: String(PACKAGE_AVAILABILITY_HOURS),
+    duration: String(PACKAGE_SESSION_DURATION_MINUTES),
   });
-  return httpClient.get<ConsultantAvailabilitySlot[]>(
+  const slots = await httpClient.get<ConsultantAvailabilitySlot[]>(
     `${ENDPOINTS.carePackageAvailability(carePackageId)}?${params.toString()}`,
     signal,
   );
+  return slots.map((slot) => ({ ...slot, date: slot.date.slice(0, 10) }));
 }
 
 /**

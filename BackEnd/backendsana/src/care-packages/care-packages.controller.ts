@@ -134,7 +134,11 @@ export class CarePackagesController {
   }
 
   /**
-   * Availability for the package psychologist.
+   * Lists up to 30 days of availability for the package psychologist.
+   * @param id Care package identifier.
+   * @param q Availability range and appointment duration.
+   * @param r Authenticated requester or secretary.
+   * @returns A promise resolving to the package psychologist's available slots.
    */
   @Get(':id/availability')
   @ApiParam({ name: 'id', description: 'Care package identifier.', type: Number })

@@ -3,7 +3,12 @@
 /**
  * Visual variants supported by the shared button component.
  */
-type Variant = "primary" | "secondary" | "danger";
+type Variant =
+  | "primary"
+  | "secondary"
+  | "danger"
+  | "brand-primary"
+  | "brand-outline";
 
 /**
  * Tailwind classes mapped to each button variant.
@@ -14,6 +19,10 @@ const variants: Record<Variant, string> = {
   secondary:
     "border border-border text-text-muted hover:border-text-muted hover:text-text",
   danger: "bg-red-600 text-white hover:bg-red-500",
+  "brand-primary":
+    "bg-navy text-white hover:bg-navy/90 disabled:bg-text-subtle",
+  "brand-outline":
+    "border-2 border-primary-dark bg-white/80 text-navy hover:bg-primary-soft",
 };
 
 /**

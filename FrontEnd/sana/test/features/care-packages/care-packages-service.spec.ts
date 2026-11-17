@@ -1,10 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ENDPOINTS } from "@/services/api/endpoints";
 import { httpClient } from "@/services/api/http-client";
 import {
   approveCarePackage,
   bookCarePackageAppointment,
   createCarePackage,
+  getCarePackageAvailability,
   listCarePackages,
   listCarePackageSuggestions,
   listMyCarePackages,
@@ -29,6 +30,8 @@ vi.mock("@/services/api/http-client", () => ({
 
 describe("care package service", () => {
   beforeEach(() => vi.clearAllMocks());
+
+  afterEach(() => vi.useRealTimers());
 
   it("loads managed packages from the secretary list endpoint", async () => {
     const packages = [
@@ -134,6 +137,34 @@ describe("care package service", () => {
       ENDPOINTS.carePackagesMine,
       signal,
     );
+  });
+
+  it("loads the 30-day calendar in one 720-hour request", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-17T17:29:00.000Z"));
+    vi.mocked(httpClient.get).mockResolvedValue([
+      { date: "2026-11-18T00:00:00.000Z", startTime: "10:00:00", endTime: "11:00:00" },
+    ]);
+
+    const slots = await getCarePackageAvailability(12);
+
+    expect(httpClient.get).toHaveBeenCalledTimes(1);
+    const firstUrl = new URL(
+      vi.mocked(httpClient.get).mock.calls[0][0],
+      "https://sana.example",
+    );
+    expect(firstUrl.searchParams.get("appointmentStart")).toBe(
+      "2026-11-17T13:00:00-05:00",
+    );
+    expect(firstUrl.searchParams.get("delayHours")).toBe("720");
+    expect(firstUrl.searchParams.get("duration")).toBe("60");
+    expect(httpClient.get).toHaveBeenCalledWith(
+      `${ENDPOINTS.carePackageAvailability(12)}?${firstUrl.searchParams.toString()}`,
+      undefined,
+    );
+    expect(slots).toEqual([
+      { date: "2026-11-18", startTime: "10:00:00", endTime: "11:00:00" },
+    ]);
   });
 
   it("books an appointment with both package linkage fields", async () => {

@@ -1,19 +1,39 @@
-import { PickType } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsEnum,
+  IsDateString,
   IsInt,
   IsNotEmpty,
   IsOptional,
   IsPositive,
   IsString,
+  Max,
   MaxLength,
+  Min,
 } from 'class-validator';
-import { ScheduleAvailabilityQueryDto } from '../../schedule/dto/schedule-availability-query.dto.js';
 
-export class CarePackageAvailabilityQueryDto extends PickType(
-  ScheduleAvailabilityQueryDto,
-  ['appointmentStart', 'duration', 'delayHours'] as const,
-) {}
+/**
+ * Query parameters for package availability over a 30-day window.
+ */
+export class CarePackageAvailabilityQueryDto {
+  /** ISO-8601 datetime from which to search. */
+  @IsDateString()
+  appointmentStart!: string;
+
+  /** Appointment length in minutes. */
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(480)
+  duration!: number;
+
+  /** Number of hours after the start time, up to 30 days. */
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(720)
+  delayHours!: number;
+}
 
 export class SuggestCarePackageDto {
   @IsInt()
