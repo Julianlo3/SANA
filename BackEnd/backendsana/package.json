@@ -69,9 +69,6 @@
   },
   "overrides": {
     "multer": "^2.5.0",
-    "minimatch": "^11.0.1",
-    "typedoc": {
-      "minimatch": "^10.2.5"
-    }
+    "minimatch": "^11.0.1"
   }
 }
