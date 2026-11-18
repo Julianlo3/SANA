@@ -30,7 +30,7 @@ export default function NewRequestDialog({
 
   return (
     <AppointmentRequestDialog
-      title="Solicitar una nueva cita"
+      title="Solicitar una valoración"
       icon={
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
           <CalendarPlus size={20} aria-hidden />

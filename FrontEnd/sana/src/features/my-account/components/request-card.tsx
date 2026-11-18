@@ -35,17 +35,19 @@ const STATE_ACCENT: Record<AppointmentState, string> = {
 };
 
 /**
- * Displays a user's appointment request and its current assignment details.
- * @param props Component properties.
+ * Renders a card displaying the details of a request, including its state, type, date, and associated actions such as cancellation or withdrawal.
+ * @param param0 The props object containing the request and onCancel callback.
+ * @returns The JSX element representing the request card.
  */
 export default function RequestCard({ request, onCancel }: Props) {
   const ModeIcon = request.appType === "virtual" ? Video : MapPin;
   const canCancel = CANCELABLE_STATES.includes(request.appState);
+  const isAssessment = request.appKind === "valoracion";
   const actionLabel =
     request.appState === "confirmada" ? "Cancelar cita" : "Retirar solicitud";
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
+    <article className="flex flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-sm transition-shadow hover:shadow-md">
       <div
         aria-hidden
         className="h-1.5"
@@ -53,14 +55,19 @@ export default function RequestCard({ request, onCancel }: Props) {
       />
 
       <div className="flex flex-1 flex-col p-5">
-        <div className="flex items-start justify-between gap-3">
-          <span className="text-xs font-semibold text-text-subtle">
-            Solicitud #{request.appId}
-          </span>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-text-subtle">
+              Solicitud #{request.appId}
+            </span>
+            <span className="rounded-full bg-primary-soft px-2.5 py-1 text-[11px] font-semibold text-navy">
+              {isAssessment ? "Valoración" : "Sesión de paquete"}
+            </span>
+          </div>
           <AppointmentStateBadge state={request.appState} />
         </div>
 
-        <p className="mt-3 font-display text-xl font-bold text-text">
+        <p className="mt-4 font-display text-xl font-bold text-text">
           {request.patientType === "dependent"
             ? `Para ${request.patientName}`
             : "Para ti"}

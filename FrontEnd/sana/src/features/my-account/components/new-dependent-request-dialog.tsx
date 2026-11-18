@@ -1,19 +1,20 @@
 "use client";
 
-import { UserPlus } from "lucide-react";
+import { UsersRound } from "lucide-react";
 import InlineMessage from "@/components/feedback/inline-message";
 import AppointmentModeField from "@/features/consultation-requests/components/appointment-mode-field";
 import ConsultationReasonField from "@/features/consultation-requests/components/consultation-reason-field";
 import DataPolicyConsent from "@/features/consultation-requests/components/data-policy-consent";
 import { ACCOUNT_DEPENDENT_REQUEST_CONSENT } from "@/content/legal";
 import DependentPersonFields from "@/features/consultation-requests/components/dependent-person-fields";
+import ConsultantSlotPicker from "@/features/consultation-requests/components/consultant-slot-picker";
 import ValidatedSelectField from "@/features/consultation-requests/components/validated-select-field";
 import AppointmentRequestDialog from "./appointment-request-dialog";
 import { useNewDependentRequest } from "../hooks/use-new-dependent-request";
 import type { OwnProfile } from "../types/my-account-types";
 
 /**
- * Defines the props type.
+ * Props required to create a valuation request for a dependent.
  */
 type Props = {
   readonly profile: OwnProfile;
@@ -22,10 +23,9 @@ type Props = {
 };
 
 /**
- * Component for creating a new dependent request. It displays a modal dialog where the user can fill in the details of the dependent and submit the request.
- * @param param0 The props containing the user's profile, a callback for when the request is created, and a callback for closing the dialog.
- * @returns A React component that renders a modal dialog for creating a new dependent request.
- * @param props Component properties.
+ * Renders the dependent valuation request dialog.
+ * @param props Guardian profile and request dialog callbacks.
+ * @returns The dependent valuation request dialog.
  */
 export default function NewDependentRequestDialog({
   profile,
@@ -36,10 +36,10 @@ export default function NewDependentRequestDialog({
 
   return (
     <AppointmentRequestDialog
-      title="Solicitar cita para un dependiente"
+      title="Solicitar valoración para un dependiente"
       icon={
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
-          <UserPlus size={20} aria-hidden />
+          <UsersRound size={20} aria-hidden />
         </div>
       }
       missing={request.missing}
@@ -113,6 +113,31 @@ export default function NewDependentRequestDialog({
           error={request.errors.reason}
           onChange={request.setReason}
         />
+
+        <fieldset className="space-y-3">
+          <legend className="font-semibold text-text">
+            Horario de la valoración
+          </legend>
+          <p className="text-sm text-text-muted">
+            Selecciona un horario disponible. Al reservarlo, se asignará un
+            psicólogo disponible para atender al dependiente.
+          </p>
+          <ConsultantSlotPicker
+            availableDays={request.availableDays}
+            slotsForDay={request.slotsForDay}
+            isLoading={request.isAvailabilityLoading}
+            error={request.availabilityError}
+            onReload={request.reloadAvailability}
+            selectedSlot={request.selectedSlot}
+            onSelect={request.setSelectedSlot}
+            disabled={request.isSaving}
+          />
+          {request.errors.appDate && (
+            <p role="alert" className="text-xs text-danger">
+              {request.errors.appDate}
+            </p>
+          )}
+        </fieldset>
 
         <DataPolicyConsent
           checked={request.accepted}

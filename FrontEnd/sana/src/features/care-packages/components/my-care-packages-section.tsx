@@ -19,6 +19,14 @@ const PACKAGE_STATE_LABELS: Record<CarePackage["state"], string> = {
   cancelado: "Cancelado",
 };
 
+const PACKAGE_STATE_BADGE_CLASSES: Record<CarePackage["state"], string> = {
+  sugerido: "bg-highlight text-navy",
+  activo: "bg-success-soft text-primary-dark",
+  rechazado: "bg-danger-soft text-danger",
+  finalizado: "bg-surface-muted text-text-muted",
+  cancelado: "bg-accent-soft text-accent-strong",
+};
+
 /**
  * Displays care packages, their appointments and session progress.
  * @returns The signed-in consultant's active package section.
@@ -69,14 +77,155 @@ export default function MyCarePackagesSection() {
     return () => controller.abort();
   }, [reloadKey]);
 
+  const activePackages = packages.filter(
+    (carePackage) => carePackage.state === "activo",
+  );
+  const otherPackages = packages.filter(
+    (carePackage) => carePackage.state !== "activo",
+  );
+
+  /**
+   * Renders a package and its appointment actions.
+   * @param carePackage Package to display.
+   * @returns The package card.
+   */
+  function renderPackageCard(carePackage: CarePackage) {
+    const appointments = requests
+      .filter((request) => request.carePackageId === carePackage.id)
+      .sort((left, right) =>
+        (left.appDate ?? "").localeCompare(right.appDate ?? ""),
+      );
+    const occupiedCount =
+      carePackage.completedSessions + carePackage.reservedSessions;
+    const canBook = carePackage.state === "activo";
+
+    return (
+      <article
+        key={carePackage.id}
+        className="rounded-2xl border border-border bg-surface p-5 shadow-sm transition-shadow hover:shadow-md sm:p-6"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-primary">
+              Paquete #{carePackage.id}
+            </p>
+            <p className="mt-1 text-sm font-medium text-text-muted">
+              {carePackage.patientType === "dependent"
+                ? "Dependiente"
+                : "Consultante"}
+              : {carePackage.patientName}
+            </p>
+            <p
+              className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${PACKAGE_STATE_BADGE_CLASSES[carePackage.state]}`}
+            >
+              {PACKAGE_STATE_LABELS[carePackage.state]}
+            </p>
+            {carePackage.psychologistName && (
+              <p className="mt-1 text-sm text-text-muted">
+                Psicólogo: {carePackage.psychologistName}
+              </p>
+            )}
+          </div>
+          <p className="rounded-full bg-primary-soft px-4 py-2 text-sm font-bold text-primary-dark">
+            {carePackage.completedSessions}/{carePackage.sessionLimit} citas
+            realizadas
+          </p>
+        </div>
+
+        {carePackage.state === "sugerido" && (
+          <p className="mt-4 rounded-xl border border-border bg-surface-muted/50 px-4 py-3 text-sm text-text-muted">
+            El psicólogo sugirió este paquete. La secretaría debe revisarlo
+            antes de que puedas agendar citas.
+          </p>
+        )}
+        {carePackage.state === "rechazado" &&
+          carePackage.rejectionReason && (
+            <p className="mt-4 rounded-xl border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger">
+              Motivo: {carePackage.rejectionReason}
+            </p>
+          )}
+
+        {appointments.length > 0 ? (
+          <ul className="mt-5 divide-y divide-border rounded-xl border border-border">
+            {appointments.map((appointment) => (
+              <li
+                key={appointment.appId}
+                className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm"
+              >
+                <span className="flex items-center gap-2 font-medium text-text">
+                  <CalendarDays size={15} aria-hidden />
+                  Cita #{appointment.appId}
+                </span>
+                <span className="flex items-center gap-2 text-text-muted">
+                  <Clock3 size={15} aria-hidden />
+                  {appointment.appDate
+                    ? formatDateTime(appointment.appDate)
+                    : "Pendiente de asignación"}
+                </span>
+                <span className="text-xs capitalize text-text-subtle">
+                  {appointment.appState}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-4 text-sm text-text-muted">
+            Aún no has solicitado sesiones para este paquete.
+          </p>
+        )}
+
+        {canBook && occupiedCount < carePackage.sessionLimit && (
+          <>
+            <button
+              type="button"
+              aria-expanded={bookingPackageId === carePackage.id}
+              onClick={() =>
+                setBookingPackageId((current) =>
+                  current === carePackage.id ? null : carePackage.id,
+                )
+              }
+              className="mt-5 rounded-xl border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-primary-soft"
+            >
+              {bookingPackageId === carePackage.id
+                ? "Cerrar calendario"
+                : "Solicitar una cita"}
+            </button>
+            {bookingPackageId === carePackage.id && (
+              <CarePackageBooking
+                carePackage={carePackage}
+                onBooked={() => {
+                  setBookingPackageId(null);
+                  setBookingNotice("Tu cita del paquete fue registrada.");
+                  reload();
+                }}
+              />
+            )}
+          </>
+        )}
+        {canBook && occupiedCount >= carePackage.sessionLimit && (
+          <p className="mt-5 text-sm font-medium text-text-muted">
+            Ya alcanzaste el número de citas de este paquete.
+          </p>
+        )}
+      </article>
+    );
+  }
+
   return (
-    <section id="mis-paquetes">
+    <section
+      id="mis-paquetes"
+      aria-labelledby="my-care-packages-heading"
+      className="rounded-3xl border border-border bg-surface p-5 shadow-sm sm:p-7"
+    >
       <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary">
           <PackageCheck size={20} aria-hidden />
         </span>
         <div>
-          <h2 className="font-display text-2xl font-bold text-primary-dark">
+          <h2
+            id="my-care-packages-heading"
+            className="font-display text-2xl font-bold text-primary-dark"
+          >
             Mis paquetes de atención
           </h2>
           <p className="mt-1 text-sm text-text-muted">
@@ -108,132 +257,35 @@ export default function MyCarePackagesSection() {
             sugerencia, aparecerá aquí.
           </p>
         ) : (
-          <div className="mt-5 space-y-5">
-            {packages.map((carePackage) => {
-              const appointments = requests
-                .filter(
-                  (request) =>
-                    request.carePackageId === carePackage.id,
-                )
-                .sort((left, right) =>
-                  (left.appDate ?? "").localeCompare(right.appDate ?? ""),
-                );
-              const occupiedCount =
-                carePackage.completedSessions + carePackage.reservedSessions;
-              const canBook = carePackage.state === "activo";
+          <div className="mt-5 space-y-6">
+            <section aria-labelledby="active-care-packages-heading">
+              <h3
+                id="active-care-packages-heading"
+                className="mb-4 text-lg font-bold text-primary-dark"
+              >
+                Paquetes activos
+              </h3>
+              {activePackages.length > 0 ? (
+                <div className="space-y-5">
+                  {activePackages.map(renderPackageCard)}
+                </div>
+              ) : (
+                <p className="rounded-2xl border border-dashed border-border bg-surface px-5 py-6 text-center text-sm text-text-subtle">
+                  No tienes paquetes activos en este momento.
+                </p>
+              )}
+            </section>
 
-              return (
-                <article
-                  key={carePackage.id}
-                  className="rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-wider text-primary">
-                        Paquete #{carePackage.id}
-                      </p>
-                      <p className="mt-1 text-sm font-medium text-text-muted">
-                        {carePackage.patientType === "dependent"
-                          ? "Dependiente"
-                          : "Consultante"}
-                        : {carePackage.patientName}
-                      </p>
-                      <p className="mt-1 text-sm font-medium text-text-muted">
-                        {PACKAGE_STATE_LABELS[carePackage.state]}
-                      </p>
-                      {carePackage.psychologistName && (
-                        <p className="mt-1 text-sm text-text-muted">
-                          Psicólogo: {carePackage.psychologistName}
-                        </p>
-                      )}
-                    </div>
-                    <p className="rounded-full bg-primary-soft px-4 py-2 text-sm font-bold text-primary-dark">
-                      {carePackage.completedSessions}/{carePackage.sessionLimit} citas realizadas
-                    </p>
-                  </div>
-
-                  {carePackage.state === "sugerido" && (
-                    <p className="mt-4 rounded-xl border border-border bg-surface-muted/50 px-4 py-3 text-sm text-text-muted">
-                      El psicólogo sugirió este paquete. La secretaría debe
-                      revisarlo antes de que puedas agendar citas.
-                    </p>
-                  )}
-                  {carePackage.state === "rechazado" &&
-                    carePackage.rejectionReason && (
-                      <p className="mt-4 rounded-xl border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger">
-                        Motivo: {carePackage.rejectionReason}
-                      </p>
-                    )}
-
-                  {appointments.length > 0 ? (
-                    <ul className="mt-5 divide-y divide-border rounded-xl border border-border">
-                      {appointments.map((appointment) => (
-                        <li
-                          key={appointment.appId}
-                          className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm"
-                        >
-                          <span className="flex items-center gap-2 font-medium text-text">
-                            <CalendarDays size={15} aria-hidden />
-                            Cita #{appointment.appId}
-                          </span>
-                          <span className="flex items-center gap-2 text-text-muted">
-                            <Clock3 size={15} aria-hidden />
-                            {appointment.appDate
-                              ? formatDateTime(appointment.appDate)
-                              : "Pendiente de asignación"}
-                          </span>
-                          <span className="text-xs capitalize text-text-subtle">
-                            {appointment.appState}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="mt-4 text-sm text-text-muted">
-                      Aún no has solicitado sesiones para este paquete.
-                    </p>
-                  )}
-
-                  {canBook && occupiedCount < carePackage.sessionLimit && (
-                    <>
-                      <button
-                        type="button"
-                        aria-expanded={bookingPackageId === carePackage.id}
-                        onClick={() =>
-                          setBookingPackageId((current) =>
-                            current === carePackage.id
-                              ? null
-                              : carePackage.id,
-                          )
-                        }
-                        className="mt-5 rounded-xl border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-primary-soft"
-                      >
-                        {bookingPackageId === carePackage.id
-                          ? "Cerrar calendario"
-                          : "Solicitar una cita"}
-                      </button>
-                      {bookingPackageId === carePackage.id && (
-                        <CarePackageBooking
-                          carePackage={carePackage}
-                          onBooked={() => {
-                            setBookingPackageId(null);
-                            setBookingNotice(
-                              "Tu cita del paquete fue registrada.",
-                            );
-                            reload();
-                          }}
-                        />
-                      )}
-                    </>
-                  )}
-                  {canBook && occupiedCount >= carePackage.sessionLimit && (
-                    <p className="mt-5 text-sm font-medium text-text-muted">
-                      Ya alcanzaste el número de citas de este paquete.
-                    </p>
-                  )}
-                </article>
-              );
-            })}
+            {otherPackages.length > 0 && (
+              <details className="rounded-2xl border border-border bg-surface-muted/40">
+                <summary className="cursor-pointer rounded-2xl px-5 py-4 font-semibold text-primary-dark transition-colors hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary marker:text-primary">
+                  Otros paquetes ({otherPackages.length})
+                </summary>
+                <div className="space-y-5 border-t border-border p-5">
+                  {otherPackages.map(renderPackageCard)}
+                </div>
+              </details>
+            )}
           </div>
         )
       )}

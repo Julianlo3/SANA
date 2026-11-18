@@ -2,10 +2,13 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { getDepartmentFromResidenceZone } from "@/config/residence-zones";
+import { useConsultantAvailability } from "@/features/consultation-requests/hooks/use-consultant-availability";
 import { submitConsultationRequest } from "@/features/consultation-requests/services/consultation-requests-service";
+import { buildSlotDateTime } from "@/lib/date/slot-datetime";
 import type {
   AppointmentMode,
   CardType,
+  ConsultantAvailabilitySlot,
   Gender,
   GuardianRelationshipId,
   GuardianRequestPayload,
@@ -94,15 +97,16 @@ function getMissingProfileData(profile: OwnProfile): string[] {
 }
 
 /**
- * Hook for managing the creation of a new dependent request.
- * @param profile The user's profile data.
- * @param onCreated A callback function to be called when the request is created.
- * @returns An object containing the state and functions for managing the dependent request.
+ * Manages dependent valuation data, availability, and submission.
+ * @param profile Guardian profile used for requester fields.
+ * @param onCreated Callback invoked after a successful request.
+ * @returns Form state, slot availability, and request handlers.
  */
 export function useNewDependentRequest(
   profile: OwnProfile,
   onCreated: () => void,
 ) {
+  const availability = useConsultantAvailability();
   const [values, setValues] = useState<DependentRequestValues>({
     name: "",
     identityDocument: "",
@@ -115,10 +119,20 @@ export function useNewDependentRequest(
   const [reason, setReason] = useState("");
   const [accepted, setAccepted] = useState(false);
   const [wasSubmitted, setWasSubmitted] = useState(false);
+  const [selectedSlot, setSelectedSlot] =
+    useState<ConsultantAvailabilitySlot | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const missing = useMemo(() => getMissingProfileData(profile), [profile]);
+  const hasAvailableSelectedSlot = Boolean(
+    selectedSlot &&
+      !availability.isLoading &&
+      !availability.error &&
+      availability
+        .slotsForDay(selectedSlot.date)
+        .some((slot) => slot.startTime === selectedSlot.startTime),
+  );
   const residenceDepartment = getDepartmentFromResidenceZone(
     profile.residenceZone,
   );
@@ -136,8 +150,20 @@ export function useNewDependentRequest(
       appType: validateAppointmentMode(appType, residenceDepartment),
       reason: validateConsultationReason(reason),
       accepted: validateDataPolicy(accepted),
+      appDate:
+        wasSubmitted && !hasAvailableSelectedSlot
+          ? "Selecciona un horario disponible para la valoración."
+          : undefined,
     }),
-    [values, appType, reason, accepted, residenceDepartment],
+    [
+      values,
+      appType,
+      reason,
+      accepted,
+      residenceDepartment,
+      wasSubmitted,
+      hasAvailableSelectedSlot,
+    ],
   );
 
   const visibleErrors = wasSubmitted
@@ -152,6 +178,7 @@ export function useNewDependentRequest(
         appType: undefined,
         reason: undefined,
         accepted: undefined,
+        appDate: undefined,
       };
 
   const setField = useCallback(
@@ -166,7 +193,21 @@ export function useNewDependentRequest(
 
   const submit = useCallback(async () => {
     setWasSubmitted(true);
-    if (Object.values(errors).some(Boolean)) return;
+    if (
+      Object.values(errors).some(Boolean) ||
+      !hasAvailableSelectedSlot ||
+      !selectedSlot
+    ) {
+      return;
+    }
+    if (
+      Date.parse(
+        buildSlotDateTime(selectedSlot.date, selectedSlot.startTime),
+      ) <= Date.now()
+    ) {
+      setSelectedSlot(null);
+      return;
+    }
 
     const payload: GuardianRequestPayload = {
       patientType: "dependent",
@@ -187,7 +228,10 @@ export function useNewDependentRequest(
       dependentTermsAccepted: accepted,
       appType: appType as AppointmentMode,
       appReason: reason.trim(),
-      appDateIdeal: null,
+      appDate: buildSlotDateTime(
+        selectedSlot.date,
+        selectedSlot.startTime,
+      ),
       residenceZone: profile.residenceZone?.trim() || undefined,
     };
 
@@ -206,7 +250,17 @@ export function useNewDependentRequest(
     } finally {
       setIsSaving(false);
     }
-  }, [errors, profile, values, appType, reason, accepted, onCreated]);
+  }, [
+    errors,
+    hasAvailableSelectedSlot,
+    profile,
+    values,
+    appType,
+    reason,
+    accepted,
+    selectedSlot,
+    onCreated,
+  ]);
 
   return {
     missing,
@@ -220,6 +274,13 @@ export function useNewDependentRequest(
     setAccepted,
     errors: visibleErrors,
     residenceDepartment,
+    availableDays: availability.availableDays,
+    slotsForDay: availability.slotsForDay,
+    isAvailabilityLoading: availability.isLoading,
+    availabilityError: availability.error,
+    reloadAvailability: availability.reload,
+    selectedSlot,
+    setSelectedSlot,
     isSaving,
     submitError,
     submit,

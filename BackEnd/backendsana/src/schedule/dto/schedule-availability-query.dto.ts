@@ -9,7 +9,7 @@ import {
 } from 'class-validator';
 
 /**
- * DTO for querying slots from the appointment start through a forward delay window.
+ * DTO for querying secretary schedule slots within a 24-hour window.
  */
 export class ScheduleAvailabilityQueryDto {
   /** ISO-8601 date and time from which to search for available slots. */

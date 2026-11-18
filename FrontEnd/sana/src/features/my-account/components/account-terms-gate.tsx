@@ -17,9 +17,9 @@ type Props = {
 };
 
 /**
- * Before showing the account the first time, asks the consultant to accept
- * the current account terms (FDHF-WEB-AV-01, section 6).
- * @param props Component properties.
+ * Renders a gate that requires the user to accept the account terms before accessing the children components. If the terms have already been accepted, it renders the children directly. Otherwise, it displays a form for accepting the terms.
+ * @param param0 The props object containing the termsAccepted boolean and the children ReactNode.
+ * @returns The JSX element representing the account terms gate.
  */
 export default function AccountTermsGate({ termsAccepted, children }: Props) {
   const router = useRouter();

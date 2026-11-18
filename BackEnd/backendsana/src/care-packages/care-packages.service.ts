@@ -506,7 +506,11 @@ export class CarePackagesService {
   }
 
   /**
-   * Finds availability strictly for the psychologist assigned to the package.
+   * Finds up to 30 days of availability for the package psychologist.
+   * @param id Care package identifier.
+   * @param actor Requester or secretary allowed to view the package.
+   * @param query Availability range and appointment duration.
+   * @returns A promise resolving to package-scoped availability slots.
    */
   async availability(
     id: number,
