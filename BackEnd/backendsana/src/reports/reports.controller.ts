@@ -18,7 +18,6 @@ import type {
   DonationsEvolutionReport,
   DonationsHistoryReport,
   GeneralManagementReport,
-  ReportsSummary,
 } from './reports.interface.js';
 import { ReportsService } from './reports.service.js';
 import { ApiControllerDocs } from '../openapi/api-controller-docs.decorator.js';
@@ -30,16 +29,7 @@ import { ApiControllerDocs } from '../openapi/api-controller-docs.decorator.js';
 @UseGuards(OriginGuard, JwtAuthGuard, RolesGuard)
 @Roles(UserRole.Administrator)
 export class ReportsController {
-  constructor(private readonly reportsService: ReportsService) {}
-
-  /**
-   * Legacy summary endpoint.
-   * GET /api/v1/reports/summary
-   */
-  @Get('summary')
-  getSummary(): Promise<ReportsSummary> {
-    return this.reportsService.getSummary();
-  }
+  constructor(private readonly reportsService: ReportsService) { }
 
   /**
    * Report 1: General Management Report.

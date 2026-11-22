@@ -10,24 +10,6 @@ export interface ReportPeriodMetadata {
   generatedAt: string;
 }
 
-/** Existing summary interface kept for backward compatibility */
-export interface ReportsSummary {
-  psychology: {
-    totalCompletedAppointments: number;
-    averageCompletedAppointmentsPerPsychologist: number;
-    activePsychologists: number;
-  };
-  system: {
-    totalConsultants: number;
-    averageAppointmentsPerConsultant: number;
-  };
-  donations: {
-    totalAmountInCents: string;
-    approvedDonations: number;
-    peopleWhoDonated: number;
-  };
-}
-
 /**
  * Report 1: Reporte General de Gestión de la Fundación
  */

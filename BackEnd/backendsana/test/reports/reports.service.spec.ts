@@ -4,9 +4,6 @@ import { ReportsService } from '../../src/reports/reports.service.js';
 
 describe('ReportsService', () => {
   const mockRepository = {
-    getSummary: vi.fn().mockResolvedValue({
-      psychology: { totalCompletedAppointments: 10 },
-    }),
     getGeneralReport: vi.fn().mockResolvedValue({
       appointments: { total: 20 },
     }),
@@ -25,12 +22,6 @@ describe('ReportsService', () => {
   };
 
   const service = new ReportsService(mockRepository as never);
-
-  it('delegates getSummary to repository', async () => {
-    const result = await service.getSummary();
-    expect(mockRepository.getSummary).toHaveBeenCalledTimes(1);
-    expect(result).toHaveProperty('psychology');
-  });
 
   it('delegates getGeneralReport resolving date range', async () => {
     const result = await service.getGeneralReport({ preset: ReportPreset.Today });

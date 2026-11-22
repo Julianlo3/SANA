@@ -20,7 +20,6 @@ describe('ReportsController', () => {
 
   it('delegates report calls to ReportsService', async () => {
     const mockService = {
-      getSummary: vi.fn().mockResolvedValue({}),
       getGeneralReport: vi.fn().mockResolvedValue({}),
       getAppointmentsEvolutionReport: vi.fn().mockResolvedValue({}),
       getAttendanceReport: vi.fn().mockResolvedValue({}),
@@ -29,9 +28,6 @@ describe('ReportsController', () => {
     };
 
     const controller = new ReportsController(mockService as never);
-
-    await controller.getSummary();
-    expect(mockService.getSummary).toHaveBeenCalledTimes(1);
 
     await controller.getGeneralReport({ preset: ReportPreset.Today });
     expect(mockService.getGeneralReport).toHaveBeenCalledWith({

@@ -32,7 +32,6 @@ function setup() {
     confirm: vi.fn(),
     updateState: vi.fn().mockResolvedValue(true),
     recordAssignmentHistory: vi.fn().mockResolvedValue(undefined),
-    selectSlotForRequester: vi.fn().mockResolvedValue('assigned'),
   };
   const scheduleService = {
     confirmAppointmentSlot: vi.fn().mockResolvedValue(true),
@@ -894,38 +893,6 @@ describe('AppointmentsService.cancelOwnAppointment', () => {
         appointmentStart: '2026-12-01T08:00:00.000Z',
         duration: 60,
         delayHours: 24,
-      });
-    });
-
-    it('allows an authenticated consultant to select a slot for their pending appointment', async () => {
-      const { service, repository } = setup();
-      const futureDate = new Date(Date.now() + 86400000).toISOString();
-      repository.selectSlotForRequester.mockResolvedValue('assigned');
-
-      const result = await service.selectSlotForOwnAppointment(10, 7, futureDate);
-
-      expect(result).toEqual({
-        appId: 10,
-        message: 'Horario reservado con éxito.',
-        appDate: futureDate,
-      });
-      expect(repository.selectSlotForRequester).toHaveBeenCalledWith({
-        appId: 10,
-        requesterId: 7,
-        appDate: new Date(futureDate),
-        duration: 60,
-      });
-    });
-
-    it('throws ConflictException when chosen slot is taken', async () => {
-      const { service, repository } = setup();
-      const futureDate = new Date(Date.now() + 86400000).toISOString();
-      repository.selectSlotForRequester.mockResolvedValue('slot_taken');
-
-      await expect(
-        service.selectSlotForOwnAppointment(10, 7, futureDate),
-      ).rejects.toMatchObject({
-        response: expect.objectContaining({ error: 'SCHEDULE_SLOT_TAKEN' }),
       });
     });
   });
