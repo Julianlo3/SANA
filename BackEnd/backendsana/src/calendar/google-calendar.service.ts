@@ -37,9 +37,34 @@ export class GoogleCalendarService {
   }
 
   /**
+   * Checks whether Google Calendar integration is enabled via environment variables.
+   */
+  isEnabled(): boolean {
+    const raw =
+      this.configService.get('ENABLE_GOOGLE_CALENDAR') ??
+      this.configService.get('ENABLE_CALENDAR');
+
+    if (raw === undefined || raw === null || raw === '') {
+      return true;
+    }
+    if (typeof raw === 'boolean') {
+      return raw;
+    }
+    const normalized = String(raw).trim().toLowerCase();
+    return normalized !== 'false' && normalized !== '0';
+  }
+
+  /**
    * Initializes the Google Calendar OAuth2 client using environment variables.
    */
   private initializeClient(): void {
+    if (!this.isEnabled()) {
+      this.logger.log(
+        'Google Calendar is disabled by configuration (ENABLE_GOOGLE_CALENDAR=false)',
+      );
+      return;
+    }
+
     const config = this.readConfig();
     if (!config) {
       this.logger.warn('Google Calendar is disabled: credentials are not configured');
@@ -93,7 +118,7 @@ export class GoogleCalendarService {
    * Indicates whether Google Calendar integration is fully configured and ready.
    */
   isConfigured(): boolean {
-    return this.configured && this.client !== null;
+    return this.isEnabled() && this.configured && this.client !== null;
   }
 
   /**
@@ -107,6 +132,13 @@ export class GoogleCalendarService {
   async createAppointmentEvent(
     params: CreateCalendarEventParams,
   ): Promise<string | null> {
+    if (!this.isEnabled()) {
+      this.logger.warn(
+        `Google Calendar event skipped: service is disabled by configuration (ENABLE_GOOGLE_CALENDAR=false) (appId-${params.appId})`,
+      );
+      return null;
+    }
+
     if (!this.isConfigured() || !this.client) {
       this.logger.warn(
         `Google Calendar event skipped: service is not configured (appId-${params.appId})`,
@@ -207,6 +239,13 @@ export class GoogleCalendarService {
    * @returns True if deleted successfully (or already removed), false on failure.
    */
   async deleteAppointmentEvent(eventId: string): Promise<boolean> {
+    if (!this.isEnabled()) {
+      this.logger.warn(
+        `Google Calendar event deletion skipped: service is disabled by configuration (ENABLE_GOOGLE_CALENDAR=false) (eventId-${eventId})`,
+      );
+      return false;
+    }
+
     if (!this.isConfigured() || !this.client || !eventId) {
       return false;
     }

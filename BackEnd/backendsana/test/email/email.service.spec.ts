@@ -201,4 +201,42 @@ describe('EmailService', () => {
       expect(repository.markSent).not.toHaveBeenCalled();
     },
   );
+
+  it('disables email service when ENABLE_EMAIL is false', async () => {
+    const repository = {
+      enqueue: vi.fn(),
+      claimDue: vi.fn(),
+    };
+    const transport = {
+      sendMail: vi.fn(),
+    };
+    const factory = vi.fn().mockReturnValue(transport);
+
+    const service = new EmailService(
+      configuration({
+        ENABLE_EMAIL: 'false',
+        GMAIL_CLIENT_ID: 'client-id',
+        GMAIL_CLIENT_SECRET: 'client-secret',
+        GMAIL_REDIRECT_URI: 'https://example.com/oauth/callback',
+        GMAIL_REFRESH_TOKEN: 'refresh-token',
+        GMAIL_FROM: 'notificaciones@example.com',
+      }) as never,
+      repository as never,
+      factory,
+    );
+
+    expect(service.isEnabled()).toBe(false);
+    expect(service.isConfigured()).toBe(false);
+    expect(factory).not.toHaveBeenCalled();
+
+    await service.enqueueEmail({
+      to: 'recipient@example.com',
+      subject: 'Test Subject',
+      text: 'Test Body',
+    });
+    expect(repository.enqueue).not.toHaveBeenCalled();
+
+    await service.processPendingEmails();
+    expect(repository.claimDue).not.toHaveBeenCalled();
+  });
 });

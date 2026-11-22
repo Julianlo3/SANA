@@ -44,6 +44,9 @@ export function validateEnvironment(environment: Record<string, unknown>) {
     AUTH0_CLAIM_NAMESPACE: Joi.string().uri().required(),
     TRUST_PROXY_HOPS: Joi.number().integer().min(0).default(0),
     POLICY_VERSION: Joi.string().trim().max(50).default('privacy-policy-2026-01'),
+    ENABLE_EMAIL: Joi.boolean().default(true),
+    ENABLE_GOOGLE_CALENDAR: Joi.boolean().default(true),
+    ENABLE_WHATSAPP: Joi.boolean().default(false),
   }).unknown(true);
   const { error, value } = schema.validate(environment, { abortEarly: false });
   if (error) throw new Error(`Environment validation error: ${error.message}`);
