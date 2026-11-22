@@ -53,6 +53,15 @@ export class EmailService implements OnModuleInit, OnModuleDestroy {
     @Inject(EMAIL_TRANSPORT_FACTORY)
     transportFactory: EmailTransportFactory,
   ) {
+    if (!this.isEnabled()) {
+      this.sender = null;
+      this.transport = null;
+      this.logger.log(
+        'Email delivery disabled by configuration (ENABLE_EMAIL=false)',
+      );
+      return;
+    }
+
     const config = this.readGmailConfig();
     if (!config) {
       this.sender = null;
@@ -75,8 +84,33 @@ export class EmailService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /**
+   * Checks whether email delivery is enabled via configuration.
+   */
+  isEnabled(): boolean {
+    const raw =
+      this.configService.get('ENABLE_EMAIL') ??
+      this.configService.get('ENABLE_EMAIL_SENDING');
+
+    if (raw === undefined || raw === null || raw === '') {
+      return true;
+    }
+    if (typeof raw === 'boolean') {
+      return raw;
+    }
+    const normalized = String(raw).trim().toLowerCase();
+    return normalized !== 'false' && normalized !== '0';
+  }
+
+  /**
+   * Indicates whether email sending is enabled and configured.
+   */
+  isConfigured(): boolean {
+    return this.isEnabled() && this.transport !== null && this.sender !== null;
+  }
+
   onModuleInit(): void {
-    if (!this.transport) return;
+    if (!this.isEnabled() || !this.transport) return;
     this.pollTimer = setInterval(
       () => void this.processPendingEmails(),
       POLL_INTERVAL_MS,
@@ -95,6 +129,13 @@ export class EmailService implements OnModuleInit, OnModuleDestroy {
    * @returns A promise resolving when the email is queued.
    */
   async enqueueEmail(message: EmailMessage): Promise<void> {
+    if (!this.isEnabled()) {
+      this.logger.warn(
+        'Email skipped: email sending is disabled by configuration (ENABLE_EMAIL=false)',
+      );
+      return;
+    }
+
     if (!this.transport || !this.sender) {
       this.logger.warn(
         'Email skipped because Gmail API delivery is not configured',
@@ -138,7 +179,7 @@ export class EmailService implements OnModuleInit, OnModuleDestroy {
    * @returns A promise resolving when the processing is complete.
    */
   async processPendingEmails(): Promise<void> {
-    if (!this.transport || !this.sender || this.processing) return;
+    if (!this.isEnabled() || !this.transport || !this.sender || this.processing) return;
 
     this.processing = true;
     try {

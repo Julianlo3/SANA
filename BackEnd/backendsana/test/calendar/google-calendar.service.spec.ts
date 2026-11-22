@@ -139,5 +139,34 @@ describe('GoogleCalendarService', () => {
 
     expect(success).toBe(true);
   });
+
+  it('disables Google Calendar and skips event operations when ENABLE_GOOGLE_CALENDAR is false', async () => {
+    const mockClient: GoogleCalendarClient = {
+      events: {
+        insert: vi.fn().mockResolvedValue({ data: { id: 'evt-should-not-run' } }),
+        delete: vi.fn().mockResolvedValue({}),
+      },
+    };
+
+    const service = new GoogleCalendarService(
+      mockConfig({ ENABLE_GOOGLE_CALENDAR: 'false' }) as never,
+      mockClient,
+    );
+
+    expect(service.isEnabled()).toBe(false);
+    expect(service.isConfigured()).toBe(false);
+
+    const eventResult = await service.createAppointmentEvent({
+      appId: 99,
+      patientName: 'Test Disabled',
+      appDate: '2026-11-20T10:00:00.000Z',
+    });
+    expect(eventResult).toBeNull();
+    expect(mockClient.events.insert).not.toHaveBeenCalled();
+
+    const deleteResult = await service.deleteAppointmentEvent('evt-123');
+    expect(deleteResult).toBe(false);
+    expect(mockClient.events.delete).not.toHaveBeenCalled();
+  });
 });
 
