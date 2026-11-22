@@ -119,9 +119,11 @@ export default function Sidebar({ roles, fullName }: Props) {
       </button>
 
       {open && (
-        <div
+        <button
+          type="button"
+          aria-label="Cerrar menú lateral"
           onClick={() => setOpen(false)}
-          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+          className="fixed inset-0 z-40 cursor-pointer border-0 bg-black/40 p-0 lg:hidden"
         />
       )}
 

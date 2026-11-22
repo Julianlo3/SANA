@@ -43,7 +43,7 @@ export default function RoleSelector({
       <p className="mt-1 text-xs text-text-subtle">
         {allowMultiple
           ? "Una persona puede tener varios roles a la vez."
-          : "Selecciona el rol inicial de la persona."}
+          : "Selecciona o desmarca el rol inicial de la persona."}
         {showsActivation &&
           " Puedes apagar un rol sin quitárselo, por ejemplo mientras está de vacaciones."}
       </p>
@@ -64,7 +64,7 @@ export default function RoleSelector({
             >
               <input
                 id={`role-${role.id}`}
-                type={allowMultiple ? "checkbox" : "radio"}
+                type="checkbox"
                 checked={isAssigned}
                 onChange={() => onToggleRole(role.id)}
                 className="h-4 w-4 shrink-0 cursor-pointer accent-primary disabled:cursor-not-allowed"

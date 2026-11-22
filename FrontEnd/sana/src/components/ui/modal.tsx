@@ -45,14 +45,18 @@ export default function Modal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-      onClick={onClose}
     >
+      <button
+        type="button"
+        aria-label="Cerrar ventana"
+        onClick={onClose}
+        className="absolute inset-0 cursor-pointer border-0 bg-transparent p-0"
+      />
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        onClick={(event) => event.stopPropagation()}
-        className="w-full max-w-md overflow-hidden rounded-2xl border border-border/60 bg-surface shadow-2xl"
+        className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-border/60 bg-surface shadow-2xl"
       >
         <div className="flex items-start gap-4 p-6 pb-4">
           {icon}
