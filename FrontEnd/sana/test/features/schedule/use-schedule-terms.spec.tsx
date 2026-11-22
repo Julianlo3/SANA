@@ -70,6 +70,19 @@ describe("useScheduleTerms", () => {
     expect(result.current.isAccepting).toBe(false);
   });
 
+  it("reports policy document load failures", async () => {
+    vi.mocked(getPolicyDocument).mockRejectedValueOnce(
+      new Error("Request failed"),
+    );
+    const { result } = renderHook(() => useScheduleTerms(false));
+
+    await waitFor(() =>
+      expect(result.current.loadError).toBe(
+        "No pudimos cargar los términos. Intenta de nuevo.",
+      ),
+    );
+  });
+
   it("uses the schedule acceptance endpoint when status reports a missing acceptance", async () => {
     vi.mocked(getScheduleTermsStatus).mockResolvedValueOnce({
       hasAccepted: false,

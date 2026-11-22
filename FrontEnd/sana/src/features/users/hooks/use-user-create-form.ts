@@ -42,11 +42,14 @@ export function useUserCreateForm() {
   const toggleRole = useCallback(
     (roleId: number) => {
       const current = values.roleIds;
+      if (current.includes(roleId)) {
+        setValue("roleIds", []);
+        return;
+      }
+
       setValue(
         "roleIds",
-        current.includes(roleId)
-          ? current.filter((id) => id !== roleId)
-          : [...current, roleId],
+        [roleId],
       );
     },
     [values.roleIds, setValue],

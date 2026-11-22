@@ -63,6 +63,10 @@ export function useScheduleTerms(initialPsyTermsAccepted: boolean | null) {
 
     getPolicyDocument("schedule_terms").then((policy) => {
       if (isMounted) setPolicyContent(policy.content);
+    }).catch(() => {
+      if (isMounted) {
+        setLoadError("No pudimos cargar los términos. Intenta de nuevo.");
+      }
     });
 
     return () => {
