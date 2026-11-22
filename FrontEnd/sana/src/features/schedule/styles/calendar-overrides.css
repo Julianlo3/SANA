@@ -93,7 +93,7 @@
 }
 
 .rbc-time-view .rbc-time-header.rbc-overflowing {
-  margin-right: 0;
+  margin-right: 0 !important;
 }
 
 .rbc-time-content {
