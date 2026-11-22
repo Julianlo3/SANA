@@ -13,19 +13,13 @@ import type {
   DonationsEvolutionReport,
   DonationsHistoryReport,
   GeneralManagementReport,
-  ReportsSummary,
 } from './reports.interface.js';
 import { ReportsRepository } from './reports.repository.js';
 
 /** Provides aggregated and detailed reports without exposing sensitive clinical data. */
 @Injectable()
 export class ReportsService {
-  constructor(private readonly reportsRepository: ReportsRepository) {}
-
-  /** Legacy summary metrics */
-  getSummary(): Promise<ReportsSummary> {
-    return this.reportsRepository.getSummary();
-  }
+  constructor(private readonly reportsRepository: ReportsRepository) { }
 
   /** Report 1: General Management Report */
   getGeneralReport(query: BaseReportQueryDto): Promise<GeneralManagementReport> {
