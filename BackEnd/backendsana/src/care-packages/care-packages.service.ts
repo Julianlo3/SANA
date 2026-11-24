@@ -15,6 +15,7 @@ import {
   type CloseCarePackageDto,
   type CreateCarePackageDto,
   type RejectCarePackageDto,
+  type ScheduleFollowUpValuationDto,
   type SchedulePackageAppointmentDto,
   type SuggestCarePackageDto,
 } from './dto/care-package.dto.js';
@@ -753,4 +754,298 @@ export class CarePackagesService {
     return this.find(id);
   });
 }
+
+  /**
+   * Lists availability strictly for the treating psychologist of a finalized care package
+   * so the consultant can schedule a new valuation appointment.
+   * Rejects if the package is not finalized, if the patient already has an active or suggested
+   * package, or if there is already a valuation appointment in progress.
+   */
+  async followUpValuationAvailability(
+    packageId: number,
+    requesterId: number,
+    query: CarePackageAvailabilityQueryDto,
+  ) {
+    const p = await this.find(packageId, { requesterId });
+
+    if (p.state !== 'finalizado') {
+      if (p.state === 'activo') {
+        throw new ConflictException({
+          error: 'ACTIVE_CARE_PACKAGE_EXISTS',
+          message: 'El paciente cuenta con un paquete activo. Debe agendar sus citas dentro del paquete actual.',
+        });
+      }
+      throw new BadRequestException({
+        error: 'CARE_PACKAGE_NOT_FINALIZED',
+        message: 'Solo puede solicitar una nueva valoración cuando el paquete anterior haya finalizado',
+      });
+    }
+
+    await this.assertEligibleForFollowUpValuation(
+      this.db,
+      packageId,
+      p.patientPersonId ?? null,
+      p.patientDependentId ?? null,
+    );
+
+    return this.schedule.findAvailability({
+      ...query,
+      psychologistIds: String(p.psychologistId),
+    });
+  }
+
+  /**
+   * Schedules a new follow-up valuation appointment strictly with the treating psychologist
+   * of a finalized care package. The appointment is created immediately in 'confirmada' state
+   * with app_kind = 'valoracion' so the treating psychologist can conduct the valuation and
+   * suggest a new care package (which will then go through secretary review).
+   */
+  async scheduleFollowUpValuation(
+    packageId: number,
+    dto: ScheduleFollowUpValuationDto,
+    requesterId: number,
+  ) {
+    const date = new Date(dto.appDate);
+    if (Number.isNaN(date.getTime()) || date <= new Date()) {
+      throw new BadRequestException({
+        error: 'INVALID_APPOINTMENT_DATE',
+        message: 'La fecha de la nueva valoración debe ser posterior al momento actual',
+      });
+    }
+
+    return this.db.transaction(async (m) => {
+      const p = (
+        await m.query<any[]>(
+          `SELECT cp.*, a.req_id, a.app_type
+           FROM care_packages cp
+           JOIN appointments a ON a.app_id = cp.cp_assessment_app_id
+           WHERE cp.cp_id = $1
+           FOR UPDATE`,
+          [packageId],
+        )
+      )[0];
+
+      if (!p) throw new NotFoundException('Paquete no encontrado');
+
+      if (p.req_id !== requesterId) {
+        const ownsDependent = p.cp_patient_dependent_id
+          ? await m.query<any[]>(
+              `SELECT 1 FROM requester_dependent WHERE req_id = $1 AND dep_id = $2`,
+              [requesterId, p.cp_patient_dependent_id],
+            )
+          : [];
+        if (!ownsDependent.length) {
+          throw new NotFoundException('Paquete no encontrado');
+        }
+      }
+
+      if (p.cp_state !== 'finalizado') {
+        if (p.cp_state === 'activo') {
+          throw new ConflictException({
+            error: 'ACTIVE_CARE_PACKAGE_EXISTS',
+            message: 'El paciente cuenta con un paquete activo. Debe agendar sus citas dentro del paquete actual.',
+          });
+        }
+        throw new BadRequestException({
+          error: 'CARE_PACKAGE_NOT_FINALIZED',
+          message: 'Solo puede solicitar una nueva valoración cuando el paquete anterior haya finalizado',
+        });
+      }
+
+      await this.assertEligibleForFollowUpValuation(
+        m,
+        packageId,
+        p.cp_patient_person_id ?? null,
+        p.cp_patient_dependent_id ?? null,
+      );
+
+      const activePsy = await m.query<any[]>(
+        `SELECT p.psy_id
+         FROM psychologist p
+         JOIN person per ON per.per_id = p.psy_id
+         WHERE p.psy_id = $1 AND per.per_state = 'activo'`,
+        [p.psy_id],
+      );
+      if (!activePsy.length) {
+        throw new BadRequestException({
+          error: 'PSYCHOLOGIST_NOT_AVAILABLE',
+          message: 'El psicólogo tratante no se encuentra activo actualmente',
+        });
+      }
+
+      const day = date.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+      const time = date.toLocaleTimeString('en-GB', {
+        timeZone: 'America/Bogota',
+        hour12: false,
+      });
+
+      await m.query(
+        `SELECT pg_advisory_xact_lock(hashtext('care-package-slot'), hashtext($1::text || $2::text || $3::text))`,
+        [p.psy_id, day, time],
+      );
+
+      const free = await m.query<any[]>(
+        `SELECT 1 WHERE (
+           EXISTS (
+             SELECT 1 FROM schedule s
+             WHERE s.psy_id = $1 AND s.sch_date = $2::date
+               AND s.sch_start_time <= $3::time
+               AND s.sch_end_time >= ($3::time + interval '60 minutes')
+           )
+           OR EXISTS (
+             SELECT 1 FROM schedule_recurring_blocks r
+             WHERE r.psy_id = $1 AND r.srb_active = true
+               AND r.srb_day_of_week = EXTRACT(ISODOW FROM $2::date)
+               AND r.srb_valid_from <= $2::date
+               AND (r.srb_valid_until IS NULL OR r.srb_valid_until >= $2::date)
+               AND r.srb_start_time <= $3::time
+               AND r.srb_end_time >= ($3::time + interval '60 minutes')
+           )
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM schedule_occupancy
+           WHERE psy_id = $1 AND occ_date = $2::date
+             AND occ_start_time < ($3::time + interval '60 minutes')
+             AND occ_end_time > $3::time
+         )`,
+        [p.psy_id, day, time],
+      );
+
+      if (!free.length) {
+        throw new ConflictException({
+          error: 'SCHEDULE_SLOT_TAKEN',
+          message: 'La franja horaria seleccionada ya no está disponible para su psicólogo tratante',
+        });
+      }
+
+      const modality = dto.appType ?? p.app_type;
+      const reason = dto.appReason?.trim() || null;
+
+      const app = (
+        await m.query<any[]>(
+          `INSERT INTO appointments(
+             req_id,
+             app_patient_person_id,
+             app_patient_dependent_id,
+             psy_id,
+             sec_id,
+             app_date,
+             app_duration,
+             app_state,
+             app_type,
+             app_reason,
+             app_created_at,
+             cp_id,
+             app_kind
+           ) VALUES ($1, $2, $3, $4, NULL, $5, 60, 'confirmada', $6, $7, now(), NULL, 'valoracion')
+           RETURNING
+             app_id AS "appId",
+             app_date AS "appDate",
+             app_state AS "appState",
+             app_kind AS "appKind",
+             app_type AS "appType",
+             psy_id AS "psychologistId",
+             cp_id AS "carePackageId"`,
+          [
+            requesterId,
+            p.cp_patient_person_id,
+            p.cp_patient_dependent_id,
+            p.psy_id,
+            date,
+            modality,
+            reason,
+          ],
+        )
+      )[0];
+
+      await m.query(
+        `INSERT INTO schedule_occupancy(
+           psy_id,
+           app_id,
+           occ_date,
+           occ_start_time,
+           occ_end_time,
+           source_type
+         ) VALUES ($1, $2, $3::date, $4::time, ($4::time + interval '60 minutes'), 'appointment')`,
+        [p.psy_id, app.appId, day, time],
+      );
+
+      return app;
+    });
+  }
+
+  private async assertEligibleForFollowUpValuation(
+    executor: { query: <T = any>(sql: string, params?: any[]) => Promise<T> },
+    packageId: number,
+    patientPersonId: number | null,
+    patientDependentId: number | null,
+  ): Promise<void> {
+    const activeOrSuggestedPackages = await executor.query<any[]>(
+      `SELECT cp_id, cp_state
+       FROM care_packages
+       WHERE cp_state IN ('activo', 'sugerido')
+         AND ((cp_patient_person_id IS NOT NULL AND cp_patient_person_id = $1)
+           OR (cp_patient_dependent_id IS NOT NULL AND cp_patient_dependent_id = $2))
+       LIMIT 1`,
+      [patientPersonId, patientDependentId],
+    );
+
+    if (activeOrSuggestedPackages.length) {
+      const state = activeOrSuggestedPackages[0].cp_state;
+      if (state === 'activo') {
+        throw new ConflictException({
+          error: 'ACTIVE_CARE_PACKAGE_EXISTS',
+          message: 'El paciente cuenta con un paquete activo. Debe agendar sus citas dentro del paquete actual.',
+        });
+      }
+      throw new ConflictException({
+        error: 'SUGGESTED_CARE_PACKAGE_PENDING',
+        message: 'El paciente ya tiene una sugerencia de paquete pendiente de aprobación por secretaría.',
+      });
+    }
+
+    const newerFinalizedPackage = await executor.query<any[]>(
+      `SELECT cp_id
+       FROM care_packages
+       WHERE cp_state = 'finalizado'
+         AND cp_id > $1
+         AND ((cp_patient_person_id IS NOT NULL AND cp_patient_person_id = $2)
+           OR (cp_patient_dependent_id IS NOT NULL AND cp_patient_dependent_id = $3))
+       LIMIT 1`,
+      [packageId, patientPersonId, patientDependentId],
+    );
+    if (newerFinalizedPackage.length) {
+      throw new ConflictException({
+        error: 'NEWER_CARE_PACKAGE_EXISTS',
+        message: 'Debe solicitar la nueva valoración a partir del paquete finalizado más reciente del paciente.',
+      });
+    }
+
+    const openValuation = await executor.query<any[]>(
+      `SELECT a.app_id, a.app_state
+       FROM appointments a
+       WHERE a.app_kind = 'valoracion'
+         AND ((a.app_patient_person_id IS NOT NULL AND a.app_patient_person_id = $1)
+           OR (a.app_patient_dependent_id IS NOT NULL AND a.app_patient_dependent_id = $2))
+         AND (
+           a.app_state IN ('pendiente', 'remitida', 'asignada', 'confirmada')
+           OR (
+             a.app_state = 'realizada'
+             AND a.app_referred_to_psy_id IS NULL
+             AND NOT EXISTS (
+               SELECT 1 FROM care_packages cp WHERE cp.cp_assessment_app_id = a.app_id
+             )
+           )
+         )
+       LIMIT 1`,
+      [patientPersonId, patientDependentId],
+    );
+
+    if (openValuation.length) {
+      throw new ConflictException({
+        error: 'VALUATION_ALREADY_IN_PROGRESS',
+        message: 'El paciente ya tiene una cita de valoración en curso o pendiente de sugerencia de paquete.',
+      });
+    }
+  }
 }

@@ -60,6 +60,8 @@ describe('AppointmentsRepository.createRequest', () => {
         has_user: false,
       }])
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]) // active care_packages check
+      .mockResolvedValueOnce([]) // finalized care_packages check
       .mockResolvedValueOnce([{ app_id: 42 }])
       .mockResolvedValueOnce([{ pd_id: 1 }]) // data_treatment policy
       .mockResolvedValueOnce([{ pd_id: 2 }]) // dependent_consent policy (not used for self)
@@ -77,8 +79,8 @@ describe('AppointmentsRepository.createRequest', () => {
     ).resolves.toBe(42);
 
     expect(dataSource.transaction).toHaveBeenCalledOnce();
-    expect(manager.query).toHaveBeenCalledTimes(8);
-    expect(manager.query.mock.calls[2][0]).toContain("'pendiente'");
+    expect(manager.query).toHaveBeenCalledTimes(10);
+    expect(manager.query.mock.calls[4][0]).toContain("'pendiente'");
   });
 
   it('records data treatment and privacy policy with the IP and web channel', async () => {
@@ -92,6 +94,8 @@ describe('AppointmentsRepository.createRequest', () => {
         has_user: false,
       }])
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]) // active care_packages check
+      .mockResolvedValueOnce([]) // finalized care_packages check
       .mockResolvedValueOnce([{ app_id: 42 }])
       .mockResolvedValueOnce([{ pd_id: 1 }])
       .mockResolvedValueOnce([{ pd_id: 2 }])
@@ -106,7 +110,7 @@ describe('AppointmentsRepository.createRequest', () => {
       acceptance: { ipAddress: '203.0.113.7', channel: 'web' },
     });
 
-    expect(manager.query.mock.calls[5][1]).toEqual(['privacy_policy']);
+    expect(manager.query.mock.calls[7][1]).toEqual(['privacy_policy']);
     const inserts = manager.query.mock.calls.filter(([sql]) =>
       String(sql).includes('INSERT INTO policy_acceptance'),
     );
@@ -179,6 +183,8 @@ describe('AppointmentsRepository.createRequest', () => {
       }])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]) // active care_packages check
+      .mockResolvedValueOnce([]) // finalized care_packages check
       .mockResolvedValueOnce([{ app_id: 42 }])
       .mockResolvedValue([]);
 
@@ -204,6 +210,8 @@ describe('AppointmentsRepository.createRequest', () => {
         has_user: false,
       }])
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]) // active care_packages check
+      .mockResolvedValueOnce([]) // finalized care_packages check
       .mockResolvedValueOnce([{ app_id: 42 }])
       .mockResolvedValue([]);
 
@@ -304,6 +312,8 @@ describe('AppointmentsRepository.upsertRequester', () => {
       }])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]) // active care_packages check
+      .mockResolvedValueOnce([]) // finalized care_packages check
       .mockResolvedValueOnce([{ app_id: 42 }])
       .mockResolvedValueOnce([{ pd_id: 1 }])
       .mockResolvedValueOnce([{ pd_id: 2 }])
@@ -326,7 +336,7 @@ describe('AppointmentsRepository.upsertRequester', () => {
       'per_identity_document = COALESCE(per_identity_document, $2::bigint)',
     );
     expect(manager.query.mock.calls[2][0]).toContain('SET pr_active = true');
-    expect(manager.query.mock.calls[3][0]).toContain('INSERT INTO appointments');
+    expect(manager.query.mock.calls[5][0]).toContain('INSERT INTO appointments');
   });
 });
 
