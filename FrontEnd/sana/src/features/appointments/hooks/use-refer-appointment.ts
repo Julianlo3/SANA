@@ -14,6 +14,15 @@ import type {
 /** Maximum characters allowed in the referral reason. */
 export const MAX_REFERRAL_REASON_LENGTH = 1000;
 
+type PsychologistLoadState =
+  | { appointmentId: number; status: "loading" }
+  | {
+      appointmentId: number;
+      status: "ready";
+      psychologists: ReferralPsychologistOption[];
+    }
+  | { appointmentId: number; status: "error"; error: string };
+
 /**
  * Loads eligible psychologists and handles the referral submission for a valuation appointment.
  * @param appointmentId Valuation appointment to refer (must be 'confirmada' or 'realizada').
@@ -23,34 +32,52 @@ export function useReferAppointment(
   appointmentId: number,
   onSuccess: () => void,
 ) {
-  const [psychologists, setPsychologists] = useState<ReferralPsychologistOption[]>([]);
-  const [isLoadingPsychologists, setIsLoadingPsychologists] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [psychologistLoad, setPsychologistLoad] =
+    useState<PsychologistLoadState>({
+      appointmentId,
+      status: "loading",
+    });
 
   const [targetPsychologistId, setTargetPsychologistId] = useState<number | null>(null);
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  const isCurrentLoad = psychologistLoad.appointmentId === appointmentId;
+  const isLoadingPsychologists =
+    !isCurrentLoad || psychologistLoad.status === "loading";
+  const psychologists =
+    isCurrentLoad && psychologistLoad.status === "ready"
+      ? psychologistLoad.psychologists
+      : [];
+  const loadError =
+    isCurrentLoad && psychologistLoad.status === "error"
+      ? psychologistLoad.error
+      : null;
+
   useEffect(() => {
     const controller = new AbortController();
-    setIsLoadingPsychologists(true);
-    setLoadError(null);
 
     listReferralPsychologists(appointmentId, controller.signal)
       .then((result) => {
-        if (!controller.signal.aborted) setPsychologists(result);
+        if (!controller.signal.aborted) {
+          setPsychologistLoad({
+            appointmentId,
+            status: "ready",
+            psychologists: result,
+          });
+        }
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
-        setLoadError(
-          error instanceof ApiError
-            ? error.message
-            : "No pudimos cargar los psicólogos disponibles.",
-        );
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setIsLoadingPsychologists(false);
+        setPsychologistLoad({
+          appointmentId,
+          status: "error",
+          error:
+            error instanceof ApiError
+              ? error.message
+              : "No pudimos cargar los psicólogos disponibles.",
+        });
       });
 
     return () => controller.abort();

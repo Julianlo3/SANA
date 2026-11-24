@@ -35,6 +35,18 @@ const FILTERS: { value: ReferralState; label: string; description: string }[] = 
   },
 ];
 
+const EMPTY_PSYCHOLOGISTS: PsychologistOption[] = [];
+
+type ReferralLoadState =
+  | { filter: ReferralState; status: "loading" }
+  | {
+      filter: ReferralState;
+      status: "ready";
+      referrals: Appointment[];
+      psychologists: PsychologistOption[];
+    }
+  | { filter: ReferralState; status: "error"; error: string };
+
 /**
  * Secretary view of referred valuation appointments pending schedule assignment.
  * Displays target psychologist information including their clinical specialization.
@@ -43,15 +55,13 @@ const FILTERS: { value: ReferralState; label: string; description: string }[] = 
  */
 export default function ReferralsInboxPage() {
   const [filter, setFilter] = useState<ReferralState>("remitida");
-  const [referrals, setReferrals] = useState<Appointment[]>([]);
-  const [psychologists, setPsychologists] = useState<PsychologistOption[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadState, setLoadState] = useState<ReferralLoadState>({
+    filter: "remitida",
+    status: "loading",
+  });
 
   useEffect(() => {
     const controller = new AbortController();
-    setIsLoading(true);
-    setLoadError(null);
 
     Promise.all([
       listPendingReferrals(filter, controller.signal),
@@ -59,24 +69,39 @@ export default function ReferralsInboxPage() {
     ])
       .then(([referralResults, psychologistResults]) => {
         if (!controller.signal.aborted) {
-          setReferrals(referralResults);
-          setPsychologists(psychologistResults);
+          setLoadState({
+            filter,
+            status: "ready",
+            referrals: referralResults,
+            psychologists: psychologistResults,
+          });
         }
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
-        setLoadError(
-          error instanceof ApiError
-            ? error.message
-            : "No pudimos cargar las valoraciones remitidas. Intenta de nuevo.",
-        );
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setIsLoading(false);
+        setLoadState({
+          filter,
+          status: "error",
+          error:
+            error instanceof ApiError
+              ? error.message
+              : "No pudimos cargar las valoraciones remitidas. Intenta de nuevo.",
+        });
       });
 
     return () => controller.abort();
   }, [filter]);
+
+  const isCurrentLoad = loadState.filter === filter;
+  const isLoading = !isCurrentLoad || loadState.status === "loading";
+  const referrals =
+    isCurrentLoad && loadState.status === "ready" ? loadState.referrals : [];
+  const psychologists =
+    isCurrentLoad && loadState.status === "ready"
+      ? loadState.psychologists
+      : EMPTY_PSYCHOLOGISTS;
+  const loadError =
+    isCurrentLoad && loadState.status === "error" ? loadState.error : null;
 
   const activeTab = FILTERS.find((f) => f.value === filter)!;
 

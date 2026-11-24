@@ -77,15 +77,11 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
     [detail.psychologistHistory],
   );
 
-  const targetPsychologist = useMemo(
-    () =>
-      appointment?.psychologistId
-        ? detail.psychologistOptions.find(
-            (p) => p.psyId === appointment.psychologistId,
-          )
-        : null,
-    [appointment?.psychologistId, detail.psychologistOptions],
-  );
+  const targetPsychologist = appointment?.psychologistId
+    ? detail.psychologistOptions.find(
+        (p) => p.psyId === appointment.psychologistId,
+      )
+    : null;
 
   const backLink = (
     <Link
