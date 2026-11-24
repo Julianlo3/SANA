@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { hasActiveSelfCarePackage } from "@/features/my-account/lib/appointment-request-eligibility";
+import {
+  hasActiveSelfCarePackage,
+  hasSelfPackageRequiringPackageFlow,
+} from "@/features/my-account/lib/appointment-request-eligibility";
 
 describe("appointment request eligibility", () => {
   it("blocks a self valuation when the requester has an active package", () => {
@@ -21,6 +24,19 @@ describe("appointment request eligibility", () => {
       hasActiveSelfCarePackage([
         { patientType: "self", state: "finalizado" },
         { patientType: "self", state: "sugerido" },
+      ]),
+    ).toBe(false);
+  });
+
+  it("requires the package flow instead of a general valuation after finalization", () => {
+    expect(
+      hasSelfPackageRequiringPackageFlow([
+        { patientType: "self", state: "finalizado" },
+      ]),
+    ).toBe(true);
+    expect(
+      hasSelfPackageRequiringPackageFlow([
+        { patientType: "dependent", state: "activo" },
       ]),
     ).toBe(false);
   });

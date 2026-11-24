@@ -53,6 +53,10 @@ export const ENDPOINTS = {
   carePackage: (id: number) => `/care-packages/${id}`,
   carePackageAvailability: (id: number) =>
     `/care-packages/${id}/availability`,
+  carePackageFollowUpValuationAvailability: (id: number) =>
+    `/care-packages/${id}/follow-up-valuation/availability`,
+  carePackageFollowUpValuation: (id: number) =>
+    `/care-packages/${id}/follow-up-valuation`,
   carePackageAppointments: (id: number) =>
     `/care-packages/${id}/my-appointments`,
 

@@ -13,6 +13,10 @@ type Props = {
   readonly onClose: () => void;
   readonly onSubmit: () => void;
   readonly children: ReactNode;
+  /** Optional business-rule message that blocks general valuation submission. */
+  readonly blockedMessage?: ReactNode;
+  /** Prevents submission while keeping editable requester fields visible. */
+  readonly submissionBlocked?: boolean;
 };
 
 /**
@@ -28,8 +32,10 @@ export default function AppointmentRequestDialog({
   onClose,
   onSubmit,
   children,
+  blockedMessage,
+  submissionBlocked = false,
 }: Props) {
-  const isBlocked = missing.length > 0;
+  const isBlocked = missing.length > 0 || submissionBlocked;
 
   return (
     <Modal
@@ -53,13 +59,16 @@ export default function AppointmentRequestDialog({
         )
       }
     >
-      {isBlocked ? (
+      {missing.length > 0 ? (
         <p>
           Antes de solicitar la cita completa en «Editar mis datos»:{" "}
           {missing.join(", ")}.
         </p>
       ) : (
-        children
+        <>
+          {blockedMessage}
+          {children}
+        </>
       )}
     </Modal>
   );

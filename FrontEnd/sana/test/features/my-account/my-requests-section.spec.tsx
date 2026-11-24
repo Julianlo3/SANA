@@ -9,6 +9,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CarePackage } from "@/features/care-packages/types/care-package-types";
+import { MY_REQUESTS_UPDATED_EVENT } from "@/features/my-account/lib/my-requests-events";
 import MyRequestsSection from "@/features/my-account/components/my-requests-section";
 import type { MyRequest } from "@/features/my-account/types/my-account-types";
 
@@ -124,7 +125,7 @@ describe("my requests section package gating", () => {
       screen.getByRole("button", {
         name: "Solicitar valoración para un dependiente",
       }).hasAttribute("disabled"),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("disables self valuation requests while a self package is active", async () => {
@@ -160,7 +161,7 @@ describe("my requests section package gating", () => {
     );
   });
 
-  it("enables self valuation requests when no self package is active", async () => {
+  it("disables the general self valuation form when a package is finalized", async () => {
     mocks.listMyCarePackages.mockResolvedValue([
       createPackage("self", "finalizado"),
     ]);
@@ -171,8 +172,9 @@ describe("my requests section package gating", () => {
       name: "Solicitar una valoración",
     });
     await waitFor(() =>
-      expect(selfRequestButton.hasAttribute("disabled")).toBe(false),
+      expect(selfRequestButton.hasAttribute("disabled")).toBe(true),
     );
+    expect(screen.getByText(/valoración de continuidad/)).toBeTruthy();
   });
 
   it("keeps self valuation requests disabled when package lookup fails", async () => {
@@ -188,6 +190,25 @@ describe("my requests section package gating", () => {
     );
     expect(screen.getByText(/No pudimos verificar tus paquetes/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Reintentar" })).toBeTruthy();
+  });
+
+  it("reloads appointments when a package booking emits an update", () => {
+    const reload = vi.fn();
+    mocks.useMyRequests.mockReturnValue({
+      requests: [],
+      isLoading: false,
+      loadError: null,
+      cancelingId: null,
+      notice: null,
+      actionError: null,
+      cancel: vi.fn(),
+      reload,
+    });
+
+    render(<MyRequestsSection />);
+    window.dispatchEvent(new Event(MY_REQUESTS_UPDATED_EVENT));
+
+    expect(reload).toHaveBeenCalledWith("Tus citas se actualizaron.");
   });
 
   it("prioritizes active appointments and pages them four at a time", () => {

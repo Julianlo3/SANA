@@ -20,7 +20,11 @@ import NewRequestDialog from "../components/new-request-dialog";
 import RequestCard from "../components/request-card";
 import { useMyRequests } from "../hooks/use-my-requests";
 import { useOwnProfile } from "../hooks/use-own-profile";
-import { hasActiveSelfCarePackage } from "../lib/appointment-request-eligibility";
+import {
+  hasActiveSelfCarePackage,
+  hasSelfPackageRequiringPackageFlow,
+} from "../lib/appointment-request-eligibility";
+import { MY_REQUESTS_UPDATED_EVENT } from "../lib/my-requests-events";
 import type { MyRequest } from "../types/my-account-types";
 
 /**
@@ -137,6 +141,7 @@ function activeSummary(count: number): string {
 export default function MyRequestsSection() {
   const profile = useOwnProfile();
   const requests = useMyRequests();
+  const { reload: reloadRequests } = requests;
   const [requestToCancel, setRequestToCancel] = useState<MyRequest | null>(
     null,
   );
@@ -178,16 +183,42 @@ export default function MyRequestsSection() {
     return () => controller.abort();
   }, [packagesReloadKey]);
 
+  useEffect(() => {
+    const handleRequestsUpdated = () =>
+      reloadRequests("Tus citas se actualizaron.");
+    window.addEventListener(MY_REQUESTS_UPDATED_EVENT, handleRequestsUpdated);
+
+    return () =>
+      window.removeEventListener(
+        MY_REQUESTS_UPDATED_EVENT,
+        handleRequestsUpdated,
+      );
+  }, [reloadRequests]);
+
   const firstName = profile.profile?.fullName.trim().split(" ")[0] ?? "";
   const selfHasActivePackage = hasActiveSelfCarePackage(packages);
+  const selfHasFinalizedPackage = packages.some(
+    (carePackage) =>
+      carePackage.patientType === "self" &&
+      carePackage.state === "finalizado",
+  );
+  const selfNeedsPackageFlow =
+    hasSelfPackageRequiringPackageFlow(packages);
   const isSelfRequestDisabled =
     !profile.profile ||
     arePackagesLoading ||
     packagesLoadError !== null ||
-    selfHasActivePackage;
+    selfNeedsPackageFlow;
+  const dependentRequestDescriptionId = arePackagesLoading
+    ? "self-request-package-loading"
+    : packagesLoadError
+      ? "self-request-package-error"
+      : undefined;
   let selfRequestDescriptionId: string | undefined;
   if (selfHasActivePackage) {
     selfRequestDescriptionId = "self-request-package-notice";
+  } else if (selfHasFinalizedPackage) {
+    selfRequestDescriptionId = "self-request-follow-up-notice";
   } else if (arePackagesLoading) {
     selfRequestDescriptionId = "self-request-package-loading";
   } else if (packagesLoadError) {
@@ -308,7 +339,12 @@ export default function MyRequestsSection() {
             <Button
               variant="brand-outline"
               onClick={() => setIsNewDependentRequestOpen(true)}
-              disabled={!profile.profile}
+              disabled={
+                !profile.profile ||
+                arePackagesLoading ||
+                packagesLoadError !== null
+              }
+              aria-describedby={dependentRequestDescriptionId}
             >
               <span className="inline-flex items-center gap-2">
                 <UsersRound size={16} aria-hidden />
@@ -323,7 +359,7 @@ export default function MyRequestsSection() {
             id="self-request-package-loading"
             className="mt-4 block text-sm text-text-muted"
           >
-            Verificando si tienes un paquete activo…
+            Verificando el estado de tus paquetes…
           </output>
         )}
         {selfHasActivePackage && (
@@ -331,8 +367,18 @@ export default function MyRequestsSection() {
             id="self-request-package-notice"
             className="mt-4 block text-sm text-text-muted"
           >
-            Tienes un paquete activo. Podrás solicitar una nueva valoración
-            cuando el paquete se cierre.
+            Tienes un paquete activo. Agenda tus sesiones desde «Mis paquetes»;
+            al finalizarlo, podrás solicitar una valoración de continuidad con
+            el mismo psicólogo.
+          </output>
+        )}
+        {!selfHasActivePackage && selfHasFinalizedPackage && (
+          <output
+            id="self-request-follow-up-notice"
+            className="mt-4 block text-sm text-text-muted"
+          >
+            Tu paquete está finalizado. Solicita una valoración de continuidad
+            desde «Mis paquetes» para continuar con el mismo psicólogo.
           </output>
         )}
         {packagesLoadError && (
@@ -514,6 +560,7 @@ export default function MyRequestsSection() {
       {isNewDependentRequestOpen && profile.profile && (
         <NewDependentRequestDialog
           profile={profile.profile}
+          carePackages={packages}
           onCreated={() =>
             handleCreated(
               "La cita de valoración del dependiente quedó reservada en el horario seleccionado.",

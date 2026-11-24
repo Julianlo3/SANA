@@ -71,4 +71,38 @@ describe("my care packages section", () => {
     expect(screen.getByText("Paquete #2")).toBeTruthy();
     expect(screen.getByText("Pendiente de aprobación")).toBeTruthy();
   });
+
+  it("offers a follow-up valuation from an eligible finalized package", async () => {
+    mocks.listMyCarePackages.mockResolvedValue([
+      createPackage(1, "finalizado"),
+    ]);
+
+    render(<MyCarePackagesSection />);
+    await waitFor(() =>
+      expect(screen.getByText("Otros paquetes (1)")).toBeTruthy(),
+    );
+    fireEvent.click(screen.getByText("Otros paquetes (1)"));
+
+    expect(
+      screen.getByRole("button", { name: "Solicitar nueva valoración" }),
+    ).toBeTruthy();
+  });
+
+  it("does not offer follow-up for a patient with another active package", async () => {
+    mocks.listMyCarePackages.mockResolvedValue([
+      createPackage(1, "activo"),
+      createPackage(2, "finalizado"),
+    ]);
+
+    render(<MyCarePackagesSection />);
+    await waitFor(() =>
+      expect(screen.getByText("Paquete #1")).toBeTruthy(),
+    );
+    fireEvent.click(screen.getByText("Otros paquetes (1)"));
+
+    expect(
+      screen.queryByRole("button", { name: "Solicitar nueva valoración" }),
+    ).toBeNull();
+    expect(screen.getByText(/tiene un paquete activo/)).toBeTruthy();
+  });
 });

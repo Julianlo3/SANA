@@ -6,9 +6,11 @@ import { formatDateTime } from "@/features/appointments/lib/appointment-format";
 import InlineMessage from "@/components/feedback/inline-message";
 import { ApiError } from "@/types/api-types";
 import { listMyRequests } from "@/features/my-account/services/my-account-service";
+import { MY_REQUESTS_UPDATED_EVENT } from "@/features/my-account/lib/my-requests-events";
 import type { MyRequest } from "@/features/my-account/types/my-account-types";
 import CarePackageBooking from "./care-package-booking";
 import { listMyCarePackages } from "../services/care-packages-service";
+import { getFollowUpValuationRestriction } from "../lib/follow-up-valuation-eligibility";
 import type { CarePackage } from "../types/care-package-types";
 
 const PACKAGE_STATE_LABELS: Record<CarePackage["state"], string> = {
@@ -98,6 +100,14 @@ export default function MyCarePackagesSection() {
     const occupiedCount =
       carePackage.completedSessions + carePackage.reservedSessions;
     const canBook = carePackage.state === "activo";
+    const followUpRestriction = getFollowUpValuationRestriction(
+      carePackage,
+      packages,
+      requests,
+    );
+    const canBookFollowUp =
+      carePackage.state === "finalizado" && followUpRestriction === null;
+    const isBookingOpen = bookingPackageId === carePackage.id;
 
     return (
       <article
@@ -174,11 +184,22 @@ export default function MyCarePackagesSection() {
           </p>
         )}
 
-        {canBook && occupiedCount < carePackage.sessionLimit && (
+        {canBook && occupiedCount >= carePackage.sessionLimit && (
+          <p className="mt-5 text-sm font-medium text-text-muted">
+            Ya alcanzaste el número de citas de este paquete.
+          </p>
+        )}
+        {carePackage.state === "finalizado" && followUpRestriction && (
+          <p className="mt-5 rounded-xl border border-border bg-surface-muted/50 px-4 py-3 text-sm text-text-muted">
+            {followUpRestriction}
+          </p>
+        )}
+        {(canBookFollowUp ||
+          (canBook && occupiedCount < carePackage.sessionLimit)) && (
           <>
             <button
               type="button"
-              aria-expanded={bookingPackageId === carePackage.id}
+              aria-expanded={isBookingOpen}
               onClick={() =>
                 setBookingPackageId((current) =>
                   current === carePackage.id ? null : carePackage.id,
@@ -186,26 +207,29 @@ export default function MyCarePackagesSection() {
               }
               className="mt-5 rounded-xl border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-primary-soft"
             >
-              {bookingPackageId === carePackage.id
+              {isBookingOpen
                 ? "Cerrar calendario"
-                : "Solicitar una cita"}
+                : canBookFollowUp
+                  ? "Solicitar nueva valoración"
+                  : "Solicitar una cita"}
             </button>
-            {bookingPackageId === carePackage.id && (
+            {isBookingOpen && (
               <CarePackageBooking
                 carePackage={carePackage}
+                followUpValuation={canBookFollowUp}
                 onBooked={() => {
                   setBookingPackageId(null);
-                  setBookingNotice("Tu cita del paquete fue registrada.");
+                  window.dispatchEvent(new Event(MY_REQUESTS_UPDATED_EVENT));
+                  setBookingNotice(
+                    canBookFollowUp
+                      ? "Tu valoración de continuidad quedó agendada con el psicólogo tratante."
+                      : "Tu cita del paquete fue registrada.",
+                  );
                   reload();
                 }}
               />
             )}
           </>
-        )}
-        {canBook && occupiedCount >= carePackage.sessionLimit && (
-          <p className="mt-5 text-sm font-medium text-text-muted">
-            Ya alcanzaste el número de citas de este paquete.
-          </p>
         )}
       </article>
     );
@@ -230,7 +254,8 @@ export default function MyCarePackagesSection() {
           </h2>
           <p className="mt-1 text-sm text-text-muted">
             Consulta el estado de tus paquetes, el avance de las sesiones y
-            solicita nuevas citas cuando estén activos.
+            solicita sesiones cuando estén activos o una valoración de
+            continuidad con el psicólogo tratante al finalizar un paquete.
           </p>
         </div>
       </div>

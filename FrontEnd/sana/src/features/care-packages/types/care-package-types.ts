@@ -1,4 +1,8 @@
-import type { PatientType } from "@/features/appointments/types/appointment-types";
+import type {
+  AppointmentMode,
+  PatientType,
+} from "@/features/appointments/types/appointment-types";
+import type { ConsultantAvailabilitySlot } from "@/features/consultation-requests/types/consultation-request-types";
 
 /** Priorities used to determine the consultant's care package. */
 export type PackagePriority = "alta" | "media" | "baja";
@@ -152,4 +156,39 @@ export type RejectCarePackagePayload = {
 export type CarePackageAppointmentPayload = {
   /** Selected slot start as an ISO datetime. */
   appDate: string;
+};
+
+/** Availability slot offered by the treating psychologist for follow-up valuation. */
+export type FollowUpValuationAvailabilitySlot =
+  ConsultantAvailabilitySlot & {
+    /** Treating psychologist who owns this available slot. */
+    psychologists: { id: number; name: string; speciality: string }[];
+  };
+
+/** Payload for booking a post-package follow-up valuation. */
+export type ScheduleFollowUpValuationPayload = {
+  /** Selected slot start as an ISO datetime. */
+  appDate: string;
+  /** Optional appointment mode; omitted to inherit the previous valuation mode. */
+  appType?: AppointmentMode;
+  /** Optional note for the treating psychologist. */
+  appReason?: string;
+};
+
+/** Result returned after booking a post-package follow-up valuation. */
+export type ScheduleFollowUpValuationResult = {
+  /** Newly created appointment identifier. */
+  appId: number;
+  /** Confirmed appointment date and time. */
+  appDate: string;
+  /** Appointment state returned by the backend. */
+  appState: "confirmada";
+  /** Follow-up assessments are not linked to a package. */
+  appKind: "valoracion";
+  /** Appointment mode, inherited or selected. */
+  appType: AppointmentMode;
+  /** Treating psychologist assigned to the appointment. */
+  psychologistId: number;
+  /** Follow-up valuations are not linked to a care package. */
+  carePackageId: null;
 };

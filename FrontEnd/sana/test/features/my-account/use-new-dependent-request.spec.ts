@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { OwnProfile } from "@/features/my-account/types/my-account-types";
 import { useNewDependentRequest } from "@/features/my-account/hooks/use-new-dependent-request";
 import type { ConsultantAvailabilitySlot } from "@/features/consultation-requests/types/consultation-request-types";
+import type { CarePackage } from "@/features/care-packages/types/care-package-types";
 
 const mocks = vi.hoisted(() => ({
   fetchConsultantAvailability: vi.fn(),
@@ -33,6 +34,21 @@ const slot: ConsultantAvailabilitySlot = {
   date: "2099-01-05",
   startTime: "14:00:00",
   endTime: "15:00:00",
+};
+
+const finalizedDependentPackage: CarePackage = {
+  id: 8,
+  state: "finalizado",
+  priority: "media",
+  sessionLimit: 6,
+  createdAt: "2026-01-01T10:00:00.000Z",
+  closedAt: "2026-10-01T10:00:00.000Z",
+  psychologistId: 7,
+  psychologistName: "Psicóloga",
+  patientType: "dependent",
+  patientName: "Luis Ejemplo",
+  completedSessions: 6,
+  reservedSessions: 0,
 };
 
 function fillValidRequest(
@@ -109,5 +125,25 @@ describe("dependent appointment request scheduling", () => {
       "appDateIdeal",
     );
     expect(onCreated).toHaveBeenCalledOnce();
+  });
+
+  it("blocks the general dependent valuation when that dependent has a finalized package", async () => {
+    const { result } = renderHook(() =>
+      useNewDependentRequest(profile, vi.fn(), [finalizedDependentPackage]),
+    );
+    await waitFor(() =>
+      expect(result.current.isAvailabilityLoading).toBe(false),
+    );
+    fillValidRequest(result);
+    act(() => result.current.setSelectedSlot(slot));
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(mocks.submitConsultationRequest).not.toHaveBeenCalled();
+    expect(result.current.packageRestrictionMessage).toContain(
+      "con el psicólogo tratante",
+    );
   });
 });

@@ -12,12 +12,14 @@ import ValidatedSelectField from "@/features/consultation-requests/components/va
 import AppointmentRequestDialog from "./appointment-request-dialog";
 import { useNewDependentRequest } from "../hooks/use-new-dependent-request";
 import type { OwnProfile } from "../types/my-account-types";
+import type { CarePackage } from "@/features/care-packages/types/care-package-types";
 
 /**
  * Props required to create a valuation request for a dependent.
  */
 type Props = {
   readonly profile: OwnProfile;
+  readonly carePackages: readonly CarePackage[];
   readonly onCreated: () => void;
   readonly onClose: () => void;
 };
@@ -29,10 +31,11 @@ type Props = {
  */
 export default function NewDependentRequestDialog({
   profile,
+  carePackages,
   onCreated,
   onClose,
 }: Props) {
-  const request = useNewDependentRequest(profile, onCreated);
+  const request = useNewDependentRequest(profile, onCreated, carePackages);
 
   return (
     <AppointmentRequestDialog
@@ -44,6 +47,21 @@ export default function NewDependentRequestDialog({
       }
       missing={request.missing}
       isSaving={request.isSaving}
+      submissionBlocked={Boolean(request.packageRestrictionMessage)}
+      blockedMessage={
+        request.packageRestrictionMessage ? (
+          <p>
+            {request.packageRestrictionMessage}{" "}
+            <a
+              href="#mis-paquetes"
+              onClick={onClose}
+              className="font-semibold text-primary underline"
+            >
+              Ver mis paquetes
+            </a>
+          </p>
+        ) : undefined
+      }
       onSubmit={request.submit}
       onClose={onClose}
     >
@@ -100,51 +118,55 @@ export default function NewDependentRequestDialog({
           />
         </fieldset>
 
-        <AppointmentModeField
-          department={request.residenceDepartment}
-          value={request.appType}
-          error={request.errors.appType}
-          onChange={request.setAppType}
-          onBlur={() => undefined}
-        />
+        {!request.packageRestrictionMessage && (
+          <>
+            <AppointmentModeField
+              department={request.residenceDepartment}
+              value={request.appType}
+              error={request.errors.appType}
+              onChange={request.setAppType}
+              onBlur={() => undefined}
+            />
 
-        <ConsultationReasonField
-          value={request.reason}
-          error={request.errors.reason}
-          onChange={request.setReason}
-        />
+            <ConsultationReasonField
+              value={request.reason}
+              error={request.errors.reason}
+              onChange={request.setReason}
+            />
 
-        <fieldset className="space-y-3">
-          <legend className="font-semibold text-text">
-            Horario de la valoración
-          </legend>
-          <p className="text-sm text-text-muted">
-            Selecciona un horario disponible. Al reservarlo, se asignará un
-            psicólogo disponible para atender al dependiente.
-          </p>
-          <ConsultantSlotPicker
-            availableDays={request.availableDays}
-            slotsForDay={request.slotsForDay}
-            isLoading={request.isAvailabilityLoading}
-            error={request.availabilityError}
-            onReload={request.reloadAvailability}
-            selectedSlot={request.selectedSlot}
-            onSelect={request.setSelectedSlot}
-            disabled={request.isSaving}
-          />
-          {request.errors.appDate && (
-            <p role="alert" className="text-xs text-danger">
-              {request.errors.appDate}
-            </p>
-          )}
-        </fieldset>
+            <fieldset className="space-y-3">
+              <legend className="font-semibold text-text">
+                Horario de la valoración
+              </legend>
+              <p className="text-sm text-text-muted">
+                Selecciona un horario disponible. Al reservarlo, se asignará un
+                psicólogo disponible para atender al dependiente.
+              </p>
+              <ConsultantSlotPicker
+                availableDays={request.availableDays}
+                slotsForDay={request.slotsForDay}
+                isLoading={request.isAvailabilityLoading}
+                error={request.availabilityError}
+                onReload={request.reloadAvailability}
+                selectedSlot={request.selectedSlot}
+                onSelect={request.setSelectedSlot}
+                disabled={request.isSaving}
+              />
+              {request.errors.appDate && (
+                <p role="alert" className="text-xs text-danger">
+                  {request.errors.appDate}
+                </p>
+              )}
+            </fieldset>
 
-        <DataPolicyConsent
-          checked={request.accepted}
-          onChange={request.setAccepted}
-          error={request.errors.accepted}
-          label={ACCOUNT_DEPENDENT_REQUEST_CONSENT}
-        />
+            <DataPolicyConsent
+              checked={request.accepted}
+              onChange={request.setAccepted}
+              error={request.errors.accepted}
+              label={ACCOUNT_DEPENDENT_REQUEST_CONSENT}
+            />
+          </>
+        )}
 
         {request.submitError && (
           <InlineMessage tone="error">{request.submitError}</InlineMessage>
