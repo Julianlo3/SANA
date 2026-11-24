@@ -61,7 +61,7 @@ function getPackageSuggestion(
     return {
       suggestion: null,
       validationError:
-        "Selecciona la prioridad e indica un número entero de citas sugeridas mayor que cero.",
+        `Selecciona la prioridad e indica un número entero de citas sugeridas entre ${MIN_CARE_PACKAGE_SESSIONS} y ${MAX_CARE_PACKAGE_SESSIONS}.`,
     };
   }
 

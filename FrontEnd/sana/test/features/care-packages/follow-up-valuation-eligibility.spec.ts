@@ -72,13 +72,16 @@ describe("follow-up valuation eligibility", () => {
     ).not.toBeNull();
   });
 
-  it("blocks follow-up when a valuation is pending or confirmed", () => {
-    const carePackage = createPackage();
+  it.each(["pendiente", "asignada", "confirmada", "remitida"] as const)(
+    "blocks follow-up when a valuation is %s",
+    (appState) => {
+      const carePackage = createPackage();
 
-    expect(
-      getFollowUpValuationRestriction(carePackage, [carePackage], [
-        createRequest({ appState: "confirmada" }),
-      ]),
-    ).toContain("valoración en curso");
-  });
+      expect(
+        getFollowUpValuationRestriction(carePackage, [carePackage], [
+          createRequest({ appState }),
+        ]),
+      ).toContain("valoración en curso");
+    },
+  );
 });

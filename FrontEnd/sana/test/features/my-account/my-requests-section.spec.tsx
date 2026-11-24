@@ -220,6 +220,7 @@ describe("my requests section package gating", () => {
         createRequest(4, "pendiente", "dependent", "Lucía", null),
         createRequest(5, "asignada", "dependent", "Mateo", "2026-11-21"),
         createRequest(6, "realizada", "dependent", "Mateo", "2026-11-10"),
+        createRequest(7, "remitida", "self", "Ana Ejemplo", null),
       ],
       isLoading: false,
       loadError: null,
@@ -235,16 +236,20 @@ describe("my requests section package gating", () => {
     const appointmentIds = () =>
       screen.getAllByText(/Solicitud #/).map((element) => element.textContent);
     expect(appointmentIds()).toEqual([
+      "Solicitud #7",
       "Solicitud #4",
       "Solicitud #2",
       "Solicitud #5",
-      "Solicitud #6",
     ]);
 
     fireEvent.click(
       screen.getByRole("button", { name: "Mostrar citas siguientes" }),
     );
-    expect(appointmentIds()).toEqual(["Solicitud #3", "Solicitud #1"]);
+    expect(appointmentIds()).toEqual([
+      "Solicitud #6",
+      "Solicitud #3",
+      "Solicitud #1",
+    ]);
 
     fireEvent.click(
       screen.getByRole("button", { name: "Mostrar citas anteriores" }),

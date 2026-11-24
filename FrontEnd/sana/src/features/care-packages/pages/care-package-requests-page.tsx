@@ -206,7 +206,9 @@ export default function CarePackageRequestsPage() {
   async function approve(carePackage: CarePackage) {
     const sessionLimit = Number(sessionLimits[carePackage.id]);
     if (!Number.isInteger(sessionLimit) || sessionLimit < MIN_CARE_PACKAGE_SESSIONS || sessionLimit > MAX_CARE_PACKAGE_SESSIONS) {
-      setActionError("Indica un número entero de citas mayor que cero.");
+      setActionError(
+        `Indica un número entero de citas entre ${MIN_CARE_PACKAGE_SESSIONS} y ${MAX_CARE_PACKAGE_SESSIONS}.`,
+      );
       return;
     }
 

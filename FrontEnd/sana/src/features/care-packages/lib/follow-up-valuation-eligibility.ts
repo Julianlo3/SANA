@@ -2,7 +2,12 @@ import type { MyRequest } from "@/features/my-account/types/my-account-types";
 import type { CarePackage } from "../types/care-package-types";
 
 /** Appointment states that represent an unresolved appointment. */
-const OPEN_APPOINTMENT_STATES = new Set(["pendiente", "asignada", "confirmada"]);
+const OPEN_APPOINTMENT_STATES = new Set([
+  "pendiente",
+  "asignada",
+  "confirmada",
+  "remitida",
+]);
 
 /**
  * Normalizes patient names for matching package and appointment records.

@@ -123,6 +123,8 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
   const isAssigned = appointment.appState === "asignada";
   const isConfirmed = appointment.appState === "confirmada";
   const isReferred = appointment.appState === "remitida";
+  const isReferralAppointment =
+    isReferred || appointment.referredFromAppId != null;
   const canAssign = isPending || isReferred || (isAssigned && detail.isChangingSlot);
   const canDiscard = isPending || isAssigned || isReferred;
   const ModeIcon = appointment.appType === "virtual" ? Video : MapPin;
@@ -266,7 +268,7 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
           </section>
         )}
 
-        {isReferred && (
+        {isReferralAppointment && (
           <section className="rounded-2xl border border-primary/30 bg-[#EAF0FF] p-6">
             <div className="flex items-start gap-3">
               <GitBranch className="mt-1 text-primary shrink-0" size={20} aria-hidden />
@@ -317,7 +319,9 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
                 onClick={detail.startChangingSlot}
                 disabled={detail.isWorking}
               >
-                Cambiar horario o psicólogo
+                {isReferralAppointment
+                  ? "Cambiar horario"
+                  : "Cambiar horario o psicólogo"}
               </Button>
             </div>
           </section>
@@ -327,13 +331,15 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
           <section className={CARD_CLASS}>
             <h2 className="font-display text-lg font-bold text-text">
               {isAssigned
-                ? "Reasignar"
+                ? isReferralAppointment
+                  ? "Cambiar horario de la remisión"
+                  : "Reasignar"
                 : isReferred
                   ? "Asignar horario a valoración remitida"
                   : "Asignar psicólogo y horario"}
             </h2>
             <p className="mt-1 text-sm text-text-muted">
-              {isReferred
+              {isReferralAppointment
                 ? `Selecciona una fecha y franja disponible para ${appointment.psychologistName ?? "el psicólogo destino"}.`
                 : "Busca los horarios libres, elige la franja y el psicólogo. Si no hay ninguno, la solicitud sigue pendiente hasta que se libere un cupo."}
             </p>
@@ -376,13 +382,15 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
                 streakByPsychologistId={streakByPsychologistId}
                 disabled={detail.isWorking}
                 restrictedPsychologistId={
-                  isReferred ? appointment.psychologistId : undefined
+                  isReferralAppointment ? appointment.psychologistId : undefined
                 }
                 restrictedPsychologistName={
-                  isReferred ? appointment.psychologistName : undefined
+                  isReferralAppointment ? appointment.psychologistName : undefined
                 }
                 restrictedPsychologistSpeciality={
-                  isReferred ? targetPsychologist?.speciality : undefined
+                  isReferralAppointment
+                    ? targetPsychologist?.speciality
+                    : undefined
                 }
               />
             </div>

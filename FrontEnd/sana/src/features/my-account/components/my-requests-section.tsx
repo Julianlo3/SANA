@@ -30,7 +30,12 @@ import type { MyRequest } from "../types/my-account-types";
 /**
  * Set of appointment states considered "active" for the purpose of displaying them in the active appointments section.
  */
-const ACTIVE_STATES = new Set(["pendiente", "asignada", "confirmada"]);
+const ACTIVE_STATES = new Set([
+  "pendiente",
+  "asignada",
+  "confirmada",
+  "remitida",
+]);
 /**
  * Number of appointments to display per page in the "My Requests" section.
  */

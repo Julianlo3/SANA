@@ -133,7 +133,15 @@ export function useAppointmentDetail(appointmentId: number) {
 
       try {
         const updated = await action();
-        setAppointment(updated);
+        setAppointment((current) =>
+          updated.referredFromAppId == null &&
+          current?.referredFromAppId != null
+            ? {
+                ...updated,
+                referredFromAppId: current.referredFromAppId,
+              }
+            : updated,
+        );
         setSelectedMode(updated.appType);
         setNotice(successNotice);
         setSelection(null);
@@ -157,8 +165,9 @@ export function useAppointmentDetail(appointmentId: number) {
     if (!selection) return;
 
     if (
-      appointment?.appState === "remitida" &&
-      appointment.psychologistId &&
+      (appointment?.appState === "remitida" ||
+        appointment?.referredFromAppId != null) &&
+      appointment.psychologistId !== null &&
       selection.psychologistId !== appointment.psychologistId
     ) {
       setActionError(
