@@ -99,6 +99,28 @@ describe('CarePackagesService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
+    it('throws ConflictException when valuation was already referred to another psychologist', async () => {
+      const { service, queryMock } = setup();
+      queryMock.mockResolvedValueOnce([
+        {
+          app_id: 1,
+          app_state: 'realizada',
+          app_kind: 'valoracion',
+          psy_id: 10,
+          app_patient_person_id: 100,
+          app_patient_dependent_id: null,
+          app_referred_to_psy_id: 25,
+        },
+      ]);
+
+      await expect(
+        service.suggest(
+          { assessmentAppointmentId: 1, sessionLimit: 6, priority: 'alta' },
+          10,
+        ),
+      ).rejects.toThrow(ConflictException);
+    });
+
     it('throws ConflictException when package already exists for this valuation', async () => {
       const { service, queryMock } = setup();
       queryMock

@@ -2,6 +2,7 @@ import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 export type AppointmentState =
   | 'pendiente'
+  | 'remitida'
   | 'asignada'
   | 'confirmada'
   | 'descartada'
@@ -60,6 +61,15 @@ export class Appointment {
 
   @Column({ name: 'app_calendar_event_id', type: 'varchar', length: 255, nullable: true })
   calendarEventId!: string | null;
+
+  @Column({ name: 'app_referred_from_app_id', type: 'integer', nullable: true })
+  referredFromAppId!: number | null;
+
+  @Column({ name: 'app_referred_to_psy_id', type: 'integer', nullable: true })
+  referredToPsychologistId!: number | null;
+
+  @Column({ name: 'app_referral_reason', type: 'text', nullable: true })
+  referralReason!: string | null;
 
   @Column({ name: 'app_created_at', type: 'timestamptz', default: () => 'now()' })
   appCreatedAt!: Date;

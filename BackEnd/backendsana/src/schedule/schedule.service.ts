@@ -312,6 +312,7 @@ export class ScheduleService {
     psychologistId: number;
     appDate: Date;
     duration: number;
+    appType?: 'presencial' | 'virtual';
   }): Promise<'assigned' | 'slot_taken' | 'not_assignable'> {
     const result = await this.repository.assignAppointmentSlot({
       appId: params.appId,
@@ -319,6 +320,7 @@ export class ScheduleService {
       psyId: params.psychologistId,
       appDate: params.appDate,
       appDuration: params.duration,
+      appType: params.appType,
     });
 
     return result;
