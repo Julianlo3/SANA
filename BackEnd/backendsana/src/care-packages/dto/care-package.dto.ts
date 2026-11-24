@@ -35,13 +35,21 @@ export class CarePackageAvailabilityQueryDto {
   delayHours!: number;
 }
 
+export const MIN_CARE_PACKAGE_SESSIONS = 3;
+export const MAX_CARE_PACKAGE_SESSIONS = 12;
+
 export class SuggestCarePackageDto {
   @IsInt()
   @IsPositive()
   assessmentAppointmentId!: number;
 
   @IsInt()
-  @IsPositive()
+  @Min(MIN_CARE_PACKAGE_SESSIONS, {
+    message: `El paquete debe tener mínimo ${MIN_CARE_PACKAGE_SESSIONS} sesiones`,
+  })
+  @Max(MAX_CARE_PACKAGE_SESSIONS, {
+    message: `El paquete debe tener máximo ${MAX_CARE_PACKAGE_SESSIONS} sesiones`,
+  })
   sessionLimit!: number;
 
   @IsEnum(['alta', 'media', 'baja'] as const)
@@ -59,7 +67,12 @@ export class CreateCarePackageDto {
   assessmentAppointmentId!: number;
 
   @IsInt()
-  @IsPositive()
+  @Min(MIN_CARE_PACKAGE_SESSIONS, {
+    message: `El paquete debe tener mínimo ${MIN_CARE_PACKAGE_SESSIONS} sesiones`,
+  })
+  @Max(MAX_CARE_PACKAGE_SESSIONS, {
+    message: `El paquete debe tener máximo ${MAX_CARE_PACKAGE_SESSIONS} sesiones`,
+  })
   sessionLimit!: number;
 
   @IsEnum(['alta', 'media', 'baja'] as const)
@@ -74,7 +87,12 @@ export class CreateCarePackageDto {
 export class ApproveCarePackageDto {
   @IsOptional()
   @IsInt()
-  @IsPositive()
+  @Min(MIN_CARE_PACKAGE_SESSIONS, {
+    message: `El paquete debe tener mínimo ${MIN_CARE_PACKAGE_SESSIONS} sesiones`,
+  })
+  @Max(MAX_CARE_PACKAGE_SESSIONS, {
+    message: `El paquete debe tener máximo ${MAX_CARE_PACKAGE_SESSIONS} sesiones`,
+  })
   sessionLimit?: number;
 
   @IsOptional()
