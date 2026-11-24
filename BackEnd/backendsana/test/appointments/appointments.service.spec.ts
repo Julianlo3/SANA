@@ -26,6 +26,9 @@ function setup() {
     findById: vi.fn(),
     findPsychologists: vi.fn(),
     findPsychologistEmail: vi.fn().mockResolvedValue(null),
+    findReferralCandidatePsychologists: vi.fn().mockResolvedValue([]),
+    createReferral: vi.fn(),
+    findPendingReferrals: vi.fn().mockResolvedValue([]),
     discard: vi.fn(),
     cancelByRequester: vi.fn().mockResolvedValue(true),
     discardByRequester: vi.fn().mockResolvedValue(true),
@@ -895,5 +898,181 @@ describe('AppointmentsService.cancelOwnAppointment', () => {
         delayHours: 24,
       });
     });
+  });
+});
+
+describe('AppointmentsService referral flow', () => {
+  it('lists eligible referral psychologists excluding the requester and non-assigned callers', async () => {
+    const { service, repository } = setup();
+    repository.findById.mockResolvedValue({
+      appId: 42,
+      appKind: 'valoracion',
+      psychologistId: 8,
+      requesterId: 15,
+    });
+    repository.findReferralCandidatePsychologists.mockResolvedValue([
+      { psyId: 9, name: 'Dra. Gómez', speciality: 'Clínica', licenseNumber: 101 },
+      { psyId: 15, name: 'Dr. Solicitante', speciality: 'Infantil', licenseNumber: 102 },
+    ]);
+
+    const list = await service.findReferralPsychologists(42, 8);
+    expect(list).toEqual([
+      { psyId: 9, name: 'Dra. Gómez', speciality: 'Clínica', licenseNumber: 101 },
+    ]);
+    expect(repository.findReferralCandidatePsychologists).toHaveBeenCalledWith(42);
+  });
+
+  it('forbids listing referral psychologists if caller is not the assigned psychologist', async () => {
+    const { service, repository } = setup();
+    repository.findById.mockResolvedValue({
+      appId: 42,
+      appKind: 'valoracion',
+      psychologistId: 8,
+      requesterId: 15,
+    });
+
+    await expect(service.findReferralPsychologists(42, 99)).rejects.toMatchObject({
+      response: expect.objectContaining({ error: 'NOT_ASSIGNED_PSYCHOLOGIST' }),
+    });
+  });
+
+  it('refers a valuation appointment to another active psychologist and creates a referred valuation', async () => {
+    const { service, repository } = setup();
+    repository.findPsychologists.mockResolvedValue([
+      { psyId: 9, name: 'Dra. Gómez', speciality: 'Clínica', licenseNumber: 101 },
+    ]);
+    repository.createReferral.mockResolvedValue({
+      sourceAppId: 42,
+      referredAppId: 43,
+    });
+    repository.findById
+      .mockResolvedValueOnce({
+        appId: 42,
+        appState: 'realizada',
+        appKind: 'valoracion',
+        psychologistId: 8,
+        referredToPsychologistId: 9,
+      })
+      .mockResolvedValueOnce({
+        appId: 43,
+        appState: 'remitida',
+        appKind: 'valoracion',
+        psychologistId: 9,
+        referredFromAppId: 42,
+      });
+
+    const res = await service.referAppointment(
+      42,
+      { targetPsychologistId: 9, reason: 'Requiere especialidad clínica' },
+      8,
+    );
+
+    expect(repository.createReferral).toHaveBeenCalledWith({
+      sourceAppId: 42,
+      psychologistId: 8,
+      targetPsychologistId: 9,
+      reason: 'Requiere especialidad clínica',
+    });
+    expect(res.sourceAppointment.appState).toBe('realizada');
+    expect(res.referredAppointment.appState).toBe('remitida');
+    expect(res.referredAppointment.psychologistId).toBe(9);
+  });
+
+  it('rejects referring an appointment to oneself or creating a referral loop', async () => {
+    const { service, repository } = setup();
+
+    await expect(
+      service.referAppointment(42, { targetPsychologistId: 8 }, 8),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ error: 'CANNOT_REFER_TO_SELF' }),
+    });
+
+    repository.findPsychologists.mockResolvedValue([
+      { psyId: 7, name: 'Dr. Inicial', speciality: 'General', licenseNumber: 100 },
+    ]);
+    repository.createReferral.mockRejectedValue(new Error('REFERRAL_LOOP_DETECTED'));
+
+    await expect(
+      service.referAppointment(43, { targetPsychologistId: 7 }, 9),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ error: 'REFERRAL_LOOP_DETECTED' }),
+    });
+  });
+
+  it('enforces that a referred appointment in remitida state can only be assigned to its referred psychologist', async () => {
+    const { service, repository, scheduleService } = setup();
+    repository.findById.mockResolvedValue({
+      appId: 43,
+      appState: 'remitida',
+      psychologistId: 9,
+      requesterId: 15,
+    });
+
+    await expect(
+      service.assignAppointment(
+        43,
+        {
+          psyId: 8,
+          appDate: '2026-10-10T10:00:00.000Z',
+          appDuration: 60,
+        },
+        3,
+      ),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ error: 'REFERRED_PSYCHOLOGIST_MISMATCH' }),
+    });
+    expect(scheduleService.assignAppointmentSlot).not.toHaveBeenCalled();
+  });
+
+  it('allows secretary to assign schedule and optional modality to a referred appointment', async () => {
+    const { service, repository, scheduleService } = setup();
+    repository.findById
+      .mockResolvedValueOnce({
+        appId: 43,
+        appState: 'remitida',
+        psychologistId: 9,
+        requesterId: 15,
+      })
+      .mockResolvedValueOnce({
+        appId: 43,
+        appState: 'asignada',
+        psychologistId: 9,
+        appType: 'presencial',
+      });
+    repository.findPsychologists.mockResolvedValue([
+      { psyId: 9, name: 'Dra. Gómez', speciality: 'Clínica', licenseNumber: 101 },
+    ]);
+
+    const res = await service.assignAppointment(
+      43,
+      {
+        psyId: 9,
+        appDate: '2026-10-10T10:00:00.000Z',
+        appDuration: 60,
+        appType: 'presencial',
+      },
+      3,
+    );
+
+    expect(res.appState).toBe('asignada');
+    expect(scheduleService.assignAppointmentSlot).toHaveBeenCalledWith({
+      appId: 43,
+      secretaryUserId: 3,
+      psychologistId: 9,
+      appDate: new Date('2026-10-10T10:00:00.000Z'),
+      duration: 60,
+      appType: 'presencial',
+    });
+  });
+
+  it('lists pending referrals for the secretary', async () => {
+    const { service, repository } = setup();
+    repository.findPendingReferrals.mockResolvedValue([
+      { appId: 43, appState: 'remitida', psychologistId: 9 },
+    ]);
+
+    const res = await service.findPendingReferrals('remitida');
+    expect(res).toEqual([{ appId: 43, appState: 'remitida', psychologistId: 9 }]);
+    expect(repository.findPendingReferrals).toHaveBeenCalledWith('remitida');
   });
 });

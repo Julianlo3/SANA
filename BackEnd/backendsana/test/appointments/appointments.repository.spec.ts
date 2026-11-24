@@ -60,6 +60,8 @@ describe('AppointmentsRepository.createRequest', () => {
         has_user: false,
       }])
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]) // active care_packages check
+      .mockResolvedValueOnce([]) // finalized care_packages check
       .mockResolvedValueOnce([{ app_id: 42 }])
       .mockResolvedValueOnce([{ pd_id: 1 }]) // data_treatment policy
       .mockResolvedValueOnce([{ pd_id: 2 }]) // dependent_consent policy (not used for self)
@@ -77,8 +79,8 @@ describe('AppointmentsRepository.createRequest', () => {
     ).resolves.toBe(42);
 
     expect(dataSource.transaction).toHaveBeenCalledOnce();
-    expect(manager.query).toHaveBeenCalledTimes(8);
-    expect(manager.query.mock.calls[2][0]).toContain("'pendiente'");
+    expect(manager.query).toHaveBeenCalledTimes(10);
+    expect(manager.query.mock.calls[4][0]).toContain("'pendiente'");
   });
 
   it('records data treatment and privacy policy with the IP and web channel', async () => {
@@ -92,6 +94,8 @@ describe('AppointmentsRepository.createRequest', () => {
         has_user: false,
       }])
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]) // active care_packages check
+      .mockResolvedValueOnce([]) // finalized care_packages check
       .mockResolvedValueOnce([{ app_id: 42 }])
       .mockResolvedValueOnce([{ pd_id: 1 }])
       .mockResolvedValueOnce([{ pd_id: 2 }])
@@ -106,7 +110,7 @@ describe('AppointmentsRepository.createRequest', () => {
       acceptance: { ipAddress: '203.0.113.7', channel: 'web' },
     });
 
-    expect(manager.query.mock.calls[5][1]).toEqual(['privacy_policy']);
+    expect(manager.query.mock.calls[7][1]).toEqual(['privacy_policy']);
     const inserts = manager.query.mock.calls.filter(([sql]) =>
       String(sql).includes('INSERT INTO policy_acceptance'),
     );
@@ -179,6 +183,8 @@ describe('AppointmentsRepository.createRequest', () => {
       }])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]) // active care_packages check
+      .mockResolvedValueOnce([]) // finalized care_packages check
       .mockResolvedValueOnce([{ app_id: 42 }])
       .mockResolvedValue([]);
 
@@ -204,6 +210,8 @@ describe('AppointmentsRepository.createRequest', () => {
         has_user: false,
       }])
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]) // active care_packages check
+      .mockResolvedValueOnce([]) // finalized care_packages check
       .mockResolvedValueOnce([{ app_id: 42 }])
       .mockResolvedValue([]);
 
@@ -304,6 +312,8 @@ describe('AppointmentsRepository.upsertRequester', () => {
       }])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]) // active care_packages check
+      .mockResolvedValueOnce([]) // finalized care_packages check
       .mockResolvedValueOnce([{ app_id: 42 }])
       .mockResolvedValueOnce([{ pd_id: 1 }])
       .mockResolvedValueOnce([{ pd_id: 2 }])
@@ -326,7 +336,7 @@ describe('AppointmentsRepository.upsertRequester', () => {
       'per_identity_document = COALESCE(per_identity_document, $2::bigint)',
     );
     expect(manager.query.mock.calls[2][0]).toContain('SET pr_active = true');
-    expect(manager.query.mock.calls[3][0]).toContain('INSERT INTO appointments');
+    expect(manager.query.mock.calls[5][0]).toContain('INSERT INTO appointments');
   });
 });
 
@@ -345,7 +355,7 @@ describe('AppointmentsRepository.findPatientPsychologistHistory', () => {
     expect(sql).toContain('a.app_patient_person_id = target.app_patient_person_id');
     expect(sql).toContain("a.app_state = 'realizada'");
     expect(sql).not.toContain("'confirmada', 'asignada'");
-    expect(sql).toContain('LAG(psy_id) OVER (ORDER BY app_date, app_id)');
+    expect(sql).toMatch(/LAG\(psy_id\)\s+OVER\s*\(ORDER BY app_date, app_id\)/);
     expect(sql).toContain('GROUP BY psy_id, streak_group');
   });
 });
@@ -424,7 +434,7 @@ describe('AppointmentsRepository.discardByRequester', () => {
     expect(manager.query).toHaveBeenCalledTimes(2);
     expect(manager.query.mock.calls[0][0]).toContain('req_id = $2');
     expect(manager.query.mock.calls[0][0]).toContain(
-      "app_state IN ('pendiente', 'asignada')",
+      "app_state IN ('pendiente', 'remitida', 'asignada')",
     );
     expect(manager.query.mock.calls[0][0]).toContain(
       "app_discard_reason = 'Solicitud retirada por el consultante'",
@@ -460,5 +470,86 @@ describe('AppointmentsRepository.discard', () => {
       'DELETE FROM schedule_occupancy WHERE app_id = $1',
     );
     expect(manager.query.mock.calls[1][1]).toEqual([42]);
+  });
+});
+
+describe('AppointmentsRepository.createReferral', () => {
+  it('marks source valuation as realizada, creates new remitida valuation, and prevents referral loops', async () => {
+    const { repository, manager } = createTransactionalRepository();
+    manager.query
+      .mockResolvedValueOnce([
+        {
+          app_id: 10,
+          app_state: 'confirmada',
+          app_kind: 'valoracion',
+          app_type: 'virtual',
+          app_reason: 'Ansiedad',
+          psy_id: 8,
+          req_id: 50,
+          app_patient_person_id: 50,
+          app_patient_dependent_id: null,
+          app_referred_to_psy_id: null,
+        },
+      ])
+      .mockResolvedValueOnce([]) // existingReferredChild
+      .mockResolvedValueOnce([]) // existingPackage
+      .mockResolvedValueOnce([]) // activePackage
+      .mockResolvedValueOnce([{ psy_id: 7 }, { psy_id: 8 }]) // referral chain psychologists (7 -> 8)
+      .mockResolvedValueOnce([]) // update source appointment
+      .mockResolvedValueOnce([{ app_id: 11 }]); // insert referred appointment
+
+    const res = await repository.createReferral({
+      sourceAppId: 10,
+      psychologistId: 8,
+      targetPsychologistId: 9,
+      reason: 'Remisión a especialista',
+    });
+
+    expect(res).toEqual({ sourceAppId: 10, referredAppId: 11 });
+    expect(manager.query.mock.calls[5][0]).toContain("SET app_state = 'realizada'");
+    expect(manager.query.mock.calls[5][1]).toEqual([9, 'Remisión a especialista', 10]);
+    expect(manager.query.mock.calls[6][0]).toContain("'remitida', 'valoracion'");
+    expect(manager.query.mock.calls[6][1]).toEqual([
+      50,
+      50,
+      null,
+      9,
+      'virtual',
+      'Ansiedad',
+      10,
+      'Remisión a especialista',
+    ]);
+  });
+
+  it('throws REFERRAL_LOOP_DETECTED when target psychologist is already in the referral chain', async () => {
+    const { repository, manager } = createTransactionalRepository();
+    manager.query
+      .mockResolvedValueOnce([
+        {
+          app_id: 10,
+          app_state: 'realizada',
+          app_kind: 'valoracion',
+          app_type: 'virtual',
+          app_reason: 'Ansiedad',
+          psy_id: 8,
+          req_id: 50,
+          app_patient_person_id: 50,
+          app_patient_dependent_id: null,
+          app_referred_to_psy_id: null,
+        },
+      ])
+      .mockResolvedValueOnce([]) // existingReferredChild
+      .mockResolvedValueOnce([]) // existingPackage
+      .mockResolvedValueOnce([]) // activePackage
+      .mockResolvedValueOnce([{ psy_id: 7 }, { psy_id: 8 }]); // chain contains 7 (original) and 8 (current)
+
+    await expect(
+      repository.createReferral({
+        sourceAppId: 10,
+        psychologistId: 8,
+        targetPsychologistId: 7, // attempting to refer back to psychologist 7
+        reason: 'Intento de bucle',
+      }),
+    ).rejects.toThrow('REFERRAL_LOOP_DETECTED');
   });
 });

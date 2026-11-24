@@ -532,6 +532,7 @@ export class ScheduleRepository {
     psyId: number;
     appDate: Date;
     appDuration: number;
+    appType?: 'presencial' | 'virtual';
   }): Promise<'assigned' | 'slot_taken' | 'not_assignable'> {
     return this.dataSource.transaction(async (manager) => {
       const appointments = await manager.query<
@@ -544,21 +545,21 @@ export class ScheduleRepository {
         [params.appId],
       );
       const appointment = appointments[0];
-      if (!appointment || !['pendiente', 'asignada'].includes(appointment.app_state)) {
-        return 'not_assignable';
-      }
+        if (!appointment || !['pendiente', 'remitida', 'asignada'].includes(appointment.app_state)) {
+          return 'not_assignable';
+        }
 
-      const { dateStr: appDateStr, timeStr: appTimeStr } = toBogotaParts(
-        params.appDate,
-      );
+        const { dateStr: appDateStr, timeStr: appTimeStr } = toBogotaParts(
+          params.appDate,
+        );
 
-      await manager.query(
-        `SELECT pg_advisory_xact_lock($1, hashtext($2::text))`,
-        [params.psyId, appDateStr],
-      );
+        await manager.query(
+          `SELECT pg_advisory_xact_lock($1, hashtext($2::text))`,
+          [params.psyId, appDateStr],
+        );
 
-      const hasAvailability = await manager.query<{ exists: boolean }[]>(
-        `SELECT EXISTS (
+        const hasAvailability = await manager.query<{ exists: boolean }[]>(
+          `SELECT EXISTS (
            SELECT 1
            FROM schedule
            WHERE psy_id = $1
@@ -576,12 +577,12 @@ export class ScheduleRepository {
              AND srb_start_time <= $3::time
              AND srb_end_time >= ($3::time + ($4 || ' minutes')::interval)::time
          ) AS exists`,
-        [params.psyId, appDateStr, appTimeStr, params.appDuration],
-      );
-      if (!hasAvailability[0]?.exists) return 'slot_taken';
+          [params.psyId, appDateStr, appTimeStr, params.appDuration],
+        );
+        if (!hasAvailability[0]?.exists) return 'slot_taken';
 
-      const occupiedConflict = await manager.query<{ exists: boolean }[]>(
-        `SELECT EXISTS (
+        const occupiedConflict = await manager.query<{ exists: boolean }[]>(
+          `SELECT EXISTS (
            SELECT 1 FROM schedule_occupancy
            WHERE psy_id = $1
              AND occ_date = $2::date
@@ -589,12 +590,12 @@ export class ScheduleRepository {
              AND occ_start_time < ($3::time + ($4 || ' minutes')::interval)::time
              AND occ_end_time > $3::time
          ) AS exists`,
-        [params.psyId, appDateStr, appTimeStr, params.appDuration, params.appId],
-      );
-      if (occupiedConflict[0]?.exists) return 'slot_taken';
+          [params.psyId, appDateStr, appTimeStr, params.appDuration, params.appId],
+        );
+        if (occupiedConflict[0]?.exists) return 'slot_taken';
 
-      const assignedConflict = await manager.query<{ exists: boolean }[]>(
-        `SELECT EXISTS (
+        const assignedConflict = await manager.query<{ exists: boolean }[]>(
+          `SELECT EXISTS (
            SELECT 1 FROM appointments
            WHERE app_id <> $1
              AND psy_id = $2
@@ -604,19 +605,27 @@ export class ScheduleRepository {
              AND (app_date AT TIME ZONE 'America/Bogota')::time < ($4::time + ($5 || ' minutes')::interval)::time
              AND ((app_date + (app_duration || ' minutes')::interval) AT TIME ZONE 'America/Bogota')::time > $4::time
          ) AS exists`,
-        [params.appId, params.psyId, appDateStr, appTimeStr, params.appDuration],
-      );
-      if (assignedConflict[0]?.exists) return 'slot_taken';
+          [params.appId, params.psyId, appDateStr, appTimeStr, params.appDuration],
+        );
+        if (assignedConflict[0]?.exists) return 'slot_taken';
 
-      await manager.query(
-        `UPDATE appointments
+        await manager.query(
+          `UPDATE appointments
          SET app_state = 'asignada', psy_id = $1, sec_id = $2,
-             app_date = $3, app_duration = $4
+             app_date = $3, app_duration = $4,
+             app_type = COALESCE($6, app_type)
          WHERE app_id = $5`,
-        [params.psyId, params.secretaryUserId, params.appDate, params.appDuration, params.appId],
-      );
-      await manager.query(
-        `INSERT INTO schedule_occupancy (
+          [
+            params.psyId,
+            params.secretaryUserId,
+            params.appDate,
+            params.appDuration,
+            params.appId,
+            params.appType ?? null,
+          ],
+        );
+        await manager.query(
+          `INSERT INTO schedule_occupancy (
            psy_id, app_id, occ_date, occ_start_time, occ_end_time, source_type
          )
          VALUES ($1, $2, $3::date, $4::time,
@@ -627,10 +636,10 @@ export class ScheduleRepository {
            occ_start_time = EXCLUDED.occ_start_time,
            occ_end_time = EXCLUDED.occ_end_time,
            source_type = EXCLUDED.source_type`,
-        [params.psyId, params.appId, appDateStr, appTimeStr, params.appDuration],
-      );
-      return 'assigned';
-    });
+          [params.psyId, params.appId, appDateStr, appTimeStr, params.appDuration],
+        );
+        return 'assigned';
+      });
   }
 
   /**

@@ -505,10 +505,10 @@ export class ConsultantsService {
   ): Promise<ConsultantResponse> {
     const person = preloaded ?? (await this.findByIdOrFail(personId, manager));
 
-    // Obtener información de citas (historial)
+    // Obtener información de citas (historial, ordenando por appId DESC en caso de empate en appCreatedAt)
     const appointments = await manager.find(Appointment, {
       where: { requesterPersonId: personId },
-      order: { appCreatedAt: 'DESC' },
+      order: { appCreatedAt: 'DESC', appId: 'DESC' },
       take: 1,
     });
 

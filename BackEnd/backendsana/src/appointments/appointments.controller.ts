@@ -14,7 +14,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard, OptionalJwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { OriginGuard } from '../guards/origin.guard.js';
 import { RolesGuard } from '../guards/roles.guard.js';
@@ -26,6 +26,7 @@ import { CreateAppointmentDto } from './dto/create-appointment.dto.js';
 import { ConfirmAppointmentDto } from './dto/confirm-appointment.dto.js';
 import { AssignAppointmentDto } from './dto/assign-appointment.dto.js';
 import { DiscardAppointmentDto } from './dto/discard-appointment.dto.js';
+import { ReferAppointmentDto } from './dto/refer-appointment.dto.js';
 import { UpdateAppointmentStatusDto } from './dto/update-appointment-status.dto.js';
 import { PublicScheduleAvailabilityQueryDto } from '../schedule/dto/public-schedule-availability-query.dto.js';
 import { RateLimit } from '../middlewares/rate-limit.decorator.js';
@@ -157,6 +158,86 @@ export class AppointmentsController {
   @Roles(UserRole.Secretary)
   findPsychologists() {
     return this.appointmentsService.findPsychologists();
+  }
+
+  /**
+   * Protected endpoint: Secretary lists referred valuation appointments pending schedule assignment.
+   * @param state Optional state filter ('remitida' by default, or 'asignada').
+   * @returns A promise resolving to the list of referred valuation appointments.
+   */
+  @Get('referrals')
+  @ApiBearerAuth()
+  @ApiQuery({
+    name: 'state',
+    required: false,
+    enum: ['remitida', 'asignada'],
+    description: 'Filter referred valuation appointments by state (defaults to remitida).',
+  })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Secretary)
+  findPendingReferrals(@Query('state') state?: 'remitida' | 'asignada') {
+    return this.appointmentsService.findPendingReferrals(state ?? 'remitida');
+  }
+
+  /**
+   * Protected endpoint: Psychologist lists active psychologists (with their specialities)
+   * eligible to receive a referral for a specific valuation appointment (excludes psychologists
+   * already in the referral chain to prevent loops).
+   * @param request The HTTP request object.
+   * @param id The valuation appointment ID.
+   * @returns A promise resolving to the list of eligible psychologists.
+   */
+  @Get(':id/referral-psychologists')
+  @ApiBearerAuth()
+  @ApiParam({
+    name: 'id',
+    description: 'Valuation appointment identifier.',
+    type: Number,
+  })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Psychologist)
+  findReferralPsychologists(
+    @Req() request: Request & { user: AuthenticatedUser },
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.appointmentsService.findReferralPsychologists(
+      id,
+      request.user.personId,
+    );
+  }
+
+  /**
+   * Protected endpoint: Psychologist refers a valuation appointment to another psychologist.
+   * Marks the current valuation as 'realizada' (with referredToPsychologistId) and creates
+   * a new valuation in 'remitida' state awaiting secretary schedule assignment.
+   * @param request The HTTP request object.
+   * @param id The valuation appointment ID to refer.
+   * @param dto The referral DTO containing targetPsychologistId and optional reason.
+   * @returns A promise resolving to the source and referred appointments.
+   */
+  @Post(':id/refer')
+  @ApiBearerAuth()
+  @ApiParam({
+    name: 'id',
+    description: 'Valuation appointment identifier to refer.',
+    type: Number,
+  })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Psychologist)
+  @HttpCode(HttpStatus.CREATED)
+  referAppointment(
+    @Req() request: Request & { user: AuthenticatedUser },
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ReferAppointmentDto,
+  ) {
+    this.logger.log(
+      `Module:appointments, Function:referAppointment, result-start: appId-${id}, psychologistId-${request.user.personId}, targetPsychologistId-${dto.targetPsychologistId}`,
+    );
+    return this.appointmentsService.referAppointment(
+      id,
+      dto,
+      request.user.personId,
+    );
   }
 
   /**

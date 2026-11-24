@@ -12,6 +12,7 @@ import type { CreateAppointmentDto } from './dto/create-appointment.dto.js';
 import type { ConfirmAppointmentDto } from './dto/confirm-appointment.dto.js';
 import type { AssignAppointmentDto } from './dto/assign-appointment.dto.js';
 import type { DiscardAppointmentDto } from './dto/discard-appointment.dto.js';
+import type { ReferAppointmentDto } from './dto/refer-appointment.dto.js';
 import type { UpdateAppointmentStatusDto } from './dto/update-appointment-status.dto.js';
 import {
   AppointmentsRepository,
@@ -405,89 +406,102 @@ export class AppointmentsService {
     secretaryUserId: number,
   ): Promise<AppointmentRow> {
     const appointment = await this.findByIdOrFail(appId);
-    if (appointment.appState !== 'pendiente' && appointment.appState !== 'asignada') {
-      throw new BadRequestException({
-        error: 'APPOINTMENT_NOT_ASSIGNABLE',
-        message: 'Solo se pueden asignar solicitudes pendientes o reasignar solicitudes ya asignadas',
+      if (!['pendiente', 'remitida', 'asignada'].includes(appointment.appState)) {
+        throw new BadRequestException({
+          error: 'APPOINTMENT_NOT_ASSIGNABLE',
+          message: 'Solo se pueden asignar solicitudes pendientes, valoraciones remitidas o reasignar solicitudes ya asignadas',
+        });
+      }
+
+      // Validar que el secretario no gestione su propia cita
+      if (appointment.requesterId === secretaryUserId) {
+        throw new BadRequestException({
+          error: 'SECRETARY_CANNOT_MANAGE_OWN_APPOINTMENT',
+          message: 'Un secretario no puede gestionar su propia cita. Solicite que otro secretario gestione esta solicitud.',
+        });
+      }
+
+      // Si es una valoración remitida, debe asignarse al psicólogo al que fue remitida
+      if (
+        appointment.appState === 'remitida' &&
+        appointment.psychologistId !== null &&
+        appointment.psychologistId !== dto.psyId
+      ) {
+        throw new BadRequestException({
+          error: 'REFERRED_PSYCHOLOGIST_MISMATCH',
+          message: 'La valoración remitida debe asignarse al psicólogo al que fue remitida',
+        });
+      }
+
+      const psychologist = (await this.repo.findPsychologists()).find(
+        (option) => option.psyId === dto.psyId,
+      );
+      if (!psychologist) {
+        throw new BadRequestException({
+          error: 'PSYCHOLOGIST_NOT_AVAILABLE',
+          message: 'El psicólogo no está activo o no puede ser seleccionado',
+        });
+      }
+
+      // Validar disponibilidad general del psicólogo
+      const hasAvailability = await this.scheduleService.checkPsychologistAvailability(dto.psyId);
+      if (!hasAvailability) {
+        throw new BadRequestException({
+          error: 'PSYCHOLOGIST_NO_GENERAL_AVAILABILITY',
+          message: 'El psicólogo no tiene disponibilidad general registrada en el sistema',
+        });
+      }
+
+      // Validar que el psicólogo no sea asignado a su propia cita
+      if (appointment.requesterId === dto.psyId) {
+        throw new BadRequestException({
+          error: 'PSYCHOLOGIST_CANNOT_ATTEND_OWN_APPOINTMENT',
+          message: 'Un psicólogo no puede ser asignado a su propia cita. Seleccione otro psicólogo.',
+        });
+      }
+
+      // Validar doble asignación al mismo psicólogo
+      if (appointment.appState === 'asignada' && appointment.psychologistId === dto.psyId) {
+        throw new BadRequestException({
+          error: 'ALREADY_ASSIGNED_TO_SAME_PSYCHOLOGIST',
+          message: 'La cita ya está asignada a este psicólogo. Use la opción de reasignación para cambiar a otro psicólogo.',
+        });
+      }
+
+      const oldPsyId = appointment.appState === 'asignada' ? appointment.psychologistId : null;
+
+      const assignment = await this.scheduleService.assignAppointmentSlot({
+        appId,
+        secretaryUserId,
+        psychologistId: dto.psyId,
+        appDate: new Date(dto.appDate),
+        duration: dto.appDuration,
+        appType: dto.appType,
       });
-    }
+      if (assignment === 'not_assignable') {
+        throw new BadRequestException({
+          error: 'APPOINTMENT_NOT_ASSIGNABLE',
+          message: 'La solicitud ya no puede asignarse en su estado actual',
+        });
+      }
+      if (assignment === 'slot_taken') {
+        throw new ConflictException({
+          error: 'SCHEDULE_SLOT_TAKEN',
+          message: 'El psicólogo no está disponible en la franja seleccionada',
+        });
+      }
 
-    // Validar que el secretario no gestione su propia cita
-    if (appointment.requesterId === secretaryUserId) {
-      throw new BadRequestException({
-        error: 'SECRETARY_CANNOT_MANAGE_OWN_APPOINTMENT',
-        message: 'Un secretario no puede gestionar su propia cita. Solicite que otro secretario gestione esta solicitud.',
+      // Registrar historial de cambio de asignación
+      await this.repo.recordAssignmentHistory({
+        appId,
+        oldPsyId,
+        newPsyId: dto.psyId,
+        secId: secretaryUserId,
+        reason: dto.reassignmentReason?.trim() ?? null,
       });
+
+      return this.findByIdOrFail(appId);
     }
-
-    const psychologist = (await this.repo.findPsychologists()).find(
-      (option) => option.psyId === dto.psyId,
-    );
-    if (!psychologist) {
-      throw new BadRequestException({
-        error: 'PSYCHOLOGIST_NOT_AVAILABLE',
-        message: 'El psicólogo no está activo o no puede ser seleccionado',
-      });
-    }
-
-    // Validar disponibilidad general del psicólogo
-    const hasAvailability = await this.scheduleService.checkPsychologistAvailability(dto.psyId);
-    if (!hasAvailability) {
-      throw new BadRequestException({
-        error: 'PSYCHOLOGIST_NO_GENERAL_AVAILABILITY',
-        message: 'El psicólogo no tiene disponibilidad general registrada en el sistema',
-      });
-    }
-
-    // Validar que el psicólogo no sea asignado a su propia cita
-    if (appointment.requesterId === dto.psyId) {
-      throw new BadRequestException({
-        error: 'PSYCHOLOGIST_CANNOT_ATTEND_OWN_APPOINTMENT',
-        message: 'Un psicólogo no puede ser asignado a su propia cita. Seleccione otro psicólogo.',
-      });
-    }
-
-    // Validar doble asignación al mismo psicólogo
-    if (appointment.appState === 'asignada' && appointment.psychologistId === dto.psyId) {
-      throw new BadRequestException({
-        error: 'ALREADY_ASSIGNED_TO_SAME_PSYCHOLOGIST',
-        message: 'La cita ya está asignada a este psicólogo. Use la opción de reasignación para cambiar a otro psicólogo.',
-      });
-    }
-
-    const oldPsyId = appointment.appState === 'asignada' ? appointment.psychologistId : null;
-
-    const assignment = await this.scheduleService.assignAppointmentSlot({
-      appId,
-      secretaryUserId,
-      psychologistId: dto.psyId,
-      appDate: new Date(dto.appDate),
-      duration: dto.appDuration,
-    });
-    if (assignment === 'not_assignable') {
-      throw new BadRequestException({
-        error: 'APPOINTMENT_NOT_ASSIGNABLE',
-        message: 'La solicitud ya no puede asignarse en su estado actual',
-      });
-    }
-    if (assignment === 'slot_taken') {
-      throw new ConflictException({
-        error: 'SCHEDULE_SLOT_TAKEN',
-        message: 'El psicólogo no está disponible en la franja seleccionada',
-      });
-    }
-
-    // Registrar historial de cambio de asignación
-    await this.repo.recordAssignmentHistory({
-      appId,
-      oldPsyId,
-      newPsyId: dto.psyId,
-      secId: secretaryUserId,
-      reason: dto.reassignmentReason?.trim() ?? null,
-    });
-
-    return this.findByIdOrFail(appId);
-  }
 
   /**
    * Discards an appointment request.
@@ -497,14 +511,14 @@ export class AppointmentsService {
    * @returns A promise resolving to the discarded appointment.
    */
   async discardAppointment(
-    appId: number,
-    dto: DiscardAppointmentDto,
-    secretaryUserId: number,
-  ): Promise<AppointmentRow> {
-    const appointment = await this.findByIdOrFail(appId);
+      appId: number,
+      dto: DiscardAppointmentDto,
+      secretaryUserId: number,
+    ): Promise < AppointmentRow > {
+      const appointment = await this.findByIdOrFail(appId);
 
-    // Validar que el secretario no gestione su propia cita
-    if (appointment.requesterId === secretaryUserId) {
+      // Validar que el secretario no gestione su propia cita
+      if(appointment.requesterId === secretaryUserId) {
       throw new BadRequestException({
         error: 'SECRETARY_CANNOT_MANAGE_OWN_APPOINTMENT',
         message: 'Un secretario no puede gestionar su propia cita. Solicite que otro secretario gestione esta solicitud.',
@@ -607,7 +621,7 @@ export class AppointmentsService {
         appId,
         requesterPersonId,
       );
-    } else if (['pendiente', 'asignada'].includes(appointment.appState)) {
+    } else if (['pendiente', 'remitida', 'asignada'].includes(appointment.appState)) {
       transitioned = await this.repo.discardByRequester(
         appId,
         requesterPersonId,
@@ -841,6 +855,166 @@ export class AppointmentsService {
     );
 
     return updated;
+  }
+
+  /**
+   * Lists active psychologists with their specialities eligible to receive a referral
+   * from a given valuation appointment. Excludes the current psychologist, any psychologist
+   * already in the referral chain (preventing loops), and the requester themselves.
+   * @param appId The valuation appointment ID.
+   * @param psychologistId The ID of the psychologist requesting the candidate list.
+   * @returns Eligible psychologists with their specialities.
+   */
+  async findReferralPsychologists(
+    appId: number,
+    psychologistId: number,
+  ): Promise<PsychologistOptionRow[]> {
+    const appointment = await this.findByIdOrFail(appId);
+    if (appointment.psychologistId !== psychologistId) {
+      throw new ForbiddenException({
+        error: 'NOT_ASSIGNED_PSYCHOLOGIST',
+        message: 'Solo el psicólogo asignado a la valoración puede consultar psicólogos para remisión',
+      });
+    }
+    if (appointment.appKind !== 'valoracion') {
+      throw new BadRequestException({
+        error: 'ASSESSMENT_REQUIRED',
+        message: 'Solo las citas de valoración pueden ser remitidas a otro psicólogo',
+      });
+    }
+
+    const candidates = await this.repo.findReferralCandidatePsychologists(appId);
+    return candidates.filter((psy) => psy.psyId !== appointment.requesterId);
+  }
+
+  /**
+   * Refers a valuation appointment to another psychologist.
+   * Marks the current valuation as 'realizada' (recording the referred psychologist and reason)
+   * and creates a new valuation appointment in 'remitida' state awaiting secretary schedule assignment.
+   * @param appId The current valuation appointment ID.
+   * @param dto The referral details (targetPsychologistId, optional reason).
+   * @param psychologistId The ID of the psychologist performing the referral.
+   * @returns The updated original valuation and the newly created referred valuation.
+   */
+  async referAppointment(
+    appId: number,
+    dto: ReferAppointmentDto,
+    psychologistId: number,
+  ): Promise<{
+    sourceAppointment: AppointmentRow;
+    referredAppointment: AppointmentRow;
+  }> {
+    if (dto.targetPsychologistId === psychologistId) {
+      throw new BadRequestException({
+        error: 'CANNOT_REFER_TO_SELF',
+        message: 'No puede remitir la valoración a sí mismo',
+      });
+    }
+
+    const activePsychologists = await this.repo.findPsychologists();
+    const targetPsychologist = activePsychologists.find(
+      (psy) => psy.psyId === dto.targetPsychologistId,
+    );
+    if (!targetPsychologist) {
+      throw new BadRequestException({
+        error: 'PSYCHOLOGIST_NOT_AVAILABLE',
+        message: 'El psicólogo seleccionado para la remisión no está activo o no existe',
+      });
+    }
+
+    let result: { sourceAppId: number; referredAppId: number };
+    try {
+      result = await this.repo.createReferral({
+        sourceAppId: appId,
+        psychologistId,
+        targetPsychologistId: dto.targetPsychologistId,
+        reason: dto.reason?.trim() || null,
+      });
+    } catch (error) {
+      const code = (error as Error).message;
+      if (code === 'APPOINTMENT_NOT_FOUND') {
+        throw new NotFoundException(`No existe una cita con ID ${appId}`);
+      }
+      if (code === 'NOT_ASSIGNED_PSYCHOLOGIST') {
+        throw new ForbiddenException({
+          error: 'NOT_ASSIGNED_PSYCHOLOGIST',
+          message: 'Solo el psicólogo asignado a la valoración puede remitir al paciente',
+        });
+      }
+      if (code === 'ASSESSMENT_REQUIRED') {
+        throw new BadRequestException({
+          error: 'ASSESSMENT_REQUIRED',
+          message: 'Solo se pueden remitir citas de valoración',
+        });
+      }
+      if (code === 'INVALID_APPOINTMENT_STATE') {
+        throw new BadRequestException({
+          error: 'INVALID_APPOINTMENT_STATE',
+          message: 'La valoración debe estar confirmada o realizada para poder remitirse',
+        });
+      }
+      if (code === 'APPOINTMENT_ALREADY_REFERRED') {
+        throw new ConflictException({
+          error: 'APPOINTMENT_ALREADY_REFERRED',
+          message: 'Esta valoración ya fue remitida a otro psicólogo',
+        });
+      }
+      if (code === 'PACKAGE_ALREADY_EXISTS_FOR_ASSESSMENT') {
+        throw new ConflictException({
+          error: 'PACKAGE_ALREADY_EXISTS',
+          message: 'No se puede remitir una valoración que ya tiene un paquete sugerido o creado',
+        });
+      }
+      if (code === 'ACTIVE_CARE_PACKAGE_EXISTS') {
+        throw new ConflictException({
+          error: 'ACTIVE_CARE_PACKAGE_EXISTS',
+          message: 'El paciente ya cuenta con un paquete activo',
+        });
+      }
+      if (code === 'PSYCHOLOGIST_CANNOT_ATTEND_OWN_APPOINTMENT') {
+        throw new BadRequestException({
+          error: 'PSYCHOLOGIST_CANNOT_ATTEND_OWN_APPOINTMENT',
+          message: 'Un psicólogo no puede ser remitido a su propia cita',
+        });
+      }
+      if (code === 'REFERRAL_LOOP_DETECTED') {
+        throw new BadRequestException({
+          error: 'REFERRAL_LOOP_DETECTED',
+          message: 'No se puede remitir a un psicólogo que ya atendió o remitió previamente esta valoración',
+        });
+      }
+      throw error;
+    }
+
+    const sourceAppointment = await this.findByIdOrFail(result.sourceAppId);
+    const referredAppointment = await this.findByIdOrFail(result.referredAppId);
+
+    this.logger.log(
+      `Module:appointments, Function:referAppointment, result-success: sourceAppId-${result.sourceAppId}, referredAppId-${result.referredAppId}, fromPsyId-${psychologistId}, toPsyId-${dto.targetPsychologistId}`,
+    );
+
+    return {
+      sourceAppointment,
+      referredAppointment,
+    };
+  }
+
+  /**
+   * Lists valuation appointments that have been referred and are pending schedule assignment
+   * (or provisional confirmation) by the secretary.
+   * @param state Optional filter ('remitida' by default, or 'asignada').
+   * @returns List of referred appointments.
+   */
+  async findPendingReferrals(
+    state: 'remitida' | 'asignada' = 'remitida',
+  ): Promise<AppointmentRow[]> {
+    if (!['remitida', 'asignada'].includes(state)) {
+      throw new BadRequestException({
+        error: 'INVALID_REFERRAL_STATE_FILTER',
+        message: "El filtro de estado para remisiones debe ser 'remitida' o 'asignada'",
+      });
+    }
+    return this.repo.findPendingReferrals(state);
   }
 
   private async notifyRequesterOfNewRequest(

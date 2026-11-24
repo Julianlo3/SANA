@@ -99,6 +99,28 @@ describe('CarePackagesService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
+    it('throws ConflictException when valuation was already referred to another psychologist', async () => {
+      const { service, queryMock } = setup();
+      queryMock.mockResolvedValueOnce([
+        {
+          app_id: 1,
+          app_state: 'realizada',
+          app_kind: 'valoracion',
+          psy_id: 10,
+          app_patient_person_id: 100,
+          app_patient_dependent_id: null,
+          app_referred_to_psy_id: 25,
+        },
+      ]);
+
+      await expect(
+        service.suggest(
+          { assessmentAppointmentId: 1, sessionLimit: 6, priority: 'alta' },
+          10,
+        ),
+      ).rejects.toThrow(ConflictException);
+    });
+
     it('throws ConflictException when package already exists for this valuation', async () => {
       const { service, queryMock } = setup();
       queryMock
@@ -144,6 +166,26 @@ describe('CarePackagesService', () => {
           10,
         ),
       ).rejects.toThrow(ConflictException);
+    });
+
+    it('throws BadRequestException when sessionLimit is less than 3 or greater than 12', async () => {
+      const { service, queryMock } = setup();
+
+      await expect(
+        service.suggest(
+          { assessmentAppointmentId: 1, sessionLimit: 2, priority: 'alta' },
+          10,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        service.suggest(
+          { assessmentAppointmentId: 1, sessionLimit: 13, priority: 'alta' },
+          10,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(queryMock).not.toHaveBeenCalled();
     });
 
     it('successfully creates suggestion with state sugerido and marks valuation as realizada', async () => {
@@ -205,6 +247,43 @@ describe('CarePackagesService', () => {
       await expect(service.approve(1, {}, 1)).rejects.toThrow(BadRequestException);
     });
 
+    it('throws BadRequestException when resulting sessionLimit is outside 3..12', async () => {
+      const { service, queryMock } = setup();
+      queryMock
+        .mockResolvedValueOnce([
+          {
+            cp_id: 1,
+            cp_state: 'sugerido',
+            cp_patient_person_id: 100,
+            cp_patient_dependent_id: null,
+            cp_session_limit: 4,
+            cp_priority: 'media',
+          },
+        ])
+        .mockResolvedValueOnce([]); // active package check: none
+
+      await expect(
+        service.approve(1, { sessionLimit: 2 }, 50),
+      ).rejects.toThrow(BadRequestException);
+
+      queryMock
+        .mockResolvedValueOnce([
+          {
+            cp_id: 1,
+            cp_state: 'sugerido',
+            cp_patient_person_id: 100,
+            cp_patient_dependent_id: null,
+            cp_session_limit: 4,
+            cp_priority: 'media',
+          },
+        ])
+        .mockResolvedValueOnce([]); // active package check: none
+
+      await expect(
+        service.approve(1, { sessionLimit: 13 }, 50),
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it('approves package and updates to activo with secretary id', async () => {
       const { service, queryMock } = setup();
       queryMock
@@ -232,6 +311,28 @@ describe('CarePackagesService', () => {
       const res = await service.approve(1, { sessionLimit: 6, priority: 'alta' }, 50);
       expect(res.state).toBe('activo');
       expect(res.sessionLimit).toBe(6);
+    });
+  });
+
+  describe('create', () => {
+    it('throws BadRequestException when sessionLimit is less than 3 or greater than 12', async () => {
+      const { service, queryMock } = setup();
+
+      await expect(
+        service.create(
+          { assessmentAppointmentId: 1, sessionLimit: 2, priority: 'media' },
+          50,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        service.create(
+          { assessmentAppointmentId: 1, sessionLimit: 13, priority: 'media' },
+          50,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(queryMock).not.toHaveBeenCalled();
     });
   });
 
@@ -274,6 +375,148 @@ describe('CarePackagesService', () => {
           { requesterId: 42 },
         ),
       ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('follow-up valuation after finalized care package', () => {
+    it('rejects follow-up valuation availability when package is still active', async () => {
+      const { service, queryMock, schedule } = setup();
+      queryMock
+        .mockResolvedValueOnce([
+          {
+            id: 1,
+            state: 'activo',
+            psychologistId: 10,
+            patientPersonId: 42,
+            patientDependentId: null,
+          },
+        ])
+        .mockResolvedValueOnce([{ '?column?': 1 }]); // allowed requester check
+
+      await expect(
+        service.followUpValuationAvailability(1, 42, {
+          appointmentStart: '2026-12-01T08:00:00Z',
+          duration: 60,
+          delayHours: 24,
+        }),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({ error: 'ACTIVE_CARE_PACKAGE_EXISTS' }),
+      });
+      expect(schedule.findAvailability).not.toHaveBeenCalled();
+    });
+
+    it('returns availability strictly for the treating psychologist of the finalized package', async () => {
+      const { service, queryMock, schedule } = setup();
+      queryMock
+        .mockResolvedValueOnce([
+          {
+            id: 1,
+            state: 'finalizado',
+            psychologistId: 10,
+            patientPersonId: 42,
+            patientDependentId: null,
+          },
+        ])
+        .mockResolvedValueOnce([{ '?column?': 1 }]) // allowed requester check
+        .mockResolvedValueOnce([]) // no active or suggested packages
+        .mockResolvedValueOnce([]) // no newer finalized package
+        .mockResolvedValueOnce([]); // no open valuation in progress
+
+      schedule.findAvailability.mockResolvedValue([
+        { date: '2026-12-02', startTime: '09:00:00', endTime: '10:00:00', psychologists: [] },
+      ]);
+
+      const slots = await service.followUpValuationAvailability(1, 42, {
+        appointmentStart: '2026-12-01T08:00:00Z',
+        duration: 60,
+        delayHours: 24,
+      });
+
+      expect(slots).toHaveLength(1);
+      expect(schedule.findAvailability).toHaveBeenCalledWith({
+        appointmentStart: '2026-12-01T08:00:00Z',
+        duration: 60,
+        delayHours: 24,
+        psychologistIds: '10',
+      });
+    });
+
+    it('rejects scheduling a follow-up valuation if patient has an active package', async () => {
+      const { service, queryMock } = setup();
+      const futureDate = new Date(Date.now() + 86400000).toISOString();
+
+      queryMock.mockResolvedValueOnce([
+        {
+          cp_id: 1,
+          cp_state: 'activo',
+          psy_id: 10,
+          req_id: 42,
+          cp_patient_person_id: 42,
+          cp_patient_dependent_id: null,
+          app_type: 'virtual',
+        },
+      ]);
+
+      await expect(
+        service.scheduleFollowUpValuation(1, { appDate: futureDate }, 42),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({ error: 'ACTIVE_CARE_PACKAGE_EXISTS' }),
+      });
+    });
+
+    it('schedules a new confirmed valuation appointment strictly with the treating psychologist when package is finalized', async () => {
+      const { service, queryMock } = setup();
+      const futureDate = new Date(Date.now() + 86400000).toISOString();
+
+      queryMock
+        .mockResolvedValueOnce([
+          {
+            cp_id: 1,
+            cp_state: 'finalizado',
+            psy_id: 10,
+            req_id: 42,
+            cp_patient_person_id: 42,
+            cp_patient_dependent_id: null,
+            app_type: 'virtual',
+          },
+        ])
+        .mockResolvedValueOnce([]) // no active or suggested packages
+        .mockResolvedValueOnce([]) // no newer finalized package
+        .mockResolvedValueOnce([]) // no open valuation in progress
+        .mockResolvedValueOnce([{ psy_id: 10 }]) // active psychologist check
+        .mockResolvedValueOnce([]) // pg_advisory_xact_lock
+        .mockResolvedValueOnce([{ '?column?': 1 }]) // free slot check
+        .mockResolvedValueOnce([
+          {
+            appId: 99,
+            appDate: futureDate,
+            appState: 'confirmada',
+            appKind: 'valoracion',
+            appType: 'presencial',
+            psychologistId: 10,
+            carePackageId: null,
+          },
+        ])
+        .mockResolvedValueOnce([]); // schedule_occupancy insert
+
+      const created = await service.scheduleFollowUpValuation(
+        1,
+        {
+          appDate: futureDate,
+          appType: 'presencial',
+          appReason: 'Solicitud de nuevo ciclo terapéutico',
+        },
+        42,
+      );
+
+      expect(created).toMatchObject({
+        appId: 99,
+        appState: 'confirmada',
+        appKind: 'valoracion',
+        appType: 'presencial',
+        psychologistId: 10,
+        carePackageId: null,
+      });
     });
   });
 });
