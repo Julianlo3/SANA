@@ -2,10 +2,16 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, CheckCircle2 } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, CheckCircle2, GitBranch } from "lucide-react";
 import InlineMessage from "@/components/feedback/inline-message";
 import Button from "@/components/ui/button";
+import ReferAppointmentModal from "@/features/appointments/components/refer-appointment-modal";
 import { formatDateTime } from "@/features/appointments/lib/appointment-format";
+import {
+  MAX_CARE_PACKAGE_SESSIONS,
+  MIN_CARE_PACKAGE_SESSIONS,
+} from "@/features/care-packages/types/care-package-types";
 import { useRecordCare } from "../hooks/use-record-care";
 
 /**
@@ -21,7 +27,7 @@ function parseAppointmentId(value: string | null): number | null {
 
 /**
  * Lets psychologists complete a confirmed appointment and optionally record
- * a care note. The backend requires completion before note registration.
+ * a care note, suggest a care package, or refer the patient to another specialist.
  * @returns The appointment completion and care-record form.
  */
 export default function RecordCarePage() {
@@ -29,6 +35,7 @@ export default function RecordCarePage() {
   const searchParams = useSearchParams();
 
   const care = useRecordCare(parseAppointmentId(searchParams.get("cita")));
+  const [isReferModalOpen, setIsReferModalOpen] = useState(false);
 
   if (care.wasSaved) {
     return (
@@ -121,62 +128,89 @@ export default function RecordCarePage() {
           {care.selectedAppointment && (
             <>
               {care.isAssessment && (
-                <section className="space-y-4 rounded-xl border border-primary/20 bg-primary-soft/20 p-4">
-                  <div>
-                    <h2 className="text-sm font-bold text-primary-dark">
-                      Sugerencia de paquete
-                    </h2>
-                    <p className="mt-1 text-xs leading-relaxed text-text-muted">
-                      La secretaría revisará la prioridad y definirá el número
-                      final de citas del paquete.
-                    </p>
-                  </div>
+                <div className="space-y-4">
+                  <section className="space-y-4 rounded-xl border border-primary/20 bg-primary-soft/20 p-4">
+                    <div>
+                      <h2 className="text-sm font-bold text-primary-dark">
+                        Sugerencia de paquete de atención
+                      </h2>
+                      <p className="mt-1 text-xs leading-relaxed text-text-muted">
+                        La secretaría revisará la prioridad y definirá el número
+                        final de citas del paquete (entre {MIN_CARE_PACKAGE_SESSIONS} y{" "}
+                        {MAX_CARE_PACKAGE_SESSIONS} sesiones).
+                      </p>
+                    </div>
 
-                  <label className="block">
-                    <span className="text-sm font-medium text-text">
-                      Prioridad
-                    </span>
-                    <select
-                      value={care.packagePriority}
-                      disabled={care.isSaving}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        if (
-                          value === "alta" ||
-                          value === "media" ||
-                          value === "baja" ||
-                          value === ""
-                        ) {
-                          care.setPackagePriority(value);
+                    <label className="block">
+                      <span className="text-sm font-medium text-text">
+                        Prioridad
+                      </span>
+                      <select
+                        value={care.packagePriority}
+                        disabled={care.isSaving}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          if (
+                            value === "alta" ||
+                            value === "media" ||
+                            value === "baja" ||
+                            value === ""
+                          ) {
+                            care.setPackagePriority(value);
+                          }
+                        }}
+                        className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed"
+                      >
+                        <option value="">Selecciona la prioridad</option>
+                        <option value="alta">Alta</option>
+                        <option value="media">Media</option>
+                        <option value="baja">Baja</option>
+                      </select>
+                    </label>
+
+                    <label className="block">
+                      <span className="text-sm font-medium text-text">
+                        Número de citas sugeridas ({MIN_CARE_PACKAGE_SESSIONS} a{" "}
+                        {MAX_CARE_PACKAGE_SESSIONS})
+                      </span>
+                      <input
+                        type="number"
+                        min={MIN_CARE_PACKAGE_SESSIONS}
+                        max={MAX_CARE_PACKAGE_SESSIONS}
+                        step={1}
+                        required
+                        value={care.suggestedSessionLimit}
+                        disabled={care.isSaving}
+                        onChange={(event) =>
+                          care.setSuggestedSessionLimit(event.target.value)
                         }
-                      }}
-                      className="mt-2 w-full cursor-pointer rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed"
-                    >
-                      <option value="">Selecciona la prioridad</option>
-                      <option value="alta">Alta</option>
-                      <option value="media">Media</option>
-                      <option value="baja">Baja</option>
-                    </select>
-                  </label>
+                        className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed"
+                      />
+                    </label>
+                  </section>
 
-                  <label className="block">
-                    <span className="text-sm font-medium text-text">
-                      Número de citas sugeridas
-                    </span>
-                    <input
-                      type="number"
-                      min={1}
-                      step={1}
-                      required
-                      value={care.suggestedSessionLimit}
+                  {/* Alternative flow: refer the valuation to another psychologist */}
+                  <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface-muted p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-text">
+                        ¿El paciente requiere otra especialidad?
+                      </p>
+                      <p className="mt-0.5 text-xs text-text-muted">
+                        Puedes remitir esta valoración a otro psicólogo en lugar
+                        de sugerir un paquete.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setIsReferModalOpen(true)}
                       disabled={care.isSaving}
-                      onChange={(event) =>
-                        care.setSuggestedSessionLimit(event.target.value)
-                      }
-                      className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed"
-                    />
-                  </label>
-                </section>
+                    >
+                      <GitBranch size={15} className="mr-1.5" aria-hidden />
+                      Remitir valoración
+                    </Button>
+                  </div>
+                </div>
               )}
 
               <label className="block">
@@ -232,6 +266,18 @@ export default function RecordCarePage() {
             {care.isSaving ? "Guardando…" : "Guardar registro"}
           </Button>
         </div>
+      )}
+
+      {isReferModalOpen && care.selectedAppointment && (
+        <ReferAppointmentModal
+          appointmentId={care.selectedAppointment.appId}
+          patientName={care.selectedAppointment.patientName}
+          onClose={() => setIsReferModalOpen(false)}
+          onSuccess={() => {
+            setIsReferModalOpen(false);
+            router.push("/consultantes");
+          }}
+        />
       )}
     </div>
   );

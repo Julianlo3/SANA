@@ -79,6 +79,14 @@ export const ENDPOINTS = {
   // Public availability endpoint for evaluation appointments.
   consultantAvailability: "/appointments/availability",
 
+  // Referral endpoints (psychologist).
+  appointmentReferralPsychologists: (id: number) =>
+    `/appointments/${id}/referral-psychologists`,
+  appointmentRefer: (id: number) => `/appointments/${id}/refer`,
+
+  // Referral inbox endpoint (secretary).
+  appointmentReferrals: "/appointments/referrals",
+
   // Donation endpoints.
   donations: "/donations",
   donationByTransactionId: (transactionId: string) => `/donations/${transactionId}`,

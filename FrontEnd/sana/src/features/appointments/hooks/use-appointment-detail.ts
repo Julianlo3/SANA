@@ -10,11 +10,14 @@ import {
   discardAppointment,
   getAppointment,
   getPatientPsychologistHistory,
+  listPsychologistOptions,
   updateAppointmentStatus,
 } from "../services/appointments-service";
 import type {
   Appointment,
+  AppointmentMode,
   PatientPsychologistHistory,
+  PsychologistOption,
 } from "../types/appointment-types";
 
 /**
@@ -38,10 +41,15 @@ function messageFrom(error: unknown, fallback: string): string {
 
 /**
  * Loads an appointment and exposes its assignment, confirmation, discard, and cancellation actions.
+ * Also provides active psychologist options with their clinical specializations.
  * @param appointmentId Resource identifier.
+ * @returns Appointment detail state, psychologist options, and handlers.
  */
 export function useAppointmentDetail(appointmentId: number) {
   const [appointment, setAppointment] = useState<Appointment | null>(null);
+  const [psychologistOptions, setPsychologistOptions] = useState<
+    PsychologistOption[]
+  >([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [psychologistHistoryState, setPsychologistHistoryState] = useState<{
@@ -55,6 +63,7 @@ export function useAppointmentDetail(appointmentId: number) {
   const [notice, setNotice] = useState<string | null>(null);
 
   const [selection, setSelection] = useState<SlotSelection | null>(null);
+  const [selectedMode, setSelectedMode] = useState<AppointmentMode | null>(null);
   const [isChangingSlot, setIsChangingSlot] = useState(false);
   const [isDiscarding, setIsDiscarding] = useState(false);
   const [discardReason, setDiscardReason] = useState("");
@@ -63,8 +72,17 @@ export function useAppointmentDetail(appointmentId: number) {
   useEffect(() => {
     const controller = new AbortController();
 
-    getAppointment(appointmentId, controller.signal)
-      .then((result) => setAppointment(result))
+    Promise.all([
+      getAppointment(appointmentId, controller.signal),
+      listPsychologistOptions(controller.signal),
+    ])
+      .then(([appResult, psyResults]) => {
+        if (!controller.signal.aborted) {
+          setAppointment(appResult);
+          setSelectedMode(appResult.appType);
+          setPsychologistOptions(psyResults);
+        }
+      })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
         setLoadError(
@@ -116,6 +134,7 @@ export function useAppointmentDetail(appointmentId: number) {
       try {
         const updated = await action();
         setAppointment(updated);
+        setSelectedMode(updated.appType);
         setNotice(successNotice);
         setSelection(null);
         setIsChangingSlot(false);
@@ -133,9 +152,20 @@ export function useAppointmentDetail(appointmentId: number) {
     [],
   );
 
-  /** HU-2.3.3 y 2.3.5: asigna, o reasigna si ya estaba asignada. */
+  /** HU-2.3.3 y 2.3.5: asigna, o reasigna si ya estaba asignada o remitida. */
   const assign = useCallback(async () => {
     if (!selection) return;
+
+    if (
+      appointment?.appState === "remitida" &&
+      appointment.psychologistId &&
+      selection.psychologistId !== appointment.psychologistId
+    ) {
+      setActionError(
+        "Esta valoración fue remitida a un psicólogo específico. Debes seleccionarlo en el calendario para mantener la remisión.",
+      );
+      return;
+    }
 
     await run(
       () =>
@@ -146,10 +176,11 @@ export function useAppointmentDetail(appointmentId: number) {
             selection.slot.startTime,
           ),
           appDuration: selection.duration,
+          appType: selectedMode ?? undefined,
         }),
       "Solicitud asignada. Falta confirmar la cita.",
     );
-  }, [appointmentId, run, selection]);
+  }, [appointment, appointmentId, run, selectedMode, selection]);
 
   /** Confirms the appointment using the exact interval previously assigned. */
   const confirm = useCallback(async () => {
@@ -239,6 +270,7 @@ export function useAppointmentDetail(appointmentId: number) {
 
   return {
     appointment,
+    psychologistOptions,
     isLoading,
     loadError,
     psychologistHistory:
@@ -254,6 +286,8 @@ export function useAppointmentDetail(appointmentId: number) {
     notice,
     selection,
     setSelection,
+    selectedMode,
+    setSelectedMode,
     isChangingSlot,
     startChangingSlot,
     cancelChangingSlot,

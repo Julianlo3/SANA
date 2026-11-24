@@ -11,6 +11,11 @@ export type CarePackageState =
   | "finalizado"
   | "cancelado";
 
+/** Minimum sessions allowed in a care package (backend enforced). */
+export const MIN_CARE_PACKAGE_SESSIONS = 3;
+/** Maximum sessions allowed in a care package (backend enforced). */
+export const MAX_CARE_PACKAGE_SESSIONS = 12;
+
 /** Package record returned by the care package API. */
 export type CarePackage = {
   /** Package identifier. */
@@ -63,7 +68,10 @@ export type CarePackage = {
 export type SuggestCarePackagePayload = {
   /** Assessment that originated the package suggestion. */
   assessmentAppointmentId: number;
-  /** Number of sessions recommended by the psychologist. */
+  /**
+   * Number of sessions recommended by the psychologist.
+   * Must be between MIN_CARE_PACKAGE_SESSIONS and MAX_CARE_PACKAGE_SESSIONS (3–12).
+   */
   sessionLimit: number;
   /** Priority selected during the assessment. */
   priority: PackagePriority;
@@ -109,7 +117,10 @@ export type CarePackageSuggestion = Pick<
 export type CreateCarePackagePayload = {
   /** Assessment that originated the package. */
   assessmentAppointmentId: number;
-  /** Number of sessions included in the package. */
+  /**
+   * Number of sessions included in the package.
+   * Must be between MIN_CARE_PACKAGE_SESSIONS and MAX_CARE_PACKAGE_SESSIONS (3–12).
+   */
   sessionLimit: number;
   /** Priority assigned to the package. */
   priority: PackagePriority;
@@ -119,7 +130,10 @@ export type CreateCarePackagePayload = {
 
 /** Optional changes entered by the secretary when approving a suggestion. */
 export type ApproveCarePackagePayload = {
-  /** Revised session count, if changed. */
+  /**
+   * Revised session count, if changed.
+   * When provided, must be between MIN_CARE_PACKAGE_SESSIONS and MAX_CARE_PACKAGE_SESSIONS (3–12).
+   */
   sessionLimit?: number;
   /** Revised priority, if changed. */
   priority?: PackagePriority;

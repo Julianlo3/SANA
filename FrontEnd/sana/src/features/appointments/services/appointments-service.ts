@@ -4,12 +4,17 @@ import type {
   Appointment,
   AppointmentSlotPayload,
   AppointmentState,
+  AssignAppointmentPayload,
   AvailabilityQuery,
   AvailabilitySlot,
   DiscardAppointmentPayload,
   PatientPsychologistHistory,
   PublicAvailabilitySlot,
   PsychologistOption,
+  ReferAppointmentPayload,
+  ReferAppointmentResult,
+  ReferralPsychologistOption,
+  ReferralState,
 } from "../types/appointment-types";
 
 /**
@@ -35,7 +40,6 @@ export function buildSlotDateTime(date: string, time: string): string {
  * @param signal Optional. Request cancellation signal.
  * @returns A promise resolving to the operation result.
  */
-
 export async function listAppointments(
   state?: AppointmentState,
   signal?: AbortSignal,
@@ -53,7 +57,6 @@ export async function listAppointments(
  * @param signal Optional. Request cancellation signal.
  * @returns A promise resolving to the operation result.
  */
-
 export async function getAppointment(
   id: number,
   signal?: AbortSignal,
@@ -82,7 +85,6 @@ export async function getPatientPsychologistHistory(
  * @param signal Optional. Request cancellation signal.
  * @returns A promise resolving to the operation result.
  */
-
 export async function listPsychologistOptions(
   signal?: AbortSignal,
 ): Promise<PsychologistOption[]> {
@@ -98,7 +100,6 @@ export async function listPsychologistOptions(
  * @param signal Optional. Request cancellation signal.
  * @returns A promise resolving to the operation result.
  */
-
 export async function findAvailability(
   query: AvailabilityQuery,
   signal?: AbortSignal,
@@ -125,7 +126,6 @@ export async function findAvailability(
  * @param signal Optional. Request cancellation signal.
  * @returns A promise resolving to the operation result.
  */
-
 export async function findPublicAvailability(
   query: Pick<AvailabilityQuery, "appointmentStart" | "duration" | "delayHours">,
   signal?: AbortSignal,
@@ -144,13 +144,14 @@ export async function findPublicAvailability(
 
 /**
  * Assigns or reassigns an appointment to a psychologist and slot.
+ * Supports referred appointments and an optional modality override (appType).
  * @param id Appointment identifier.
- * @param payload Assignment details.
+ * @param payload Assignment details, with optional appType override.
  * @returns The updated appointment.
  */
 export async function assignAppointment(
   id: number,
-  payload: AppointmentSlotPayload,
+  payload: AssignAppointmentPayload,
 ): Promise<Appointment> {
   return httpClient.patch<Appointment>(ENDPOINTS.appointmentAssign(id), payload);
 }
@@ -200,4 +201,52 @@ export async function updateAppointmentStatus(
   return httpClient.patch<Appointment>(ENDPOINTS.appointmentStatus(id), {
     state,
   });
+}
+
+/**
+ * Lists psychologists eligible to receive a referral for the given valuation appointment.
+ * Excludes the current psychologist, referral-chain members, and the patient.
+ * @param appointmentId Valuation appointment identifier.
+ * @param signal Optional request cancellation signal.
+ * @returns A promise resolving to the list of eligible psychologists.
+ */
+export async function listReferralPsychologists(
+  appointmentId: number,
+  signal?: AbortSignal,
+): Promise<ReferralPsychologistOption[]> {
+  return httpClient.get<ReferralPsychologistOption[]>(
+    ENDPOINTS.appointmentReferralPsychologists(appointmentId),
+    signal,
+  );
+}
+
+/**
+ * Refers a confirmed valuation appointment to another psychologist.
+ * Marks the current appointment as 'realizada' and creates a new 'remitida' valuation.
+ * @param appointmentId Valuation appointment identifier to refer.
+ * @param payload Target psychologist and optional referral reason (max 1000 chars).
+ * @returns Source and newly created referred appointments.
+ */
+export async function referAppointment(
+  appointmentId: number,
+  payload: ReferAppointmentPayload,
+): Promise<ReferAppointmentResult> {
+  return httpClient.post<ReferAppointmentResult>(
+    ENDPOINTS.appointmentRefer(appointmentId),
+    payload,
+  );
+}
+
+/**
+ * Lists referred valuation appointments pending schedule assignment by the secretary.
+ * @param state Filter: 'remitida' (default) or 'asignada'.
+ * @param signal Optional request cancellation signal.
+ * @returns A promise resolving to the list of referred appointments.
+ */
+export async function listPendingReferrals(
+  state: ReferralState = "remitida",
+  signal?: AbortSignal,
+): Promise<Appointment[]> {
+  const url = `${ENDPOINTS.appointmentReferrals}?${new URLSearchParams({ state }).toString()}`;
+  return httpClient.get<Appointment[]>(url, signal);
 }

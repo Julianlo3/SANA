@@ -9,6 +9,7 @@ const STATE_STYLES: Record<AppointmentState, string> = {
   descartada: "bg-accent-soft text-accent-strong",
   cancelada: "bg-surface-muted text-text-subtle",
   realizada: "bg-primary-soft text-primary-dark",
+  remitida: "bg-[#EAF0FF] text-[#2B52B2]",
 };
 
 /**

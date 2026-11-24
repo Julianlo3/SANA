@@ -7,6 +7,10 @@ import type {
   SuggestCarePackagePayload,
 } from "@/features/care-packages/types/care-package-types";
 import {
+  MIN_CARE_PACKAGE_SESSIONS,
+  MAX_CARE_PACKAGE_SESSIONS,
+} from "@/features/care-packages/types/care-package-types";
+import {
   completeAppointment,
   listPsychologistAppointments,
   recordCare,
@@ -25,6 +29,14 @@ function messageFrom(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
 }
 
+/**
+ * Determines whether a care package suggestion can be made based on the appointment and form values.
+ * @param appId identifier of the appointment being completed.
+ * @param isAssessment a boolean indicating whether the appointment is an assessment.
+ * @param packagePriority a string representing the selected priority for the care package.
+ * @param suggestedSessionLimit a string representing the suggested number of sessions for the care package.
+ * @returns An object containing the care package suggestion if valid, or a validation error message if not.
+ */
 function getPackageSuggestion(
   appId: number,
   isAssessment: boolean,
@@ -44,7 +56,7 @@ function getPackageSuggestion(
     !packagePriority ||
     parsedSessionLimit === undefined ||
     !Number.isInteger(parsedSessionLimit) ||
-    parsedSessionLimit < 1
+    parsedSessionLimit < MIN_CARE_PACKAGE_SESSIONS || parsedSessionLimit > MAX_CARE_PACKAGE_SESSIONS
   ) {
     return {
       suggestion: null,
@@ -62,6 +74,12 @@ function getPackageSuggestion(
   };
 }
 
+/**
+ * Completes an appointment and optionally suggests a care package based on the provided suggestion.
+ * @param appId Identifier of the appointment to be completed.
+ * @param packageSuggestion Optional care package suggestion to be made after completing the appointment.
+ * @returns A promise that resolves when the operation is complete.
+ */
 async function completeAppointmentForRecord(
   appId: number,
   packageSuggestion: SuggestCarePackagePayload | null,
@@ -73,6 +91,11 @@ async function completeAppointmentForRecord(
   await completeAppointment(appId);
 }
 
+/**
+ * Provides a fallback error message when care record submission fails, based on whether a care package suggestion was attempted.
+ * @param packageSuggestion Optional care package suggestion that was attempted during the submission.
+ * @returns A user-facing error message indicating the failure reason.
+ */
 function completionErrorFallback(
   packageSuggestion: SuggestCarePackagePayload | null,
 ): string {

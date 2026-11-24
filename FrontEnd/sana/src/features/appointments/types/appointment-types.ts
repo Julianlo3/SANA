@@ -7,7 +7,8 @@ export type AppointmentState =
   | "confirmada"
   | "descartada"
   | "cancelada"
-  | "realizada";
+  | "realizada"
+  | "remitida";
 
 /**
  * Appointment delivery modes supported by the API.
@@ -58,6 +59,14 @@ export type Appointment = {
   secretaryName: string | null;
   /** Guardian relationship to the dependent, when applicable. */
   relationshipDescription: string | null;
+  /** ID of the source valuation appointment if this appointment originated from a referral. */
+  referredFromAppId?: number | null;
+  /** Psychologist ID receiving the referral if this appointment was referred out. */
+  referredToPsychologistId?: number | null;
+  /** Name of the referred psychologist receiving the referral. */
+  referredToPsychologistName?: string | null;
+  /** Clinical or administrative observation explaining the referral. */
+  referralReason?: string | null;
 };
 
 /**
@@ -131,4 +140,48 @@ export type AppointmentSlotPayload = {
 export type DiscardAppointmentPayload = {
   /** Discard reason, between 1 and 500 characters. */
   reason: string;
+};
+
+/**
+ * Psychologist eligible to receive a referral for a specific valuation appointment.
+ * Excludes the current psychologist, prior chain members, and the patient themselves.
+ */
+export type ReferralPsychologistOption = {
+  psyId: number;
+  name: string;
+  speciality: string;
+  licenseNumber: number;
+};
+
+/**
+ * Payload sent by a psychologist to refer a valuation appointment.
+ */
+export type ReferAppointmentPayload = {
+  /** Target psychologist who will receive the new referred valuation. */
+  targetPsychologistId: number;
+  /** Optional clinical or administrative reason (max 1000 chars). */
+  reason?: string;
+};
+
+/**
+ * Result returned after a successful referral: source and new referred appointments.
+ */
+export type ReferAppointmentResult = {
+  /** Original valuation updated to 'realizada' with referral metadata. */
+  sourceAppointment: Appointment;
+  /** New valuation in 'remitida' state pre-assigned to the target psychologist. */
+  referredAppointment: Appointment;
+};
+
+/**
+ * Query state filter accepted by GET /appointments/referrals.
+ */
+export type ReferralState = "remitida" | "asignada";
+
+/**
+ * Optional modality override allowed when assigning a referred appointment.
+ */
+export type AssignAppointmentPayload = AppointmentSlotPayload & {
+  /** Modality override; when omitted the referred appointment's modality is preserved. */
+  appType?: AppointmentMode;
 };

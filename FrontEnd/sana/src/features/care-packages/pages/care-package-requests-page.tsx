@@ -22,6 +22,10 @@ import {
   listCarePackageSuggestions,
   rejectCarePackage,
 } from "../services/care-packages-service";
+import {
+  MIN_CARE_PACKAGE_SESSIONS,
+  MAX_CARE_PACKAGE_SESSIONS,
+} from "../types/care-package-types";
 import type {
   CarePackage,
   CarePackageState,
@@ -30,6 +34,7 @@ import type {
 
 type PackageFilter = CarePackageState | "todas";
 
+/** Filters for categorizing care packages */
 const FILTERS: { value: PackageFilter; label: string }[] = [
   { value: "sugerido", label: "Por revisar" },
   { value: "activo", label: "Activos" },
@@ -39,6 +44,7 @@ const FILTERS: { value: PackageFilter; label: string }[] = [
   { value: "todas", label: "Todos" },
 ];
 
+/** Labels for each care package state */
 const STATE_LABELS: Record<CarePackageState, string> = {
   sugerido: "Por revisar",
   activo: "Activo",
@@ -47,6 +53,7 @@ const STATE_LABELS: Record<CarePackageState, string> = {
   cancelado: "Cancelado",
 };
 
+/** Accent classes for each care package state */
 const STATE_ACCENT_CLASSES: Record<CarePackageState, string> = {
   sugerido: "bg-accent",
   activo: "bg-success-soft",
@@ -55,6 +62,7 @@ const STATE_ACCENT_CLASSES: Record<CarePackageState, string> = {
   cancelado: "bg-border",
 };
 
+/** Labels for each care package priority */
 const PRIORITY_LABELS: Record<PackagePriority, string> = {
   alta: "Alta",
   media: "Media",
@@ -197,7 +205,7 @@ export default function CarePackageRequestsPage() {
    */
   async function approve(carePackage: CarePackage) {
     const sessionLimit = Number(sessionLimits[carePackage.id]);
-    if (!Number.isInteger(sessionLimit) || sessionLimit < 1) {
+    if (!Number.isInteger(sessionLimit) || sessionLimit < MIN_CARE_PACKAGE_SESSIONS || sessionLimit > MAX_CARE_PACKAGE_SESSIONS) {
       setActionError("Indica un número entero de citas mayor que cero.");
       return;
     }
@@ -441,7 +449,7 @@ export default function CarePackageRequestsPage() {
                       </span>
                       <input
                         type="number"
-                        min={1}
+                        min={MIN_CARE_PACKAGE_SESSIONS} max={MAX_CARE_PACKAGE_SESSIONS}
                         step={1}
                         value={sessionLimits[carePackage.id] ?? ""}
                         disabled={isWorking}

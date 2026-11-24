@@ -1,4 +1,5 @@
 import type {
+  AppointmentKind,
   AppointmentMode,
   PatientType,
 } from "@/features/appointments/types/appointment-types";
@@ -14,17 +15,21 @@ export type MyAppointment = {
   appId: number;
   appState: MyAppointmentState;
   appType: AppointmentMode;
+  appKind?: AppointmentKind;
   appDate: string | null;
   appDuration: number | null;
   patientType: PatientType;
   patientName: string;
   appReason?: string | null;
+  referredFromAppId?: number | null;
+  referredToPsychologistId?: number | null;
+  referredToPsychologistName?: string | null;
+  referralReason?: string | null;
 };
 
 /**
  * Defines the appointment clinical note type.
  */
-
 export type AppointmentClinicalNote = {
   cnId: number;
   appId: number;
