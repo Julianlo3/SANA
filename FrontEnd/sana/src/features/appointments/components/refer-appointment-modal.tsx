@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import Button from "@/components/ui/button";
 import InlineMessage from "@/components/feedback/inline-message";
@@ -10,13 +11,13 @@ import { MAX_REFERRAL_REASON_LENGTH, useReferAppointment } from "../hooks/use-re
  */
 type Props = {
   /** Valuation appointment ID to refer (must be 'confirmada'). */
-  appointmentId: number;
+  readonly appointmentId: number;
   /** Patient name shown in the confirmation prompt. */
-  patientName: string;
+  readonly patientName: string;
   /** Called when the user closes the dialog without acting. */
-  onClose: () => void;
+  readonly onClose: () => void;
   /** Called after the referral is created successfully. */
-  onSuccess: () => void;
+  readonly onSuccess: () => void;
 };
 
 /**
@@ -33,13 +34,27 @@ export default function ReferAppointmentModal({
   onSuccess,
 }: Props) {
   const ref = useReferAppointment(appointmentId, onSuccess);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    dialog.showModal();
+    return () => {
+      if (dialog.open) dialog.close();
+    };
+  }, []);
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
+    <dialog
+      ref={dialogRef}
       aria-labelledby="refer-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onCancel={(event) => {
+        event.preventDefault();
+        if (!ref.isSubmitting) onClose();
+      }}
+      className="fixed inset-0 z-50 m-0 flex h-full w-full max-h-none max-w-none items-center justify-center overflow-y-auto border-0 bg-transparent p-4 [&::backdrop]:bg-black/40"
     >
       <div className="relative w-full max-w-lg rounded-2xl border border-border bg-surface p-6 shadow-xl">
         <button
@@ -167,6 +182,6 @@ export default function ReferAppointmentModal({
           </Button>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }

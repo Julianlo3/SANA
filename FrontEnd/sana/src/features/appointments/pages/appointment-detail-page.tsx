@@ -124,6 +124,15 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
   const canAssign = isPending || isReferred || (isAssigned && detail.isChangingSlot);
   const canDiscard = isPending || isAssigned || isReferred;
   const ModeIcon = appointment.appType === "virtual" ? Video : MapPin;
+  let assignmentHeading = "Asignar psicólogo y horario";
+  if (isAssigned) {
+    assignmentHeading = "Reasignar";
+    if (isReferralAppointment) {
+      assignmentHeading = "Cambiar horario de la remisión";
+    }
+  } else if (isReferred) {
+    assignmentHeading = "Asignar horario a valoración remitida";
+  }
 
   // Start the search on the preferred date, or today if that date has passed.
   const today = colombiaToday();
@@ -326,13 +335,7 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
         {canAssign && (
           <section className={CARD_CLASS}>
             <h2 className="font-display text-lg font-bold text-text">
-              {isAssigned
-                ? isReferralAppointment
-                  ? "Cambiar horario de la remisión"
-                  : "Reasignar"
-                : isReferred
-                  ? "Asignar horario a valoración remitida"
-                  : "Asignar psicólogo y horario"}
+              {assignmentHeading}
             </h2>
             <p className="mt-1 text-sm text-text-muted">
               {isReferralAppointment

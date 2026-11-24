@@ -214,11 +214,12 @@ export default function MyRequestsSection() {
     arePackagesLoading ||
     packagesLoadError !== null ||
     selfNeedsPackageFlow;
-  const dependentRequestDescriptionId = arePackagesLoading
-    ? "self-request-package-loading"
-    : packagesLoadError
-      ? "self-request-package-error"
-      : undefined;
+  let dependentRequestDescriptionId: string | undefined;
+  if (arePackagesLoading) {
+    dependentRequestDescriptionId = "self-request-package-loading";
+  } else if (packagesLoadError) {
+    dependentRequestDescriptionId = "self-request-package-error";
+  }
   let selfRequestDescriptionId: string | undefined;
   if (selfHasActivePackage) {
     selfRequestDescriptionId = "self-request-package-notice";

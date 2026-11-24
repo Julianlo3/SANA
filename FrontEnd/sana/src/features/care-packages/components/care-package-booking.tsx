@@ -57,6 +57,23 @@ function followUpErrorMessage(error: unknown): string {
 }
 
 /**
+ * Converts a booking request error into its user-facing message.
+ * @param error Error returned by the booking request.
+ * @param isFollowUp Whether the request books a continuity valuation.
+ * @param fallback Message used for non-API errors.
+ * @returns The appropriate error message.
+ */
+function bookingErrorMessage(
+  error: unknown,
+  isFollowUp: boolean,
+  fallback: string,
+): string {
+  if (isFollowUp) return followUpErrorMessage(error);
+  if (error instanceof ApiError) return error.message;
+  return fallback;
+}
+
+/**
  * Loads package-scoped availability and books one session using the public calendar.
  * @param props Package data and booking completion callback.
  * @returns The package appointment booking controls.
@@ -109,11 +126,12 @@ export default function CarePackageBooking({
       })
       .catch((requestError: unknown) => {
         if (controller.signal.aborted) return;
-        setError(followUpValuation
-          ? followUpErrorMessage(requestError)
-          : requestError instanceof ApiError
-            ? requestError.message
-            : "No pudimos cargar los horarios disponibles.",
+        setError(
+          bookingErrorMessage(
+            requestError,
+            followUpValuation,
+            "No pudimos cargar los horarios disponibles.",
+          ),
         );
       })
       .finally(() => {
@@ -158,11 +176,12 @@ export default function CarePackageBooking({
       }
       onBooked();
     } catch (requestError: unknown) {
-      setActionError(followUpValuation
-        ? followUpErrorMessage(requestError)
-        : requestError instanceof ApiError
-          ? requestError.message
-          : "No pudimos solicitar la cita. Intenta de nuevo.",
+      setActionError(
+        bookingErrorMessage(
+          requestError,
+          followUpValuation,
+          "No pudimos solicitar la cita. Intenta de nuevo.",
+        ),
       );
       if (
         followUpValuation &&
@@ -175,6 +194,14 @@ export default function CarePackageBooking({
     } finally {
       setIsBooking(false);
     }
+  }
+
+  let bookingButtonLabel = "Solicitar cita del paquete";
+  if (followUpValuation) {
+    bookingButtonLabel = "Agendar valoración de continuidad";
+  }
+  if (isBooking) {
+    bookingButtonLabel = "Enviando…";
   }
 
   return (
@@ -197,11 +224,7 @@ export default function CarePackageBooking({
 
       {actionError && <InlineMessage tone="error">{actionError}</InlineMessage>}
       <Button onClick={book} disabled={!selectedSlot || isBooking}>
-        {isBooking
-          ? "Enviando…"
-          : followUpValuation
-            ? "Agendar valoración de continuidad"
-            : "Solicitar cita del paquete"}
+        {bookingButtonLabel}
       </Button>
     </div>
   );

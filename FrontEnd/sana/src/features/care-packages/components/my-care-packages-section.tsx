@@ -108,6 +108,16 @@ export default function MyCarePackagesSection() {
     const canBookFollowUp =
       carePackage.state === "finalizado" && followUpRestriction === null;
     const isBookingOpen = bookingPackageId === carePackage.id;
+    let bookingButtonLabel = "Solicitar una cita";
+    if (canBookFollowUp) {
+      bookingButtonLabel = "Solicitar nueva valoración";
+    }
+    if (isBookingOpen) {
+      bookingButtonLabel = "Cerrar calendario";
+    }
+    const bookingNoticeText = canBookFollowUp
+      ? "Tu valoración de continuidad quedó agendada con el psicólogo tratante."
+      : "Tu cita del paquete fue registrada.";
 
     return (
       <article
@@ -207,11 +217,7 @@ export default function MyCarePackagesSection() {
               }
               className="mt-5 rounded-xl border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-primary-soft"
             >
-              {isBookingOpen
-                ? "Cerrar calendario"
-                : canBookFollowUp
-                  ? "Solicitar nueva valoración"
-                  : "Solicitar una cita"}
+              {bookingButtonLabel}
             </button>
             {isBookingOpen && (
               <CarePackageBooking
@@ -220,11 +226,7 @@ export default function MyCarePackagesSection() {
                 onBooked={() => {
                   setBookingPackageId(null);
                   window.dispatchEvent(new Event(MY_REQUESTS_UPDATED_EVENT));
-                  setBookingNotice(
-                    canBookFollowUp
-                      ? "Tu valoración de continuidad quedó agendada con el psicólogo tratante."
-                      : "Tu cita del paquete fue registrada.",
-                  );
+                  setBookingNotice(bookingNoticeText);
                   reload();
                 }}
               />

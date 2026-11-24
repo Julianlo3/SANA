@@ -133,12 +133,14 @@ export function useNewDependentRequest(
     values.name,
     carePackages,
   );
-  const packageRestrictionMessage =
-    matchingPackage?.state === "activo"
-      ? "Este dependiente tiene un paquete activo. Solicita sus sesiones desde «Mis paquetes»."
-      : matchingPackage?.state === "finalizado"
-        ? "La nueva valoración de este dependiente debe agendarse desde «Mis paquetes» con el psicólogo tratante."
-        : null;
+  let packageRestrictionMessage: string | null = null;
+  if (matchingPackage?.state === "activo") {
+    packageRestrictionMessage =
+      "Este dependiente tiene un paquete activo. Solicita sus sesiones desde «Mis paquetes».";
+  } else if (matchingPackage?.state === "finalizado") {
+    packageRestrictionMessage =
+      "La nueva valoración de este dependiente debe agendarse desde «Mis paquetes» con el psicólogo tratante.";
+  }
   const hasAvailableSelectedSlot = Boolean(
     selectedSlot &&
       !availability.isLoading &&

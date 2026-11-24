@@ -133,6 +133,27 @@ function getMonthStatusText(
 }
 
 /**
+ * Describes whose availability the calendar displays.
+ * @param psychologistId Restricted psychologist identifier, if any.
+ * @param psychologistName Restricted psychologist name, if available.
+ * @param speciality Restricted psychologist speciality, if available.
+ * @returns The calendar availability description.
+ */
+function getAvailabilityDescription(
+  psychologistId: number | null | undefined,
+  psychologistName: string | null | undefined,
+  speciality: string | null | undefined,
+): string {
+  if (!psychologistId) {
+    return "El calendario resume los días con disponibilidad general. Al elegir un día podrás ver los psicólogos y sus franjas libres de 1 hora.";
+  }
+
+  const name = psychologistName || "este psicólogo";
+  const specialityText = speciality ? ` (${speciality})` : "";
+  return `El calendario muestra únicamente la disponibilidad de ${name}${specialityText}. Elige un día para ver sus franjas libres.`;
+}
+
+/**
  * Renders the availability calendar and the psychologist/slot assignment flow.
  * When a restricted psychologist is passed, scopes queries and slot selections
  * exclusively to that professional.
@@ -414,9 +435,11 @@ export default function SlotPicker({
   return (
     <div className="space-y-5">
       <p className="text-xs text-text-subtle">
-        {restrictedPsychologistId
-          ? `El calendario muestra únicamente la disponibilidad de ${restrictedPsychologistName ? `${restrictedPsychologistName}` : "este psicólogo"}${restrictedPsychologistSpeciality ? ` (${restrictedPsychologistSpeciality})` : ""}. Elige un día para ver sus franjas libres.`
-          : "El calendario resume los días con disponibilidad general. Al elegir un día podrás ver los psicólogos y sus franjas libres de 1 hora."}
+        {getAvailabilityDescription(
+          restrictedPsychologistId,
+          restrictedPsychologistName,
+          restrictedPsychologistSpeciality,
+        )}
       </p>
 
       <section
