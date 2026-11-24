@@ -119,3 +119,29 @@ export class CloseCarePackageDto {
   reason?: string;
 }
 
+/**
+ * DTO for a consultant to schedule a new follow-up valuation appointment
+ * with the same treating psychologist after completing a care package.
+ */
+export class ScheduleFollowUpValuationDto {
+  /** ISO-8601 datetime selected from the treating psychologist's availability. */
+  @IsDateString(
+    {},
+    { message: 'appDate debe tener formato de fecha/hora válido (ISO)' },
+  )
+  appDate!: string;
+
+  /** Modality of the new valuation appointment (defaults to the previous valuation's modality if omitted). */
+  @IsOptional()
+  @IsEnum(['presencial', 'virtual'] as const, {
+    message: 'La modalidad de la cita debe ser presencial o virtual',
+  })
+  appType?: 'presencial' | 'virtual';
+
+  /** Optional reason or observation for the new valuation appointment. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  appReason?: string;
+}
+

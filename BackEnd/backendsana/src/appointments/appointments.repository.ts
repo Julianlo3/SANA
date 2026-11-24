@@ -503,6 +503,43 @@ export class AppointmentsRepository {
         );
       }
 
+      const activePackage = await manager.query<{ cp_id: number }[]>(
+        `SELECT cp_id
+         FROM care_packages
+         WHERE cp_state = 'activo'
+           AND (
+             ($1::int IS NOT NULL AND cp_patient_person_id = $1)
+             OR ($2::int IS NOT NULL AND cp_patient_dependent_id = $2)
+           )
+         LIMIT 1`,
+        [patientPersonId, patientDependentId],
+      );
+      if (activePackage.length > 0) {
+        throw new ConflictException({
+          error: 'ACTIVE_CARE_PACKAGE_EXISTS',
+          message: 'El paciente cuenta con un paquete activo. Debe agendar sus citas desde el flujo de paquetes.',
+        });
+      }
+
+      const finalizedPackage = await manager.query<{ cp_id: number; psy_id: number }[]>(
+        `SELECT cp_id, psy_id
+         FROM care_packages
+         WHERE cp_state = 'finalizado'
+           AND (
+             ($1::int IS NOT NULL AND cp_patient_person_id = $1)
+             OR ($2::int IS NOT NULL AND cp_patient_dependent_id = $2)
+           )
+         ORDER BY cp_id DESC
+         LIMIT 1`,
+        [patientPersonId, patientDependentId],
+      );
+      if (finalizedPackage.length > 0) {
+        throw new ConflictException({
+          error: 'FOLLOW_UP_VALUATION_REQUIRED_WITH_TREATING_PSYCHOLOGIST',
+          message: 'El paciente ya finalizó un paquete de atención. Debe solicitar su nueva valoración directamente con su psicólogo tratante desde la sección de paquetes.',
+        });
+      }
+
       let chosenSlot: { appDate: Date; duration: number; psyId: number } | null = null;
       if (params.slot) {
         const priorCount = await this.countPriorAppointments(

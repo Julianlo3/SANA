@@ -26,6 +26,7 @@ import {
   CloseCarePackageDto,
   CreateCarePackageDto,
   RejectCarePackageDto,
+  ScheduleFollowUpValuationDto,
   SchedulePackageAppointmentDto,
   SuggestCarePackageDto,
 } from './dto/care-package.dto.js';
@@ -185,6 +186,53 @@ export class CarePackagesController {
     return this.service.scheduleAppointment(id, dto, {
       requesterId: r.user.personId,
     });
+  }
+
+  /**
+   * Lists up to 30 days of availability strictly for the treating psychologist
+   * of a finalized care package so the consultant can schedule a new valuation.
+   */
+  @Get(':id/follow-up-valuation/availability')
+  @ApiParam({
+    name: 'id',
+    description: 'Finalized care package identifier.',
+    type: Number,
+  })
+  @Roles(UserRole.Requester)
+  followUpValuationAvailability(
+    @Param('id', ParseIntPipe) id: number,
+    @Query() q: CarePackageAvailabilityQueryDto,
+    @Req() r: Request & { user: AuthenticatedUser },
+  ) {
+    return this.service.followUpValuationAvailability(
+      id,
+      r.user.personId,
+      q,
+    );
+  }
+
+  /**
+   * Consultant schedules a new follow-up valuation strictly with the treating psychologist
+   * of a finalized care package. Fails if the patient has an active or suggested care package
+   * or an active valuation in progress.
+   */
+  @Post(':id/follow-up-valuation')
+  @ApiParam({
+    name: 'id',
+    description: 'Finalized care package identifier.',
+    type: Number,
+  })
+  @Roles(UserRole.Requester)
+  scheduleFollowUpValuation(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ScheduleFollowUpValuationDto,
+    @Req() r: Request & { user: AuthenticatedUser },
+  ) {
+    return this.service.scheduleFollowUpValuation(
+      id,
+      dto,
+      r.user.personId,
+    );
   }
 
   /**

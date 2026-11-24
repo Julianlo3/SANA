@@ -13,6 +13,8 @@ function setup() {
     find: vi.fn(),
     availability: vi.fn(),
     scheduleAppointment: vi.fn(),
+    followUpValuationAvailability: vi.fn(),
+    scheduleFollowUpValuation: vi.fn(),
     close: vi.fn(),
   };
 
@@ -95,6 +97,48 @@ describe('CarePackagesController', () => {
     const res = await controller.schedule(1, dto, { user: { personId: 99 } } as never);
     expect(res).toEqual({ appId: 21 });
     expect(service.scheduleAppointment).toHaveBeenCalledWith(1, dto, { secretaryId: 99 });
+  });
+
+  it('delegates followUpValuationAvailability to service with requesterId', async () => {
+    const { controller, service } = setup();
+    service.followUpValuationAvailability.mockResolvedValue([{ date: '2026-12-01' }]);
+
+    const query = {
+      appointmentStart: '2026-12-01T08:00:00Z',
+      duration: 60,
+      delayHours: 24,
+    };
+    const res = await controller.followUpValuationAvailability(1, query, {
+      user: { personId: 50 },
+    } as never);
+
+    expect(res).toEqual([{ date: '2026-12-01' }]);
+    expect(service.followUpValuationAvailability).toHaveBeenCalledWith(1, 50, query);
+  });
+
+  it('delegates scheduleFollowUpValuation to service with requesterId', async () => {
+    const { controller, service } = setup();
+    service.scheduleFollowUpValuation.mockResolvedValue({
+      appId: 99,
+      appKind: 'valoracion',
+      appState: 'confirmada',
+    });
+
+    const dto = {
+      appDate: '2026-12-02T10:00:00Z',
+      appType: 'virtual' as const,
+      appReason: 'Continuidad de proceso',
+    };
+    const res = await controller.scheduleFollowUpValuation(1, dto, {
+      user: { personId: 50 },
+    } as never);
+
+    expect(res).toEqual({
+      appId: 99,
+      appKind: 'valoracion',
+      appState: 'confirmada',
+    });
+    expect(service.scheduleFollowUpValuation).toHaveBeenCalledWith(1, dto, 50);
   });
 });
 
