@@ -15,6 +15,7 @@ export class AssignAppointmentDto {
   @IsPositive()
   appDuration!: number;
 
+  /** Optional modality override (presencial or virtual) when assigning a schedule slot. */
   @IsOptional()
   @IsIn(['presencial', 'virtual'], {
     message: 'La modalidad de la cita debe ser presencial o virtual',

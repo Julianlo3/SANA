@@ -14,7 +14,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard, OptionalJwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { OriginGuard } from '../guards/origin.guard.js';
 import { RolesGuard } from '../guards/roles.guard.js';
@@ -189,6 +189,11 @@ export class AppointmentsController {
    */
   @Get(':id/referral-psychologists')
   @ApiBearerAuth()
+  @ApiParam({
+    name: 'id',
+    description: 'Valuation appointment identifier.',
+    type: Number,
+  })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Psychologist)
   findReferralPsychologists(
@@ -212,6 +217,11 @@ export class AppointmentsController {
    */
   @Post(':id/refer')
   @ApiBearerAuth()
+  @ApiParam({
+    name: 'id',
+    description: 'Valuation appointment identifier to refer.',
+    type: Number,
+  })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Psychologist)
   @HttpCode(HttpStatus.CREATED)
