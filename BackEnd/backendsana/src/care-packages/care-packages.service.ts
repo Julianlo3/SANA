@@ -24,7 +24,7 @@ export class CarePackagesService {
   constructor(
     private readonly db: DataSource,
     private readonly schedule: ScheduleService,
-  ) {}
+  ) { }
 
   private validateSessionLimit(sessionLimit: number): void {
     if (
@@ -47,7 +47,7 @@ export class CarePackagesService {
     return this.db.transaction(async (m) => {
       const a = (
         await m.query<any[]>(
-          `SELECT app_id, app_state, app_kind, psy_id, app_patient_person_id, app_patient_dependent_id
+          `SELECT app_id, app_state, app_kind, psy_id, app_patient_person_id, app_patient_dependent_id, app_referred_to_psy_id
            FROM appointments
            WHERE app_id = $1
            FOR UPDATE`,
@@ -68,6 +68,13 @@ export class CarePackagesService {
         throw new BadRequestException({
           error: 'ASSESSMENT_REQUIRED',
           message: 'Solo se pueden sugerir paquetes a partir de una cita de valoración',
+        });
+      }
+
+      if (a.app_referred_to_psy_id) {
+        throw new ConflictException({
+          error: 'ASSESSMENT_ALREADY_REFERRED',
+          message: 'Esta valoración fue remitida a otro psicólogo. El paquete solo puede sugerirse desde la nueva valoración remitida.',
         });
       }
 
@@ -97,8 +104,8 @@ export class CarePackagesService {
       const active = await m.query<any[]>(
         `SELECT cp_id FROM care_packages
          WHERE cp_state = 'activo'
-           AND ((cp_patient_person_id IS NOT NULL AND cp_patient_person_id = $1)
-             OR (cp_patient_dependent_id IS NOT NULL AND cp_patient_dependent_id = $2))
+           AND((cp_patient_person_id IS NOT NULL AND cp_patient_person_id = $1)
+             OR(cp_patient_dependent_id IS NOT NULL AND cp_patient_dependent_id = $2))
          FOR UPDATE`,
         [a.app_patient_person_id, a.app_patient_dependent_id],
       );
@@ -111,26 +118,26 @@ export class CarePackagesService {
 
       const rows = await m.query<any[]>(
         `INSERT INTO care_packages(
-           cp_patient_person_id,
-           cp_patient_dependent_id,
-           cp_assessment_app_id,
-           psy_id,
-           sec_id,
-           cp_session_limit,
-           cp_priority,
-           cp_state,
-           cp_suggestion_comment,
-           cp_suggested_session_limit,
-           cp_suggested_priority
-         ) VALUES ($1, $2, $3, $4, NULL, $5, $6, 'sugerido', $7, $5, $6)
-         RETURNING
+            cp_patient_person_id,
+            cp_patient_dependent_id,
+            cp_assessment_app_id,
+            psy_id,
+            sec_id,
+            cp_session_limit,
+            cp_priority,
+            cp_state,
+            cp_suggestion_comment,
+            cp_suggested_session_limit,
+            cp_suggested_priority
+          ) VALUES($1, $2, $3, $4, NULL, $5, $6, 'sugerido', $7, $5, $6)
+      RETURNING
            cp_id AS "id",
-           cp_state AS state,
-           cp_session_limit AS "sessionLimit",
-           cp_priority AS priority,
-           psy_id AS "psychologistId",
-           cp_suggestion_comment AS "suggestionComment",
-           cp_created_at AS "createdAt"`,
+        cp_state AS state,
+          cp_session_limit AS "sessionLimit",
+            cp_priority AS priority,
+              psy_id AS "psychologistId",
+                cp_suggestion_comment AS "suggestionComment",
+                  cp_created_at AS "createdAt"`,
         [
           a.app_patient_person_id,
           a.app_patient_dependent_id,
@@ -152,26 +159,26 @@ export class CarePackagesService {
   async findSuggestions() {
     return this.db.query<any[]>(
       `SELECT
-         cp.cp_id AS "id",
-         cp.cp_state AS state,
-         cp.cp_session_limit AS "sessionLimit",
-         cp.cp_priority AS priority,
-         cp.cp_suggested_session_limit AS "suggestedSessionLimit",
-         cp.cp_suggested_priority AS "suggestedPriority",
-         cp.cp_suggestion_comment AS "suggestionComment",
-         cp.cp_created_at AS "createdAt",
-         cp.cp_assessment_app_id AS "assessmentAppointmentId",
-         assessment.app_date AS "assessmentDate",
-         cp.psy_id AS "psychologistId",
-         psy.per_name AS "psychologistName",
-         CASE WHEN cp.cp_patient_dependent_id IS NOT NULL THEN 'dependent' ELSE 'self' END AS "patientType",
-         COALESCE(dep.dep_name, patient.per_name) AS "patientName",
-         COALESCE(dep.dep_id, patient.per_id) AS "patientId",
-         (
-           SELECT COUNT(*)::int
+      cp.cp_id AS "id",
+        cp.cp_state AS state,
+          cp.cp_session_limit AS "sessionLimit",
+            cp.cp_priority AS priority,
+              cp.cp_suggested_session_limit AS "suggestedSessionLimit",
+                cp.cp_suggested_priority AS "suggestedPriority",
+                  cp.cp_suggestion_comment AS "suggestionComment",
+                    cp.cp_created_at AS "createdAt",
+                      cp.cp_assessment_app_id AS "assessmentAppointmentId",
+                        assessment.app_date AS "assessmentDate",
+                          cp.psy_id AS "psychologistId",
+                            psy.per_name AS "psychologistName",
+                              CASE WHEN cp.cp_patient_dependent_id IS NOT NULL THEN 'dependent' ELSE 'self' END AS "patientType",
+                                COALESCE(dep.dep_name, patient.per_name) AS "patientName",
+                                  COALESCE(dep.dep_id, patient.per_id) AS "patientId",
+                                    (
+                                      SELECT COUNT(*):: int
            FROM appointments noshow
-           WHERE ((noshow.app_patient_person_id IS NOT NULL AND noshow.app_patient_person_id = cp.cp_patient_person_id)
-               OR (noshow.app_patient_dependent_id IS NOT NULL AND noshow.app_patient_dependent_id = cp.cp_patient_dependent_id))
+      WHERE((noshow.app_patient_person_id IS NOT NULL AND noshow.app_patient_person_id = cp.cp_patient_person_id)
+      OR(noshow.app_patient_dependent_id IS NOT NULL AND noshow.app_patient_dependent_id = cp.cp_patient_dependent_id))
              AND noshow.app_state = 'no_asistio'
          ) AS "noShowCount"
        FROM care_packages cp
@@ -186,8 +193,8 @@ export class CarePackagesService {
            WHEN 'media' THEN 2
            WHEN 'baja' THEN 3
            ELSE 4
-         END,
-         cp.cp_created_at ASC`,
+    END,
+      cp.cp_created_at ASC`,
     );
   }
 
@@ -211,8 +218,8 @@ export class CarePackagesService {
         `SELECT cp_id FROM care_packages
          WHERE cp_state = 'activo'
            AND cp_id != $1
-           AND ((cp_patient_person_id IS NOT NULL AND cp_patient_person_id = $2)
-             OR (cp_patient_dependent_id IS NOT NULL AND cp_patient_dependent_id = $3))
+    AND((cp_patient_person_id IS NOT NULL AND cp_patient_person_id = $2)
+    OR(cp_patient_dependent_id IS NOT NULL AND cp_patient_dependent_id = $3))
          FOR UPDATE`,
         [id, p.cp_patient_person_id, p.cp_patient_dependent_id],
       );
@@ -230,10 +237,10 @@ export class CarePackagesService {
       await m.query(
         `UPDATE care_packages
          SET cp_state = 'activo',
-             sec_id = $1,
-             cp_session_limit = $2,
-             cp_priority = $3,
-             cp_reviewed_at = now()
+      sec_id = $1,
+      cp_session_limit = $2,
+      cp_priority = $3,
+      cp_reviewed_at = now()
          WHERE cp_id = $4`,
         [secretaryId, newSessionLimit, newPriority, id],
       );
@@ -261,9 +268,9 @@ export class CarePackagesService {
       await m.query(
         `UPDATE care_packages
          SET cp_state = 'rechazado',
-             sec_id = $1,
-             cp_rejection_reason = $2,
-             cp_reviewed_at = now()
+      sec_id = $1,
+      cp_rejection_reason = $2,
+      cp_reviewed_at = now()
          WHERE cp_id = $3`,
         [secretaryId, dto.reason.trim(), id],
       );
@@ -280,36 +287,42 @@ export class CarePackagesService {
     return this.db.transaction(async (m) => {
       const a = (
         await m.query<any[]>(
-          `SELECT app_id, app_state, app_kind, psy_id, app_patient_person_id, app_patient_dependent_id
+      `SELECT app_id, app_state, app_kind, psy_id, app_patient_person_id, app_patient_dependent_id, app_referred_to_psy_id
            FROM appointments
            WHERE app_id = $1
            FOR UPDATE`,
-          [dto.assessmentAppointmentId],
+      [dto.assessmentAppointmentId],
         )
       )[0];
-      if (!a) throw new NotFoundException('La valoración no existe');
-      if (a.app_kind !== 'valoracion' || a.app_state !== 'realizada' || !a.psy_id) {
-        throw new BadRequestException({
-          error: 'ASSESSMENT_REQUIRED',
-          message: 'El paquete requiere una valoración realizada con psicólogo',
-        });
-      }
-      const active = await m.query<any[]>(
-        `SELECT cp_id FROM care_packages
+    if (!a) throw new NotFoundException('La valoración no existe');
+    if (a.app_kind !== 'valoracion' || a.app_state !== 'realizada' || !a.psy_id) {
+      throw new BadRequestException({
+        error: 'ASSESSMENT_REQUIRED',
+        message: 'El paquete requiere una valoración realizada con psicólogo',
+      });
+    }
+    if (a.app_referred_to_psy_id) {
+      throw new ConflictException({
+        error: 'ASSESSMENT_ALREADY_REFERRED',
+        message: 'Esta valoración fue remitida a otro psicólogo. El paquete debe crearse a partir de la valoración del nuevo psicólogo.',
+      });
+    }
+    const active = await m.query<any[]>(
+      `SELECT cp_id FROM care_packages
          WHERE cp_state = 'activo'
            AND ((cp_patient_person_id IS NOT NULL AND cp_patient_person_id = $1)
              OR (cp_patient_dependent_id IS NOT NULL AND cp_patient_dependent_id = $2))
          FOR UPDATE`,
-        [a.app_patient_person_id, a.app_patient_dependent_id],
-      );
-      if (active.length) {
-        throw new ConflictException({
-          error: 'ACTIVE_CARE_PACKAGE_EXISTS',
-          message: 'El paciente ya tiene un paquete activo',
-        });
-      }
-      const rows = await m.query<any[]>(
-        `INSERT INTO care_packages(
+      [a.app_patient_person_id, a.app_patient_dependent_id],
+    );
+    if (active.length) {
+      throw new ConflictException({
+        error: 'ACTIVE_CARE_PACKAGE_EXISTS',
+        message: 'El paciente ya tiene un paquete activo',
+      });
+    }
+    const rows = await m.query<any[]>(
+      `INSERT INTO care_packages(
            cp_patient_person_id,
            cp_patient_dependent_id,
            cp_assessment_app_id,
@@ -329,34 +342,34 @@ export class CarePackagesService {
            cp_session_limit AS "sessionLimit",
            cp_priority AS priority,
            psy_id AS "psychologistId"`,
-        [
-          a.app_patient_person_id,
-          a.app_patient_dependent_id,
-          a.app_id,
-          a.psy_id,
-          secretaryId,
-          dto.sessionLimit,
-          dto.priority,
-          dto.comment?.trim() ?? null,
-        ],
-      );
-      return rows[0];
-    });
-  }
+      [
+        a.app_patient_person_id,
+        a.app_patient_dependent_id,
+        a.app_id,
+        a.psy_id,
+        secretaryId,
+        dto.sessionLimit,
+        dto.priority,
+        dto.comment?.trim() ?? null,
+      ],
+    );
+    return rows[0];
+  });
+}
 
   /**
    * Lists packages for secretary management view, filterable by state.
    */
-  async findAll(state?: string) {
-    const params: any[] = [];
-    let stateFilter = '';
-    if (state) {
-      params.push(state);
-      stateFilter = `WHERE cp.cp_state = $1`;
-    }
+  async findAll(state ?: string) {
+  const params: any[] = [];
+  let stateFilter = '';
+  if (state) {
+    params.push(state);
+    stateFilter = `WHERE cp.cp_state = $1`;
+  }
 
-    return this.db.query<any[]>(
-      `SELECT
+  return this.db.query<any[]>(
+    `SELECT
          cp.cp_id AS "id",
          cp.cp_state AS state,
          cp.cp_session_limit AS "sessionLimit",
@@ -405,16 +418,16 @@ export class CarePackagesService {
            ELSE 3
          END,
          cp.cp_created_at DESC`,
-      params,
-    );
-  }
+    params,
+  );
+}
 
   /**
    * Consultant queries their own packages (and their dependents').
    */
   async findMyPackages(requesterId: number) {
-    return this.db.query<any[]>(
-      `SELECT
+  return this.db.query<any[]>(
+    `SELECT
          cp.cp_id AS "id",
          cp.cp_state AS state,
          cp.cp_session_limit AS "sessionLimit",
@@ -455,19 +468,19 @@ export class CarePackagesService {
            ELSE 3
          END,
          cp.cp_created_at DESC`,
-      [requesterId],
-    );
-  }
+    [requesterId],
+  );
+}
 
   /**
    * Retrieves single package details.
    */
   async find(
-    id: number,
-    actor?: { requesterId?: number; psychologistId?: number; secretaryId?: number },
-  ) {
-    const rows = await this.db.query<any[]>(
-      `SELECT
+  id: number,
+  actor ?: { requesterId?: number; psychologistId?: number; secretaryId?: number },
+) {
+  const rows = await this.db.query<any[]>(
+    `SELECT
          cp.cp_id AS "id",
          cp.cp_state AS state,
          cp.cp_session_limit AS "sessionLimit",
@@ -504,24 +517,24 @@ export class CarePackagesService {
        LEFT JOIN appointments a ON a.cp_id = cp.cp_id
        WHERE cp.cp_id = $1
        GROUP BY cp.cp_id, psy.per_name, dep.dep_name, patient.per_name`,
-      [id],
-    );
+    [id],
+  );
 
-    const row = rows[0];
-    if (!row) throw new NotFoundException('Paquete no encontrado');
+  const row = rows[0];
+  if (!row) throw new NotFoundException('Paquete no encontrado');
 
-    if (actor?.requesterId) {
-      const allowed = await this.db.query<any[]>(
-        `SELECT 1 FROM care_packages cp
+  if (actor?.requesterId) {
+    const allowed = await this.db.query<any[]>(
+      `SELECT 1 FROM care_packages cp
          LEFT JOIN requester_dependent rd ON rd.dep_id = cp.cp_patient_dependent_id
          WHERE cp.cp_id = $1 AND (cp.cp_patient_person_id = $2 OR rd.req_id = $2)`,
-        [id, actor.requesterId],
-      );
-      if (!allowed.length) throw new NotFoundException('Paquete no encontrado');
-    }
-
-    return row;
+      [id, actor.requesterId],
+    );
+    if (!allowed.length) throw new NotFoundException('Paquete no encontrado');
   }
+
+  return row;
+}
 
   /**
    * Finds up to 30 days of availability for the package psychologist.
@@ -531,86 +544,86 @@ export class CarePackagesService {
    * @returns A promise resolving to package-scoped availability slots.
    */
   async availability(
-    id: number,
-    actor: { requesterId?: number; secretaryId?: number },
-    query: CarePackageAvailabilityQueryDto,
-  ) {
-    const p = await this.find(id, actor);
-    return this.schedule.findAvailability({
-      ...query,
-      psychologistIds: String(p.psychologistId),
-    });
-  }
+  id: number,
+  actor: { requesterId?: number; secretaryId?: number },
+  query: CarePackageAvailabilityQueryDto,
+) {
+  const p = await this.find(id, actor);
+  return this.schedule.findAvailability({
+    ...query,
+    psychologistIds: String(p.psychologistId),
+  });
+}
 
   /**
    * Schedules an appointment inside an active care package.
    */
   async scheduleAppointment(
-    id: number,
-    dto: SchedulePackageAppointmentDto,
-    actor: { requesterId?: number; secretaryId?: number },
-  ) {
-    const date = new Date(dto.appDate);
-    if (Number.isNaN(date.getTime()) || date <= new Date()) {
-      throw new BadRequestException('La fecha debe ser futura');
-    }
+  id: number,
+  dto: SchedulePackageAppointmentDto,
+  actor: { requesterId?: number; secretaryId?: number },
+) {
+  const date = new Date(dto.appDate);
+  if (Number.isNaN(date.getTime()) || date <= new Date()) {
+    throw new BadRequestException('La fecha debe ser futura');
+  }
 
-    return this.db.transaction(async (m) => {
-      const p = (
-        await m.query<any[]>(
-          `SELECT cp.*, a.req_id, a.app_type
+  return this.db.transaction(async (m) => {
+    const p = (
+      await m.query<any[]>(
+        `SELECT cp.*, a.req_id, a.app_type
            FROM care_packages cp
            JOIN appointments a ON a.app_id = cp.cp_assessment_app_id
            WHERE cp.cp_id = $1
            FOR UPDATE`,
-          [id],
+        [id],
+      )
+    )[0];
+
+    if (!p) throw new NotFoundException('Paquete no encontrado');
+    if (p.cp_state !== 'activo') {
+      throw new BadRequestException('El paquete no está activo');
+    }
+
+    if (actor.requesterId && p.req_id !== actor.requesterId) {
+      const ownsDependent = p.cp_patient_dependent_id
+        ? await m.query<any[]>(
+          `SELECT 1 FROM requester_dependent WHERE req_id = $1 AND dep_id = $2`,
+          [actor.requesterId, p.cp_patient_dependent_id],
         )
-      )[0];
-
-      if (!p) throw new NotFoundException('Paquete no encontrado');
-      if (p.cp_state !== 'activo') {
-        throw new BadRequestException('El paquete no está activo');
+        : [];
+      if (!ownsDependent.length) {
+        throw new NotFoundException('Paquete no encontrado');
       }
+    }
 
-      if (actor.requesterId && p.req_id !== actor.requesterId) {
-        const ownsDependent = p.cp_patient_dependent_id
-          ? await m.query<any[]>(
-              `SELECT 1 FROM requester_dependent WHERE req_id = $1 AND dep_id = $2`,
-              [actor.requesterId, p.cp_patient_dependent_id],
-            )
-          : [];
-        if (!ownsDependent.length) {
-          throw new NotFoundException('Paquete no encontrado');
-        }
-      }
-
-      const used = await m.query<any[]>(
-        `SELECT COUNT(*)::int AS count
+    const used = await m.query<any[]>(
+      `SELECT COUNT(*)::int AS count
          FROM appointments
          WHERE cp_id = $1 AND app_state IN ('realizada', 'asignada', 'confirmada')`,
-        [id],
-      );
+      [id],
+    );
 
-      if (Number(used[0].count) >= Number(p.cp_session_limit)) {
-        throw new ConflictException({
-          error: 'NO_SLOTS_REMAINING',
-          message: 'El paquete no tiene cupos disponibles',
-        });
-      }
-
-      const day = date.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
-      const time = date.toLocaleTimeString('en-GB', {
-        timeZone: 'America/Bogota',
-        hour12: false,
+    if (Number(used[0].count) >= Number(p.cp_session_limit)) {
+      throw new ConflictException({
+        error: 'NO_SLOTS_REMAINING',
+        message: 'El paquete no tiene cupos disponibles',
       });
+    }
 
-      await m.query(
-        `SELECT pg_advisory_xact_lock(hashtext('care-package-slot'), hashtext($1::text || $2::text || $3::text))`,
-        [p.psy_id, day, time],
-      );
+    const day = date.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+    const time = date.toLocaleTimeString('en-GB', {
+      timeZone: 'America/Bogota',
+      hour12: false,
+    });
 
-      const free = await m.query<any[]>(
-        `SELECT 1 WHERE (
+    await m.query(
+      `SELECT pg_advisory_xact_lock(hashtext('care-package-slot'), hashtext($1::text || $2::text || $3::text))`,
+      [p.psy_id, day, time],
+    );
+
+    const free = await m.query<any[]>(
+      `SELECT 1 WHERE (
            EXISTS (
              SELECT 1 FROM schedule s
              WHERE s.psy_id = $1 AND s.sch_date = $2::date
@@ -633,19 +646,19 @@ export class CarePackagesService {
              AND occ_start_time < ($3::time + interval '60 minutes')
              AND occ_end_time > $3::time
          )`,
-        [p.psy_id, day, time],
-      );
+      [p.psy_id, day, time],
+    );
 
-      if (!free.length) {
-        throw new ConflictException({
-          error: 'SCHEDULE_SLOT_TAKEN',
-          message: 'La franja ya no está disponible',
-        });
-      }
+    if (!free.length) {
+      throw new ConflictException({
+        error: 'SCHEDULE_SLOT_TAKEN',
+        message: 'La franja ya no está disponible',
+      });
+    }
 
-      const app = (
-        await m.query<any[]>(
-          `INSERT INTO appointments(
+    const app = (
+      await m.query<any[]>(
+        `INSERT INTO appointments(
              req_id,
              app_patient_person_id,
              app_patient_dependent_id,
@@ -664,21 +677,21 @@ export class CarePackagesService {
              app_date AS "appDate",
              app_kind AS "appKind",
              cp_id AS "carePackageId"`,
-          [
-            p.req_id,
-            p.cp_patient_person_id,
-            p.cp_patient_dependent_id,
-            p.psy_id,
-            actor.secretaryId ?? null,
-            date,
-            p.app_type,
-            id,
-          ],
-        )
-      )[0];
+        [
+          p.req_id,
+          p.cp_patient_person_id,
+          p.cp_patient_dependent_id,
+          p.psy_id,
+          actor.secretaryId ?? null,
+          date,
+          p.app_type,
+          id,
+        ],
+      )
+    )[0];
 
-      await m.query(
-        `INSERT INTO schedule_occupancy(
+    await m.query(
+      `INSERT INTO schedule_occupancy(
            psy_id,
            app_id,
            occ_date,
@@ -686,58 +699,58 @@ export class CarePackagesService {
            occ_end_time,
            source_type
          ) VALUES ($1, $2, $3::date, $4::time, ($4::time + interval '60 minutes'), 'appointment')`,
-        [p.psy_id, app.appId, day, time],
-      );
+      [p.psy_id, app.appId, day, time],
+    );
 
-      return app;
-    });
-  }
+    return app;
+  });
+}
 
   /**
    * Closes a package (finalizado or cancelado).
    */
   async close(
-    id: number,
-    state: 'finalizado' | 'cancelado',
-    dto: CloseCarePackageDto,
-    secretaryId: number,
-  ) {
-    return this.db.transaction(async (m) => {
-      const p = (
-        await m.query<any[]>(
-          `SELECT * FROM care_packages WHERE cp_id = $1 FOR UPDATE`,
-          [id],
-        )
-      )[0];
-      if (!p) throw new NotFoundException('Paquete no encontrado');
-      if (p.cp_state !== 'activo') {
-        throw new BadRequestException('El paquete ya está cerrado');
-      }
+  id: number,
+  state: 'finalizado' | 'cancelado',
+  dto: CloseCarePackageDto,
+  secretaryId: number,
+) {
+  return this.db.transaction(async (m) => {
+    const p = (
+      await m.query<any[]>(
+        `SELECT * FROM care_packages WHERE cp_id = $1 FOR UPDATE`,
+        [id],
+      )
+    )[0];
+    if (!p) throw new NotFoundException('Paquete no encontrado');
+    if (p.cp_state !== 'activo') {
+      throw new BadRequestException('El paquete ya está cerrado');
+    }
 
-      await m.query(
-        `UPDATE appointments
+    await m.query(
+      `UPDATE appointments
          SET app_state = 'cancelada'
          WHERE cp_id = $1 AND app_state IN ('asignada', 'confirmada')`,
-        [id],
-      );
-      await m.query(
-        `DELETE FROM schedule_occupancy
+      [id],
+    );
+    await m.query(
+      `DELETE FROM schedule_occupancy
          WHERE app_id IN (
            SELECT app_id FROM appointments WHERE cp_id = $1 AND app_state = 'cancelada'
          )`,
-        [id],
-      );
-      await m.query(
-        `UPDATE care_packages
+      [id],
+    );
+    await m.query(
+      `UPDATE care_packages
          SET cp_state = $1,
              cp_closed_at = now(),
              cp_closed_by = $2,
              cp_close_reason = $3
          WHERE cp_id = $4`,
-        [state, secretaryId, dto.reason ?? null, id],
-      );
+      [state, secretaryId, dto.reason ?? null, id],
+    );
 
-      return this.find(id);
-    });
-  }
+    return this.find(id);
+  });
+}
 }

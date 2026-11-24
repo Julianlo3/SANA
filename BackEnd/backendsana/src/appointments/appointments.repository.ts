@@ -69,6 +69,12 @@ export interface AppointmentRow {
   secretaryName: string | null;
   relationshipDescription: string | null;
   calendarEventId: string | null;
+  referredFromAppId?: number | null;
+  referredByPsychologistId?: number | null;
+  referredByPsychologistName?: string | null;
+  referredToPsychologistId?: number | null;
+  referredToPsychologistName?: string | null;
+  referralReason?: string | null;
 }
 
 export interface RequesterAppointmentRow {
@@ -83,6 +89,9 @@ export interface RequesterAppointmentRow {
   patientType: 'self' | 'dependent';
   patientName: string;
   psychologistName: string | null;
+  referredFromAppId?: number | null;
+  referredToPsychologistId?: number | null;
+  referredToPsychologistName?: string | null;
 }
 
 export interface RelationshipRow {
@@ -155,7 +164,13 @@ export class AppointmentsRepository {
           psy_per.per_name                           AS "psychologistName",
           sec_per.per_name                           AS "secretaryName",
           rel.rel_description                        AS "relationshipDescription",
-          a.app_calendar_event_id                    AS "calendarEventId"
+          a.app_calendar_event_id                    AS "calendarEventId",
+          a.app_referred_from_app_id                 AS "referredFromAppId",
+          ref_app.psy_id                             AS "referredByPsychologistId",
+          ref_by_per.per_name                        AS "referredByPsychologistName",
+          a.app_referred_to_psy_id                   AS "referredToPsychologistId",
+          ref_to_per.per_name                        AS "referredToPsychologistName",
+          a.app_referral_reason                      AS "referralReason"
         FROM appointments a
         JOIN person req ON req.per_id = a.req_id
         LEFT JOIN dependents dep ON dep.dep_id = a.app_patient_dependent_id
@@ -163,6 +178,9 @@ export class AppointmentsRepository {
         LEFT JOIN relationship rel ON rel.rel_id = rd.rel_id
         LEFT JOIN person psy_per ON psy_per.per_id = a.psy_id
         LEFT JOIN person sec_per ON sec_per.per_id = a.sec_id
+        LEFT JOIN appointments ref_app ON ref_app.app_id = a.app_referred_from_app_id
+        LEFT JOIN person ref_by_per ON ref_by_per.per_id = ref_app.psy_id
+        LEFT JOIN person ref_to_per ON ref_to_per.per_id = a.app_referred_to_psy_id
         ${whereClause}
         ORDER BY a.app_created_at DESC`,
       params,
@@ -190,11 +208,15 @@ export class AppointmentsRepository {
             ELSE 'self'
           END AS "patientType",
           COALESCE(dep.dep_name, req.per_name) AS "patientName",
-          psy.per_name AS "psychologistName"
+          psy.per_name AS "psychologistName",
+          a.app_referred_from_app_id AS "referredFromAppId",
+          a.app_referred_to_psy_id AS "referredToPsychologistId",
+          ref_to_per.per_name AS "referredToPsychologistName"
         FROM appointments a
         JOIN person req ON req.per_id = a.req_id
         LEFT JOIN dependents dep ON dep.dep_id = a.app_patient_dependent_id
         LEFT JOIN person psy ON psy.per_id = a.psy_id
+        LEFT JOIN person ref_to_per ON ref_to_per.per_id = a.app_referred_to_psy_id
         WHERE a.req_id = $1
         ORDER BY a.app_created_at DESC`,
       [requesterId],
@@ -237,7 +259,13 @@ export class AppointmentsRepository {
           psy_per.per_name                           AS "psychologistName",
           sec_per.per_name                           AS "secretaryName",
           rel.rel_description                        AS "relationshipDescription",
-          a.app_calendar_event_id                    AS "calendarEventId"
+          a.app_calendar_event_id                    AS "calendarEventId",
+          a.app_referred_from_app_id                 AS "referredFromAppId",
+          ref_app.psy_id                             AS "referredByPsychologistId",
+          ref_by_per.per_name                        AS "referredByPsychologistName",
+          a.app_referred_to_psy_id                   AS "referredToPsychologistId",
+          ref_to_per.per_name                        AS "referredToPsychologistName",
+          a.app_referral_reason                      AS "referralReason"
         FROM appointments a
         JOIN person req ON req.per_id = a.req_id
         LEFT JOIN dependents dep ON dep.dep_id = a.app_patient_dependent_id
@@ -245,6 +273,9 @@ export class AppointmentsRepository {
         LEFT JOIN relationship rel ON rel.rel_id = rd.rel_id
         LEFT JOIN person psy_per ON psy_per.per_id = a.psy_id
         LEFT JOIN person sec_per ON sec_per.per_id = a.sec_id
+        LEFT JOIN appointments ref_app ON ref_app.app_id = a.app_referred_from_app_id
+        LEFT JOIN person ref_by_per ON ref_by_per.per_id = ref_app.psy_id
+        LEFT JOIN person ref_to_per ON ref_to_per.per_id = a.app_referred_to_psy_id
         WHERE a.app_id = $1`,
       [appId],
     );
@@ -287,7 +318,13 @@ export class AppointmentsRepository {
           psy_per.per_name                           AS "psychologistName",
           sec_per.per_name                           AS "secretaryName",
           rel.rel_description                        AS "relationshipDescription",
-          a.app_calendar_event_id                    AS "calendarEventId"
+          a.app_calendar_event_id                    AS "calendarEventId",
+          a.app_referred_from_app_id                 AS "referredFromAppId",
+          ref_app.psy_id                             AS "referredByPsychologistId",
+          ref_by_per.per_name                        AS "referredByPsychologistName",
+          a.app_referred_to_psy_id                   AS "referredToPsychologistId",
+          ref_to_per.per_name                        AS "referredToPsychologistName",
+          a.app_referral_reason                      AS "referralReason"
         FROM appointments a
         JOIN person req ON req.per_id = a.req_id
         LEFT JOIN dependents dep ON dep.dep_id = a.app_patient_dependent_id
@@ -295,6 +332,9 @@ export class AppointmentsRepository {
         LEFT JOIN relationship rel ON rel.rel_id = rd.rel_id
         LEFT JOIN person psy_per ON psy_per.per_id = a.psy_id
         LEFT JOIN person sec_per ON sec_per.per_id = a.sec_id
+        LEFT JOIN appointments ref_app ON ref_app.app_id = a.app_referred_from_app_id
+        LEFT JOIN person ref_by_per ON ref_by_per.per_id = ref_app.psy_id
+        LEFT JOIN person ref_to_per ON ref_to_per.per_id = a.app_referred_to_psy_id
         WHERE a.app_id = $1`,
       [appId],
     );
@@ -345,7 +385,13 @@ export class AppointmentsRepository {
           psy_per.per_name                           AS "psychologistName",
           sec_per.per_name                           AS "secretaryName",
           rel.rel_description                        AS "relationshipDescription",
-          a.app_calendar_event_id                    AS "calendarEventId"
+          a.app_calendar_event_id                    AS "calendarEventId",
+          a.app_referred_from_app_id                 AS "referredFromAppId",
+          ref_app.psy_id                             AS "referredByPsychologistId",
+          ref_by_per.per_name                        AS "referredByPsychologistName",
+          a.app_referred_to_psy_id                   AS "referredToPsychologistId",
+          ref_to_per.per_name                        AS "referredToPsychologistName",
+          a.app_referral_reason                      AS "referralReason"
         FROM appointments a
         JOIN person req ON req.per_id = a.req_id
         LEFT JOIN dependents dep ON dep.dep_id = a.app_patient_dependent_id
@@ -353,6 +399,9 @@ export class AppointmentsRepository {
         LEFT JOIN relationship rel ON rel.rel_id = rd.rel_id
         LEFT JOIN person psy_per ON psy_per.per_id = a.psy_id
         LEFT JOIN person sec_per ON sec_per.per_id = a.sec_id
+        LEFT JOIN appointments ref_app ON ref_app.app_id = a.app_referred_from_app_id
+        LEFT JOIN person ref_by_per ON ref_by_per.per_id = ref_app.psy_id
+        LEFT JOIN person ref_to_per ON ref_to_per.per_id = a.app_referred_to_psy_id
         ${whereClause}
         ORDER BY a.app_date ASC`,
       params,
@@ -1053,7 +1102,7 @@ export class AppointmentsRepository {
              app_discard_reason = 'Solicitud retirada por el consultante'
          WHERE app_id = $1
            AND req_id = $2
-           AND app_state IN ('pendiente', 'asignada')
+           AND app_state IN ('pendiente', 'remitida', 'asignada')
          RETURNING app_id`,
         [appId, requesterId],
       );
@@ -1078,7 +1127,7 @@ export class AppointmentsRepository {
       const result = await manager.query(
         `UPDATE appointments
          SET app_state = 'descartada', app_discard_reason = $1
-         WHERE app_id = $2 AND app_state IN ('pendiente', 'asignada')`,
+        WHERE app_id = $2 AND app_state IN('pendiente', 'remitida', 'asignada')`,
         [reason, appId],
       );
       if (result?.rowCount === 0) throw new Error('APPOINTMENT_NOT_DISCARDABLE');
@@ -1126,9 +1175,9 @@ export class AppointmentsRepository {
     return this.dataSource.query<PsychologistOptionRow[]>(
       `SELECT
           p.psy_id              AS "psyId",
-          per.per_name          AS "name",
-          p.psy_speciality      AS "speciality",
-          p.psy_license_number  AS "licenseNumber"
+        per.per_name          AS "name",
+        p.psy_speciality      AS "speciality",
+        p.psy_license_number  AS "licenseNumber"
         FROM psychologist p
         JOIN person per ON per.per_id = p.psy_id
         WHERE per.per_state = 'activo'
@@ -1164,8 +1213,8 @@ export class AppointmentsRepository {
   }): Promise<void> {
     await this.dataSource.query(
       `INSERT INTO appointment_assignment_history
-         (app_id, old_psy_id, new_psy_id, sec_id, aah_reason)
-       VALUES ($1, $2, $3, $4, $5)`,
+        (app_id, old_psy_id, new_psy_id, sec_id, aah_reason)
+       VALUES($1, $2, $3, $4, $5)`,
       [params.appId, params.oldPsyId, params.newPsyId, params.secId, params.reason],
     );
   }
@@ -1278,5 +1327,260 @@ export class AppointmentsRepository {
       `UPDATE appointments SET app_calendar_event_id = NULL WHERE app_id = $1`,
       [appId],
     );
+  }
+
+  /**
+   * Finds all psychologist IDs already involved in the referral chain of a valuation appointment
+   * (including the current appointment's psychologist and any ancestor valuation psychologists).
+   * @param appId The valuation appointment ID.
+   * @param executor Optional query executor.
+   * @returns Array of psychologist IDs in the referral chain.
+   */
+  async findReferralChainPsychologistIds(
+    appId: number,
+    executor: QueryExecutor = this.dataSource,
+  ): Promise<number[]> {
+    const rows = await executor.query<{ psy_id: number }[]>(
+      `WITH RECURSIVE referral_chain AS(
+        SELECT app_id, psy_id, app_referred_from_app_id
+         FROM appointments
+         WHERE app_id = $1
+         UNION ALL
+         SELECT parent.app_id, parent.psy_id, parent.app_referred_from_app_id
+         FROM appointments parent
+         JOIN referral_chain rc ON rc.app_referred_from_app_id = parent.app_id
+      )
+       SELECT DISTINCT psy_id
+       FROM referral_chain
+       WHERE psy_id IS NOT NULL`,
+      [appId],
+    );
+    return rows.map((row) => Number(row.psy_id));
+  }
+
+  /**
+   * Lists active psychologists eligible to receive a referral from the specified valuation appointment,
+   * excluding all psychologists already in the referral chain (to prevent referral loops)
+   * and the requester themselves.
+   * @param appId The valuation appointment ID.
+   * @returns List of eligible psychologists with their specialities.
+   */
+  async findReferralCandidatePsychologists(
+    appId: number,
+  ): Promise<PsychologistOptionRow[]> {
+    const excludedIds = await this.findReferralChainPsychologistIds(appId);
+    const allActive = await this.findPsychologists();
+    const excludedSet = new Set(excludedIds);
+    return allActive.filter((psy) => !excludedSet.has(psy.psyId));
+  }
+
+  /**
+   * Lists valuation appointments that have been referred to another psychologist
+   * and are awaiting schedule assignment or confirmation by the secretary.
+   * @param state Optional state filter ('remitida' by default, or 'asignada').
+   * @returns List of referred appointments.
+   */
+  async findPendingReferrals(
+    state: 'remitida' | 'asignada' = 'remitida',
+  ): Promise<AppointmentRow[]> {
+    return this.dataSource.query<AppointmentRow[]>(
+      `SELECT
+    a.app_id                                   AS "appId",
+      a.app_state                                AS "appState",
+        a.app_kind                                 AS "appKind",
+          a.cp_id                                    AS "carePackageId",
+            a.app_type                                 AS "appType",
+              a.app_date                                 AS "appDate",
+                a.app_duration                             AS "appDuration",
+                  a.app_discard_reason                       AS "appDiscardReason",
+                    NULL::text                                 AS "appReason",
+                      a.app_created_at                           AS "appCreatedAt",
+                        req.per_id                                 AS "requesterId",
+                          req.per_name                               AS "requesterName",
+                            req.per_card_type                          AS "requesterCardType",
+                              req.per_identity_document                  AS "requesterIdentityDocument",
+                                req.per_contact_number                     AS "requesterContactNumber",
+                                  req.per_email                              AS "requesterEmail",
+                                    CASE
+            WHEN a.app_patient_dependent_id IS NOT NULL THEN 'dependent'
+            ELSE 'self'
+          END                                        AS "patientType",
+      COALESCE(dep.dep_name, req.per_name)       AS "patientName",
+        COALESCE(dep.dep_identity_document:: text, req.per_identity_document:: text) AS "patientIdentityDocument",
+          COALESCE(dep.dep_birthdate:: text, req.per_birthdate:: text) AS "patientBirthdate",
+            COALESCE(dep.dep_gender, req.per_gender)   AS "patientGender",
+              a.psy_id                                   AS "psychologistId",
+                psy_per.per_name                           AS "psychologistName",
+                  sec_per.per_name                           AS "secretaryName",
+                    rel.rel_description                        AS "relationshipDescription",
+                      a.app_calendar_event_id                    AS "calendarEventId",
+                        a.app_referred_from_app_id                 AS "referredFromAppId",
+                          ref_app.psy_id                             AS "referredByPsychologistId",
+                            ref_by_per.per_name                        AS "referredByPsychologistName",
+                              a.app_referred_to_psy_id                   AS "referredToPsychologistId",
+                                ref_to_per.per_name                        AS "referredToPsychologistName",
+                                  a.app_referral_reason                      AS "referralReason"
+        FROM appointments a
+        JOIN person req ON req.per_id = a.req_id
+        LEFT JOIN dependents dep ON dep.dep_id = a.app_patient_dependent_id
+        LEFT JOIN requester_dependent rd ON rd.req_id = a.req_id AND rd.dep_id = a.app_patient_dependent_id
+        LEFT JOIN relationship rel ON rel.rel_id = rd.rel_id
+        LEFT JOIN person psy_per ON psy_per.per_id = a.psy_id
+        LEFT JOIN person sec_per ON sec_per.per_id = a.sec_id
+        LEFT JOIN appointments ref_app ON ref_app.app_id = a.app_referred_from_app_id
+        LEFT JOIN person ref_by_per ON ref_by_per.per_id = ref_app.psy_id
+        LEFT JOIN person ref_to_per ON ref_to_per.per_id = a.app_referred_to_psy_id
+        WHERE a.app_referred_from_app_id IS NOT NULL
+          AND a.app_state = $1
+        ORDER BY a.app_created_at ASC`,
+      [state],
+    );
+  }
+
+  /**
+   * Refers a valuation appointment to another psychologist in a single transaction:
+   * 1. Marks the current valuation appointment as 'realizada' (if 'confirmada') and records
+   *    app_referred_to_psy_id and app_referral_reason.
+   * 2. Creates a new valuation appointment in state 'remitida' assigned to targetPsychologistId,
+   *    with app_date = NULL (awaiting secretary assignment) and app_referred_from_app_id = sourceAppId.
+   */
+  async createReferral(params: {
+    sourceAppId: number;
+    psychologistId: number;
+    targetPsychologistId: number;
+    reason: string | null;
+  }): Promise<{ sourceAppId: number; referredAppId: number }> {
+    return this.dataSource.transaction(async (manager) => {
+      const rows = await manager.query<{
+        app_id: number;
+        app_state: string;
+        app_kind: string;
+        app_type: string;
+        app_reason: string | null;
+        psy_id: number | null;
+        req_id: number;
+        app_patient_person_id: number | null;
+        app_patient_dependent_id: number | null;
+        app_referred_to_psy_id: number | null;
+      }[]>(
+        `SELECT
+    app_id,
+      app_state,
+      app_kind,
+      app_type,
+      app_reason,
+      psy_id,
+      req_id,
+      app_patient_person_id,
+      app_patient_dependent_id,
+      app_referred_to_psy_id
+         FROM appointments
+         WHERE app_id = $1
+         FOR UPDATE`,
+        [params.sourceAppId],
+      );
+
+      const source = rows[0];
+      if (!source) {
+        throw new Error('APPOINTMENT_NOT_FOUND');
+      }
+      if (source.psy_id !== params.psychologistId) {
+        throw new Error('NOT_ASSIGNED_PSYCHOLOGIST');
+      }
+      if (source.app_kind !== 'valoracion') {
+        throw new Error('ASSESSMENT_REQUIRED');
+      }
+      if (!['confirmada', 'realizada'].includes(source.app_state)) {
+        throw new Error('INVALID_APPOINTMENT_STATE');
+      }
+      if (source.app_referred_to_psy_id !== null) {
+        throw new Error('APPOINTMENT_ALREADY_REFERRED');
+      }
+
+      const existingReferredChild = await manager.query<{ app_id: number }[]>(
+        `SELECT app_id FROM appointments WHERE app_referred_from_app_id = $1 LIMIT 1`,
+        [params.sourceAppId],
+      );
+      if (existingReferredChild.length > 0) {
+        throw new Error('APPOINTMENT_ALREADY_REFERRED');
+      }
+
+      const existingPackage = await manager.query<{ cp_id: number }[]>(
+        `SELECT cp_id FROM care_packages WHERE cp_assessment_app_id = $1 LIMIT 1`,
+        [params.sourceAppId],
+      );
+      if (existingPackage.length > 0) {
+        throw new Error('PACKAGE_ALREADY_EXISTS_FOR_ASSESSMENT');
+      }
+
+      const activePackage = await manager.query<{ cp_id: number }[]>(
+        `SELECT cp_id FROM care_packages
+         WHERE cp_state = 'activo'
+    AND((cp_patient_person_id IS NOT NULL AND cp_patient_person_id = $1)
+    OR(cp_patient_dependent_id IS NOT NULL AND cp_patient_dependent_id = $2))
+         LIMIT 1`,
+        [source.app_patient_person_id, source.app_patient_dependent_id],
+      );
+      if (activePackage.length > 0) {
+        throw new Error('ACTIVE_CARE_PACKAGE_EXISTS');
+      }
+
+      if (source.req_id === params.targetPsychologistId) {
+        throw new Error('PSYCHOLOGIST_CANNOT_ATTEND_OWN_APPOINTMENT');
+      }
+
+      const chainPsychologistIds = await this.findReferralChainPsychologistIds(
+        params.sourceAppId,
+        manager,
+      );
+      if (chainPsychologistIds.includes(params.targetPsychologistId)) {
+        throw new Error('REFERRAL_LOOP_DETECTED');
+      }
+
+      await manager.query(
+        `UPDATE appointments
+         SET app_state = 'realizada',
+      app_referred_to_psy_id = $1,
+      app_referral_reason = $2
+         WHERE app_id = $3`,
+        [params.targetPsychologistId, params.reason, params.sourceAppId],
+      );
+
+      const created = await manager.query<{ app_id: number }[]>(
+        `INSERT INTO appointments(
+        req_id,
+        app_patient_person_id,
+        app_patient_dependent_id,
+        psy_id,
+        sec_id,
+        app_date,
+        app_duration,
+        app_state,
+        app_kind,
+        app_type,
+        app_reason,
+        app_referred_from_app_id,
+        app_referral_reason,
+        app_created_at
+      )
+    VALUES($1, $2, $3, $4, NULL, NULL, NULL, 'remitida', 'valoracion', $5, $6, $7, $8, now())
+         RETURNING app_id`,
+        [
+          source.req_id,
+          source.app_patient_person_id,
+          source.app_patient_dependent_id,
+          params.targetPsychologistId,
+          source.app_type,
+          source.app_reason,
+          params.sourceAppId,
+          params.reason,
+        ],
+      );
+
+      return {
+        sourceAppId: params.sourceAppId,
+        referredAppId: created[0].app_id,
+      };
+    });
   }
 }
