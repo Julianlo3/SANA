@@ -7,14 +7,16 @@ import {
 } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { ScheduleService } from '../schedule/schedule.service.js';
-import type { CarePackageAvailabilityQueryDto } from './dto/care-package.dto.js';
-import type {
-  ApproveCarePackageDto,
-  CloseCarePackageDto,
-  CreateCarePackageDto,
-  RejectCarePackageDto,
-  SchedulePackageAppointmentDto,
-  SuggestCarePackageDto,
+import {
+  MAX_CARE_PACKAGE_SESSIONS,
+  MIN_CARE_PACKAGE_SESSIONS,
+  type ApproveCarePackageDto,
+  type CarePackageAvailabilityQueryDto,
+  type CloseCarePackageDto,
+  type CreateCarePackageDto,
+  type RejectCarePackageDto,
+  type SchedulePackageAppointmentDto,
+  type SuggestCarePackageDto,
 } from './dto/care-package.dto.js';
 
 @Injectable()
@@ -24,10 +26,24 @@ export class CarePackagesService {
     private readonly schedule: ScheduleService,
   ) {}
 
+  private validateSessionLimit(sessionLimit: number): void {
+    if (
+      !Number.isInteger(sessionLimit) ||
+      sessionLimit < MIN_CARE_PACKAGE_SESSIONS ||
+      sessionLimit > MAX_CARE_PACKAGE_SESSIONS
+    ) {
+      throw new BadRequestException({
+        error: 'INVALID_SESSION_LIMIT',
+        message: `El número de sesiones del paquete debe ser entre ${MIN_CARE_PACKAGE_SESSIONS} y ${MAX_CARE_PACKAGE_SESSIONS}`,
+      });
+    }
+  }
+
   /**
    * Psychologist suggests a care package after a valuation appointment.
    */
   async suggest(dto: SuggestCarePackageDto, psychologistId: number) {
+    this.validateSessionLimit(dto.sessionLimit);
     return this.db.transaction(async (m) => {
       const a = (
         await m.query<any[]>(
@@ -207,7 +223,8 @@ export class CarePackagesService {
         });
       }
 
-      const newSessionLimit = dto.sessionLimit ?? p.cp_session_limit;
+      const newSessionLimit = Number(dto.sessionLimit ?? p.cp_session_limit);
+      this.validateSessionLimit(newSessionLimit);
       const newPriority = dto.priority ?? p.cp_priority;
 
       await m.query(
@@ -259,6 +276,7 @@ export class CarePackagesService {
    * Direct package creation by secretary (approved immediately).
    */
   async create(dto: CreateCarePackageDto, secretaryId: number) {
+    this.validateSessionLimit(dto.sessionLimit);
     return this.db.transaction(async (m) => {
       const a = (
         await m.query<any[]>(

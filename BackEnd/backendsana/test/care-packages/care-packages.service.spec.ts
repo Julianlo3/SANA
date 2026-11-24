@@ -146,6 +146,26 @@ describe('CarePackagesService', () => {
       ).rejects.toThrow(ConflictException);
     });
 
+    it('throws BadRequestException when sessionLimit is less than 3 or greater than 12', async () => {
+      const { service, queryMock } = setup();
+
+      await expect(
+        service.suggest(
+          { assessmentAppointmentId: 1, sessionLimit: 2, priority: 'alta' },
+          10,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        service.suggest(
+          { assessmentAppointmentId: 1, sessionLimit: 13, priority: 'alta' },
+          10,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(queryMock).not.toHaveBeenCalled();
+    });
+
     it('successfully creates suggestion with state sugerido and marks valuation as realizada', async () => {
       const { service, queryMock } = setup();
       queryMock
@@ -205,6 +225,43 @@ describe('CarePackagesService', () => {
       await expect(service.approve(1, {}, 1)).rejects.toThrow(BadRequestException);
     });
 
+    it('throws BadRequestException when resulting sessionLimit is outside 3..12', async () => {
+      const { service, queryMock } = setup();
+      queryMock
+        .mockResolvedValueOnce([
+          {
+            cp_id: 1,
+            cp_state: 'sugerido',
+            cp_patient_person_id: 100,
+            cp_patient_dependent_id: null,
+            cp_session_limit: 4,
+            cp_priority: 'media',
+          },
+        ])
+        .mockResolvedValueOnce([]); // active package check: none
+
+      await expect(
+        service.approve(1, { sessionLimit: 2 }, 50),
+      ).rejects.toThrow(BadRequestException);
+
+      queryMock
+        .mockResolvedValueOnce([
+          {
+            cp_id: 1,
+            cp_state: 'sugerido',
+            cp_patient_person_id: 100,
+            cp_patient_dependent_id: null,
+            cp_session_limit: 4,
+            cp_priority: 'media',
+          },
+        ])
+        .mockResolvedValueOnce([]); // active package check: none
+
+      await expect(
+        service.approve(1, { sessionLimit: 13 }, 50),
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it('approves package and updates to activo with secretary id', async () => {
       const { service, queryMock } = setup();
       queryMock
@@ -232,6 +289,28 @@ describe('CarePackagesService', () => {
       const res = await service.approve(1, { sessionLimit: 6, priority: 'alta' }, 50);
       expect(res.state).toBe('activo');
       expect(res.sessionLimit).toBe(6);
+    });
+  });
+
+  describe('create', () => {
+    it('throws BadRequestException when sessionLimit is less than 3 or greater than 12', async () => {
+      const { service, queryMock } = setup();
+
+      await expect(
+        service.create(
+          { assessmentAppointmentId: 1, sessionLimit: 2, priority: 'media' },
+          50,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        service.create(
+          { assessmentAppointmentId: 1, sessionLimit: 13, priority: 'media' },
+          50,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(queryMock).not.toHaveBeenCalled();
     });
   });
 
