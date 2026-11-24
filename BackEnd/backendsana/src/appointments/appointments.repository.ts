@@ -1228,80 +1228,80 @@ export class AppointmentsRepository {
     appId: number,
   ): Promise<PsychologistHistoryRow[]> {
     return this.dataSource.query<PsychologistHistoryRow[]>(
-      `WITH target_patient AS(
-          SELECT app_patient_person_id, app_patient_dependent_id
+      `WITH target_patient AS (
+         SELECT app_patient_person_id, app_patient_dependent_id
          FROM appointments
          WHERE app_id = $1
-        ), patient_appointments AS(
-          SELECT a.app_id, a.psy_id, a.app_date
+       ), patient_appointments AS (
+         SELECT a.app_id, a.psy_id, a.app_date
          FROM appointments a
          CROSS JOIN target_patient target
          WHERE a.psy_id IS NOT NULL
            AND a.app_state = 'realizada'
-           AND(
-            (
-              target.app_patient_dependent_id IS NOT NULL
+           AND (
+             (
+               target.app_patient_dependent_id IS NOT NULL
                AND a.app_patient_dependent_id = target.app_patient_dependent_id
-          )
-             OR(
-            target.app_patient_dependent_id IS NULL
+             )
+             OR (
+               target.app_patient_dependent_id IS NULL
                AND a.app_patient_dependent_id IS NULL
                AND a.app_patient_person_id = target.app_patient_person_id
-          )
-        )
-      ), ordered_appointments AS (
-        SELECT
+             )
+           )
+       ), ordered_appointments AS (
+         SELECT
            app_id,
-        psy_id,
-        app_date,
-        CASE
-             WHEN LAG(psy_id) OVER(ORDER BY app_date, app_id) IS DISTINCT FROM psy_id
+           psy_id,
+           app_date,
+           CASE
+             WHEN LAG(psy_id) OVER (ORDER BY app_date, app_id) IS DISTINCT FROM psy_id
              THEN 1 ELSE 0
            END AS starts_streak
          FROM patient_appointments
-       ), streak_groups AS(
-          SELECT
+       ), streak_groups AS (
+         SELECT
            psy_id,
-          app_date,
-          SUM(starts_streak) OVER(ORDER BY app_date, app_id) AS streak_group
+           app_date,
+           SUM(starts_streak) OVER (ORDER BY app_date, app_id) AS streak_group
          FROM ordered_appointments
-        ), psychologist_streaks AS(
-          SELECT
+       ), psychologist_streaks AS (
+         SELECT
            psy_id,
-          streak_group,
-          COUNT(*):: int AS streak_count,
-          MAX(app_date) AS streak_last_date
+           streak_group,
+           COUNT(*)::int AS streak_count,
+           MAX(app_date) AS streak_last_date
          FROM streak_groups
          GROUP BY psy_id, streak_group
-        ), ranked_streaks AS(
-          SELECT
+       ), ranked_streaks AS (
+         SELECT
            psy_id,
-          streak_count,
-          ROW_NUMBER() OVER(
-            PARTITION BY psy_id
+           streak_count,
+           ROW_NUMBER() OVER (
+             PARTITION BY psy_id
              ORDER BY streak_last_date DESC, streak_group DESC
-          ) AS streak_rank
+           ) AS streak_rank
          FROM psychologist_streaks
-        ), psychologist_totals AS(
-          SELECT
+       ), psychologist_totals AS (
+         SELECT
            psy_id,
-          COUNT(*):: int AS total_appointments,
-          MAX(app_date) AS last_appointment_date
+           COUNT(*)::int AS total_appointments,
+           MAX(app_date) AS last_appointment_date
          FROM patient_appointments
          GROUP BY psy_id
-        )
-    SELECT
-    totals.psy_id AS "psyId",
-      per.per_name AS "psychologistName",
-        totals.total_appointments AS "totalAppointments",
-          COALESCE(streaks.streak_count, 0) AS "currentStreak",
-            totals.last_appointment_date AS "lastAppointmentDate"
+       )
+       SELECT
+         totals.psy_id AS "psyId",
+         per.per_name AS "psychologistName",
+         totals.total_appointments AS "totalAppointments",
+         COALESCE(streaks.streak_count, 0) AS "currentStreak",
+         totals.last_appointment_date AS "lastAppointmentDate"
        FROM psychologist_totals totals
        JOIN person per ON per.per_id = totals.psy_id
        LEFT JOIN ranked_streaks streaks
          ON streaks.psy_id = totals.psy_id AND streaks.streak_rank = 1
        ORDER BY "currentStreak" DESC, "totalAppointments" DESC,
-      "lastAppointmentDate" DESC, per.per_name`,
+                "lastAppointmentDate" DESC, per.per_name`,
       [appId],
     );
   }

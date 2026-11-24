@@ -345,7 +345,7 @@ describe('AppointmentsRepository.findPatientPsychologistHistory', () => {
     expect(sql).toContain('a.app_patient_person_id = target.app_patient_person_id');
     expect(sql).toContain("a.app_state = 'realizada'");
     expect(sql).not.toContain("'confirmada', 'asignada'");
-    expect(sql).toContain('LAG(psy_id) OVER (ORDER BY app_date, app_id)');
+    expect(sql).toMatch(/LAG\(psy_id\)\s+OVER\s*\(ORDER BY app_date, app_id\)/);
     expect(sql).toContain('GROUP BY psy_id, streak_group');
   });
 });
