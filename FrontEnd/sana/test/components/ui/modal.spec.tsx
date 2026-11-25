@@ -6,6 +6,9 @@ import Modal from "@/components/ui/modal";
 
 afterEach(cleanup);
 
+/**
+ * Test suite for the Modal component, verifying its behavior when interacting with the backdrop and dialog content.
+ */
 describe("Modal", () => {
   it("closes when its accessible backdrop button is activated", () => {
     const onClose = vi.fn();

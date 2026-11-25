@@ -10,22 +10,79 @@ import type { ConsultantAvailabilitySlot } from "@/features/consultation-request
 import {
   bookCarePackageAppointment,
   getCarePackageAvailability,
+  getFollowUpValuationAvailability,
+  bookFollowUpValuation,
 } from "../services/care-packages-service";
 import type { CarePackage } from "../types/care-package-types";
 
 type Props = {
   /** Package whose availability is being scheduled. */
   readonly carePackage: CarePackage;
+  /** Uses the finalized-package valuation flow instead of a package session. */
+  readonly followUpValuation?: boolean;
   /** Called after the booking has been accepted. */
   readonly onBooked: () => void;
 };
+
+/**
+ * Converts follow-up valuation business errors into actionable messages.
+ * @param error Error returned by the care-package API.
+ * @returns A user-facing message describing the error.
+ */
+function followUpErrorMessage(error: unknown): string {
+  if (!(error instanceof ApiError)) {
+    return "No pudimos completar la solicitud. Intenta de nuevo.";
+  }
+
+  const messages: Record<string, string> = {
+    ACTIVE_CARE_PACKAGE_EXISTS:
+      "Este paciente tiene un paquete activo. Agenda sus sesiones desde ese paquete.",
+    SUGGESTED_CARE_PACKAGE_PENDING:
+      "Ya hay una sugerencia de paquete pendiente de revisión por secretaría.",
+    VALUATION_ALREADY_IN_PROGRESS:
+      "Este paciente ya tiene una valoración en curso.",
+    NEWER_CARE_PACKAGE_EXISTS:
+      "Solicita la valoración desde el paquete finalizado más reciente.",
+    CARE_PACKAGE_NOT_FINALIZED:
+      "Este paquete ya no está finalizado. Actualiza tus paquetes e inténtalo de nuevo.",
+    SCHEDULE_SLOT_TAKEN:
+      "Ese horario acaba de ocuparse. Actualiza la disponibilidad y elige otro.",
+    INVALID_APPOINTMENT_DATE:
+      "La fecha seleccionada ya pasó. Elige un horario futuro.",
+    PSYCHOLOGIST_NOT_AVAILABLE:
+      "El psicólogo tratante no está disponible actualmente. Comunícate con secretaría.",
+  };
+
+  return messages[error.code ?? ""] ?? error.message;
+}
+
+/**
+ * Converts a booking request error into its user-facing message.
+ * @param error Error returned by the booking request.
+ * @param isFollowUp Whether the request books a continuity valuation.
+ * @param fallback Message used for non-API errors.
+ * @returns The appropriate error message.
+ */
+function bookingErrorMessage(
+  error: unknown,
+  isFollowUp: boolean,
+  fallback: string,
+): string {
+  if (isFollowUp) return followUpErrorMessage(error);
+  if (error instanceof ApiError) return error.message;
+  return fallback;
+}
 
 /**
  * Loads package-scoped availability and books one session using the public calendar.
  * @param props Package data and booking completion callback.
  * @returns The package appointment booking controls.
  */
-export default function CarePackageBooking({ carePackage, onBooked }: Props) {
+export default function CarePackageBooking({
+  carePackage,
+  followUpValuation = false,
+  onBooked,
+}: Props) {
   const [slots, setSlots] = useState<ConsultantAvailabilitySlot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +107,9 @@ export default function CarePackageBooking({ carePackage, onBooked }: Props) {
   useEffect(() => {
     const controller = new AbortController();
 
-    getCarePackageAvailability(carePackage.id, controller.signal)
+    (followUpValuation
+      ? getFollowUpValuationAvailability(carePackage.id, controller.signal)
+      : getCarePackageAvailability(carePackage.id, controller.signal))
       .then((result) => {
         if (controller.signal.aborted) return;
         const now = Date.now();
@@ -68,9 +127,11 @@ export default function CarePackageBooking({ carePackage, onBooked }: Props) {
       .catch((requestError: unknown) => {
         if (controller.signal.aborted) return;
         setError(
-          requestError instanceof ApiError
-            ? requestError.message
-            : "No pudimos cargar los horarios disponibles.",
+          bookingErrorMessage(
+            requestError,
+            followUpValuation,
+            "No pudimos cargar los horarios disponibles.",
+          ),
         );
       })
       .finally(() => {
@@ -78,7 +139,7 @@ export default function CarePackageBooking({ carePackage, onBooked }: Props) {
       });
 
     return () => controller.abort();
-  }, [carePackage.id, reloadKey]);
+  }, [carePackage.id, followUpValuation, reloadKey]);
 
   /**
    * Reloads package availability and clears the current selection.
@@ -104,25 +165,51 @@ export default function CarePackageBooking({ carePackage, onBooked }: Props) {
     setIsBooking(true);
     setActionError(null);
     try {
-      await bookCarePackageAppointment(carePackage.id, {
-        appDate: buildSlotDateTime(selectedSlot.date, selectedSlot.startTime),
-      });
+      const appDate = buildSlotDateTime(
+        selectedSlot.date,
+        selectedSlot.startTime,
+      );
+      if (followUpValuation) {
+        await bookFollowUpValuation(carePackage.id, { appDate });
+      } else {
+        await bookCarePackageAppointment(carePackage.id, { appDate });
+      }
       onBooked();
     } catch (requestError: unknown) {
       setActionError(
-        requestError instanceof ApiError
-          ? requestError.message
-          : "No pudimos solicitar la cita. Intenta de nuevo.",
+        bookingErrorMessage(
+          requestError,
+          followUpValuation,
+          "No pudimos solicitar la cita. Intenta de nuevo.",
+        ),
       );
+      if (
+        followUpValuation &&
+        requestError instanceof ApiError &&
+        requestError.code === "SCHEDULE_SLOT_TAKEN"
+      ) {
+        setSelectedSlot(null);
+        reloadAvailability();
+      }
     } finally {
       setIsBooking(false);
     }
   }
 
+  let bookingButtonLabel = "Solicitar cita del paquete";
+  if (followUpValuation) {
+    bookingButtonLabel = "Agendar valoración de continuidad";
+  }
+  if (isBooking) {
+    bookingButtonLabel = "Enviando…";
+  }
+
   return (
     <div className="mt-5 space-y-4 rounded-2xl border border-border bg-surface-muted/40 p-4">
       <p className="text-xs text-text-muted">
-        La sesión conservará la modalidad de tu valoración inicial.
+        {followUpValuation
+          ? `La nueva valoración será atendida por ${carePackage.psychologistName ?? "el psicólogo tratante"} y conservará la modalidad anterior.`
+          : "La sesión conservará la modalidad de tu valoración inicial."}
       </p>
       <ConsultantSlotPicker
         availableDays={availableDays}
@@ -137,7 +224,7 @@ export default function CarePackageBooking({ carePackage, onBooked }: Props) {
 
       {actionError && <InlineMessage tone="error">{actionError}</InlineMessage>}
       <Button onClick={book} disabled={!selectedSlot || isBooking}>
-        {isBooking ? "Enviando…" : "Solicitar cita del paquete"}
+        {bookingButtonLabel}
       </Button>
     </div>
   );

@@ -53,6 +53,10 @@ export const ENDPOINTS = {
   carePackage: (id: number) => `/care-packages/${id}`,
   carePackageAvailability: (id: number) =>
     `/care-packages/${id}/availability`,
+  carePackageFollowUpValuationAvailability: (id: number) =>
+    `/care-packages/${id}/follow-up-valuation/availability`,
+  carePackageFollowUpValuation: (id: number) =>
+    `/care-packages/${id}/follow-up-valuation`,
   carePackageAppointments: (id: number) =>
     `/care-packages/${id}/my-appointments`,
 
@@ -78,6 +82,14 @@ export const ENDPOINTS = {
 
   // Public availability endpoint for evaluation appointments.
   consultantAvailability: "/appointments/availability",
+
+  // Referral endpoints (psychologist).
+  appointmentReferralPsychologists: (id: number) =>
+    `/appointments/${id}/referral-psychologists`,
+  appointmentRefer: (id: number) => `/appointments/${id}/refer`,
+
+  // Referral inbox endpoint (secretary).
+  appointmentReferrals: "/appointments/referrals",
 
   // Donation endpoints.
   donations: "/donations",

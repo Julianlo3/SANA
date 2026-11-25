@@ -19,6 +19,7 @@ import {
   UserCircle2,
   Home,
   BarChart3,
+  GitBranch,
 } from "lucide-react";
 import { getInitials } from "@/lib/format/text";
 import { formatRoleLabels, findRoleByName } from "@/config/roles";
@@ -54,6 +55,7 @@ const LINKS_BY_ROLE: Record<string, NavLink[]> = {
   ],
   secretario: [
     { label: "Solicitudes", href: "/solicitudes", icon: Inbox },
+    { label: "Remisiones", href: "/remisiones", icon: GitBranch },
     { label: "Calendario", href: "/calendario", icon: Calendar },
     { label: "Consultantes", href: "/consultantes", icon: Users },
     { label: "Paquetes", href: "/paquetes", icon: ClipboardCheck },

@@ -18,6 +18,11 @@ import { ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
 import InlineMessage from "@/components/feedback/inline-message";
 import { ApiError } from "@/types/api-types";
 import {
+  formatMinutes,
+  summarizeDays,
+} from "@/features/schedule/lib/psychologist-calendar";
+import { getPsychologistCalendar } from "@/features/schedule/services/psychologist-calendar-service";
+import {
   colombiaToday,
   formatSlotTime,
 } from "../lib/appointment-format";
@@ -63,6 +68,12 @@ type Props = {
   readonly streakByPsychologistId?: ReadonlyMap<number, number>;
   /** Disables all calendar and selection interactions. */
   readonly disabled?: boolean;
+  /** Restricts slot selection and calendar availability to a specific psychologist (e.g. for referrals). */
+  readonly restrictedPsychologistId?: number | null;
+  /** Name of the restricted psychologist, if any. */
+  readonly restrictedPsychologistName?: string | null;
+  /** Speciality of the restricted psychologist, if any. */
+  readonly restrictedPsychologistSpeciality?: string | null;
 };
 
 /**
@@ -91,7 +102,6 @@ function apiErrorMessage(error: unknown, fallback: string): string {
  * @param now now input.
  * @returns Whether the condition is satisfied.
  */
-
 function isSlotInFuture(slot: PublicAvailabilitySlot, now: number): boolean {
   return new Date(buildSlotDateTime(slot.date, slot.startTime)).getTime() >= now;
 }
@@ -101,22 +111,53 @@ function isSlotInFuture(slot: PublicAvailabilitySlot, now: number): boolean {
  * @param isLoading Whether the availability request is pending.
  * @param error Request error, if any.
  * @param slotCount Number of available slots returned.
+ * @param isRestricted Whether the view is restricted to a target psychologist.
  * @returns The status message, or an empty string when an error is shown.
  */
 function getMonthStatusText(
   isLoading: boolean,
   error: string | null,
   slotCount: number,
+  isRestricted?: boolean,
 ): string {
   if (isLoading) return "Cargando disponibilidad…";
   if (error) return "";
-  if (slotCount === 0) return "No hay disponibilidad en este mes.";
-  return "Los puntos indican días con horarios disponibles.";
+  if (slotCount === 0) {
+    return isRestricted
+      ? "No hay disponibilidad para este psicólogo en este mes."
+      : "No hay disponibilidad en este mes.";
+  }
+  return isRestricted
+    ? "Los puntos indican días con disponibilidad del psicólogo destino."
+    : "Los puntos indican días con horarios disponibles.";
+}
+
+/**
+ * Describes whose availability the calendar displays.
+ * @param psychologistId Restricted psychologist identifier, if any.
+ * @param psychologistName Restricted psychologist name, if available.
+ * @param speciality Restricted psychologist speciality, if available.
+ * @returns The calendar availability description.
+ */
+function getAvailabilityDescription(
+  psychologistId: number | null | undefined,
+  psychologistName: string | null | undefined,
+  speciality: string | null | undefined,
+): string {
+  if (!psychologistId) {
+    return "El calendario resume los días con disponibilidad general. Al elegir un día podrás ver los psicólogos y sus franjas libres de 1 hora.";
+  }
+
+  const name = psychologistName || "este psicólogo";
+  const specialityText = speciality ? ` (${speciality})` : "";
+  return `El calendario muestra únicamente la disponibilidad de ${name}${specialityText}. Elige un día para ver sus franjas libres.`;
 }
 
 /**
  * Renders the availability calendar and the psychologist/slot assignment flow.
- * @param props Calendar date, current selection, selection handler, and disabled state.
+ * When a restricted psychologist is passed, scopes queries and slot selections
+ * exclusively to that professional.
+ * @param props Calendar date, current selection, selection handler, and optional restrictions.
  * @returns The interactive appointment availability picker.
  */
 export default function SlotPicker({
@@ -125,6 +166,9 @@ export default function SlotPicker({
   onSelect,
   streakByPsychologistId,
   disabled = false,
+  restrictedPsychologistId,
+  restrictedPsychologistName,
+  restrictedPsychologistSpeciality,
 }: Props) {
   const today = colombiaToday();
   const [currentMonth, setCurrentMonth] = useState(() =>
@@ -142,7 +186,7 @@ export default function SlotPicker({
   const [dayReload, setDayReload] = useState(0);
   const [selectedPsychologistId, setSelectedPsychologistId] = useState<
     number | null
-  >(null);
+  >(restrictedPsychologistId ?? null);
 
   const calendarDays = useMemo(() => {
     const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 1 });
@@ -160,12 +204,15 @@ export default function SlotPicker({
     [daySlots],
   );
 
+  const effectivePsychologistId =
+    restrictedPsychologistId ?? selectedPsychologistId;
+
   const psychologistSlots = useMemo(
     () =>
-      daySlots && selectedPsychologistId !== null
-        ? slotsForPsychologist(daySlots, selectedPsychologistId)
+      daySlots && effectivePsychologistId !== null
+        ? slotsForPsychologist(daySlots, effectivePsychologistId)
         : [],
-    [daySlots, selectedPsychologistId],
+    [daySlots, effectivePsychologistId],
   );
 
   useEffect(() => {
@@ -174,6 +221,43 @@ export default function SlotPicker({
     const lastDay = endOfMonth(currentMonth);
     const monthStart = format(firstDay, "yyyy-MM-dd");
     const monthEnd = format(lastDay, "yyyy-MM-dd");
+
+    // When restricted to a specific psychologist (e.g. for referrals),
+    // query their individual calendar directly to extract their free days.
+    if (restrictedPsychologistId) {
+      getPsychologistCalendar(restrictedPsychologistId, controller.signal)
+        .then((calendar) => {
+          if (controller.signal.aborted) return;
+          const summaries = summarizeDays(calendar);
+          const slots: PublicAvailabilitySlot[] = [];
+          for (const [day, summary] of summaries.entries()) {
+            if (day < monthStart || day > monthEnd || day < today) continue;
+            for (const range of summary.free) {
+              slots.push({
+                date: day,
+                startTime: formatMinutes(range.start),
+                endTime: formatMinutes(range.end),
+              });
+            }
+          }
+          setMonthSlots(slots);
+        })
+        .catch((error: unknown) => {
+          if (controller.signal.aborted) return;
+          setMonthSlots([]);
+          setMonthError(
+            apiErrorMessage(
+              error,
+              "No pudimos cargar la disponibilidad del psicólogo.",
+            ),
+          );
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setIsLoadingMonth(false);
+        });
+
+      return () => controller.abort();
+    }
 
     const queries = [
       findPublicAvailability(
@@ -239,7 +323,7 @@ export default function SlotPicker({
       });
 
     return () => controller.abort();
-  }, [currentMonth, monthReload, today]);
+  }, [currentMonth, monthReload, restrictedPsychologistId, today]);
 
   useEffect(() => {
     if (!selectedDay) return;
@@ -254,12 +338,19 @@ export default function SlotPicker({
             : buildSlotDateTime(selectedDay, "00:00"),
         duration: APPOINTMENT_DURATION_MINUTES,
         delayHours: 24,
+        psychologistIds: restrictedPsychologistId
+          ? [restrictedPsychologistId]
+          : undefined,
       },
       controller.signal,
     )
       .then((result) => {
         if (controller.signal.aborted) return;
-        setDaySlots(keepFutureSlotsForDay(result, selectedDay));
+        const slots = keepFutureSlotsForDay(result, selectedDay);
+        setDaySlots(slots);
+        if (restrictedPsychologistId) {
+          setSelectedPsychologistId(restrictedPsychologistId);
+        }
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
@@ -276,7 +367,7 @@ export default function SlotPicker({
       });
 
     return () => controller.abort();
-  }, [dayReload, selectedDay, today]);
+  }, [dayReload, restrictedPsychologistId, selectedDay, today]);
 
   /**
    * Selects an available date and starts its psychologist lookup.
@@ -287,7 +378,7 @@ export default function SlotPicker({
     const key = format(day, "yyyy-MM-dd");
     if (disabled || isLoadingMonth || !availableDays.has(key)) return;
     setSelectedDay(key);
-    setSelectedPsychologistId(null);
+    setSelectedPsychologistId(restrictedPsychologistId ?? null);
     setDaySlots(null);
     setDayError(null);
     setIsLoadingDay(true);
@@ -300,7 +391,7 @@ export default function SlotPicker({
    * @returns Nothing.
    */
   function selectPsychologist(id: number) {
-    if (disabled) return;
+    if (disabled || restrictedPsychologistId) return;
     setSelectedPsychologistId(id);
     if (selection?.psychologistId !== id) onSelect(null);
   }
@@ -316,7 +407,7 @@ export default function SlotPicker({
     setMonthError(null);
     setMonthSlots([]);
     setSelectedDay(null);
-    setSelectedPsychologistId(null);
+    setSelectedPsychologistId(restrictedPsychologistId ?? null);
     setDaySlots(null);
     setDayError(null);
     setIsLoadingDay(false);
@@ -325,7 +416,7 @@ export default function SlotPicker({
   }
 
   /**
-   * Retries the anonymized availability request for the visible month.
+   * Retries the availability request for the visible month.
    * @returns Nothing.
    */
   function retryMonth() {
@@ -333,7 +424,7 @@ export default function SlotPicker({
     setMonthError(null);
     setMonthSlots([]);
     setSelectedDay(null);
-    setSelectedPsychologistId(null);
+    setSelectedPsychologistId(restrictedPsychologistId ?? null);
     setDaySlots(null);
     setDayError(null);
     setIsLoadingDay(false);
@@ -344,8 +435,11 @@ export default function SlotPicker({
   return (
     <div className="space-y-5">
       <p className="text-xs text-text-subtle">
-        El calendario resume los días con disponibilidad general. Al elegir un
-        día podrás ver los psicólogos y sus franjas libres de 1 hora.
+        {getAvailabilityDescription(
+          restrictedPsychologistId,
+          restrictedPsychologistName,
+          restrictedPsychologistSpeciality,
+        )}
       </p>
 
       <section
@@ -445,7 +539,12 @@ export default function SlotPicker({
           aria-live="polite"
           className="mt-3 block min-h-5 text-center text-xs text-text-subtle"
         >
-          {getMonthStatusText(isLoadingMonth, monthError, monthSlots.length)}
+          {getMonthStatusText(
+            isLoadingMonth,
+            monthError,
+            monthSlots.length,
+            Boolean(restrictedPsychologistId),
+          )}
         </output>
       </section>
 
@@ -473,7 +572,7 @@ export default function SlotPicker({
 
           {isLoadingDay && (
             <output aria-live="polite" className="text-sm text-text-muted">
-              Buscando psicólogos disponibles…
+              Buscando horarios disponibles…
             </output>
           )}
 
@@ -499,7 +598,7 @@ export default function SlotPicker({
               aria-live="polite"
               className="rounded-xl border border-border bg-surface-muted px-4 py-3 text-sm text-text-muted"
             >
-              Ya no hay horarios disponibles para este día. Elige otra fecha.
+              {restrictedPsychologistName ?? "Este psicólogo"} ya no tiene horarios disponibles para este día. Elige otra fecha.
             </output>
           )}
 
@@ -507,44 +606,60 @@ export default function SlotPicker({
             <div className="space-y-4">
               <div>
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
-                  Psicólogos disponibles
+                  {restrictedPsychologistId
+                    ? "Psicólogo objetivo de la remisión"
+                    : "Psicólogos disponibles"}
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  {psychologists.map((psychologist) => {
-                    const selected = selectedPsychologistId === psychologist.id;
 
-                    return (
-                      <button
-                        key={psychologist.id}
-                        type="button"
-                        disabled={disabled}
-                        aria-pressed={selected}
-                        onClick={() => selectPsychologist(psychologist.id)}
-                        className={`rounded-full border px-4 py-2 text-left text-sm transition disabled:cursor-not-allowed ${
-                          selected
-                            ? "border-primary bg-primary text-white"
-                            : "border-border bg-surface text-text hover:border-primary hover:text-primary"
-                        }`}
-                      >
-                        <span className="font-semibold">{psychologist.name}</span>{" "}
-                        {psychologist.speciality && (
-                          <span className="ml-1 text-xs opacity-80">
-                            · {psychologist.speciality}
-                          </span>
-                        )}
-                        {streakByPsychologistId?.has(psychologist.id) && (
-                          <span className="ml-1 text-xs opacity-80">
-                            · racha{" "}
-                            {streakByPsychologistId.get(psychologist.id)}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+                {restrictedPsychologistId ? (
+                  <div className="inline-flex items-center gap-2 rounded-xl border border-primary bg-primary px-4 py-2.5 text-left text-sm text-white shadow-sm">
+                    <span className="font-semibold">
+                      {restrictedPsychologistName || psychologists[0]?.name || "Psicólogo asignado"}
+                    </span>
+                    {(restrictedPsychologistSpeciality || psychologists[0]?.speciality) && (
+                      <span className="text-xs text-white/80">
+                        · {restrictedPsychologistSpeciality || psychologists[0]?.speciality}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {psychologists.map((psychologist) => {
+                      const selected = selectedPsychologistId === psychologist.id;
+
+                      return (
+                        <button
+                          key={psychologist.id}
+                          type="button"
+                          disabled={disabled}
+                          aria-pressed={selected}
+                          onClick={() => selectPsychologist(psychologist.id)}
+                          className={`rounded-full border px-4 py-2 text-left text-sm transition disabled:cursor-not-allowed ${
+                            selected
+                              ? "border-primary bg-primary text-white"
+                              : "border-border bg-surface text-text hover:border-primary hover:text-primary"
+                          }`}
+                        >
+                          <span className="font-semibold">{psychologist.name}</span>{" "}
+                          {psychologist.speciality && (
+                            <span className="ml-1 text-xs opacity-80">
+                              · {psychologist.speciality}
+                            </span>
+                          )}
+                          {streakByPsychologistId?.has(psychologist.id) && (
+                            <span className="ml-1 text-xs opacity-80">
+                              · racha{" "}
+                              {streakByPsychologistId.get(psychologist.id)}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
-              {selectedPsychologistId !== null && (
+              {effectivePsychologistId !== null && (
                 <div>
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
                     Horarios disponibles · 1 hora
@@ -553,7 +668,7 @@ export default function SlotPicker({
                     <div className="flex flex-wrap gap-2">
                       {psychologistSlots.map((slot) => {
                         const selected =
-                          selection?.psychologistId === selectedPsychologistId &&
+                          selection?.psychologistId === effectivePsychologistId &&
                           selection.slot.date === slot.date &&
                           selection.slot.startTime === slot.startTime;
 
@@ -566,7 +681,7 @@ export default function SlotPicker({
                             onClick={() =>
                               onSelect({
                                 slot,
-                                psychologistId: selectedPsychologistId,
+                                psychologistId: effectivePsychologistId,
                                 duration: APPOINTMENT_DURATION_MINUTES,
                               })
                             }
@@ -584,7 +699,7 @@ export default function SlotPicker({
                     </div>
                   ) : (
                     <p className="text-sm text-text-muted">
-                      Este psicólogo ya no tiene horarios disponibles para el
+                      {restrictedPsychologistName ?? "Este psicólogo"} ya no tiene horarios disponibles para el
                       día elegido.
                     </p>
                   )}

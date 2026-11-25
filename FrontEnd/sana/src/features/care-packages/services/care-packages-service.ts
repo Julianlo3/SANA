@@ -12,6 +12,9 @@ import type {
   CarePackageSuggestion,
   CreateCarePackagePayload,
   RejectCarePackagePayload,
+  FollowUpValuationAvailabilitySlot,
+  ScheduleFollowUpValuationPayload,
+  ScheduleFollowUpValuationResult,
   SuggestCarePackagePayload,
   SuggestCarePackageResult,
 } from "../types/care-package-types";
@@ -20,6 +23,28 @@ import type {
 const PACKAGE_AVAILABILITY_HOURS = 720;
 /** Duration of one care package session in minutes. */
 const PACKAGE_SESSION_DURATION_MINUTES = 60;
+
+/**
+ * Builds the shared 30-day availability query starting at the next Colombia hour.
+ * @returns Availability query parameters for the package calendars.
+ */
+function buildPackageAvailabilityQuery(): URLSearchParams {
+  const offsetHours = Number(COLOMBIA_UTC_OFFSET.slice(0, 3));
+  const nextColombiaHour = new Date(
+    Date.now() + offsetHours * 60 * 60 * 1000,
+  );
+  nextColombiaHour.setUTCHours(nextColombiaHour.getUTCHours() + 1, 0, 0, 0);
+
+  const firstSlotStart = buildSlotDateTime(
+    nextColombiaHour.toISOString().slice(0, 10),
+    nextColombiaHour.toISOString().slice(11, 19),
+  );
+  return new URLSearchParams({
+    appointmentStart: firstSlotStart,
+    delayHours: String(PACKAGE_AVAILABILITY_HOURS),
+    duration: String(PACKAGE_SESSION_DURATION_MINUTES),
+  });
+}
 
 /**
  * Lists persisted care packages for secretary management.
@@ -124,23 +149,27 @@ export async function getCarePackageAvailability(
   carePackageId: number,
   signal?: AbortSignal,
 ): Promise<ConsultantAvailabilitySlot[]> {
-  const offsetHours = Number(COLOMBIA_UTC_OFFSET.slice(0, 3));
-  const nextColombiaHour = new Date(
-    Date.now() + offsetHours * 60 * 60 * 1000,
-  );
-  nextColombiaHour.setUTCHours(nextColombiaHour.getUTCHours() + 1, 0, 0, 0);
-
-  const firstSlotStart = buildSlotDateTime(
-    nextColombiaHour.toISOString().slice(0, 10),
-    nextColombiaHour.toISOString().slice(11, 19),
-  );
-  const params = new URLSearchParams({
-    appointmentStart: firstSlotStart,
-    delayHours: String(PACKAGE_AVAILABILITY_HOURS),
-    duration: String(PACKAGE_SESSION_DURATION_MINUTES),
-  });
+  const params = buildPackageAvailabilityQuery();
   const slots = await httpClient.get<ConsultantAvailabilitySlot[]>(
     `${ENDPOINTS.carePackageAvailability(carePackageId)}?${params.toString()}`,
+    signal,
+  );
+  return slots.map((slot) => ({ ...slot, date: slot.date.slice(0, 10) }));
+}
+
+/**
+ * Retrieves availability from the treating psychologist for a finalized package.
+ * @param carePackageId Identifier of the finalized care package.
+ * @param signal Optional request cancellation signal.
+ * @returns A promise resolving to the treating psychologist's available slots.
+ */
+export async function getFollowUpValuationAvailability(
+  carePackageId: number,
+  signal?: AbortSignal,
+): Promise<FollowUpValuationAvailabilitySlot[]> {
+  const params = buildPackageAvailabilityQuery();
+  const slots = await httpClient.get<FollowUpValuationAvailabilitySlot[]>(
+    `${ENDPOINTS.carePackageFollowUpValuationAvailability(carePackageId)}?${params.toString()}`,
     signal,
   );
   return slots.map((slot) => ({ ...slot, date: slot.date.slice(0, 10) }));
@@ -158,6 +187,22 @@ export async function bookCarePackageAppointment(
 ): Promise<void> {
   await httpClient.post<unknown>(
     ENDPOINTS.carePackageAppointments(carePackageId),
+    payload,
+  );
+}
+
+/**
+ * Books a follow-up valuation with the psychologist from a finalized package.
+ * @param carePackageId Identifier of the finalized care package.
+ * @param payload Selected appointment date and optional valuation details.
+ * @returns A promise resolving to the confirmed follow-up valuation.
+ */
+export async function bookFollowUpValuation(
+  carePackageId: number,
+  payload: ScheduleFollowUpValuationPayload,
+): Promise<ScheduleFollowUpValuationResult> {
+  return httpClient.post<ScheduleFollowUpValuationResult>(
+    ENDPOINTS.carePackageFollowUpValuation(carePackageId),
     payload,
   );
 }

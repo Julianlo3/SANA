@@ -17,7 +17,7 @@ import {
   validateGender,
   validatePhone,
 } from "@/features/consultation-requests/validation/consultation-request-validation";
-import { ApiError } from "@/types/api-types";
+import { appointmentRequestErrorMessage } from "../lib/appointment-request-errors";
 import type { OwnProfile } from "../types/my-account-types";
 
 /**
@@ -109,9 +109,10 @@ export function useNewRequest(profile: OwnProfile, onCreated: () => void) {
       onCreated();
     } catch (error: unknown) {
       setSubmitError(
-        error instanceof ApiError
-          ? error.message
-          : "No pudimos enviar tu solicitud. Intenta de nuevo en unos minutos.",
+        appointmentRequestErrorMessage(
+          error,
+          "No pudimos enviar tu solicitud. Intenta de nuevo en unos minutos.",
+        ),
       );
     } finally {
       setIsSaving(false);

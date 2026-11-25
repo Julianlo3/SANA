@@ -28,7 +28,9 @@ import {
   validateFullName,
   validatePhone,
 } from "@/features/consultation-requests/validation/consultation-request-validation";
-import { ApiError } from "@/types/api-types";
+import { findDependentPackageForValuation } from "@/features/care-packages/lib/follow-up-valuation-eligibility";
+import type { CarePackage } from "@/features/care-packages/types/care-package-types";
+import { appointmentRequestErrorMessage } from "../lib/appointment-request-errors";
 import type { OwnProfile } from "../types/my-account-types";
 
 /**
@@ -100,11 +102,13 @@ function getMissingProfileData(profile: OwnProfile): string[] {
  * Manages dependent valuation data, availability, and submission.
  * @param profile Guardian profile used for requester fields.
  * @param onCreated Callback invoked after a successful request.
+ * @param carePackages Packages used to route dependents to their existing package flow.
  * @returns Form state, slot availability, and request handlers.
  */
 export function useNewDependentRequest(
   profile: OwnProfile,
   onCreated: () => void,
+  carePackages: readonly CarePackage[] = [],
 ) {
   const availability = useConsultantAvailability();
   const [values, setValues] = useState<DependentRequestValues>({
@@ -125,6 +129,18 @@ export function useNewDependentRequest(
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const missing = useMemo(() => getMissingProfileData(profile), [profile]);
+  const matchingPackage = findDependentPackageForValuation(
+    values.name,
+    carePackages,
+  );
+  let packageRestrictionMessage: string | null = null;
+  if (matchingPackage?.state === "activo") {
+    packageRestrictionMessage =
+      "Este dependiente tiene un paquete activo. Solicita sus sesiones desde «Mis paquetes».";
+  } else if (matchingPackage?.state === "finalizado") {
+    packageRestrictionMessage =
+      "La nueva valoración de este dependiente debe agendarse desde «Mis paquetes» con el psicólogo tratante.";
+  }
   const hasAvailableSelectedSlot = Boolean(
     selectedSlot &&
       !availability.isLoading &&
@@ -193,6 +209,10 @@ export function useNewDependentRequest(
 
   const submit = useCallback(async () => {
     setWasSubmitted(true);
+    if (packageRestrictionMessage) {
+      setSubmitError(packageRestrictionMessage);
+      return;
+    }
     if (
       Object.values(errors).some(Boolean) ||
       !hasAvailableSelectedSlot ||
@@ -243,15 +263,17 @@ export function useNewDependentRequest(
       onCreated();
     } catch (error: unknown) {
       setSubmitError(
-        error instanceof ApiError
-          ? error.message
-          : "No pudimos enviar tu solicitud. Intenta de nuevo en unos minutos.",
+        appointmentRequestErrorMessage(
+          error,
+          "No pudimos enviar tu solicitud. Intenta de nuevo en unos minutos.",
+        ),
       );
     } finally {
       setIsSaving(false);
     }
   }, [
     errors,
+    packageRestrictionMessage,
     hasAvailableSelectedSlot,
     profile,
     values,
@@ -283,6 +305,7 @@ export function useNewDependentRequest(
     setSelectedSlot,
     isSaving,
     submitError,
+    packageRestrictionMessage,
     submit,
     relationships: RELATIONSHIPS,
   };

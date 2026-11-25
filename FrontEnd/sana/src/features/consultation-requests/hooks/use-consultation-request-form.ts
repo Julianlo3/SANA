@@ -144,6 +144,28 @@ const ALREADY_REGISTERED_MESSAGE =
   "No pudimos asociar la solicitud con esos datos. Verifica tu correo y documento, o inicia sesión si ya tienes una cuenta.";
 
 /**
+ * Maps package-flow conflicts to instructions for public requesters.
+ * @param error Backend API error.
+ * @returns A specific instruction for package-related conflicts, or undefined.
+ */
+function packageRequestErrorMessage(error: ApiError): string | undefined {
+  const messages: Record<string, string> = {
+    ACTIVE_CARE_PACKAGE_EXISTS:
+      "Ya tienes un paquete activo. Inicia sesión y agenda tus sesiones desde «Mi espacio» → «Mis paquetes».",
+    FOLLOW_UP_VALUATION_REQUIRED_WITH_TREATING_PSYCHOLOGIST:
+      "Para solicitar una valoración de continuidad, inicia sesión y agenda desde «Mis paquetes» con tu psicólogo tratante.",
+    SUGGESTED_CARE_PACKAGE_PENDING:
+      "Ya hay una sugerencia de paquete pendiente de revisión por secretaría. Consulta el estado desde «Mi espacio».",
+    VALUATION_ALREADY_IN_PROGRESS:
+      "Ya tienes una valoración en curso. Inicia sesión para consultar su estado desde «Mi espacio».",
+    NEWER_CARE_PACKAGE_EXISTS:
+      "Hay un paquete más reciente para este paciente. Inicia sesión y continúa desde «Mi espacio» → «Mis paquetes».",
+  };
+
+  return messages[error.code ?? ""];
+}
+
+/**
  * User-facing fallback for unexpected backend failures.
  */
 const SERVER_ERROR_MESSAGE =
@@ -475,12 +497,15 @@ export function useConsultationRequestForm(patientType: PatientType) {
 
       const mapped = mapServerErrors(error);
       const fields = Object.keys(mapped) as (keyof RequestFormValues)[];
+      const packageErrorMessage = packageRequestErrorMessage(error);
 
       if (fields.length > 0) {
         setServerErrors(mapped);
         window.setTimeout(scrollToFirstError, 50);
       } else if (error.code === ALREADY_REGISTERED_CODE) {
         setSubmitError(ALREADY_REGISTERED_MESSAGE);
+      } else if (packageErrorMessage) {
+        setSubmitError(packageErrorMessage);
       } else if (error.status >= 500) {
         setSubmitError(SERVER_ERROR_MESSAGE);
       } else {

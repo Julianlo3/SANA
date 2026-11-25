@@ -6,11 +6,13 @@ import {
   ClipboardCheck,
   Clock,
   FileText,
+  GitBranch,
   Lock,
   MapPin,
   Video,
 } from "lucide-react";
 import AppointmentStateBadge from "@/features/appointments/components/appointment-state-badge";
+import ReferAppointmentModal from "@/features/appointments/components/refer-appointment-modal";
 import {
   APPOINTMENT_MODE_LABELS,
   formatDateTime,
@@ -30,20 +32,27 @@ type Props = {
 };
 
 /**
- * Component that displays a card with information about a single appointment.
- * @param param0 The props containing the appointment to display.
- * @returns The appointment card component.
+ * Component that displays a card with information about a single appointment,
+ * providing actions for registering care, viewing clinical notes, and referring valuations.
  * @param props Component properties.
+ * @returns The appointment card component.
  */
 export default function MyAppointmentCard({ appointment }: Props) {
   const ModeIcon = appointment.appType === "virtual" ? Video : MapPin;
   const canRecord = appointment.appState === "confirmada";
+  const canRefer =
+    appointment.appState === "confirmada" &&
+    (!appointment.appKind || appointment.appKind === "valoracion") &&
+    !appointment.referredToPsychologistId;
+
   const [clinicalNotes, setClinicalNotes] = useState<
     AppointmentClinicalNote[] | null
   >(null);
   const [areNotesVisible, setAreNotesVisible] = useState(false);
   const [isLoadingNotes, setIsLoadingNotes] = useState(false);
   const [notesError, setNotesError] = useState<string | null>(null);
+  const [isReferModalOpen, setIsReferModalOpen] = useState(false);
+
   let clinicalNotesButtonLabel: string;
   if (isLoadingNotes) {
     clinicalNotesButtonLabel = "Cargando nota…";
@@ -121,24 +130,51 @@ export default function MyAppointmentCard({ appointment }: Props) {
         </div>
       )}
 
-      {canRecord && (
-        <Link
-          href={`/registro-atencion/nuevo?cita=${appointment.appId}`}
-          className="mt-5 inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-xs font-bold text-white transition hover:bg-primary-dark"
-        >
-          <ClipboardCheck size={14} aria-hidden />
-          Registrar atención
-        </Link>
+      {appointment.referredToPsychologistName && (
+        <div className="mt-4 rounded-xl border border-primary/20 bg-[#EAF0FF] p-3 text-xs text-[#2B52B2]">
+          <p className="flex items-center gap-1.5 font-semibold">
+            <GitBranch size={13} aria-hidden />
+            Remitida a {appointment.referredToPsychologistName}
+          </p>
+          {appointment.referralReason && (
+            <p className="mt-1 text-text-muted">
+              Motivo: {appointment.referralReason}
+            </p>
+          )}
+        </div>
       )}
 
+      <div className="mt-5 flex flex-wrap gap-2">
+        {canRecord && (
+          <Link
+            href={`/registro-atencion/nuevo?cita=${appointment.appId}`}
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-bold text-white transition hover:bg-primary-dark"
+          >
+            <ClipboardCheck size={14} aria-hidden />
+            Registrar atención
+          </Link>
+        )}
+
+        {canRefer && (
+          <button
+            type="button"
+            onClick={() => setIsReferModalOpen(true)}
+            className="inline-flex items-center justify-center gap-1.5 rounded-full border border-primary px-4 py-2 text-xs font-bold text-primary transition hover:bg-primary-soft"
+          >
+            <GitBranch size={14} aria-hidden />
+            Remitir
+          </button>
+        )}
+      </div>
+
       {appointment.appState === "realizada" && (
-        <div className="mt-5">
+        <div className="mt-4">
           <button
             type="button"
             onClick={toggleClinicalNotes}
             disabled={isLoadingNotes}
             aria-expanded={areNotesVisible}
-            className="inline-flex items-center gap-2 rounded-full border border-primary px-5 py-2.5 text-xs font-bold text-primary transition hover:bg-primary-soft disabled:cursor-wait disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-full border border-primary px-5 py-2 text-xs font-bold text-primary transition hover:bg-primary-soft disabled:cursor-wait disabled:opacity-60"
           >
             <FileText size={14} aria-hidden />
             {clinicalNotesButtonLabel}
@@ -174,6 +210,18 @@ export default function MyAppointmentCard({ appointment }: Props) {
             </div>
           )}
         </div>
+      )}
+
+      {isReferModalOpen && (
+        <ReferAppointmentModal
+          appointmentId={appointment.appId}
+          patientName={appointment.patientName}
+          onClose={() => setIsReferModalOpen(false)}
+          onSuccess={() => {
+            setIsReferModalOpen(false);
+            window.location.reload();
+          }}
+        />
       )}
     </article>
   );

@@ -32,6 +32,7 @@ const STATE_ACCENT: Record<AppointmentState, string> = {
   realizada: "#134176",
   cancelada: "#eb5886",
   descartada: "#9ca3af",
+  remitida: "#2B52B2",
 };
 
 /**

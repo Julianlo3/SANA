@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { ArrowLeft, Lock, MapPin, Video } from "lucide-react";
+import { ArrowLeft, GitBranch, Lock, MapPin, Video } from "lucide-react";
 import InlineMessage from "@/components/feedback/inline-message";
 import Button from "@/components/ui/button";
 import AppointmentStateBadge from "../components/appointment-state-badge";
@@ -56,8 +56,10 @@ function Field({
 
 /**
  * Renders appointment request details and assistant actions.
- * The consultation reason is omitted because the backend does not return it.
+ * For referred valuations, restricts calendar scheduling to the target psychologist
+ * and displays their clinical specialization.
  * @param props Component properties.
+ * @returns Rendered component.
  */
 export default function AppointmentDetailPage({ appointmentId }: Props) {
   const detail = useAppointmentDetail(appointmentId);
@@ -74,6 +76,12 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
       ),
     [detail.psychologistHistory],
   );
+
+  const targetPsychologist = appointment?.psychologistId
+    ? detail.psychologistOptions.find(
+        (p) => p.psyId === appointment.psychologistId,
+      )
+    : null;
 
   const backLink = (
     <Link
@@ -110,9 +118,21 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
   const isPending = appointment.appState === "pendiente";
   const isAssigned = appointment.appState === "asignada";
   const isConfirmed = appointment.appState === "confirmada";
-  const canAssign = isPending || (isAssigned && detail.isChangingSlot);
-  const canDiscard = isPending || isAssigned;
+  const isReferred = appointment.appState === "remitida";
+  const isReferralAppointment =
+    isReferred || appointment.referredFromAppId != null;
+  const canAssign = isPending || isReferred || (isAssigned && detail.isChangingSlot);
+  const canDiscard = isPending || isAssigned || isReferred;
   const ModeIcon = appointment.appType === "virtual" ? Video : MapPin;
+  let assignmentHeading = "Asignar psicólogo y horario";
+  if (isAssigned) {
+    assignmentHeading = "Reasignar";
+    if (isReferralAppointment) {
+      assignmentHeading = "Cambiar horario de la remisión";
+    }
+  } else if (isReferred) {
+    assignmentHeading = "Asignar horario a valoración remitida";
+  }
 
   // Start the search on the preferred date, or today if that date has passed.
   const today = colombiaToday();
@@ -217,7 +237,14 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <Field label="Psicólogo asignado">
-              {appointment.psychologistName ?? "Sin asignar"}
+              <div>
+                <span>{appointment.psychologistName ?? "Sin asignar"}</span>
+                {targetPsychologist?.speciality && (
+                  <span className="block text-xs font-semibold text-primary">
+                    Especialidad: {targetPsychologist.speciality}
+                  </span>
+                )}
+              </div>
             </Field>
             <Field label="Fecha y hora">
               {appointment.appDate
@@ -246,6 +273,35 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
           </section>
         )}
 
+        {isReferralAppointment && (
+          <section className="rounded-2xl border border-primary/30 bg-[#EAF0FF] p-6">
+            <div className="flex items-start gap-3">
+              <GitBranch className="mt-1 text-primary shrink-0" size={20} aria-hidden />
+              <div>
+                <h2 className="font-display text-lg font-bold text-primary-dark">
+                  Valoración remitida
+                </h2>
+                <p className="mt-1 text-sm text-text">
+                  Esta valoración proviene de una remisión y debe ser atendida por{" "}
+                  <strong>{appointment.psychologistName ?? "el psicólogo destino"}</strong>
+                  {targetPsychologist?.speciality && (
+                    <span className="font-semibold text-primary">
+                      {" "}(Especialidad: {targetPsychologist.speciality})
+                    </span>
+                  )}
+                  . El calendario está restringido exclusivamente a la disponibilidad de este profesional.
+                </p>
+                {appointment.referralReason && (
+                  <p className="mt-2 text-xs text-text-muted">
+                    <span className="font-semibold text-text">Motivo registrado:</span>{" "}
+                    {appointment.referralReason}
+                  </p>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
         {isAssigned && !detail.isChangingSlot && (
           <section className="rounded-2xl border border-primary/30 bg-primary-soft/40 p-6">
             <h2 className="font-display text-lg font-bold text-text">
@@ -268,7 +324,9 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
                 onClick={detail.startChangingSlot}
                 disabled={detail.isWorking}
               >
-                Cambiar horario o psicólogo
+                {isReferralAppointment
+                  ? "Cambiar horario"
+                  : "Cambiar horario o psicólogo"}
               </Button>
             </div>
           </section>
@@ -277,13 +335,35 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
         {canAssign && (
           <section className={CARD_CLASS}>
             <h2 className="font-display text-lg font-bold text-text">
-              {isAssigned ? "Reasignar" : "Asignar psicólogo y horario"}
+              {assignmentHeading}
             </h2>
             <p className="mt-1 text-sm text-text-muted">
-              Busca los horarios libres, elige la franja y el psicólogo. Si no
-              hay ninguno, la solicitud sigue pendiente hasta que se libere un
-              cupo.
+              {isReferralAppointment
+                ? `Selecciona una fecha y franja disponible para ${appointment.psychologistName ?? "el psicólogo destino"}.`
+                : "Busca los horarios libres, elige la franja y el psicólogo. Si no hay ninguno, la solicitud sigue pendiente hasta que se libere un cupo."}
             </p>
+
+            <div className="mt-4">
+              <span className="text-xs font-semibold uppercase tracking-wider text-text-subtle">
+                Modalidad de la cita
+              </span>
+              <div className="mt-2 flex gap-4">
+                {(["presencial", "virtual"] as const).map((mode) => (
+                  <label key={mode} className="flex cursor-pointer items-center gap-2 text-sm text-text">
+                    <input
+                      type="radio"
+                      name="appType"
+                      value={mode}
+                      checked={detail.selectedMode === mode}
+                      onChange={() => detail.setSelectedMode(mode)}
+                      disabled={detail.isWorking}
+                      className="accent-primary"
+                    />
+                    {APPOINTMENT_MODE_LABELS[mode]}
+                  </label>
+                ))}
+              </div>
+            </div>
 
             <div className="mt-5">
               {detail.psychologistHistoryError && (
@@ -300,6 +380,17 @@ export default function AppointmentDetailPage({ appointmentId }: Props) {
                 onSelect={detail.setSelection}
                 streakByPsychologistId={streakByPsychologistId}
                 disabled={detail.isWorking}
+                restrictedPsychologistId={
+                  isReferralAppointment ? appointment.psychologistId : undefined
+                }
+                restrictedPsychologistName={
+                  isReferralAppointment ? appointment.psychologistName : undefined
+                }
+                restrictedPsychologistSpeciality={
+                  isReferralAppointment
+                    ? targetPsychologist?.speciality
+                    : undefined
+                }
               />
             </div>
 

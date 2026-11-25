@@ -1,4 +1,8 @@
-import type { PatientType } from "@/features/appointments/types/appointment-types";
+import type {
+  AppointmentMode,
+  PatientType,
+} from "@/features/appointments/types/appointment-types";
+import type { ConsultantAvailabilitySlot } from "@/features/consultation-requests/types/consultation-request-types";
 
 /** Priorities used to determine the consultant's care package. */
 export type PackagePriority = "alta" | "media" | "baja";
@@ -10,6 +14,11 @@ export type CarePackageState =
   | "rechazado"
   | "finalizado"
   | "cancelado";
+
+/** Minimum sessions allowed in a care package (backend enforced). */
+export const MIN_CARE_PACKAGE_SESSIONS = 3;
+/** Maximum sessions allowed in a care package (backend enforced). */
+export const MAX_CARE_PACKAGE_SESSIONS = 12;
 
 /** Package record returned by the care package API. */
 export type CarePackage = {
@@ -63,7 +72,10 @@ export type CarePackage = {
 export type SuggestCarePackagePayload = {
   /** Assessment that originated the package suggestion. */
   assessmentAppointmentId: number;
-  /** Number of sessions recommended by the psychologist. */
+  /**
+   * Number of sessions recommended by the psychologist.
+   * Must be between MIN_CARE_PACKAGE_SESSIONS and MAX_CARE_PACKAGE_SESSIONS (3–12).
+   */
   sessionLimit: number;
   /** Priority selected during the assessment. */
   priority: PackagePriority;
@@ -109,7 +121,10 @@ export type CarePackageSuggestion = Pick<
 export type CreateCarePackagePayload = {
   /** Assessment that originated the package. */
   assessmentAppointmentId: number;
-  /** Number of sessions included in the package. */
+  /**
+   * Number of sessions included in the package.
+   * Must be between MIN_CARE_PACKAGE_SESSIONS and MAX_CARE_PACKAGE_SESSIONS (3–12).
+   */
   sessionLimit: number;
   /** Priority assigned to the package. */
   priority: PackagePriority;
@@ -119,7 +134,10 @@ export type CreateCarePackagePayload = {
 
 /** Optional changes entered by the secretary when approving a suggestion. */
 export type ApproveCarePackagePayload = {
-  /** Revised session count, if changed. */
+  /**
+   * Revised session count, if changed.
+   * When provided, must be between MIN_CARE_PACKAGE_SESSIONS and MAX_CARE_PACKAGE_SESSIONS (3–12).
+   */
   sessionLimit?: number;
   /** Revised priority, if changed. */
   priority?: PackagePriority;
@@ -138,4 +156,39 @@ export type RejectCarePackagePayload = {
 export type CarePackageAppointmentPayload = {
   /** Selected slot start as an ISO datetime. */
   appDate: string;
+};
+
+/** Availability slot offered by the treating psychologist for follow-up valuation. */
+export type FollowUpValuationAvailabilitySlot =
+  ConsultantAvailabilitySlot & {
+    /** Treating psychologist who owns this available slot. */
+    psychologists: { id: number; name: string; speciality: string }[];
+  };
+
+/** Payload for booking a post-package follow-up valuation. */
+export type ScheduleFollowUpValuationPayload = {
+  /** Selected slot start as an ISO datetime. */
+  appDate: string;
+  /** Optional appointment mode; omitted to inherit the previous valuation mode. */
+  appType?: AppointmentMode;
+  /** Optional note for the treating psychologist. */
+  appReason?: string;
+};
+
+/** Result returned after booking a post-package follow-up valuation. */
+export type ScheduleFollowUpValuationResult = {
+  /** Newly created appointment identifier. */
+  appId: number;
+  /** Confirmed appointment date and time. */
+  appDate: string;
+  /** Appointment state returned by the backend. */
+  appState: "confirmada";
+  /** Follow-up assessments are not linked to a package. */
+  appKind: "valoracion";
+  /** Appointment mode, inherited or selected. */
+  appType: AppointmentMode;
+  /** Treating psychologist assigned to the appointment. */
+  psychologistId: number;
+  /** Follow-up valuations are not linked to a care package. */
+  carePackageId: null;
 };

@@ -103,6 +103,7 @@ export const APPOINTMENT_STATE_LABELS: Record<AppointmentState, string> = {
   descartada: "Descartada",
   cancelada: "Cancelada",
   realizada: "Realizada",
+  remitida: "Remitida",
 };
 
 /**
