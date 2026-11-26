@@ -32,8 +32,9 @@ UPDATE public.person SET per_email = 'tu.psicologo3@gmail.com'  WHERE per_id = 7
 UPDATE public.person SET per_email = 'tu.consultante1@gmail.com' WHERE per_id = 13; -- Consultante (paquete activo)
 UPDATE public.person SET per_email = 'tu.consultante2@gmail.com' WHERE per_id = 14; -- Consultante (paquete finalizado)
 
--- Permite re-vincular automáticamente con el sub real de Auth0 en el primer request
-DELETE FROM public.users WHERE use_id IN (1, 2, 4, 5, 6, 7, 13, 14);
+-- No hace falta borrar filas de public.users: al primer request con el token
+-- del tenant de pruebas, AuthService.authorizeAuth0() encuentra la persona por
+-- per_email y actualiza automáticamente users.user_provider_id mediante linkProvider().
 ```
 
 ### 3. Importar en Postman y configurar el Environment
