@@ -117,4 +117,30 @@ export class EmailRepository {
       [emailId, delayMilliseconds, errorCode, maxAttempts],
     );
   }
+
+  /**
+   * Returns the earliest timestamp at which a pending retry or stale sending
+   * lock becomes eligible for processing, or null when no work remains.
+   * @param staleLockSeconds The number of seconds after which a locked email is considered stale.
+   * @returns The next scheduled wake-up time, or null when the outbox is idle.
+   */
+  async findNextWakeAt(staleLockSeconds: number): Promise<Date | null> {
+    const rows = await this.dataSource.query<
+      { next_wake_at: Date | string | null }[]
+    >(
+      `SELECT LEAST(
+         (SELECT MIN(email_next_attempt_at)
+          FROM email_outbox
+          WHERE email_status = 'pending'),
+         (SELECT MIN(email_locked_at + ($1 * interval '1 second'))
+          FROM email_outbox
+          WHERE email_status = 'sending')
+       ) AS next_wake_at`,
+      [staleLockSeconds],
+    );
+    const raw = rows[0]?.next_wake_at;
+    if (!raw) return null;
+    const parsed = raw instanceof Date ? raw : new Date(raw);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
 }

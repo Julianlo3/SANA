@@ -86,4 +86,32 @@ describe('EmailRepository', () => {
       /email_text = CASE WHEN email_attempts >= \$4 THEN NULL/,
     );
   });
+
+  it('returns null from findNextWakeAt when no pending retries or sending locks exist', async () => {
+    const dataSource = {
+      query: vi.fn().mockResolvedValue([{ next_wake_at: null }]),
+    };
+    const repository = new EmailRepository(dataSource as never);
+
+    await expect(repository.findNextWakeAt(300)).resolves.toBeNull();
+
+    const sql = dataSource.query.mock.calls[0][0] as string;
+    expect(sql).toContain('LEAST(');
+    expect(sql).toContain("email_status = 'pending'");
+    expect(sql).toContain("email_status = 'sending'");
+    expect(dataSource.query.mock.calls[0][1]).toEqual([300]);
+  });
+
+  it('parses the earliest next wake timestamp from findNextWakeAt', async () => {
+    const expectedIso = '2026-11-26T18:30:00.000Z';
+    const dataSource = {
+      query: vi.fn().mockResolvedValue([{ next_wake_at: expectedIso }]),
+    };
+    const repository = new EmailRepository(dataSource as never);
+
+    const nextWake = await repository.findNextWakeAt(300);
+
+    expect(nextWake).toBeInstanceOf(Date);
+    expect(nextWake?.toISOString()).toBe(expectedIso);
+  });
 });
