@@ -175,6 +175,460 @@
   ],
   "item": [
     {
+      "name": "00a · Setup — Obtener los 8 Tokens (Auth0 Pruebas)",
+      "description": "Ejecuta esta carpeta UNA sola vez (Run folder) antes de la batería — o déjala activa al correr toda la colección — para obtener y guardar automáticamente los 8 Access Tokens RS256 en tu Environment.\n\nRequiere haber llenado en el Environment: auth0Domain, auth0Audience, auth0ClientId, auth0ClientSecret y testUsersPassword, y tener habilitado Password Grant + Default Directory = Username-Password-Authentication en tu tenant de pruebas.",
+      "item": [
+        {
+          "name": "00a.01 [Auth0] Obtener tokenAdmin (Admin — per_id 1) — 200",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"username\": \"admin.sana@fundacionhuellitas.org\",\n  \"password\": \"{{testUsersPassword}}\",\n  \"audience\": \"{{auth0Audience}}\",\n  \"scope\": \"openid profile email\",\n  \"client_id\": \"{{auth0ClientId}}\",\n  \"client_secret\": \"{{auth0ClientSecret}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://{{auth0Domain}}/oauth/token",
+              "protocol": "https",
+              "host": [
+                "{{auth0Domain}}"
+              ],
+              "path": [
+                "oauth",
+                "token"
+              ]
+            },
+            "description": "Solicita a tu tenant de pruebas Auth0 un Access Token RS256 para admin.sana@fundacionhuellitas.org y lo guarda automáticamente en la variable de entorno `tokenAdmin`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Saves tokenAdmin to environment', function () {",
+                  "  const data = pm.response.json();",
+                  "  pm.expect(data.access_token).to.be.a('string').and.not.be.empty;",
+                  "  pm.environment.set('tokenAdmin', data.access_token);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "00a.02 [Auth0] Obtener tokenSecretary (Secretaría — per_id 2) — 200",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"username\": \"secretaria1.sana@fundacionhuellitas.org\",\n  \"password\": \"{{testUsersPassword}}\",\n  \"audience\": \"{{auth0Audience}}\",\n  \"scope\": \"openid profile email\",\n  \"client_id\": \"{{auth0ClientId}}\",\n  \"client_secret\": \"{{auth0ClientSecret}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://{{auth0Domain}}/oauth/token",
+              "protocol": "https",
+              "host": [
+                "{{auth0Domain}}"
+              ],
+              "path": [
+                "oauth",
+                "token"
+              ]
+            },
+            "description": "Solicita a tu tenant de pruebas Auth0 un Access Token RS256 para secretaria1.sana@fundacionhuellitas.org y lo guarda automáticamente en la variable de entorno `tokenSecretary`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Saves tokenSecretary to environment', function () {",
+                  "  const data = pm.response.json();",
+                  "  pm.expect(data.access_token).to.be.a('string').and.not.be.empty;",
+                  "  pm.environment.set('tokenSecretary', data.access_token);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "00a.03 [Auth0] Obtener tokenMarketing (Marketing — per_id 4) — 200",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"username\": \"marketing.sana@fundacionhuellitas.org\",\n  \"password\": \"{{testUsersPassword}}\",\n  \"audience\": \"{{auth0Audience}}\",\n  \"scope\": \"openid profile email\",\n  \"client_id\": \"{{auth0ClientId}}\",\n  \"client_secret\": \"{{auth0ClientSecret}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://{{auth0Domain}}/oauth/token",
+              "protocol": "https",
+              "host": [
+                "{{auth0Domain}}"
+              ],
+              "path": [
+                "oauth",
+                "token"
+              ]
+            },
+            "description": "Solicita a tu tenant de pruebas Auth0 un Access Token RS256 para marketing.sana@fundacionhuellitas.org y lo guarda automáticamente en la variable de entorno `tokenMarketing`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Saves tokenMarketing to environment', function () {",
+                  "  const data = pm.response.json();",
+                  "  pm.expect(data.access_token).to.be.a('string').and.not.be.empty;",
+                  "  pm.environment.set('tokenMarketing', data.access_token);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "00a.04 [Auth0] Obtener tokenPsychologist (Psicólogo 1 Dra. Laura — per_id 5) — 200",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"username\": \"psicologa.laura@fundacionhuellitas.org\",\n  \"password\": \"{{testUsersPassword}}\",\n  \"audience\": \"{{auth0Audience}}\",\n  \"scope\": \"openid profile email\",\n  \"client_id\": \"{{auth0ClientId}}\",\n  \"client_secret\": \"{{auth0ClientSecret}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://{{auth0Domain}}/oauth/token",
+              "protocol": "https",
+              "host": [
+                "{{auth0Domain}}"
+              ],
+              "path": [
+                "oauth",
+                "token"
+              ]
+            },
+            "description": "Solicita a tu tenant de pruebas Auth0 un Access Token RS256 para psicologa.laura@fundacionhuellitas.org y lo guarda automáticamente en la variable de entorno `tokenPsychologist`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Saves tokenPsychologist to environment', function () {",
+                  "  const data = pm.response.json();",
+                  "  pm.expect(data.access_token).to.be.a('string').and.not.be.empty;",
+                  "  pm.environment.set('tokenPsychologist', data.access_token);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "00a.05 [Auth0] Obtener tokenPsychologist2 (Psicólogo 2 Dr. Andrés — per_id 6) — 200",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"username\": \"psicologo.andres@fundacionhuellitas.org\",\n  \"password\": \"{{testUsersPassword}}\",\n  \"audience\": \"{{auth0Audience}}\",\n  \"scope\": \"openid profile email\",\n  \"client_id\": \"{{auth0ClientId}}\",\n  \"client_secret\": \"{{auth0ClientSecret}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://{{auth0Domain}}/oauth/token",
+              "protocol": "https",
+              "host": [
+                "{{auth0Domain}}"
+              ],
+              "path": [
+                "oauth",
+                "token"
+              ]
+            },
+            "description": "Solicita a tu tenant de pruebas Auth0 un Access Token RS256 para psicologo.andres@fundacionhuellitas.org y lo guarda automáticamente en la variable de entorno `tokenPsychologist2`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Saves tokenPsychologist2 to environment', function () {",
+                  "  const data = pm.response.json();",
+                  "  pm.expect(data.access_token).to.be.a('string').and.not.be.empty;",
+                  "  pm.environment.set('tokenPsychologist2', data.access_token);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "00a.06 [Auth0] Obtener tokenPsychologist3 (Psicólogo 3 Dra. Mariana — per_id 7) — 200",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"username\": \"psicologa.mariana@fundacionhuellitas.org\",\n  \"password\": \"{{testUsersPassword}}\",\n  \"audience\": \"{{auth0Audience}}\",\n  \"scope\": \"openid profile email\",\n  \"client_id\": \"{{auth0ClientId}}\",\n  \"client_secret\": \"{{auth0ClientSecret}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://{{auth0Domain}}/oauth/token",
+              "protocol": "https",
+              "host": [
+                "{{auth0Domain}}"
+              ],
+              "path": [
+                "oauth",
+                "token"
+              ]
+            },
+            "description": "Solicita a tu tenant de pruebas Auth0 un Access Token RS256 para psicologa.mariana@fundacionhuellitas.org y lo guarda automáticamente en la variable de entorno `tokenPsychologist3`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Saves tokenPsychologist3 to environment', function () {",
+                  "  const data = pm.response.json();",
+                  "  pm.expect(data.access_token).to.be.a('string').and.not.be.empty;",
+                  "  pm.environment.set('tokenPsychologist3', data.access_token);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "00a.07 [Auth0] Obtener tokenConsultant (Consultante — per_id 13) — 200",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"username\": \"maria.lopez@example.com\",\n  \"password\": \"{{testUsersPassword}}\",\n  \"audience\": \"{{auth0Audience}}\",\n  \"scope\": \"openid profile email\",\n  \"client_id\": \"{{auth0ClientId}}\",\n  \"client_secret\": \"{{auth0ClientSecret}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://{{auth0Domain}}/oauth/token",
+              "protocol": "https",
+              "host": [
+                "{{auth0Domain}}"
+              ],
+              "path": [
+                "oauth",
+                "token"
+              ]
+            },
+            "description": "Solicita a tu tenant de pruebas Auth0 un Access Token RS256 para maria.lopez@example.com y lo guarda automáticamente en la variable de entorno `tokenConsultant`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Saves tokenConsultant to environment', function () {",
+                  "  const data = pm.response.json();",
+                  "  pm.expect(data.access_token).to.be.a('string').and.not.be.empty;",
+                  "  pm.environment.set('tokenConsultant', data.access_token);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "00a.08 [Auth0] Obtener tokenConsultantFollowUp (Consultante Seguimiento — per_id 14) — 200",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"username\": \"carlos.gutierrez@example.com\",\n  \"password\": \"{{testUsersPassword}}\",\n  \"audience\": \"{{auth0Audience}}\",\n  \"scope\": \"openid profile email\",\n  \"client_id\": \"{{auth0ClientId}}\",\n  \"client_secret\": \"{{auth0ClientSecret}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://{{auth0Domain}}/oauth/token",
+              "protocol": "https",
+              "host": [
+                "{{auth0Domain}}"
+              ],
+              "path": [
+                "oauth",
+                "token"
+              ]
+            },
+            "description": "Solicita a tu tenant de pruebas Auth0 un Access Token RS256 para carlos.gutierrez@example.com y lo guarda automáticamente en la variable de entorno `tokenConsultantFollowUp`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Saves tokenConsultantFollowUp to environment', function () {",
+                  "  const data = pm.response.json();",
+                  "  pm.expect(data.access_token).to.be.a('string').and.not.be.empty;",
+                  "  pm.environment.set('tokenConsultantFollowUp', data.access_token);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "00 · Público y Catálogos (Sin Auth)",
       "description": "Endpoints públicos de salud, políticas legales versionadas, contenido institucional del sitio público y disponibilidad resumida sin exponer psicólogos.",
       "item": [

@@ -1,0 +1,363 @@
+name: Postman E2E Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      fail_on_error:
+        description: Fallar el workflow si alguna aserción de Postman falla
+        type: boolean
+        required: false
+        default: true
+  pull_request:
+    branches:
+      - main
+    paths:
+      - BackEnd/backendsana/**
+      - DataBase/init-scripts/01-schema-neon-new.sql
+      - DataBase/seeds/seed-test-battery.sql
+      - .github/workflows/postman-tests.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: postman-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  postman-e2e:
+    name: Postman E2E (PostgreSQL efímero + Newman)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: sana_ci_test_password
+          POSTGRES_DB: DB_SANA_TEST
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d DB_SANA_TEST"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Verify required Auth0 test secrets
+        id: check-secrets
+        env:
+          POSTMAN_AUTH0_DOMAIN: ${{ secrets.POSTMAN_AUTH0_DOMAIN }}
+          POSTMAN_AUTH0_AUDIENCE: ${{ secrets.POSTMAN_AUTH0_AUDIENCE }}
+          POSTMAN_AUTH0_CLAIM_NAMESPACE: ${{ secrets.POSTMAN_AUTH0_CLAIM_NAMESPACE }}
+          POSTMAN_AUTH0_CLIENT_ID: ${{ secrets.POSTMAN_AUTH0_CLIENT_ID }}
+          POSTMAN_AUTH0_CLIENT_SECRET: ${{ secrets.POSTMAN_AUTH0_CLIENT_SECRET }}
+          POSTMAN_TEST_USERS_PASSWORD: ${{ secrets.POSTMAN_TEST_USERS_PASSWORD }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          missing=()
+          [ -z "$POSTMAN_AUTH0_DOMAIN" ] && missing+=("POSTMAN_AUTH0_DOMAIN")
+          [ -z "$POSTMAN_AUTH0_AUDIENCE" ] && missing+=("POSTMAN_AUTH0_AUDIENCE")
+          [ -z "$POSTMAN_AUTH0_CLAIM_NAMESPACE" ] && missing+=("POSTMAN_AUTH0_CLAIM_NAMESPACE")
+          [ -z "$POSTMAN_AUTH0_CLIENT_ID" ] && missing+=("POSTMAN_AUTH0_CLIENT_ID")
+          [ -z "$POSTMAN_AUTH0_CLIENT_SECRET" ] && missing+=("POSTMAN_AUTH0_CLIENT_SECRET")
+          [ -z "$POSTMAN_TEST_USERS_PASSWORD" ] && missing+=("POSTMAN_TEST_USERS_PASSWORD")
+
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "## Postman E2E Tests — Omitido por secretos faltantes"
+              echo ""
+              echo "Faltan los siguientes secretos en **Settings → Secrets and variables → Actions**:"
+              echo ""
+              for s in "${missing[@]}"; do
+                echo "- \`$s\`"
+              done
+            } >> "$GITHUB_STEP_SUMMARY"
+
+            if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+              echo "::error::Configura los secretos faltantes en Settings -> Secrets and variables -> Actions: ${missing[*]}"
+              exit 1
+            fi
+
+            echo "::notice::Postman E2E omitido porque faltan secretos de Auth0 de pruebas: ${missing[*]}"
+            exit 0
+          fi
+
+          echo "configured=true" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout repository
+        if: steps.check-secrets.outputs.configured == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        if: steps.check-secrets.outputs.configured == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: BackEnd/backendsana/package-lock.json
+
+      - name: Initialize ephemeral PostgreSQL schema and test seed
+        if: steps.check-secrets.outputs.configured == 'true'
+        env:
+          PGPASSWORD: sana_ci_test_password
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client
+          fi
+
+          psql -h 127.0.0.1 -p 5432 -U postgres -d DB_SANA_TEST \
+            -v ON_ERROR_STOP=1 \
+            -f DataBase/init-scripts/01-schema-neon-new.sql
+
+          psql -h 127.0.0.1 -p 5432 -U postgres -d DB_SANA_TEST \
+            -v ON_ERROR_STOP=1 \
+            -f DataBase/seeds/seed-test-battery.sql
+
+      - name: Install backend dependencies and build
+        if: steps.check-secrets.outputs.configured == 'true'
+        working-directory: BackEnd/backendsana
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+
+      - name: Start SANA backend against ephemeral database
+        if: steps.check-secrets.outputs.configured == 'true'
+        working-directory: BackEnd/backendsana
+        env:
+          NODE_ENV: test
+          PORT: 3000
+          CORS_ORIGIN: http://localhost:5173
+          TRUST_PROXY_HOPS: 0
+          POLICY_VERSION: privacy-policy-2026-01
+          DATABASE_HOST: 127.0.0.1
+          DATABASE_PORT: 5432
+          DATABASE_USERNAME: postgres
+          DATABASE_PASSWORD: sana_ci_test_password
+          DATABASE_NAME: DB_SANA_TEST
+          DATABASE_SSL: "false"
+          AUTH0_DOMAIN: ${{ secrets.POSTMAN_AUTH0_DOMAIN }}
+          AUTH0_AUDIENCE: ${{ secrets.POSTMAN_AUTH0_AUDIENCE }}
+          AUTH0_CLAIM_NAMESPACE: ${{ secrets.POSTMAN_AUTH0_CLAIM_NAMESPACE }}
+          ENABLE_EMAIL: "false"
+          ENABLE_GOOGLE_CALENDAR: "false"
+          ENABLE_WHATSAPP: "false"
+          WOMPI_EVENTS_SECRET: test_events_sana_ci_secret_2026
+        run: |
+          nohup node dist/main.js > /tmp/sana-backend.log 2>&1 &
+          echo $! > /tmp/sana-backend.pid
+
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3000/api/v1/healthz >/dev/null 2>&1; then
+              echo "Backend listo en http://127.0.0.1:3000/api/v1/healthz (intento $i)"
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "::error::El backend no respondió a tiempo en /api/v1/healthz"
+          cat /tmp/sana-backend.log
+          exit 1
+
+      - name: Run Postman E2E collection with Newman
+        id: newman
+        if: steps.check-secrets.outputs.configured == 'true'
+        env:
+          POSTMAN_AUTH0_DOMAIN: ${{ secrets.POSTMAN_AUTH0_DOMAIN }}
+          POSTMAN_AUTH0_AUDIENCE: ${{ secrets.POSTMAN_AUTH0_AUDIENCE }}
+          POSTMAN_AUTH0_CLIENT_ID: ${{ secrets.POSTMAN_AUTH0_CLIENT_ID }}
+          POSTMAN_AUTH0_CLIENT_SECRET: ${{ secrets.POSTMAN_AUTH0_CLIENT_SECRET }}
+          POSTMAN_TEST_USERS_PASSWORD: ${{ secrets.POSTMAN_TEST_USERS_PASSWORD }}
+        run: |
+          mkdir -p /tmp/newman-tools reports/postman
+          npm --prefix /tmp/newman-tools install --no-save newman newman-reporter-htmlextra
+
+          set +e
+          /tmp/newman-tools/node_modules/.bin/newman run \
+            "BackEnd/backendsana/postman/SANA Backend.postman_collection.json" \
+            -e "BackEnd/backendsana/postman/SANA.postman_environment.json" \
+            --env-var "baseUrl=http://127.0.0.1:3000/api/v1" \
+            --env-var "origin=http://localhost:5173" \
+            --env-var "auth0Domain=${POSTMAN_AUTH0_DOMAIN}" \
+            --env-var "auth0Audience=${POSTMAN_AUTH0_AUDIENCE}" \
+            --env-var "auth0ClientId=${POSTMAN_AUTH0_CLIENT_ID}" \
+            --env-var "auth0ClientSecret=${POSTMAN_AUTH0_CLIENT_SECRET}" \
+            --env-var "testUsersPassword=${POSTMAN_TEST_USERS_PASSWORD}" \
+            --env-var "wompiEventsSecret=test_events_sana_ci_secret_2026" \
+            --delay-request 150 \
+            --timeout-request 20000 \
+            -r cli,htmlextra,json \
+            --reporter-htmlextra-export "reports/postman/postman-report.html" \
+            --reporter-htmlextra-title "SANA Backend — Reporte E2E Postman" \
+            --reporter-htmlextra-browserTitle "SANA E2E Report" \
+            --reporter-htmlextra-skipSensitiveData \
+            --reporter-json-export "/tmp/postman-report-raw.json"
+          exit_code=$?
+          set -e
+
+          echo "exit_code=${exit_code}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate Markdown summary and sanitized JSON report
+        if: always() && steps.check-secrets.outputs.configured == 'true'
+        run: |
+          node <<'EOF'
+          const fs = require('node:fs');
+
+          const rawPath = '/tmp/postman-report-raw.json';
+          const summaryPath = process.env.GITHUB_STEP_SUMMARY;
+
+          if (!fs.existsSync(rawPath)) {
+            const msg = '## Postman E2E Tests\n\nNo se generó el archivo JSON de Newman.\n';
+            if (summaryPath) fs.appendFileSync(summaryPath, msg);
+            process.exit(0);
+          }
+
+          const raw = JSON.parse(fs.readFileSync(rawPath, 'utf8'));
+          const stats = raw.run?.stats ?? {};
+          const timings = raw.run?.timings ?? {};
+          const executions = raw.run?.executions ?? [];
+
+          const totalReqs = stats.requests?.total ?? 0;
+          const failedReqs = stats.requests?.failed ?? 0;
+          const totalAsserts = stats.assertions?.total ?? 0;
+          const failedAsserts = stats.assertions?.failed ?? 0;
+          const passedAsserts = totalAsserts - failedAsserts;
+          const passRate = totalAsserts > 0 ? ((passedAsserts / totalAsserts) * 100).toFixed(1) : '0.0';
+          const durationSec = timings.completed && timings.started
+            ? ((timings.completed - timings.started) / 1000).toFixed(1)
+            : '0.0';
+
+          const failures = [];
+          const sanitizedExecutions = [];
+
+          for (const ex of executions) {
+            const itemName = ex.item?.name ?? 'Sin nombre';
+            const method = ex.request?.method ?? '-';
+            const statusCode = ex.response?.code ?? 'ERR';
+            const assertions = (ex.assertions ?? []).map((a) => ({
+              assertion: a.assertion,
+              passed: !a.error,
+              error: a.error ? a.error.message : null,
+            }));
+
+            sanitizedExecutions.push({
+              name: itemName,
+              method,
+              statusCode,
+              responseTimeMs: ex.response?.responseTime ?? null,
+              assertionsTotal: assertions.length,
+              assertionsFailed: assertions.filter((a) => !a.passed).length,
+            });
+
+            for (const a of assertions) {
+              if (!a.passed) {
+                failures.push({
+                  request: itemName,
+                  method,
+                  statusCode,
+                  assertion: a.assertion,
+                  error: a.error ?? 'Error desconocido',
+                });
+              }
+            }
+          }
+
+          const sanitizedReport = {
+            generatedAt: new Date().toISOString(),
+            database: 'PostgreSQL 18 efímero (sin impacto en producción)',
+            summary: {
+              requestsTotal: totalReqs,
+              requestsFailed: failedReqs,
+              assertionsTotal: totalAsserts,
+              assertionsPassed: passedAsserts,
+              assertionsFailed: failedAsserts,
+              passRatePercent: Number(passRate),
+              durationSeconds: Number(durationSec),
+            },
+            failures,
+            executions: sanitizedExecutions,
+          };
+
+          fs.mkdirSync('reports/postman', { recursive: true });
+          fs.writeFileSync(
+            'reports/postman/postman-summary.json',
+            JSON.stringify(sanitizedReport, null, 2),
+          );
+
+          const statusIcon = failedAsserts === 0 && failedReqs === 0 ? '✅' : '❌';
+          const lines = [
+            `## ${statusIcon} Postman E2E Tests — SANA Backend`,
+            '',
+            '> Ejecutado contra una instancia efímera de **PostgreSQL 18** (`01-schema-neon-new.sql` + `seed-test-battery.sql`). La base de datos real/Neon no fue modificada.',
+            '',
+            '| Métrica | Valor |',
+            '| --- | --- |',
+            `| Requests ejecutados | **${totalReqs}** (${failedReqs} con error de red) |`,
+            `| Aserciones aprobadas | **${passedAsserts} / ${totalAsserts}** (${passRate}%) |`,
+            `| Aserciones fallidas | **${failedAsserts}** |`,
+            `| Duración total | **${durationSec}s** |`,
+            '',
+          ];
+
+          if (failures.length > 0) {
+            lines.push('### Aserciones fallidas', '');
+            lines.push('| Request | Método | HTTP | Aserción | Detalle |');
+            lines.push('| --- | --- | --- | --- | --- |');
+            for (const f of failures.slice(0, 50)) {
+              const esc = (v) => String(v).replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+              lines.push(
+                `| ${esc(f.request)} | \`${esc(f.method)}\` | \`${esc(f.statusCode)}\` | ${esc(f.assertion)} | ${esc(f.error)} |`,
+              );
+            }
+            if (failures.length > 50) {
+              lines.push('', `_Se muestran los primeros 50 fallos de ${failures.length}. Descarga el artefacto \`postman-e2e-reports\` para el detalle completo._`);
+            }
+            lines.push('');
+          } else {
+            lines.push('Todas las aserciones de la colección aprobaron sin errores.', '');
+          }
+
+          lines.push('Descarga el reporte visual completo (`postman-report.html`) en **Artifacts → `postman-e2e-reports`**.');
+
+          const markdown = lines.join('\n') + '\n';
+          fs.writeFileSync('reports/postman/postman-summary.md', markdown);
+          if (summaryPath) fs.appendFileSync(summaryPath, markdown);
+
+          fs.unlinkSync(rawPath);
+          EOF
+
+      - name: Stop SANA backend
+        if: always() && steps.check-secrets.outputs.configured == 'true'
+        run: |
+          if [ -f /tmp/sana-backend.pid ]; then
+            kill "$(cat /tmp/sana-backend.pid)" 2>/dev/null || true
+          fi
+
+      - name: Upload Postman E2E reports
+        if: always() && steps.check-secrets.outputs.configured == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: postman-e2e-reports
+          path: reports/postman/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Enforce Newman result
+        if: steps.check-secrets.outputs.configured == 'true'
+        env:
+          NEWMAN_EXIT_CODE: ${{ steps.newman.outputs.exit_code }}
+          EVENT_NAME: ${{ github.event_name }}
+          FAIL_ON_ERROR: ${{ inputs.fail_on_error }}
+        run: |
+          if [ "${NEWMAN_EXIT_CODE:-1}" -ne 0 ]; then
+            if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$FAIL_ON_ERROR" = "false" ]; then
+              echo "::warning::Newman reportó fallos (código ${NEWMAN_EXIT_CODE}), pero fail_on_error=false. Revisa el artefacto postman-e2e-reports."
+              exit 0
+            fi
+            echo "::error::Newman terminó con errores (código ${NEWMAN_EXIT_CODE}). Revisa el resumen y el artefacto postman-e2e-reports."
+            exit "${NEWMAN_EXIT_CODE:-1}"
+          fi
