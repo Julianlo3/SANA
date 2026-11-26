@@ -30,11 +30,14 @@ export interface EmailTransport {
 export type EmailTransportFactory = (options: GmailOptions) => EmailTransport;
 export const EMAIL_TRANSPORT_FACTORY = Symbol('EMAIL_TRANSPORT_FACTORY');
 
-const POLL_INTERVAL_MS = 15_000;
 const BATCH_SIZE = 10;
 const STALE_LOCK_SECONDS = 300;
 const MAX_RETRY_DELAY_MS = 60 * 60 * 1000;
 const MAX_ATTEMPTS = 8;
+const MIN_WAKE_DELAY_MS = 1_000;
+const MAX_TIMEOUT_MS = 2_147_483_647;
+const DB_ERROR_RETRY_BASE_MS = 30_000;
+const MAX_DB_ERROR_RETRIES = 5;
 
 /**
  * Service for managing email delivery, including queuing, sending, and retrying failed emails.
@@ -44,8 +47,11 @@ export class EmailService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(EmailService.name);
   private readonly sender: string | null;
   private readonly transport: EmailTransport | null;
-  private pollTimer: ReturnType<typeof setInterval> | undefined;
+  private nextWakeTimer: ReturnType<typeof setTimeout> | undefined;
   private processing = false;
+  private pendingRerun = false;
+  private destroyed = false;
+  private consecutiveErrors = 0;
 
   constructor(
     private readonly configService: ConfigService,
@@ -111,16 +117,12 @@ export class EmailService implements OnModuleInit, OnModuleDestroy {
 
   onModuleInit(): void {
     if (!this.isEnabled() || !this.transport) return;
-    this.pollTimer = setInterval(
-      () => void this.processPendingEmails(),
-      POLL_INTERVAL_MS,
-    );
-    this.pollTimer.unref?.();
     void this.processPendingEmails();
   }
 
   onModuleDestroy(): void {
-    if (this.pollTimer) clearInterval(this.pollTimer);
+    this.destroyed = true;
+    this.clearWakeTimer();
   }
 
   /**
@@ -175,26 +177,124 @@ export class EmailService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Processes pending emails for sending.
+   * Processes pending emails for sending and schedules a single wake-up timer
+   * only when future retries or locked messages remain in the outbox.
    * @returns A promise resolving when the processing is complete.
    */
   async processPendingEmails(): Promise<void> {
-    if (!this.isEnabled() || !this.transport || !this.sender || this.processing) return;
+    if (
+      !this.isEnabled() ||
+      !this.transport ||
+      !this.sender ||
+      this.destroyed
+    ) {
+      return;
+    }
 
+    if (this.processing) {
+      this.pendingRerun = true;
+      return;
+    }
+
+    this.clearWakeTimer();
     this.processing = true;
+    let hadError = false;
     try {
-      const queued = await this.repository.claimDue(
-        BATCH_SIZE,
-        STALE_LOCK_SECONDS,
-      );
-      await Promise.all(queued.map((email) => this.processClaimedEmail(email)));
+      let shouldContinue: boolean;
+      do {
+        this.pendingRerun = false;
+        const queued = await this.repository.claimDue(
+          BATCH_SIZE,
+          STALE_LOCK_SECONDS,
+        );
+        if (queued.length > 0) {
+          await Promise.all(
+            queued.map((email) => this.processClaimedEmail(email)),
+          );
+        }
+        shouldContinue =
+          !this.destroyed &&
+          (queued.length >= BATCH_SIZE || this.pendingRerun);
+      } while (shouldContinue);
+      this.consecutiveErrors = 0;
     } catch (error) {
+      hadError = true;
       this.logger.error(
         `Email outbox processing failed (${this.errorCode(error)})`,
       );
     } finally {
       this.processing = false;
     }
+
+    if (this.destroyed) return;
+
+    if (this.pendingRerun) {
+      void this.processPendingEmails();
+      return;
+    }
+
+    if (hadError) {
+      this.scheduleErrorBackoff();
+      return;
+    }
+
+    await this.scheduleNextWake();
+  }
+
+  /** Cancels any pending one-shot wake-up timer. */
+  private clearWakeTimer(): void {
+    if (this.nextWakeTimer) {
+      clearTimeout(this.nextWakeTimer);
+      this.nextWakeTimer = undefined;
+    }
+  }
+
+  /** Schedules a single wake-up timer if the outbox still has future work. */
+  private async scheduleNextWake(): Promise<void> {
+    if (this.destroyed || this.processing) return;
+    try {
+      const nextWakeAt = await this.repository.findNextWakeAt(
+        STALE_LOCK_SECONDS,
+      );
+      if (this.destroyed || this.processing || !nextWakeAt) return;
+      const delayMs = Math.min(
+        Math.max(MIN_WAKE_DELAY_MS, nextWakeAt.getTime() - Date.now()),
+        MAX_TIMEOUT_MS,
+      );
+      this.scheduleWakeAfter(delayMs);
+    } catch (error) {
+      this.logger.error(
+        `Email outbox next wake lookup failed (${this.errorCode(error)})`,
+      );
+      this.scheduleErrorBackoff();
+    }
+  }
+
+  /** Schedules a bounded exponential backoff retry after a database failure. */
+  private scheduleErrorBackoff(): void {
+    if (this.destroyed || this.processing) return;
+    this.consecutiveErrors += 1;
+    if (this.consecutiveErrors > MAX_DB_ERROR_RETRIES) {
+      this.logger.error(
+        'Email outbox retry backoff paused after repeated database failures; processing will resume on the next enqueued email',
+      );
+      return;
+    }
+    const delayMs = Math.min(
+      DB_ERROR_RETRY_BASE_MS * 2 ** (this.consecutiveErrors - 1),
+      MAX_RETRY_DELAY_MS,
+    );
+    this.scheduleWakeAfter(delayMs);
+  }
+
+  /** Arms a single unref'd setTimeout for the next outbox wake-up. */
+  private scheduleWakeAfter(delayMs: number): void {
+    this.clearWakeTimer();
+    this.nextWakeTimer = setTimeout(() => {
+      this.nextWakeTimer = undefined;
+      void this.processPendingEmails();
+    }, delayMs);
+    this.nextWakeTimer.unref?.();
   }
 
   /** Reads the OAuth2 configuration required by the Gmail API. */
