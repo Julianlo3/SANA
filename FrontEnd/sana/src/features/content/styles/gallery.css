@@ -8,9 +8,8 @@
   --frame-bottom: 22px;
   --row-gap: 16px;
   --item-gap: 16px;
-  --tilt: -2deg;
   --fade: 6%;
-  --wall-h: 370px;
+  --wall-h: 350px;
   --space-top: 4px;
   --space-bottom: 16px;
   --bleed: 56px;
@@ -31,9 +30,8 @@
     --frame-bottom: 30px;
     --row-gap: 24px;
     --item-gap: 24px;
-    --tilt: -3deg;
     --fade: 9%;
-    --wall-h: 520px;
+    --wall-h: 480px;
     --space-top: 8px;
     --space-bottom: 24px;
   }
@@ -46,18 +44,16 @@
     --frame-bottom: 36px;
     --row-gap: 30px;
     --item-gap: 30px;
-    --wall-h: 600px;
+    --wall-h: 560px;
   }
 }
 
-.gallery-wall-tilt {
+.gallery-wall-rows {
   flex: none;
   display: flex;
   flex-direction: column;
   gap: var(--row-gap);
-  width: 130%;
-  margin-left: -15%;
-  transform: rotate(var(--tilt));
+  width: 100%;
 }
 
 .gallery-row-shell {
@@ -124,7 +120,6 @@
   border-radius: 3px;
   background: #fff;
   box-shadow: 0 8px 18px -10px rgba(153, 53, 86, 0.5);
-  transform: rotate(var(--rot));
   transition: transform 550ms var(--gallery-ease);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -144,7 +139,7 @@
 .gallery-polaroid-card:focus-visible {
   outline: 3px solid #993556;
   outline-offset: 4px;
-  transform: rotate(0deg) translateY(-10px) scale(1.06);
+  transform: translateY(-10px) scale(1.06);
 }
 
 .gallery-polaroid-photo {
@@ -162,7 +157,7 @@
 
 @media (hover: hover) {
   .gallery-polaroid-card:hover {
-    transform: rotate(0deg) translateY(-10px) scale(1.06);
+    transform: translateY(-10px) scale(1.06);
   }
 
   .gallery-polaroid-card:hover::after {
@@ -286,7 +281,7 @@
 
   .gallery-polaroid-card:hover,
   .gallery-polaroid-card:focus-visible {
-    transform: rotate(var(--rot));
+    transform: none;
   }
 
   .gallery-blob,

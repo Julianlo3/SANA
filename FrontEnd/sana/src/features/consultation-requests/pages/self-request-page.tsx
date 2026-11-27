@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import PageDecor from "@/components/ui/page-decor";
 import PublicHeader from "@/components/navigation/public-header";
 import PublicFooter from "@/components/navigation/public-footer";
 import InlineMessage from "@/components/feedback/inline-message";
@@ -70,8 +69,6 @@ export default function SelfRequestPage() {
       <PublicHeader />
 
       <main className="relative flex-1 overflow-hidden">
-        <PageDecor variant="auth" />
-
         <div className="relative z-10 mx-auto max-w-2xl px-6 py-16">
           <Link
             href="/solicitar-cita"

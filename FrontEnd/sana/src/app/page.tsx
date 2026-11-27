@@ -60,7 +60,7 @@ export default async function HomePage() {
       <PublicHeader />
 
       <main className="flex-1">
-        {/* HERO — filtro azul */}
+        {/* HERO — franja rosa */}
         <HeroCarousel
           slides={banners.map((banner) => ({
             key: String(banner.id),
@@ -68,9 +68,7 @@ export default async function HomePage() {
             alt: banner.imageAlt,
           }))}
         >
-          <div aria-hidden className="pointer-events-none absolute inset-0 bg-navy/70" />
-
-          <div className="relative flex w-full items-center justify-center px-11 py-8 text-center sm:px-24 sm:py-12">
+          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 bg-accent/85 px-11 py-6 text-center sm:px-24 sm:py-8">
             <div className="mx-auto max-w-3xl">
               <p className="font-display text-xs font-bold uppercase tracking-wide text-white sm:text-lg">
                 {hero.eyebrow}
@@ -86,7 +84,7 @@ export default async function HomePage() {
 
               <Link
                 href="/solicitar-cita"
-                className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-navy sm:px-6"
+                className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-accent sm:px-6"
               >
                 <CalendarCheck size={16} aria-hidden />
                 {hero.primaryAction}

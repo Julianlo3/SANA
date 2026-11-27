@@ -1,16 +1,7 @@
 "use client";
 
-import {
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type KeyboardEvent,
-} from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { ChevronRight } from "lucide-react";
-import ServiceBackdrop, {
-  BACKDROP_ACCENTS as ACCENTS,
-} from "@/features/content/components/service-backdrop";
 import { padNumber } from "@/features/content/format";
 import type { PublicContentCard } from "@/features/content/types/content-types";
 
@@ -23,23 +14,16 @@ const NAVY = "#134176";
  */
 const PINK = "#eb5886";
 /**
- * Defines the ease out.
+ * Number color of the active row, cycled per service.
  */
-const EASE_OUT = "cubic-bezier(0.16, 1, 0.3, 1)";
+const ACCENTS = ["#eb5886", "#2e8c96", "#134176", "#d9a21b"];
 /**
- * Defines the desktop query.
+ * Top bar color of each desktop card, cycled per service.
  */
-const DESKTOP_QUERY = "(min-width: 1024px)";
+const CARD_BARS = ["bg-accent", "bg-primary", "bg-navy", "bg-support-pink"];
 
 /**
- * Implements the prefers reduced motion operation.
- */
-function prefersReducedMotion() {
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
-/**
- * Renders the services showcase component.
+ * Renders the services showcase component: an accordion on mobile and a card grid on desktop.
  * @param props Component properties.
  * @returns Rendered component.
  */
@@ -51,15 +35,9 @@ export default function ServicesShowcase({
   const [active, setActive] = useState(0);
   const [isRevealed, setIsRevealed] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const indicatorRef = useRef<HTMLDivElement>(null);
   const rowRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const detailRef = useRef<HTMLDivElement>(null);
-  const hasAnimatedDetail = useRef(false);
 
   const currentIndex = Math.max(active, 0);
-  const current = services[currentIndex] ?? services[0];
-  const currentTheme = currentIndex % ACCENTS.length;
-  const currentAccent = ACCENTS[currentTheme];
 
   useEffect(() => {
     const root = rootRef.current;
@@ -77,60 +55,8 @@ export default function ServicesShowcase({
     return () => observer.disconnect();
   }, []);
 
-  useLayoutEffect(() => {
-    const indicator = indicatorRef.current;
-    const list = indicator?.parentElement;
-    if (!indicator || !list) return;
-
-    const place = () => {
-      const row = rowRefs.current[currentIndex]?.parentElement;
-      if (!row) return;
-      indicator.style.transform = `translateY(${row.offsetTop}px)`;
-      indicator.style.height = `${row.offsetHeight}px`;
-    };
-
-    place();
-    const observer = new ResizeObserver(place);
-    observer.observe(list);
-    return () => observer.disconnect();
-  }, [currentIndex]);
-
-  useEffect(() => {
-    const detail = detailRef.current;
-    if (!detail) return;
-    if (!hasAnimatedDetail.current) {
-      hasAnimatedDetail.current = true;
-      return;
-    }
-    if (prefersReducedMotion()) return;
-
-    detail.querySelectorAll("[data-reveal]").forEach((element, order) =>
-      element.animate(
-        [
-          { opacity: 0, transform: "translateY(14px)" },
-          { opacity: 1, transform: "translateY(0)" },
-        ],
-        {
-          duration: 550,
-          delay: order * 60,
-          easing: EASE_OUT,
-          fill: "backwards",
-        },
-      ),
-    );
-  }, [currentIndex]);
-
   const handleSelect = (index: number) => {
-    const isDesktop = window.matchMedia(DESKTOP_QUERY).matches;
-    setActive((currentActive) =>
-      !isDesktop && currentActive === index ? -1 : index,
-    );
-  };
-
-  const handleHover = (index: number) => {
-    if (window.matchMedia(`${DESKTOP_QUERY} and (hover: hover)`).matches) {
-      setActive(index);
-    }
+    setActive((currentActive) => (currentActive === index ? -1 : index));
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
@@ -143,10 +69,17 @@ export default function ServicesShowcase({
     rowRefs.current[next]?.focus();
   };
 
+  const revealClass = isRevealed
+    ? "translate-y-0 opacity-100"
+    : "translate-y-4 opacity-0";
+  const revealDelay = (index: number) => ({
+    transitionDelay: isRevealed ? `${150 + index * 70}ms` : "0ms",
+  });
+
   return (
     <div
       ref={rootRef}
-      className={`mt-12 rounded-[2rem] border border-white p-3 shadow-[0_30px_80px_-40px_rgba(19,65,118,0.35)] transition-[opacity,translate] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none sm:p-4 lg:p-5 ${
+      className={`mt-12 rounded-[2rem] border border-white p-3 shadow-[0_30px_80px_-40px_rgba(19,65,118,0.35)] transition-[opacity,translate] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none sm:p-4 lg:p-6 ${
         isRevealed ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
       }`}
       style={{
@@ -154,19 +87,13 @@ export default function ServicesShowcase({
           "linear-gradient(135deg, #fdeef3 0%, #eef7f8 55%, #e7effa 100%)",
       }}
     >
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-5">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:hidden">
         <div
           role="tablist"
           aria-orientation="vertical"
           aria-label="Servicios"
-          className="relative flex flex-col gap-1 lg:justify-center lg:py-3"
+          className="relative flex flex-col gap-1"
         >
-          <div
-            ref={indicatorRef}
-            aria-hidden
-            className="absolute inset-x-0 top-0 hidden rounded-2xl bg-white shadow-[0_8px_30px_-12px_rgba(19,65,118,0.3)] transition-[transform,height] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none lg:block"
-          />
-
           {services.map((service, index) => {
             const isActive = active === index;
             const accent = ACCENTS[index % ACCENTS.length];
@@ -174,14 +101,10 @@ export default function ServicesShowcase({
             return (
               <div
                 key={service.id}
-                className={`relative rounded-2xl transition-[opacity,translate,background-color] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none ${
-                  isRevealed
-                    ? "translate-y-0 opacity-100"
-                    : "translate-y-4 opacity-0"
-                } ${isActive ? "bg-white lg:bg-transparent" : ""}`}
-                style={{
-                  transitionDelay: isRevealed ? `${150 + index * 70}ms` : "0ms",
-                }}
+                className={`relative rounded-2xl transition-[opacity,translate,background-color] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none ${revealClass} ${
+                  isActive ? "bg-white" : ""
+                }`}
+                style={revealDelay(index)}
               >
                 <button
                   ref={(element) => {
@@ -193,7 +116,6 @@ export default function ServicesShowcase({
                   aria-selected={isActive}
                   aria-controls={`service-panel-${service.id}`}
                   tabIndex={isActive || (active < 0 && index === 0) ? 0 : -1}
-                  onMouseEnter={() => handleHover(index)}
                   onFocus={(event) => {
                     if (event.currentTarget.matches(":focus-visible")) {
                       setActive(index);
@@ -205,7 +127,7 @@ export default function ServicesShowcase({
                 >
                   <span
                     className="w-6 shrink-0 font-display text-sm font-bold tabular-nums min-[380px]:w-7 transition-colors duration-300"
-                    style={{ color: isActive ? accent.strong : "#8296ac" }}
+                    style={{ color: isActive ? accent : "#8296ac" }}
                   >
                     {padNumber(index + 1)}
                   </span>
@@ -222,7 +144,7 @@ export default function ServicesShowcase({
                     aria-hidden
                     className={`shrink-0 transition-[opacity,translate,rotate] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
                       isActive
-                        ? "translate-x-0 opacity-100 max-lg:rotate-90"
+                        ? "translate-x-0 rotate-90 opacity-100"
                         : "-translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-60"
                     }`}
                     style={{ color: PINK }}
@@ -230,7 +152,10 @@ export default function ServicesShowcase({
                 </button>
 
                 <div
-                  className={`grid transition-[grid-template-rows,opacity] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] lg:hidden ${
+                  id={`service-panel-${service.id}`}
+                  role="tabpanel"
+                  aria-labelledby={`service-tab-${service.id}`}
+                  className={`grid transition-[grid-template-rows,opacity] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
                     isActive
                       ? "grid-rows-[1fr] opacity-100"
                       : "grid-rows-[0fr] opacity-0"
@@ -244,64 +169,42 @@ export default function ServicesShowcase({
             );
           })}
         </div>
-
-        {current && (
-          <div
-            ref={detailRef}
-            role="tabpanel"
-            id={`service-panel-${current.id}`}
-            aria-labelledby={`service-tab-${current.id}`}
-            className="relative hidden min-h-[30rem] overflow-hidden rounded-3xl bg-white lg:block"
-          >
-            <ServiceBackdrop theme={currentTheme} />
-
-            <div className="absolute inset-0 flex flex-col overflow-y-auto p-10 xl:p-12">
-              <div className="relative my-auto text-center">
-                <div
-                  data-reveal
-                  aria-hidden
-                  className="mx-auto flex max-w-xs gap-1.5"
-                >
-                  {services.map((service, index) => (
-                    <span
-                      key={service.id}
-                      className="h-1.5 flex-1 rounded-full transition-colors duration-500"
-                      style={{
-                        backgroundColor:
-                          index === currentIndex
-                            ? currentAccent.strong
-                            : "rgba(19, 65, 118, 0.12)",
-                      }}
-                    />
-                  ))}
-                </div>
-                <h3
-                  data-reveal
-                  className="mt-6 font-display text-3xl font-extrabold leading-tight xl:text-4xl"
-                  style={{ color: NAVY }}
-                >
-                  {current.title}
-                </h3>
-                <span
-                  data-reveal
-                  aria-hidden
-                  className="mx-auto mt-5 block h-1 w-14 rounded-full"
-                  style={{ backgroundColor: PINK }}
-                />
-                {current.description && (
-                  <p
-                    data-reveal
-                    lang="es"
-                    className="mx-auto mt-6 max-w-xl whitespace-pre-line text-justify text-base leading-relaxed text-text-muted hyphens-auto"
-                  >
-                    {current.description}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
+
+      <ul role="list" className="hidden gap-5 lg:grid lg:grid-cols-3">
+        {services.map((service, index) => (
+          <li
+            key={service.id}
+            className={`relative flex flex-col overflow-hidden rounded-2xl bg-white p-7 shadow-[0_12px_32px_-18px_rgba(19,65,118,0.35)] transition-[opacity,translate] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none ${revealClass}`}
+            style={revealDelay(index)}
+          >
+            <span
+              aria-hidden
+              className={`absolute inset-x-0 top-0 h-1.5 ${CARD_BARS[index % CARD_BARS.length]}`}
+            />
+            <span
+              className="font-display text-sm font-bold tabular-nums"
+              style={{ color: PINK }}
+            >
+              {padNumber(index + 1)}
+            </span>
+            <h3
+              className="mt-2 break-words font-display text-xl font-bold leading-snug hyphens-auto"
+              style={{ color: NAVY }}
+            >
+              {service.title}
+            </h3>
+            {service.description && (
+              <p
+                lang="es"
+                className="mt-3 whitespace-pre-line text-[15px] leading-relaxed text-text-muted hyphens-auto"
+              >
+                {service.description}
+              </p>
+            )}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

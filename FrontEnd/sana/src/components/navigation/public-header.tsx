@@ -45,15 +45,15 @@ export default function PublicHeader() {
   return (
     <header className="sticky top-0 z-30 bg-primary">
       <div className="flex items-center gap-2 px-3 py-3 min-[380px]:gap-3 min-[380px]:px-4 sm:gap-4 sm:px-6 lg:px-12">
-        <Link href="/" className="relative flex min-w-0 shrink-0 items-center before:absolute before:content-[''] before:inset-x-0 before:-inset-y-2.5">
+        <Link href="/" className="relative flex min-w-0 shrink-0 items-center rounded-xl bg-white px-1.5 py-0.5 shadow-xs before:absolute before:content-[''] before:inset-x-0 before:-inset-y-2.5">
           <Image
             src={PUBLIC_NAV.logo.src}
             alt={PUBLIC_NAV.logo.alt}
             width={400}
             height={92}
             priority
-            sizes="(max-width: 640px) 140px, 200px"
-            className="aspect-[400/92] h-6 w-auto max-w-none shrink-0 brightness-0 invert min-[360px]:h-7 sm:h-10 lg:h-11"
+            sizes="(max-width: 640px) 180px, 240px"
+            className="aspect-[400/92] h-8 w-auto max-w-none shrink-0 min-[360px]:h-9 sm:h-10 lg:h-12"
           />
         </Link>
 

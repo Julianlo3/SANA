@@ -22,6 +22,10 @@ import {
  * Defines the tile px.
  */
 const TILE_PX = 440;
+/**
+ * Shrinks every symbol so the pattern stays subtle.
+ */
+const ICON_SCALE = 0.6;
 
 /**
  * Defines the watermark symbol type.
@@ -66,7 +70,7 @@ const SYMBOLS: WatermarkSymbol[] = [
  */
 export default function TeamWatermark({
   id = "team-watermark",
-  className = "text-white opacity-[0.08]",
+  className = "text-white opacity-[0.05]",
 }: {
   id?: string;
   className?: string;
@@ -83,14 +87,17 @@ export default function TeamWatermark({
           height={TILE_PX}
           patternUnits="userSpaceOnUse"
         >
-          {SYMBOLS.map(({ Icon, x, y, size, rotate }, order) => (
-            <g
-              key={order}
-              transform={`translate(${x} ${y}) rotate(${rotate} ${size / 2} ${size / 2})`}
-            >
-              <Icon width={size} height={size} strokeWidth={1.4} />
-            </g>
-          ))}
+          {SYMBOLS.map(({ Icon, x, y, size: baseSize, rotate }, order) => {
+            const size = Math.round(baseSize * ICON_SCALE);
+            return (
+              <g
+                key={order}
+                transform={`translate(${x} ${y}) rotate(${rotate} ${size / 2} ${size / 2})`}
+              >
+                <Icon width={size} height={size} strokeWidth={1.4} />
+              </g>
+            );
+          })}
         </pattern>
       </defs>
       <rect width="100%" height="100%" fill={`url(#${id})`} />

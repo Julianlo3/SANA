@@ -6,11 +6,10 @@ import { pickValueIcon } from "@/features/content/values-path";
 
 const { about } = HOME_CONTENT;
 
-// 4-color cycle for node background and title color (large text, meets AA).
+// Brand palette cycle; the teal title uses its darker shade to stay readable.
 const STOP_TONES = [
-  { node: "bg-accent-strong", title: "text-accent-strong" },
-  { node: "bg-primary-dark", title: "text-primary-dark" },
-  { node: "bg-wine", title: "text-wine" },
+  { node: "bg-accent", title: "text-accent" },
+  { node: "bg-primary", title: "text-primary-dark" },
   { node: "bg-navy", title: "text-navy" },
 ];
 

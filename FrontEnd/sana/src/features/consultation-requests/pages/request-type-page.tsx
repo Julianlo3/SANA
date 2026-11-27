@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ShieldCheck, User, Users } from "lucide-react";
-import PageDecor from "@/components/ui/page-decor";
 import PublicHeader from "@/components/navigation/public-header";
 import PublicFooter from "@/components/navigation/public-footer";
 import { REQUEST_CONTENT } from "@/content/consultation-request";
@@ -17,8 +16,6 @@ export default function RequestTypePage() {
       <PublicHeader />
 
       <main className="relative flex-1 overflow-hidden">
-        <PageDecor variant="auth" />
-
         <div className="relative z-10 mx-auto max-w-4xl px-6 py-20">
           <div className="text-center">
             <span className="text-xs font-bold uppercase tracking-wider text-primary">

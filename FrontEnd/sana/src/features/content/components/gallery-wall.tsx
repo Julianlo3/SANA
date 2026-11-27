@@ -268,7 +268,7 @@ export default function GalleryWall({
         key={`${isCopy ? "copy" : "base"}-${item.key}`}
         aria-hidden={isPrimary ? undefined : true}
         className="gallery-polaroid"
-        style={{ "--rot": `${item.rotation}deg` } as CSSProperties}
+       
         onPointerEnter={(event) => {
           if (event.pointerType === "mouse") motion.current[row].isHovered = true;
         }}
@@ -318,7 +318,7 @@ export default function GalleryWall({
 
   return (
     <section aria-label={regionLabel} className="gallery-wall">
-      <div className="gallery-wall-tilt">
+      <div className="gallery-wall-rows">
         {rows.map((row, rowIndex) => (
           <div key={rowIndex} className="gallery-row-shell" data-row={rowIndex}>
             <div
