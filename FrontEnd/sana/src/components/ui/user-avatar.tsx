@@ -22,13 +22,13 @@ export default function UserAvatar({
   sizePx = 64,
   fallback,
   shapeClassName = "rounded-full",
-}: {
+}: Readonly<{
   fullName: string;
   className: string;
   sizePx?: number;
   fallback?: ReactNode;
   shapeClassName?: string;
-}) {
+}>) {
   const [photo, setPhoto] = useState<TeamPhoto | null>(null);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
 
@@ -36,7 +36,7 @@ export default function UserAvatar({
     let isActive = true;
     const key = normalizePersonName(fullName);
 
-    loadTeamPhotoIndex().then((index) => {
+    void loadTeamPhotoIndex().then((index) => {
       if (isActive) setPhoto(index.get(key) ?? null);
     });
 
