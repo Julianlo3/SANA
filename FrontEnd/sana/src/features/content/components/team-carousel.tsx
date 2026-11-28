@@ -357,17 +357,9 @@ export default function TeamCarousel({
                         className={`absolute left-4 top-3 ${band.leftIconClassName}`}
                         fill={band.fillLeftIcon ? "currentColor" : "none"}
                       />
-                      <band.RightIcon
-                        size={22}
-                        className={`absolute right-4 top-3 transition-transform duration-700 group-hover:-rotate-12 group-hover:scale-125 ${band.rightIconClassName}`}
-                      />
                     </div>
 
                     <div className="relative">
-                      <span
-                        aria-hidden
-                        className={`absolute -inset-2.5 rounded-full border-2 border-dashed transition-colors duration-500 group-hover:border-accent motion-safe:group-hover:animate-[spin_12s_linear_infinite] ${band.ringClassName}`}
-                      />
                       <div className="relative w-24 overflow-hidden rounded-full shadow-lg ring-4 ring-white sm:w-28 lg:w-32">
                         {member.imageUrl ? (
                           <CroppedPhoto

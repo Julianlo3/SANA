@@ -13,8 +13,6 @@ export type CardBand = {
   leftIconClassName: string;
   fillLeftIcon: boolean;
   RightIcon: LucideIcon;
-  rightIconClassName: string;
-  ringClassName: string;
 };
 
 /**
@@ -28,8 +26,6 @@ export const CARD_BANDS: Record<TeamGroup, CardBand> = {
     leftIconClassName: "text-accent/70",
     fillLeftIcon: true,
     RightIcon: HeartHandshake,
-    rightIconClassName: "text-navy/60",
-    ringClassName: "border-primary",
   },
   professional: {
     background: "bg-highlight",
@@ -38,7 +34,5 @@ export const CARD_BANDS: Record<TeamGroup, CardBand> = {
     leftIconClassName: "text-accent/70",
     fillLeftIcon: false,
     RightIcon: MessageCircleHeart,
-    rightIconClassName: "text-primary-dark/80",
-    ringClassName: "border-support-blue",
   },
 };

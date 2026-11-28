@@ -26,7 +26,6 @@ const DEFAULT_RATIO = 1;
 export type WallItem = {
   key: string;
   index: number;
-  rotation: number;
   isPrimary: boolean;
 };
 
@@ -39,15 +38,6 @@ export type WallRow = {
   direction: 1 | -1;
   speed: number;
 };
-
-/**
- * Implements the rotation for operation.
- * @param seed seed input.
- */
-function rotationFor(seed: number) {
-  const value = Math.sin(seed * 12.9898) * 43758.5453;
-  return Math.round(((value - Math.floor(value)) * 8 - 4) * 10) / 10;
-}
 
 /**
  * Builds row.
@@ -67,7 +57,6 @@ function buildRow(
     .map(({ index, pass }, position) => ({
       key: `${rowNumber}-${position}`,
       index,
-      rotation: rotationFor(rowNumber * 997 + position + 1),
       isPrimary: !isMirror && pass === 0,
     }));
 }

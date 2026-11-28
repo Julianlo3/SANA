@@ -34,7 +34,7 @@ export default async function DonacionesPage() {
 
       <main className="flex-1">
         {/* Banner de encabezado emotivo */}
-        <section className="relative overflow-hidden bg-gradient-to-b from-[var(--color-primary-soft)]/60 to-[var(--color-background)] pt-12 pb-8 sm:pt-16 sm:pb-12">
+        <section className="relative overflow-hidden pt-12 pb-8 sm:pt-16 sm:pb-12">
           <div className="mx-auto max-w-6xl px-6">
             <div className="mx-auto max-w-2xl text-center">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-accent-soft)] px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-[var(--color-accent-strong)]">

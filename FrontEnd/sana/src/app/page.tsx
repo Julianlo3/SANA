@@ -10,6 +10,7 @@ import {
 import PublicHeader from "@/components/navigation/public-header";
 import PublicFooter from "@/components/navigation/public-footer";
 import PendingContentNotice from "@/components/feedback/pending-content-notice";
+import { FEATURES } from "@/config/features";
 import { HOME_CONTENT } from "@/content/home";
 import AboutSection from "@/features/content/components/about-section";
 import GallerySection from "@/features/content/components/gallery-section";
@@ -60,7 +61,7 @@ export default async function HomePage() {
       <PublicHeader />
 
       <main className="flex-1">
-        {/* HERO — filtro azul */}
+        {/* HERO — franja rosa */}
         <HeroCarousel
           slides={banners.map((banner) => ({
             key: String(banner.id),
@@ -68,9 +69,7 @@ export default async function HomePage() {
             alt: banner.imageAlt,
           }))}
         >
-          <div aria-hidden className="pointer-events-none absolute inset-0 bg-navy/70" />
-
-          <div className="relative flex w-full items-center justify-center px-11 py-8 text-center sm:px-24 sm:py-12">
+          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 bg-accent/35 px-11 py-6 text-center sm:px-24 sm:py-8">
             <div className="mx-auto max-w-3xl">
               <p className="font-display text-xs font-bold uppercase tracking-wide text-white sm:text-lg">
                 {hero.eyebrow}
@@ -86,7 +85,7 @@ export default async function HomePage() {
 
               <Link
                 href="/solicitar-cita"
-                className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-navy sm:px-6"
+                className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-accent sm:px-6"
               >
                 <CalendarCheck size={16} aria-hidden />
                 {hero.primaryAction}
@@ -101,44 +100,46 @@ export default async function HomePage() {
         {/* VALORES — path over a symbol backdrop */}
         <ValuesPath values={content.values} />
 
-        {/* PROGRAMAS — celeste */}
-        <section id="programs" className="bg-support-blue py-20">
-          <div className="relative mx-auto max-w-6xl px-6">
-            <h2 className="text-center font-display text-4xl font-extrabold text-navy">
-              {programs.title}
-            </h2>
+        {/* PROGRAMAS — celeste. Hidden by FEATURES.programs (src/config/features.ts). */}
+        {FEATURES.programs && (
+          <section id="programs" className="bg-support-blue py-20">
+            <div className="relative mx-auto max-w-6xl px-6">
+              <h2 className="text-center font-display text-4xl font-extrabold text-navy">
+                {programs.title}
+              </h2>
 
-            {content.programs.length === 0 && (
-              <PendingContentNotice className="mx-auto mt-10 max-w-xl justify-center" />
-            )}
+              {content.programs.length === 0 && (
+                <PendingContentNotice className="mx-auto mt-10 max-w-xl justify-center" />
+              )}
 
-            <div className="mt-12 grid gap-6 md:grid-cols-3">
-              {content.programs.map((program, index) => {
-                const Icon =
-                  PROGRAM_ICONS[index % PROGRAM_ICONS.length] ?? HeartHandshake;
+              <div className="mt-12 grid gap-6 md:grid-cols-3">
+                {content.programs.map((program, index) => {
+                  const Icon =
+                    PROGRAM_ICONS[index % PROGRAM_ICONS.length] ?? HeartHandshake;
 
-                return (
-                  <article
-                    key={program.id}
-                    className="bg-white p-7"
-                  >
-                    <div className="flex h-12 w-12 items-center justify-center bg-navy text-white">
-                      <Icon size={22} aria-hidden />
-                    </div>
+                  return (
+                    <article
+                      key={program.id}
+                      className="bg-white p-7"
+                    >
+                      <div className="flex h-12 w-12 items-center justify-center bg-navy text-white">
+                        <Icon size={22} aria-hidden />
+                      </div>
 
-                    <h3 className="mt-5 font-display text-xl font-bold text-text">
-                      {program.title}
-                    </h3>
+                      <h3 className="mt-5 font-display text-xl font-bold text-text">
+                        {program.title}
+                      </h3>
 
-                    <p className="mt-3 text-sm leading-relaxed text-text-muted">
-                      {program.description}
-                    </p>
-                  </article>
-                );
-              })}
+                      <p className="mt-3 text-sm leading-relaxed text-text-muted">
+                        {program.description}
+                      </p>
+                    </article>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* SERVICIOS — blanco */}
         <section id="services" className="mx-auto max-w-6xl px-6 py-20">

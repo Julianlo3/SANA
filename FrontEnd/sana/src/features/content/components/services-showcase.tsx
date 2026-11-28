@@ -8,11 +8,18 @@ import {
   type KeyboardEvent,
 } from "react";
 import { ChevronRight } from "lucide-react";
-import ServiceBackdrop, {
-  BACKDROP_ACCENTS as ACCENTS,
-} from "@/features/content/components/service-backdrop";
 import { padNumber } from "@/features/content/format";
 import type { PublicContentCard } from "@/features/content/types/content-types";
+
+/**
+ * Soft and strong tone per service, cycled by position.
+ */
+const ACCENTS = [
+  { soft: "#fbd5e2", strong: "#eb5886" },
+  { soft: "#cdeef0", strong: "#2e8c96" },
+  { soft: "#d6e4f6", strong: "#134176" },
+  { soft: "#feefc4", strong: "#d9a21b" },
+];
 
 /**
  * Defines the navy.
@@ -159,7 +166,7 @@ export default function ServicesShowcase({
           role="tablist"
           aria-orientation="vertical"
           aria-label="Servicios"
-          className="relative flex flex-col gap-1 lg:justify-center lg:py-3"
+          className="relative flex flex-col gap-1 lg:py-3"
         >
           <div
             ref={indicatorRef}
@@ -251,53 +258,68 @@ export default function ServicesShowcase({
             role="tabpanel"
             id={`service-panel-${current.id}`}
             aria-labelledby={`service-tab-${current.id}`}
-            className="relative hidden min-h-[30rem] overflow-hidden rounded-3xl bg-white lg:block"
+            className="relative hidden overflow-hidden rounded-3xl p-8 text-center transition-[background-color] duration-700 lg:block xl:p-10"
+            style={{
+              backgroundColor: currentAccent.soft,
+              backgroundImage:
+                "linear-gradient(150deg, transparent 0%, rgba(255, 255, 255, 0.85) 55%, #ffffff 100%)",
+            }}
           >
-            <ServiceBackdrop theme={currentTheme} />
-
-            <div className="absolute inset-0 flex flex-col overflow-y-auto p-10 xl:p-12">
-              <div className="relative my-auto text-center">
-                <div
-                  data-reveal
-                  aria-hidden
-                  className="mx-auto flex max-w-xs gap-1.5"
-                >
-                  {services.map((service, index) => (
-                    <span
-                      key={service.id}
-                      className="h-1.5 flex-1 rounded-full transition-colors duration-500"
-                      style={{
-                        backgroundColor:
-                          index === currentIndex
-                            ? currentAccent.strong
-                            : "rgba(19, 65, 118, 0.12)",
-                      }}
-                    />
-                  ))}
-                </div>
-                <h3
-                  data-reveal
-                  className="mt-6 font-display text-3xl font-extrabold leading-tight xl:text-4xl"
-                  style={{ color: NAVY }}
-                >
-                  {current.title}
-                </h3>
+            <div
+              aria-hidden
+              className="mx-auto flex max-w-xs gap-1.5"
+            >
+              {services.map((service, index) => (
                 <span
-                  data-reveal
-                  aria-hidden
-                  className="mx-auto mt-5 block h-1 w-14 rounded-full"
-                  style={{ backgroundColor: PINK }}
+                  key={service.id}
+                  className="h-1.5 flex-1 rounded-full transition-colors duration-500"
+                  style={{
+                    backgroundColor:
+                      index === currentIndex
+                        ? currentAccent.strong
+                        : "rgba(19, 65, 118, 0.12)",
+                  }}
                 />
-                {current.description && (
-                  <p
-                    data-reveal
-                    lang="es"
-                    className="mx-auto mt-6 max-w-xl whitespace-pre-line text-justify text-base leading-relaxed text-text-muted hyphens-auto"
+              ))}
+            </div>
+
+            {/* Every service is stacked in one cell so the panel keeps the tallest height. */}
+            <div className="grid">
+              {services.map((service, index) => {
+                const isCurrent = index === currentIndex;
+                const reveal = isCurrent ? { "data-reveal": true } : {};
+
+                return (
+                  <div
+                    key={service.id}
+                    aria-hidden={!isCurrent}
+                    className={`[grid-area:1/1] ${isCurrent ? "" : "invisible"}`}
                   >
-                    {current.description}
-                  </p>
-                )}
-              </div>
+                    <h3
+                      {...reveal}
+                      className="mt-6 font-display text-3xl font-extrabold leading-tight xl:text-4xl"
+                      style={{ color: NAVY }}
+                    >
+                      {service.title}
+                    </h3>
+                    <span
+                      {...reveal}
+                      aria-hidden
+                      className="mx-auto mt-5 block h-1 w-14 rounded-full"
+                      style={{ backgroundColor: PINK }}
+                    />
+                    {service.description && (
+                      <p
+                        {...reveal}
+                        lang="es"
+                        className="mx-auto mt-6 max-w-xl whitespace-pre-line text-justify text-base leading-relaxed text-text-muted hyphens-auto [text-align-last:center]"
+                      >
+                        {service.description}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

@@ -2,7 +2,7 @@
 
 import { MoreVertical } from "lucide-react";
 import { formatRelativeDate } from "@/lib/format/date-time";
-import { getInitials } from "@/lib/format/text";
+import UserAvatar from "@/components/ui/user-avatar";
 import RoleTags from "./role-tags";
 import UserActionsMenu from "./user-actions-menu";
 import UserStatusBadge from "./user-status-badge";
@@ -42,12 +42,10 @@ export default function UserRow({
     <tr className="border-b border-border last:border-0">
       <td className="py-4 pl-5 pr-3">
         <div className="flex items-center gap-3">
-          <span
-            aria-hidden
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${avatarClass}`}
-          >
-            {getInitials(user.fullName)}
-          </span>
+          <UserAvatar
+            fullName={user.fullName}
+            className={`h-9 w-9 shrink-0 text-xs font-semibold ${avatarClass}`}
+          />
           <span className={`font-medium ${nameClass}`}>{user.fullName}</span>
         </div>
       </td>

@@ -1,3 +1,4 @@
+import { FEATURES } from "@/config/features";
 import { GENERAL_NOTICE, LEGAL_CONTACT, LEGAL_LINKS } from "./legal";
 
 /**
@@ -37,7 +38,7 @@ export const FOOTER_CONTENT = {
     title: "Enlaces",
     items: [
       { label: "Quiénes somos", href: "/#about" },
-      { label: "Programas", href: "/#programs" },
+      ...(FEATURES.programs ? [{ label: "Programas", href: "/#programs" }] : []),
       { label: "Noticias", href: "/#news" },
     ],
   },

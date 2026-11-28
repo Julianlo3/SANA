@@ -21,7 +21,7 @@ import {
   BarChart3,
   GitBranch,
 } from "lucide-react";
-import { getInitials } from "@/lib/format/text";
+import UserAvatar from "@/components/ui/user-avatar";
 import { formatRoleLabels, findRoleByName } from "@/config/roles";
 
 /**
@@ -210,9 +210,10 @@ export default function Sidebar({ roles, fullName }: Props) {
         </nav>
 
         <div className="mt-auto flex items-center gap-3 rounded-xl bg-surface p-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white">
-            {getInitials(fullName)}
-          </div>
+          <UserAvatar
+            fullName={fullName}
+            className="h-9 w-9 shrink-0 bg-primary text-sm font-semibold text-white"
+          />
           <div className="min-w-0 flex-1 leading-tight">
             <p className="truncate text-sm font-semibold text-text">
               {fullName}

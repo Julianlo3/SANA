@@ -3,7 +3,6 @@
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle2, UserRound } from "lucide-react";
-import PageDecor from "@/components/ui/page-decor";
 import PublicHeader from "@/components/navigation/public-header";
 import PublicFooter from "@/components/navigation/public-footer";
 import { REQUEST_CONTENT } from "@/content/consultation-request";
@@ -26,8 +25,6 @@ export default function RequestConfirmationPage() {
       <PublicHeader />
 
       <main className="relative flex-1 overflow-hidden">
-        <PageDecor variant="auth" />
-
         <div className="relative z-10 mx-auto max-w-md px-6 py-20 text-center">
           <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary-soft text-primary">
             <CheckCircle2 size={32} aria-hidden />

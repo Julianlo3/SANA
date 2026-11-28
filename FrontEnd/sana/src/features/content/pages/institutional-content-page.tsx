@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import PageDecor from "@/components/ui/page-decor";
+import { FEATURES } from "@/config/features";
 import CardSectionEditor from "../components/card-section-editor";
 import MissionVisionForm from "../components/mission-vision-form";
 import { CARD_SECTIONS } from "../config/content-sections";
@@ -12,11 +13,18 @@ import { CARD_SECTIONS } from "../config/content-sections";
 const MISSION_VISION_TAB = "mission-vision";
 
 /**
+ * Card sections shown as tabs; programs stays hidden while FEATURES.programs is off.
+ */
+const VISIBLE_SECTIONS = CARD_SECTIONS.filter(
+  (config) => config.section !== "programs" || FEATURES.programs,
+);
+
+/**
  * Defines the tabs.
  */
 const TABS = [
   { id: MISSION_VISION_TAB, label: "Misión y visión" },
-  ...CARD_SECTIONS.map((config) => ({ id: config.section, label: config.label })),
+  ...VISIBLE_SECTIONS.map((config) => ({ id: config.section, label: config.label })),
 ];
 
 /**
@@ -25,7 +33,7 @@ const TABS = [
  */
 export default function InstitutionalContentPage() {
   const [activeTab, setActiveTab] = useState<string>(MISSION_VISION_TAB);
-  const activeSection = CARD_SECTIONS.find(
+  const activeSection = VISIBLE_SECTIONS.find(
     (config) => config.section === activeTab,
   );
 
