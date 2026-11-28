@@ -10,6 +10,7 @@ import {
 import PublicHeader from "@/components/navigation/public-header";
 import PublicFooter from "@/components/navigation/public-footer";
 import PendingContentNotice from "@/components/feedback/pending-content-notice";
+import { FEATURES } from "@/config/features";
 import { HOME_CONTENT } from "@/content/home";
 import AboutSection from "@/features/content/components/about-section";
 import GallerySection from "@/features/content/components/gallery-section";
@@ -99,44 +100,46 @@ export default async function HomePage() {
         {/* VALORES — path over a symbol backdrop */}
         <ValuesPath values={content.values} />
 
-        {/* PROGRAMAS — celeste */}
-        <section id="programs" className="bg-support-blue py-20">
-          <div className="relative mx-auto max-w-6xl px-6">
-            <h2 className="text-center font-display text-4xl font-extrabold text-navy">
-              {programs.title}
-            </h2>
+        {/* PROGRAMAS — celeste. Hidden by FEATURES.programs (src/config/features.ts). */}
+        {FEATURES.programs && (
+          <section id="programs" className="bg-support-blue py-20">
+            <div className="relative mx-auto max-w-6xl px-6">
+              <h2 className="text-center font-display text-4xl font-extrabold text-navy">
+                {programs.title}
+              </h2>
 
-            {content.programs.length === 0 && (
-              <PendingContentNotice className="mx-auto mt-10 max-w-xl justify-center" />
-            )}
+              {content.programs.length === 0 && (
+                <PendingContentNotice className="mx-auto mt-10 max-w-xl justify-center" />
+              )}
 
-            <div className="mt-12 grid gap-6 md:grid-cols-3">
-              {content.programs.map((program, index) => {
-                const Icon =
-                  PROGRAM_ICONS[index % PROGRAM_ICONS.length] ?? HeartHandshake;
+              <div className="mt-12 grid gap-6 md:grid-cols-3">
+                {content.programs.map((program, index) => {
+                  const Icon =
+                    PROGRAM_ICONS[index % PROGRAM_ICONS.length] ?? HeartHandshake;
 
-                return (
-                  <article
-                    key={program.id}
-                    className="bg-white p-7"
-                  >
-                    <div className="flex h-12 w-12 items-center justify-center bg-navy text-white">
-                      <Icon size={22} aria-hidden />
-                    </div>
+                  return (
+                    <article
+                      key={program.id}
+                      className="bg-white p-7"
+                    >
+                      <div className="flex h-12 w-12 items-center justify-center bg-navy text-white">
+                        <Icon size={22} aria-hidden />
+                      </div>
 
-                    <h3 className="mt-5 font-display text-xl font-bold text-text">
-                      {program.title}
-                    </h3>
+                      <h3 className="mt-5 font-display text-xl font-bold text-text">
+                        {program.title}
+                      </h3>
 
-                    <p className="mt-3 text-sm leading-relaxed text-text-muted">
-                      {program.description}
-                    </p>
-                  </article>
-                );
-              })}
+                      <p className="mt-3 text-sm leading-relaxed text-text-muted">
+                        {program.description}
+                      </p>
+                    </article>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* SERVICIOS — blanco */}
         <section id="services" className="mx-auto max-w-6xl px-6 py-20">

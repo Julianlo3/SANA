@@ -1,3 +1,5 @@
+import { FEATURES } from "@/config/features";
+
 /** Labels and links for public navigation. */
 
 export const PUBLIC_NAV = {
@@ -7,7 +9,7 @@ export const PUBLIC_NAV = {
   },
   links: [
     { label: "Quiénes somos", href: "/#about" },
-    { label: "Programas", href: "/#programs" },
+    ...(FEATURES.programs ? [{ label: "Programas", href: "/#programs" }] : []),
     { label: "Noticias", href: "/#news" },
     { label: "Contacto", href: "/#contact" },
   ],
