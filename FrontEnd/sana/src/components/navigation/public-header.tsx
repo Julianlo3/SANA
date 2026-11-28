@@ -45,7 +45,7 @@ export default function PublicHeader() {
   return (
     <header className="sticky top-0 z-30 bg-primary">
       <div className="flex items-center gap-2 px-3 py-3 min-[380px]:gap-3 min-[380px]:px-4 sm:gap-4 sm:px-6 lg:px-12">
-        <Link href="/" className="relative flex min-w-0 shrink-0 items-center rounded-xl bg-white px-1.5 py-0.5 shadow-xs before:absolute before:content-[''] before:inset-x-0 before:-inset-y-2.5">
+        <Link href="/" className="relative flex min-w-0 shrink-0 items-center before:absolute before:content-[''] before:inset-x-0 before:-inset-y-2.5">
           <Image
             src={PUBLIC_NAV.logo.src}
             alt={PUBLIC_NAV.logo.alt}

@@ -2,7 +2,7 @@
 
 export const PUBLIC_NAV = {
   logo: {
-    src: "/brand/logo-horizontal.png",
+    src: "/brand/logo-horizontal-negative.png",
     alt: "Fundación Dejando Huellas Felices",
   },
   links: [
