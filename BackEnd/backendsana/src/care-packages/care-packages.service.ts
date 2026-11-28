@@ -583,6 +583,8 @@ export class CarePackagesService {
          psy.per_name AS "psychologistName",
          CASE WHEN cp.cp_patient_dependent_id IS NOT NULL THEN 'dependent' ELSE 'self' END AS "patientType",
          COALESCE(dep.dep_name, patient.per_name) AS "patientName",
+         COALESCE(dep.dep_id, patient.per_id) AS "patientId",
+         cp.cp_patient_dependent_id AS "patientDependentId",
          ${SESSION_COUNTS_SELECT_SQL}
        FROM care_packages cp
        JOIN appointments assessment ON assessment.app_id = cp.cp_assessment_app_id
@@ -590,9 +592,14 @@ export class CarePackagesService {
        LEFT JOIN dependents dep ON dep.dep_id = cp.cp_patient_dependent_id
        LEFT JOIN person psy ON psy.per_id = cp.psy_id
        LEFT JOIN appointments a ON a.cp_id = cp.cp_id
-       LEFT JOIN requester_dependent rd ON rd.dep_id = cp.cp_patient_dependent_id
-       WHERE assessment.req_id = $1 OR rd.req_id = $1
-       GROUP BY cp.cp_id, psy.per_name, dep.dep_name, patient.per_name
+       WHERE assessment.req_id = $1
+          OR EXISTS (
+            SELECT 1
+            FROM requester_dependent rd
+            WHERE rd.dep_id = cp.cp_patient_dependent_id
+              AND rd.req_id = $1
+          )
+       GROUP BY cp.cp_id, psy.per_name, dep.dep_name, dep.dep_id, patient.per_name, patient.per_id
        ORDER BY
          CASE cp.cp_state
            WHEN 'activo' THEN 1

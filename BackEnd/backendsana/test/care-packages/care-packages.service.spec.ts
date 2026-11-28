@@ -44,6 +44,22 @@ describe('CarePackagesService', () => {
     });
   });
 
+  describe('findMyPackages', () => {
+    it('projects patientId and patientDependentId and filters dependents with EXISTS to avoid join fan-out', async () => {
+      const { service, queryMock } = setup();
+      queryMock.mockResolvedValueOnce([]);
+
+      await service.findMyPackages(13);
+
+      const [query, params] = queryMock.mock.calls[0];
+      expect(params).toEqual([13]);
+      expect(query).toContain('COALESCE(dep.dep_id, patient.per_id) AS "patientId"');
+      expect(query).toContain('cp.cp_patient_dependent_id AS "patientDependentId"');
+      expect(query).toContain('OR EXISTS (');
+      expect(query).not.toContain('LEFT JOIN requester_dependent');
+    });
+  });
+
   describe('suggest', () => {
     it('throws NotFoundException when valuation appointment does not exist', async () => {
       const { service, queryMock } = setup();
