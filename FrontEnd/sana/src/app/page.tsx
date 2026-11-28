@@ -69,7 +69,7 @@ export default async function HomePage() {
             alt: banner.imageAlt,
           }))}
         >
-          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 bg-accent/55 px-11 py-6 text-center sm:px-24 sm:py-8">
+          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 bg-accent/35 px-11 py-6 text-center sm:px-24 sm:py-8">
             <div className="mx-auto max-w-3xl">
               <p className="font-display text-xs font-bold uppercase tracking-wide text-white sm:text-lg">
                 {hero.eyebrow}
