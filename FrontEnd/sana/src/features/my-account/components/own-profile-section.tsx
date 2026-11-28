@@ -4,6 +4,7 @@ import { Lock, UserRound } from "lucide-react";
 import InlineMessage from "@/components/feedback/inline-message";
 import TextField from "@/components/forms/text-field";
 import Button from "@/components/ui/button";
+import UserAvatar from "@/components/ui/user-avatar";
 import ResidenceFields from "@/features/consultation-requests/components/residence-fields";
 import type { Gender } from "@/features/consultation-requests/types/consultation-request-types";
 import { keepDigits } from "@/lib/format/text";
@@ -44,9 +45,12 @@ export default function OwnProfileSection() {
       className="rounded-3xl border border-border bg-surface p-5 shadow-sm sm:p-7"
     >
       <header className="flex items-start gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary-dark">
-          <UserRound size={20} aria-hidden />
-        </span>
+        <UserAvatar
+          fullName={profile.profile?.fullName ?? ""}
+          fallback={<UserRound size={20} aria-hidden />}
+          shapeClassName="rounded-2xl"
+          className="h-11 w-11 shrink-0 bg-primary-soft text-primary-dark"
+        />
         <div>
           <h2
             id="own-profile-heading"

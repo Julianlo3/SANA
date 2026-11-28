@@ -3,7 +3,7 @@
 import { LogOut } from "lucide-react";
 import { PANEL_CONTENT } from "@/content/panel";
 import { formatRoleLabels } from "@/config/roles";
-import { getInitials } from "@/lib/format/text";
+import UserAvatar from "@/components/ui/user-avatar";
 
 /**
  * Defines the props type.
@@ -35,12 +35,10 @@ export default function PanelHeader({ fullName, roles }: Props) {
           </p>
         </div>
 
-        <span
-          aria-hidden
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white"
-        >
-          {getInitials(fullName)}
-        </span>
+        <UserAvatar
+          fullName={fullName}
+          className="h-9 w-9 bg-primary text-sm font-semibold text-white"
+        />
 
         
         <a

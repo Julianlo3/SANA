@@ -2,7 +2,7 @@
 
 import { MoreVertical } from "lucide-react";
 import { formatRelativeDate } from "@/lib/format/date-time";
-import { getInitials } from "@/lib/format/text";
+import UserAvatar from "@/components/ui/user-avatar";
 import RoleTags from "./role-tags";
 import UserActionsMenu from "./user-actions-menu";
 import UserStatusBadge from "./user-status-badge";
@@ -39,12 +39,10 @@ export default function UserCard({
 
   return (
     <li className="flex items-start gap-3 border-b border-border p-4 last:border-0">
-      <span
-        aria-hidden
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${avatarClass}`}
-      >
-        {getInitials(user.fullName)}
-      </span>
+      <UserAvatar
+        fullName={user.fullName}
+        className={`h-10 w-10 shrink-0 text-xs font-semibold ${avatarClass}`}
+      />
 
       <div className="min-w-0 flex-1">
         <p className={`font-semibold ${nameClass}`}>{user.fullName}</p>

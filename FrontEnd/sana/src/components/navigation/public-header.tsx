@@ -6,7 +6,7 @@ import Link from "next/link";
 import { LogOut, Menu, X } from "lucide-react";
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { PUBLIC_NAV } from "@/content/navigation";
-import { getInitials } from "@/lib/format/text";
+import UserAvatar from "@/components/ui/user-avatar";
 
 /**
  * Public header component for the public website (no authentication required).
@@ -81,7 +81,10 @@ export default function PublicHeader() {
                 aria-expanded={isAccountMenuOpen}
                 className="relative flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-navy before:absolute before:content-[''] before:-inset-1.5 min-[380px]:h-9 min-[380px]:w-9 text-sm font-semibold text-white shadow-sm transition hover:ring-2 hover:ring-white/60"
               >
-                {getInitials(user.name ?? user.email ?? "Usuario")}
+                <UserAvatar
+                  fullName={user.name ?? user.email ?? "Usuario"}
+                  className="h-full w-full"
+                />
               </button>
 
               {isAccountMenuOpen && (
