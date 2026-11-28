@@ -43,6 +43,7 @@ describe('AppointmentsRepository.findByRequester', () => {
       expect.stringContaining('WHERE a.req_id = $1'),
       [42],
     );
+    expect(query.mock.calls[0][0]).toContain('a.app_patient_dependent_id AS "patientDependentId"');
     expect(query.mock.calls[0][0]).not.toContain('app_reason');
     expect(query.mock.calls[0][0]).not.toContain('WHERE a.app_state');
   });
@@ -551,5 +552,381 @@ describe('AppointmentsRepository.createReferral', () => {
         reason: 'Intento de bucle',
       }),
     ).rejects.toThrow('REFERRAL_LOOP_DETECTED');
+  });
+});
+
+describe('AppointmentsRepository dependent ownership, eligibility, and requests', () => {
+  it('blocks general valuation requests when the patient has a suggested care package', async () => {
+    const { repository, manager } = createTransactionalRepository();
+    manager.query
+      .mockResolvedValueOnce([{
+        per_id: 7,
+        identity_document: '10212265698',
+        matches_identity_document: true,
+        matches_email: true,
+        has_user: false,
+      }])
+      .mockResolvedValueOnce([]) // ensureRequesterRole
+      .mockResolvedValueOnce([{ cp_id: 3, cp_state: 'sugerido' }]); // care_packages check
+
+    await expect(
+      repository.createRequest({
+        requester: requester(),
+        dependent: null,
+        appType: 'virtual',
+        appReason: null,
+      }),
+    ).rejects.toMatchObject({
+      status: 409,
+      response: expect.objectContaining({ error: 'SUGGESTED_CARE_PACKAGE_PENDING' }),
+    });
+  });
+
+  it('blocks general valuation requests when the patient already has an open valuation', async () => {
+    const { repository, manager } = createTransactionalRepository();
+    manager.query
+      .mockResolvedValueOnce([{
+        per_id: 7,
+        identity_document: '10212265698',
+        matches_identity_document: true,
+        matches_email: true,
+        has_user: false,
+      }])
+      .mockResolvedValueOnce([]) // ensureRequesterRole
+      .mockResolvedValueOnce([]) // care_packages check
+      .mockResolvedValueOnce([{ app_id: 91 }]); // open valuation check
+
+    await expect(
+      repository.createRequest({
+        requester: requester(),
+        dependent: null,
+        appType: 'virtual',
+        appReason: null,
+      }),
+    ).rejects.toMatchObject({
+      status: 409,
+      response: expect.objectContaining({ error: 'VALUATION_ALREADY_IN_PROGRESS' }),
+    });
+  });
+
+  it('prevents linking a dependent document that already belongs to another guardian', async () => {
+    const { repository, manager } = createTransactionalRepository();
+    manager.query.mockResolvedValueOnce([{ dep_id: 30, req_id: 99 }]);
+
+    await expect(
+      repository.upsertDependent(
+        {
+          name: 'Menor',
+          identityDocument: '1190001001',
+          birthdate: '2016-05-14',
+          termsAccepted: true,
+        },
+        13,
+        manager as never,
+      ),
+    ).rejects.toMatchObject({
+      status: 409,
+      response: expect.objectContaining({
+        error: 'DEPENDENT_BELONGS_TO_ANOTHER_REQUESTER',
+      }),
+    });
+  });
+
+  it('reuses an existing dependent in upsertDependent when owned by the same guardian', async () => {
+    const { repository, manager } = createTransactionalRepository();
+    manager.query.mockResolvedValueOnce([{ dep_id: 30, req_id: 13 }]);
+
+    await expect(
+      repository.upsertDependent(
+        {
+          name: 'Menor',
+          identityDocument: '1190001001',
+          birthdate: '2016-05-14',
+          termsAccepted: true,
+        },
+        13,
+        manager as never,
+      ),
+    ).resolves.toBe(30);
+  });
+
+  it('computes authoritative eligibility flags in findDependentsByRequester', async () => {
+    const query = vi.fn().mockResolvedValueOnce([
+      {
+        depId: 1,
+        name: 'Samuel Nuevo',
+        identityDocument: '1190001001',
+        birthdate: '2018-05-14',
+        gender: 'M',
+        relationshipId: 1,
+        relationshipDescription: 'madre',
+        assignedAt: '2026-10-01T10:00:00.000Z',
+        priorAppointmentsCount: 0,
+        hasOpenValuation: false,
+        carePackageState: null,
+      },
+      {
+        depId: 2,
+        name: 'Valeria Segunda',
+        identityDocument: '1190001002',
+        birthdate: '2015-05-14',
+        gender: 'F',
+        relationshipId: 1,
+        relationshipDescription: 'madre',
+        assignedAt: '2026-10-01T10:00:00.000Z',
+        priorAppointmentsCount: 2,
+        hasOpenValuation: false,
+        carePackageState: null,
+      },
+      {
+        depId: 3,
+        name: 'Carlos Adulto',
+        identityDocument: '1190001003',
+        birthdate: '2000-01-01',
+        gender: 'M',
+        relationshipId: 1,
+        relationshipDescription: 'madre',
+        assignedAt: '2026-10-01T10:00:00.000Z',
+        priorAppointmentsCount: 0,
+        hasOpenValuation: false,
+        carePackageState: null,
+      },
+      {
+        depId: 4,
+        name: 'Salomé Con Paquete',
+        identityDocument: '1190001004',
+        birthdate: '2016-01-01',
+        gender: 'F',
+        relationshipId: 1,
+        relationshipDescription: 'madre',
+        assignedAt: '2026-10-01T10:00:00.000Z',
+        priorAppointmentsCount: 1,
+        hasOpenValuation: false,
+        carePackageState: 'finalizado',
+      },
+    ]);
+    const repository = new AppointmentsRepository({ query } as never);
+
+    const rows = await repository.findDependentsByRequester(13);
+
+    expect(rows[0].eligibility).toEqual({
+      isMinor: true,
+      hasPriorAppointments: false,
+      hasOpenValuation: false,
+      carePackageState: null,
+      canRequestValuation: true,
+      canSelectFirstSlot: true,
+      blockingReason: null,
+    });
+    expect(rows[1].eligibility).toEqual({
+      isMinor: true,
+      hasPriorAppointments: true,
+      hasOpenValuation: false,
+      carePackageState: null,
+      canRequestValuation: true,
+      canSelectFirstSlot: false,
+      blockingReason: null,
+    });
+    expect(rows[2].eligibility).toMatchObject({
+      isMinor: false,
+      canRequestValuation: false,
+      canSelectFirstSlot: false,
+      blockingReason: 'DEPENDENT_MUST_BE_MINOR',
+    });
+    expect(rows[3].eligibility).toMatchObject({
+      carePackageState: 'finalizado',
+      canRequestValuation: false,
+      blockingReason: 'FOLLOW_UP_VALUATION_REQUIRED_WITH_TREATING_PSYCHOLOGIST',
+    });
+  });
+
+  it('rejects createDependentForRequester when document matches another guardian or the requester', async () => {
+    const { repository, manager } = createTransactionalRepository();
+    manager.query.mockResolvedValueOnce([
+      { per_id: 13, identity_document: '1075601101' },
+    ]);
+
+    await expect(
+      repository.createDependentForRequester({
+        requesterId: 13,
+        name: 'Samuel',
+        identityDocument: '1075601101',
+        birthdate: '2016-05-14',
+        relationshipId: 1,
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      response: expect.objectContaining({
+        error: 'DEPENDENT_SAME_DOCUMENT_AS_REQUESTER',
+      }),
+    });
+
+    manager.query
+      .mockResolvedValueOnce([{ per_id: 13, identity_document: '1075601101' }])
+      .mockResolvedValueOnce([{ dep_id: 2, req_id: 15 }]);
+
+    await expect(
+      repository.createDependentForRequester({
+        requesterId: 13,
+        name: 'Valeria',
+        identityDocument: '1190001002',
+        birthdate: '2014-09-22',
+        relationshipId: 1,
+      }),
+    ).rejects.toMatchObject({
+      status: 409,
+      response: expect.objectContaining({
+        error: 'DEPENDENT_BELONGS_TO_ANOTHER_REQUESTER',
+      }),
+    });
+  });
+
+  it('rejects createRequestForExistingDependent with 404 when dependent does not belong to requester', async () => {
+    const { repository, manager } = createTransactionalRepository();
+    manager.query.mockResolvedValueOnce([]);
+
+    await expect(
+      repository.createRequestForExistingDependent({
+        requesterId: 13,
+        depId: 99,
+        appType: 'virtual',
+        appReason: null,
+        dependentTermsAccepted: true,
+      }),
+    ).rejects.toMatchObject({
+      status: 404,
+      response: expect.objectContaining({ error: 'DEPENDENT_NOT_FOUND' }),
+    });
+  });
+
+  it('rejects createRequestForExistingDependent when dependent has turned 18', async () => {
+    const { repository, manager } = createTransactionalRepository();
+    manager.query.mockResolvedValueOnce([
+      {
+        dep_id: 3,
+        dep_name: 'Carlos Adulto',
+        dep_birthdate: '2000-01-01',
+        per_id: 13,
+        per_name: 'María López',
+        per_email: 'maria@example.com',
+        per_identity_document: '1075601101',
+        per_card_type: 'CC',
+        per_contact_number: '3201112201',
+        per_birthdate: '1980-03-21',
+      },
+    ]);
+
+    await expect(
+      repository.createRequestForExistingDependent({
+        requesterId: 13,
+        depId: 3,
+        appType: 'virtual',
+        appReason: null,
+        dependentTermsAccepted: true,
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      response: expect.objectContaining({ error: 'DEPENDENT_MUST_BE_MINOR' }),
+    });
+  });
+
+  it('creates a pending appointment and records dependent consent for an existing dependent without slot', async () => {
+    const { repository, manager } = createTransactionalRepository();
+    const policyIds: Record<string, number> = {
+      data_treatment: 1,
+      dependent_consent: 2,
+      privacy_policy: 5,
+    };
+    manager.query.mockImplementation(async (sql: string, values?: unknown[]) => {
+      if (sql.includes('FROM requester_dependent rd')) {
+        return [{
+          dep_id: 1,
+          dep_name: 'Samuel López',
+          dep_birthdate: '2016-05-14',
+          per_id: 13,
+          per_name: 'María López',
+          per_email: 'maria@example.com',
+          per_identity_document: '1075601101',
+          per_card_type: 'CC',
+          per_contact_number: '3201112201',
+          per_birthdate: '1990-03-21',
+        }];
+      }
+      if (sql.includes('INSERT INTO appointments')) return [{ app_id: 77 }];
+      if (sql.includes('FROM policy_documents')) {
+        return [{ pd_id: policyIds[String(values?.[0])] }];
+      }
+      return [];
+    });
+
+    const created = await repository.createRequestForExistingDependent({
+      requesterId: 13,
+      depId: 1,
+      appType: 'virtual',
+      appReason: 'Nueva valoración',
+      dependentTermsAccepted: true,
+      acceptance: { ipAddress: '198.51.100.5', channel: 'web' },
+    });
+
+    expect(created).toEqual({
+      appId: 77,
+      requesterName: 'María López',
+      requesterEmail: 'maria@example.com',
+      dependentName: 'Samuel López',
+    });
+    const policyInserts = manager.query.mock.calls
+      .filter(([sql]) => String(sql).includes('INSERT INTO policy_acceptance'))
+      .map(([, values]) => values);
+    expect(policyInserts).toEqual([
+      [13, null, 1, 77, '198.51.100.5', 'web', null],
+      [13, null, 5, 77, '198.51.100.5', 'web', null],
+      [13, 1, 2, 77, '198.51.100.5', 'web', null],
+    ]);
+  });
+
+  it('rejects slot selection on createRequestForExistingDependent when dependent already has prior appointments', async () => {
+    const { repository, manager } = createTransactionalRepository();
+    manager.query
+      .mockResolvedValueOnce([
+        {
+          dep_id: 1,
+          dep_name: 'Samuel López',
+          dep_birthdate: '2016-05-14',
+          per_id: 13,
+          per_name: 'María López',
+          per_email: 'maria@example.com',
+          per_identity_document: '1075601101',
+          per_card_type: 'CC',
+          per_contact_number: '3201112201',
+          per_birthdate: '1990-03-21',
+        },
+      ])
+      .mockResolvedValueOnce([]) // care_packages check
+      .mockResolvedValueOnce([]) // open valuation check
+      .mockResolvedValueOnce([{ count: 1 }]); // countPriorAppointments > 0
+
+    await expect(
+      repository.createRequestForExistingDependent({
+        requesterId: 13,
+        depId: 1,
+        appType: 'virtual',
+        appReason: null,
+        dependentTermsAccepted: true,
+        slot: { appDate: new Date('2099-05-01T14:00:00.000Z'), duration: 60 },
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      response: expect.objectContaining({ error: 'SECRETARY_ASSIGNMENT_REQUIRED' }),
+    });
+  });
+
+  it('counts prior appointments for dependents across patient identity independent of requester ID', async () => {
+    const query = vi.fn().mockResolvedValueOnce([{ count: 2 }]);
+    const repository = new AppointmentsRepository({ query } as never);
+
+    await expect(repository.countPriorAppointments(13, 5)).resolves.toBe(2);
+    const [sql] = query.mock.calls[0] as [string];
+    expect(sql).toContain('($2::int IS NOT NULL AND app_patient_dependent_id = $2)');
+    expect(sql).toContain('($2::int IS NULL AND req_id = $1 AND app_patient_dependent_id IS NULL)');
   });
 });

@@ -23,6 +23,8 @@ import { Roles } from '../middlewares/roles.decorator.js';
 import { UserRole } from '../models/user-role.enum.js';
 import { AppointmentsService } from './appointments.service.js';
 import { CreateAppointmentDto } from './dto/create-appointment.dto.js';
+import { CreateDependentDto } from './dto/create-dependent.dto.js';
+import { CreateDependentAppointmentDto } from './dto/create-dependent-appointment.dto.js';
 import { ConfirmAppointmentDto } from './dto/confirm-appointment.dto.js';
 import { AssignAppointmentDto } from './dto/assign-appointment.dto.js';
 import { DiscardAppointmentDto } from './dto/discard-appointment.dto.js';
@@ -80,14 +82,13 @@ export class AppointmentsController {
   }
 
   /**
-   * Protected endpoint: Lists the valid family relationship catalog for the dependent flow.
+   * Public endpoint: Lists the valid family relationship catalog for the dependent flow.
    * This is a catalog of relationship types, not a list of dependents.
    * @returns A promise resolving to the list of available relationships.
    */
   @Get('relationships')
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.Psychologist)
+  @UseGuards(RateLimitGuard)
+  @RateLimit({ limit: 60, windowSeconds: 60 })
   findRelationships() {
     return this.appointmentsService.findRelationships();
   }
@@ -122,6 +123,76 @@ export class AppointmentsController {
   @Roles(UserRole.Requester)
   findMyRequests(@Req() request: Request & { user: AuthenticatedUser }) {
     return this.appointmentsService.findByRequester(request.user.personId);
+  }
+
+  /**
+   * Protected endpoint: Lists minor dependents registered under the authenticated consultant
+   * along with each dependent's current valuation eligibility.
+   * @param request The HTTP request object.
+   * @returns A promise resolving to the list of registered dependents.
+   */
+  @Get('my-dependents')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Requester)
+  findMyDependents(@Req() request: Request & { user: AuthenticatedUser }) {
+    return this.appointmentsService.findMyDependents(request.user.personId);
+  }
+
+  /**
+   * Protected endpoint: Registers a new minor dependent under the authenticated consultant's account.
+   * @param request The HTTP request object.
+   * @param dto The dependent registration data.
+   * @returns A promise resolving to the newly registered dependent.
+   */
+  @Post('my-dependents')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Requester)
+  @HttpCode(HttpStatus.CREATED)
+  registerDependent(
+    @Req() request: Request & { user: AuthenticatedUser },
+    @Body() dto: CreateDependentDto,
+  ) {
+    this.logger.log(
+      `Module:appointments, Function:registerDependent, result-start: requesterId-${request.user.personId}, relationshipId-${dto.relationshipId}`,
+    );
+    return this.appointmentsService.registerDependent(dto, request.user.personId);
+  }
+
+  /**
+   * Protected endpoint: Requests a valuation appointment from the authenticated consultant's
+   * profile for one of their registered minor dependents.
+   * @param request The HTTP request object.
+   * @param depId The registered dependent ID.
+   * @param dto The appointment request details.
+   * @returns A promise resolving to the created appointment ID and confirmation message.
+   */
+  @Post('my-dependents/:depId/request')
+  @ApiBearerAuth()
+  @ApiParam({
+    name: 'depId',
+    description: 'Registered minor dependent identifier.',
+    type: Number,
+  })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Requester)
+  @HttpCode(HttpStatus.CREATED)
+  requestDependentAppointment(
+    @Req() request: Request & { user: AuthenticatedUser },
+    @Param('depId', ParseIntPipe) depId: number,
+    @Body() dto: CreateDependentAppointmentDto,
+  ) {
+    this.logger.log(
+      `Module:appointments, Function:requestDependentAppointment, result-start: requesterId-${request.user.personId}, depId-${depId}, type-${dto.appType}`,
+    );
+    const ipAddress = request.ip || request.socket.remoteAddress;
+    return this.appointmentsService.requestDependentAppointment(
+      depId,
+      dto,
+      request.user,
+      ipAddress,
+    );
   }
 
   /**

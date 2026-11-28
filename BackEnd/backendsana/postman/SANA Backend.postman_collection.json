@@ -133,6 +133,18 @@
       "value": ""
     },
     {
+      "key": "newDependentId",
+      "value": ""
+    },
+    {
+      "key": "newDependentAppId",
+      "value": ""
+    },
+    {
+      "key": "newDependentPendingAppId",
+      "value": ""
+    },
+    {
       "key": "suggestedCpId",
       "value": ""
     },
@@ -4240,7 +4252,7 @@
           ]
         },
         {
-          "name": "05.05 [Público] Segunda cita del mismo adulto CON franja — 400",
+          "name": "05.05 [Público] Segunda solicitud del mismo adulto con valoración abierta — 409",
           "request": {
             "auth": {
               "type": "noauth"
@@ -4268,7 +4280,7 @@
                 "request"
               ]
             },
-            "description": "Caso negativo: a partir de la segunda cita, la franja debe ser asignada por secretaría.",
+            "description": "Caso negativo (regla A4): bloquea una nueva valoración mientras exista una valoración abierta (pendiente, remitida, asignada o confirmada).",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"requesterName\": \"Consultante E2E Adulto {{runSuffix}}\",\n  \"requesterCardType\": \"CC\",\n  \"requesterIdentityDocument\": \"107571{{runSuffix}}\",\n  \"requesterContactNumber\": \"320710{{runSuffix}}\",\n  \"requesterEmail\": \"e2e.adulto.{{runSuffix}}@example.com\",\n  \"requesterBirthdate\": \"1992-07-12\",\n  \"requesterGender\": \"F\",\n  \"requesterTermsAccepted\": true,\n  \"patientType\": \"self\",\n  \"appType\": \"presencial\",\n  \"appDate\": \"{{slotAssignProvisional}}\"\n}",
@@ -4286,12 +4298,12 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status code is 400', function () {",
-                  "  pm.response.to.have.status(400);",
+                  "pm.test('Status code is 409', function () {",
+                  "  pm.response.to.have.status(409);",
                   "});",
-                  "pm.test('Error code is SECRETARY_ASSIGNMENT_REQUIRED', function () {",
+                  "pm.test('Error code is VALUATION_ALREADY_IN_PROGRESS', function () {",
                   "  const json = pm.response.json();",
-                  "  pm.expect(json.error).to.eql('SECRETARY_ASSIGNMENT_REQUIRED');",
+                  "  pm.expect(json.error).to.eql('VALUATION_ALREADY_IN_PROGRESS');",
                   "});"
                 ]
               }
@@ -4299,7 +4311,7 @@
           ]
         },
         {
-          "name": "05.06 [Público] Segunda solicitud adulto SIN franja (pendiente) — 201",
+          "name": "05.06 [Público] Solicitud adulto SIN franja (pendiente) — 201",
           "request": {
             "auth": {
               "type": "noauth"
@@ -4327,10 +4339,10 @@
                 "request"
               ]
             },
-            "description": "Registra una solicitud en estado 'pendiente' (guarda pendingAppId).",
+            "description": "Registra una solicitud sin franja en estado 'pendiente' para probar el flujo completo de secretaría (guarda pendingAppId).",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"requesterName\": \"Consultante E2E Adulto {{runSuffix}}\",\n  \"requesterCardType\": \"CC\",\n  \"requesterIdentityDocument\": \"107571{{runSuffix}}\",\n  \"requesterContactNumber\": \"320710{{runSuffix}}\",\n  \"requesterEmail\": \"e2e.adulto.{{runSuffix}}@example.com\",\n  \"requesterBirthdate\": \"1992-07-12\",\n  \"requesterGender\": \"F\",\n  \"requesterTermsAccepted\": true,\n  \"patientType\": \"self\",\n  \"appType\": \"virtual\",\n  \"appReason\": \"Segunda solicitud sin franja para probar flujo de secretaría.\"\n}",
+              "raw": "{\n  \"requesterName\": \"Consultante E2E Pendiente {{runSuffix}}\",\n  \"requesterCardType\": \"CC\",\n  \"requesterIdentityDocument\": \"107573{{runSuffix}}\",\n  \"requesterContactNumber\": \"320730{{runSuffix}}\",\n  \"requesterEmail\": \"e2e.pendiente.{{runSuffix}}@example.com\",\n  \"requesterBirthdate\": \"1991-03-18\",\n  \"requesterGender\": \"M\",\n  \"requesterTermsAccepted\": true,\n  \"patientType\": \"self\",\n  \"appType\": \"virtual\",\n  \"appReason\": \"Solicitud sin franja para probar flujo de secretaría.\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -5198,7 +5210,13 @@
                   "pm.test('Status code is 200', function () {",
                   "  pm.response.to.have.status(200);",
                   "});",
-                  "pm.test('Lists own and dependent requests', () => pm.expect(pm.response.json().length).to.be.at.least(5));"
+                  "pm.test('Lists own and dependent requests with patientDependentId', () => {",
+                  "  const rows = pm.response.json();",
+                  "  pm.expect(rows.length).to.be.at.least(5);",
+                  "  const depRow = rows.find((r) => r.patientType === 'dependent');",
+                  "  pm.expect(depRow).to.be.an('object');",
+                  "  pm.expect(depRow.patientDependentId).to.be.a('number');",
+                  "});"
                 ]
               }
             }
@@ -5251,6 +5269,1023 @@
                   "pm.test('Error code is APPOINTMENT_NOT_REQUESTED_BY_USER', function () {",
                   "  const json = pm.response.json();",
                   "  pm.expect(json.error).to.eql('APPOINTMENT_NOT_REQUESTED_BY_USER');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.21a [Público] Catálogo de parentescos sin autenticación (/appointments/relationships) — 200",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/relationships",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "relationships"
+              ]
+            },
+            "description": "Catálogo público de parentescos para el formulario público y el perfil de consultante."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Returns relationship catalog with at least 4 entries', () => {",
+                  "  const rows = pm.response.json();",
+                  "  pm.expect(rows.length).to.be.at.least(4);",
+                  "  pm.expect(rows[0]).to.have.all.keys('relId', 'relDescription');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.21b [Consultante] Listar mis dependientes con elegibilidad (/appointments/my-dependents) — 200",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenConsultant}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/my-dependents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "my-dependents"
+              ]
+            },
+            "description": "Per 13 consulta sus dependientes registrados (Dep 1) junto con las banderas de elegibilidad calculadas por el backend."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Includes Dep 1 with suggested package blocking eligibility', () => {",
+                  "  const rows = pm.response.json();",
+                  "  const dep1 = rows.find((d) => d.depId === 1);",
+                  "  pm.expect(dep1).to.be.an('object');",
+                  "  pm.expect(dep1.eligibility.isMinor).to.eql(true);",
+                  "  pm.expect(dep1.eligibility.carePackageState).to.eql('sugerido');",
+                  "  pm.expect(dep1.eligibility.canRequestValuation).to.eql(false);",
+                  "  pm.expect(dep1.eligibility.blockingReason).to.eql('SUGGESTED_CARE_PACKAGE_PENDING');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.21c [Consultante] Solicitar cita para Dep 1 con paquete sugerido pendiente — 409",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenConsultant}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/my-dependents/1/request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "my-dependents",
+                "1",
+                "request"
+              ]
+            },
+            "description": "Caso negativo (regla A4): Dep 1 tiene cp_id=2 en estado 'sugerido', no puede abrir otra valoración.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appType\": \"presencial\",\n  \"appReason\": \"Intento con paquete sugerido\",\n  \"dependentTermsAccepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 409', function () {",
+                  "  pm.response.to.have.status(409);",
+                  "});",
+                  "pm.test('Error code is SUGGESTED_CARE_PACKAGE_PENDING', function () {",
+                  "  pm.expect(pm.response.json().error).to.eql('SUGGESTED_CARE_PACKAGE_PENDING');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.21d [Consultante] Registrar dependiente con documento de otro acudiente (Dep 2) — 409",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenConsultant}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/my-dependents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "my-dependents"
+              ]
+            },
+            "description": "Caso negativo (regla A1): un menor pertenece a un único acudiente; Dep 2 pertenece a Per 15.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Valeria Ajena\",\n  \"identityDocument\": \"1190001002\",\n  \"birthdate\": \"2014-09-22\",\n  \"gender\": \"F\",\n  \"relationshipId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 409', function () {",
+                  "  pm.response.to.have.status(409);",
+                  "});",
+                  "pm.test('Error code is DEPENDENT_BELONGS_TO_ANOTHER_REQUESTER', function () {",
+                  "  pm.expect(pm.response.json().error).to.eql('DEPENDENT_BELONGS_TO_ANOTHER_REQUESTER');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.21e [Consultante] Registrar dependiente con mismo documento que el acudiente — 400",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenConsultant}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/my-dependents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "my-dependents"
+              ]
+            },
+            "description": "Caso negativo: el documento del menor no puede coincidir con el de Per 13 (1075601101).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mismo Documento\",\n  \"identityDocument\": \"1075601101\",\n  \"birthdate\": \"2017-04-10\",\n  \"gender\": \"M\",\n  \"relationshipId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 400', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test('Error code is DEPENDENT_SAME_DOCUMENT_AS_REQUESTER', function () {",
+                  "  pm.expect(pm.response.json().error).to.eql('DEPENDENT_SAME_DOCUMENT_AS_REQUESTER');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.21f [Consultante] Registrar dependiente mayor de edad — 400",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenConsultant}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/my-dependents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "my-dependents"
+              ]
+            },
+            "description": "Caso negativo: el dependiente debe ser menor de 18 años.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dependiente Adulto\",\n  \"identityDocument\": \"119589{{runSuffix}}\",\n  \"birthdate\": \"1995-01-15\",\n  \"gender\": \"F\",\n  \"relationshipId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 400', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test('Error code is DEPENDENT_MUST_BE_MINOR', function () {",
+                  "  pm.expect(pm.response.json().error).to.eql('DEPENDENT_MUST_BE_MINOR');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.21g [Consultante] Registrar nuevo dependiente menor válido (/appointments/my-dependents) — 201",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenConsultant}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/my-dependents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "my-dependents"
+              ]
+            },
+            "description": "Registra un nuevo dependiente bajo la cuenta de Per 13 (guarda newDependentId) y valida elegibilidad para primera franja.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Lucía E2E López {{runSuffix}}\",\n  \"identityDocument\": \"119580{{runSuffix}}\",\n  \"birthdate\": \"2017-08-20\",\n  \"gender\": \"F\",\n  \"relationshipId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Saves newDependentId and exposes first-slot eligibility', () => {",
+                  "  const d = pm.response.json();",
+                  "  pm.expect(d.depId).to.be.a('number');",
+                  "  pm.expect(d.eligibility.canRequestValuation).to.eql(true);",
+                  "  pm.expect(d.eligibility.canSelectFirstSlot).to.eql(true);",
+                  "  pm.collectionVariables.set('newDependentId', String(d.depId));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.21h [Consultante] Registrar nuevamente el mismo dependiente propio — 409",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenConsultant}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/my-dependents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "my-dependents"
+              ]
+            },
+            "description": "Caso negativo: impide duplicar un dependiente ya registrado por el mismo acudiente.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Lucía E2E López {{runSuffix}}\",\n  \"identityDocument\": \"119580{{runSuffix}}\",\n  \"birthdate\": \"2017-08-20\",\n  \"gender\": \"F\",\n  \"relationshipId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 409', function () {",
+                  "  pm.response.to.have.status(409);",
+                  "});",
+                  "pm.test('Error code is DEPENDENT_ALREADY_REGISTERED', function () {",
+                  "  pm.expect(pm.response.json().error).to.eql('DEPENDENT_ALREADY_REGISTERED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.21i [Consultante] Aislamiento IDOR: solicitar cita para dependiente ajeno (Dep 2) — 404",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenConsultant}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/my-dependents/2/request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "my-dependents",
+                "2",
+                "request"
+              ]
+            },
+            "description": "Caso negativo anti-IDOR: Per 13 no puede solicitar cita para Dep 2 (pertenece a Per 15).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appType\": \"virtual\",\n  \"dependentTermsAccepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 404', function () {",
+                  "  pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test('Error code is DEPENDENT_NOT_FOUND', function () {",
+                  "  pm.expect(pm.response.json().error).to.eql('DEPENDENT_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.21j [Consultante] Solicitar cita para dependiente sin aceptar consentimiento — 400",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenConsultant}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/my-dependents/{{newDependentId}}/request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "my-dependents",
+                "{{newDependentId}}",
+                "request"
+              ]
+            },
+            "description": "Caso negativo: exige dependentTermsAccepted=true para registrar dependent_consent.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appType\": \"presencial\",\n  \"dependentTermsAccepted\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 400', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test('Error code is DEPENDENT_TERMS_NOT_ACCEPTED', function () {",
+                  "  pm.expect(pm.response.json().error).to.eql('DEPENDENT_TERMS_NOT_ACCEPTED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.21k [Consultante] Primera cita para nuevo dependiente CON franja pública (autoconfirmada) — 201",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenConsultant}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/my-dependents/{{newDependentId}}/request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "my-dependents",
+                "{{newDependentId}}",
+                "request"
+              ]
+            },
+            "description": "Regla A2: dependiente nuevo (priorCount=0) elige franja pública y queda autoconfirmado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appType\": \"presencial\",\n  \"appDate\": \"{{slotPublicFirst}}\",\n  \"appReason\": \"Primera valoración de dependiente desde perfil de consultante.\",\n  \"dependentTermsAccepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Saves newDependentAppId', () => {",
+                  "  const d = pm.response.json();",
+                  "  pm.expect(d.appId).to.be.a('number');",
+                  "  pm.collectionVariables.set('newDependentAppId', String(d.appId));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.21l [Consultante] Segunda solicitud para mismo dependiente con valoración abierta — 409",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenConsultant}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/my-dependents/{{newDependentId}}/request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "my-dependents",
+                "{{newDependentId}}",
+                "request"
+              ]
+            },
+            "description": "Caso negativo (regla A4): bloquea segunda solicitud mientras la valoración está confirmada.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appType\": \"virtual\",\n  \"dependentTermsAccepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 409', function () {",
+                  "  pm.response.to.have.status(409);",
+                  "});",
+                  "pm.test('Error code is VALUATION_ALREADY_IN_PROGRESS', function () {",
+                  "  pm.expect(pm.response.json().error).to.eql('VALUATION_ALREADY_IN_PROGRESS');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.21m [Secretaría] Marcar inasistencia en 1ra cita del dependiente (libera franja, priorCount=1) — 200",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenSecretary}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/{{newDependentAppId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "{{newDependentAppId}}",
+                "status"
+              ]
+            },
+            "description": "Marca no_asistio para liberar la franja pública y dejar al dependiente elegible para 2da solicitud con priorCount=1.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"state\": \"no_asistio\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.21n [Consultante] Segunda valoración del dependiente CON franja (priorCount > 0) — 400",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenConsultant}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/my-dependents/{{newDependentId}}/request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "my-dependents",
+                "{{newDependentId}}",
+                "request"
+              ]
+            },
+            "description": "Regla A2: a partir de la segunda cita del dependiente, no puede reservar franja pública (SECRETARY_ASSIGNMENT_REQUIRED).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appType\": \"virtual\",\n  \"appDate\": \"{{slotPublicFirst}}\",\n  \"dependentTermsAccepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 400', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test('Error code is SECRETARY_ASSIGNMENT_REQUIRED', function () {",
+                  "  pm.expect(pm.response.json().error).to.eql('SECRETARY_ASSIGNMENT_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.21o [Consultante] Segunda valoración del dependiente SIN franja (pendiente) — 201",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenConsultant}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/my-dependents/{{newDependentId}}/request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "my-dependents",
+                "{{newDependentId}}",
+                "request"
+              ]
+            },
+            "description": "Regla A2: dependiente con citas previas sin paquete registra solicitud sin horario para asignación de secretaría.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appType\": \"virtual\",\n  \"appReason\": \"Segunda valoración sin franja para gestión de secretaría.\",\n  \"dependentTermsAccepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Saves newDependentPendingAppId', () => {",
+                  "  const d = pm.response.json();",
+                  "  pm.expect(d.appId).to.be.a('number');",
+                  "  pm.collectionVariables.set('newDependentPendingAppId', String(d.appId));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.21p [Consultante] Retirar solicitud pendiente del dependiente (limpieza) — 200",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenConsultant}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/{{newDependentPendingAppId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "{{newDependentPendingAppId}}",
+                "cancel"
+              ]
+            },
+            "description": "Retira la solicitud pendiente creada en 05.21o para dejar limpia la cuenta de prueba."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
                   "});"
                 ]
               }
@@ -6683,10 +7718,16 @@
                   "pm.test('Status code is 200', function () {",
                   "  pm.response.to.have.status(200);",
                   "});",
-                  "pm.test('Lists cp 1 and cp 2', () => {",
-                  "  const ids = pm.response.json().map((p) => p.id);",
-                  "  pm.expect(ids).to.include(1);",
-                  "  pm.expect(ids).to.include(2);",
+                  "pm.test('Lists cp 1 and cp 2 with patient identifiers', () => {",
+                  "  const rows = pm.response.json();",
+                  "  const cp1 = rows.find((p) => p.id === 1);",
+                  "  const cp2 = rows.find((p) => p.id === 2);",
+                  "  pm.expect(cp1).to.be.an('object');",
+                  "  pm.expect(cp2).to.be.an('object');",
+                  "  pm.expect(cp1.patientId).to.eql(13);",
+                  "  pm.expect(cp1.patientDependentId).to.eql(null);",
+                  "  pm.expect(cp2.patientId).to.eql(1);",
+                  "  pm.expect(cp2.patientDependentId).to.eql(1);",
                   "});"
                 ]
               }
@@ -10876,6 +11917,54 @@
                 }
               }
             }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 403', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12.11 [RBAC] Psicólogo intentando consultar /appointments/my-dependents — 403",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenPsychologist}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/my-dependents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "my-dependents"
+              ]
+            },
+            "description": "Solo usuarios con rol consultante pueden consultar o gestionar sus dependientes."
           },
           "response": [],
           "event": [

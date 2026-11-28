@@ -1,7 +1,31 @@
-import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import { toBogotaParts } from '../schedule/schedule.repository.js';
 import type { AcceptanceChannel } from '../policy/acceptance-channel.js';
+
+/**
+ * Calculates full years of age from a civil date string (`YYYY-MM-DD`).
+ * @param birthdate Date string in ISO or `YYYY-MM-DD` format.
+ * @param today Reference date used for age calculation.
+ * @returns Age in full years.
+ */
+export function calculateAge(birthdate: string, today = new Date()): number {
+  const normalized = birthdate.slice(0, 10);
+  const date = new Date(`${normalized}T00:00:00Z`);
+  let age = today.getUTCFullYear() - date.getUTCFullYear();
+  const hasHadBirthday =
+    today.getUTCMonth() > date.getUTCMonth() ||
+    (today.getUTCMonth() === date.getUTCMonth() &&
+      today.getUTCDate() >= date.getUTCDate());
+
+  if (!hasHadBirthday) age -= 1;
+  return age;
+}
 
 /** Query executor accepted by appointment repository methods. */
 export type QueryExecutor = DataSource | EntityManager;
@@ -88,10 +112,47 @@ export interface RequesterAppointmentRow {
   appCreatedAt: string;
   patientType: 'self' | 'dependent';
   patientName: string;
+  patientDependentId: number | null;
   psychologistName: string | null;
   referredFromAppId?: number | null;
   referredToPsychologistId?: number | null;
   referredToPsychologistName?: string | null;
+}
+
+export type DependentBlockingReason =
+  | 'DEPENDENT_MUST_BE_MINOR'
+  | 'ACTIVE_CARE_PACKAGE_EXISTS'
+  | 'SUGGESTED_CARE_PACKAGE_PENDING'
+  | 'FOLLOW_UP_VALUATION_REQUIRED_WITH_TREATING_PSYCHOLOGIST'
+  | 'VALUATION_ALREADY_IN_PROGRESS';
+
+export interface DependentEligibilitySummary {
+  isMinor: boolean;
+  hasPriorAppointments: boolean;
+  hasOpenValuation: boolean;
+  carePackageState: 'activo' | 'sugerido' | 'finalizado' | null;
+  canRequestValuation: boolean;
+  canSelectFirstSlot: boolean;
+  blockingReason: DependentBlockingReason | null;
+}
+
+export interface RequesterDependentRow {
+  depId: number;
+  name: string;
+  identityDocument: string;
+  birthdate: string;
+  gender: string | null;
+  relationshipId: number | null;
+  relationshipDescription: string | null;
+  assignedAt: string;
+  eligibility: DependentEligibilitySummary;
+}
+
+export interface DependentAppointmentCreatedRow {
+  appId: number;
+  requesterName: string;
+  requesterEmail: string | null;
+  dependentName: string;
 }
 
 export interface RelationshipRow {
@@ -208,6 +269,7 @@ export class AppointmentsRepository {
             ELSE 'self'
           END AS "patientType",
           COALESCE(dep.dep_name, req.per_name) AS "patientName",
+          a.app_patient_dependent_id AS "patientDependentId",
           psy.per_name AS "psychologistName",
           a.app_referred_from_app_id AS "referredFromAppId",
           a.app_referred_to_psy_id AS "referredToPsychologistId",
@@ -409,6 +471,367 @@ export class AppointmentsRepository {
   }
 
   /**
+   * Lists minor dependents registered under a specific requester along with
+   * each dependent's current valuation eligibility.
+   * @param requesterId The requester (person) ID.
+   * @returns A promise resolving to the requester's registered dependents.
+   */
+  async findDependentsByRequester(
+    requesterId: number,
+  ): Promise<RequesterDependentRow[]> {
+    const rows = await this.dataSource.query<RawDependentEligibilityRow[]>(
+      `SELECT
+          d.dep_id AS "depId",
+          d.dep_name AS "name",
+          d.dep_identity_document::text AS "identityDocument",
+          d.dep_birthdate::text AS "birthdate",
+          d.dep_gender AS "gender",
+          rd.rel_id AS "relationshipId",
+          rel.rel_description AS "relationshipDescription",
+          rd.rd_assigned_at AS "assignedAt",
+          (
+            SELECT COUNT(1)::int
+            FROM appointments a
+            WHERE a.app_patient_dependent_id = d.dep_id
+              AND a.app_state NOT IN ('descartada', 'cancelada')
+          ) AS "priorAppointmentsCount",
+          EXISTS (
+            SELECT 1
+            FROM appointments a
+            WHERE a.app_patient_dependent_id = d.dep_id
+              AND a.app_kind = 'valoracion'
+              AND a.app_state IN ('pendiente', 'remitida', 'asignada', 'confirmada')
+          ) AS "hasOpenValuation",
+          (
+            SELECT cp.cp_state
+            FROM care_packages cp
+            WHERE cp.cp_patient_dependent_id = d.dep_id
+              AND cp.cp_state IN ('activo', 'sugerido', 'finalizado')
+            ORDER BY
+              CASE cp.cp_state
+                WHEN 'activo' THEN 1
+                WHEN 'sugerido' THEN 2
+                WHEN 'finalizado' THEN 3
+                ELSE 4
+              END,
+              cp.cp_id DESC
+            LIMIT 1
+          ) AS "carePackageState"
+       FROM requester_dependent rd
+       JOIN dependents d ON d.dep_id = rd.dep_id
+       LEFT JOIN relationship rel ON rel.rel_id = rd.rel_id
+       WHERE rd.req_id = $1
+       ORDER BY d.dep_name ASC, d.dep_id ASC`,
+      [requesterId],
+    );
+
+    return rows.map((row) => mapRequesterDependentRow(row));
+  }
+
+  /**
+   * Finds a single registered dependent belonging to the specified requester.
+   * @param requesterId The requester (person) ID.
+   * @param depId The dependent ID.
+   * @returns A promise resolving to the dependent with eligibility, or null if not owned.
+   */
+  async findDependentByIdForRequester(
+    requesterId: number,
+    depId: number,
+  ): Promise<RequesterDependentRow | null> {
+    const rows = await this.dataSource.query<RawDependentEligibilityRow[]>(
+      `SELECT
+          d.dep_id AS "depId",
+          d.dep_name AS "name",
+          d.dep_identity_document::text AS "identityDocument",
+          d.dep_birthdate::text AS "birthdate",
+          d.dep_gender AS "gender",
+          rd.rel_id AS "relationshipId",
+          rel.rel_description AS "relationshipDescription",
+          rd.rd_assigned_at AS "assignedAt",
+          (
+            SELECT COUNT(1)::int
+            FROM appointments a
+            WHERE a.app_patient_dependent_id = d.dep_id
+              AND a.app_state NOT IN ('descartada', 'cancelada')
+          ) AS "priorAppointmentsCount",
+          EXISTS (
+            SELECT 1
+            FROM appointments a
+            WHERE a.app_patient_dependent_id = d.dep_id
+              AND a.app_kind = 'valoracion'
+              AND a.app_state IN ('pendiente', 'remitida', 'asignada', 'confirmada')
+          ) AS "hasOpenValuation",
+          (
+            SELECT cp.cp_state
+            FROM care_packages cp
+            WHERE cp.cp_patient_dependent_id = d.dep_id
+              AND cp.cp_state IN ('activo', 'sugerido', 'finalizado')
+            ORDER BY
+              CASE cp.cp_state
+                WHEN 'activo' THEN 1
+                WHEN 'sugerido' THEN 2
+                WHEN 'finalizado' THEN 3
+                ELSE 4
+              END,
+              cp.cp_id DESC
+            LIMIT 1
+          ) AS "carePackageState"
+       FROM requester_dependent rd
+       JOIN dependents d ON d.dep_id = rd.dep_id
+       LEFT JOIN relationship rel ON rel.rel_id = rd.rel_id
+       WHERE rd.req_id = $1 AND rd.dep_id = $2
+       LIMIT 1`,
+      [requesterId, depId],
+    );
+
+    return rows[0] ? mapRequesterDependentRow(rows[0]) : null;
+  }
+
+  /**
+   * Registers a new minor dependent and links them to the authenticated requester.
+   * Enforces the single-guardian ownership invariant on `dep_identity_document`.
+   * @param params Dependent creation parameters and requester ID.
+   * @returns A promise resolving to the newly created dependent ID.
+   */
+  async createDependentForRequester(params: {
+    requesterId: number;
+    name: string;
+    identityDocument: string;
+    birthdate: string;
+    gender?: string;
+    relationshipId: number;
+  }): Promise<number> {
+    return this.dataSource.transaction(async (manager) => {
+      const requesterRows = await manager.query<{
+        per_id: number;
+        identity_document: string | null;
+      }[]>(
+        `SELECT per_id, per_identity_document::text AS identity_document
+         FROM person
+         WHERE per_id = $1`,
+        [params.requesterId],
+      );
+      const requester = requesterRows[0];
+      if (!requester) {
+        throw new NotFoundException({
+          error: 'REQUESTER_NOT_FOUND',
+          message: 'No se encontró la cuenta del consultante',
+        });
+      }
+      if (
+        requester.identity_document !== null &&
+        requester.identity_document === params.identityDocument
+      ) {
+        throw new BadRequestException({
+          error: 'DEPENDENT_SAME_DOCUMENT_AS_REQUESTER',
+          message: 'El documento de identidad del dependiente no puede ser igual al del solicitante',
+        });
+      }
+
+      const existing = await manager.query<{
+        dep_id: number;
+        req_id: number | null;
+      }[]>(
+        `SELECT d.dep_id, rd.req_id
+         FROM dependents d
+         LEFT JOIN requester_dependent rd ON rd.dep_id = d.dep_id
+         WHERE d.dep_identity_document = $1::bigint
+         FOR UPDATE OF d`,
+        [params.identityDocument],
+      );
+
+      if (existing.length > 0) {
+        const ownedByAnother = existing.some(
+          (row) => row.req_id !== null && Number(row.req_id) !== params.requesterId,
+        );
+        if (ownedByAnother) {
+          throw new ConflictException({
+            error: 'DEPENDENT_BELONGS_TO_ANOTHER_REQUESTER',
+            message:
+              'Este documento de dependiente ya se encuentra registrado bajo otro acudiente. Si requiere actualizar la representación legal, comuníquese con secretaría.',
+          });
+        }
+        const alreadyOwned = existing.some(
+          (row) => row.req_id !== null && Number(row.req_id) === params.requesterId,
+        );
+        if (alreadyOwned) {
+          throw new ConflictException({
+            error: 'DEPENDENT_ALREADY_REGISTERED',
+            message: 'Este dependiente ya está registrado en tu cuenta.',
+          });
+        }
+
+        const orphanDepId = existing[0].dep_id;
+        await this.linkRequesterDependent(
+          params.requesterId,
+          orphanDepId,
+          params.relationshipId,
+          manager,
+        );
+        return orphanDepId;
+      }
+
+      const created = await manager.query<{ dep_id: number }[]>(
+        `INSERT INTO dependents (
+           dep_name, dep_identity_document, dep_birthdate, dep_gender
+         )
+         VALUES ($1, $2::bigint, $3::date, $4)
+         RETURNING dep_id`,
+        [
+          params.name,
+          params.identityDocument,
+          params.birthdate,
+          params.gender ?? null,
+        ],
+      );
+      const depId = created[0].dep_id;
+
+      await this.linkRequesterDependent(
+        params.requesterId,
+        depId,
+        params.relationshipId,
+        manager,
+      );
+
+      return depId;
+    });
+  }
+
+  /**
+   * Creates a valuation appointment request for a dependent already registered
+   * under the authenticated requester.
+   * @param params Request creation details for the existing dependent.
+   * @returns A promise resolving to the created appointment and notification metadata.
+   */
+  async createRequestForExistingDependent(params: {
+    requesterId: number;
+    depId: number;
+    appType: string;
+    appReason: string | null;
+    dependentTermsAccepted: boolean;
+    acceptance?: PolicyAcceptanceContext;
+    slot?: {
+      appDate: Date;
+      duration: number;
+    } | null;
+  }): Promise<DependentAppointmentCreatedRow> {
+    return this.dataSource.transaction(async (manager) => {
+      const ownershipRows = await manager.query<{
+        dep_id: number;
+        dep_name: string;
+        dep_birthdate: string;
+        per_id: number;
+        per_name: string;
+        per_email: string | null;
+        per_identity_document: string | null;
+        per_card_type: string | null;
+        per_contact_number: string | null;
+        per_birthdate: string | null;
+      }[]>(
+        `SELECT
+           d.dep_id,
+           d.dep_name,
+           d.dep_birthdate::text AS dep_birthdate,
+           req.per_id,
+           req.per_name,
+           req.per_email,
+           req.per_identity_document::text AS per_identity_document,
+           req.per_card_type,
+           req.per_contact_number::text AS per_contact_number,
+           req.per_birthdate::text AS per_birthdate
+         FROM requester_dependent rd
+         JOIN dependents d ON d.dep_id = rd.dep_id
+         JOIN person req ON req.per_id = rd.req_id
+         WHERE rd.req_id = $1 AND rd.dep_id = $2
+         FOR UPDATE OF d`,
+        [params.requesterId, params.depId],
+      );
+
+      const record = ownershipRows[0];
+      if (!record) {
+        throw new NotFoundException({
+          error: 'DEPENDENT_NOT_FOUND',
+          message: 'No se encontró el dependiente asociado a su cuenta',
+        });
+      }
+
+      if (
+        !record.per_identity_document ||
+        !record.per_card_type ||
+        !record.per_contact_number ||
+        !record.per_birthdate
+      ) {
+        throw new BadRequestException({
+          error: 'REQUESTER_PROFILE_INCOMPLETE',
+          message:
+            'Debe completar sus datos personales (documento, teléfono y fecha de nacimiento) antes de solicitar una cita para su dependiente',
+        });
+      }
+
+      if (calculateAge(record.per_birthdate) < 18) {
+        throw new BadRequestException({
+          error: 'REQUESTER_MUST_BE_ADULT',
+          message: 'La persona solicitante o acudiente debe ser mayor de edad',
+        });
+      }
+
+      if (calculateAge(record.dep_birthdate) >= 18) {
+        throw new BadRequestException({
+          error: 'DEPENDENT_MUST_BE_MINOR',
+          message:
+            'El dependiente ya es mayor de edad y debe solicitar su cita con su propia cuenta',
+        });
+      }
+
+      await this.assertPatientEligibleForGeneralValuation(
+        null,
+        params.depId,
+        manager,
+      );
+
+      const chosenSlot = params.slot
+        ? await this.resolveFirstValuationSlot(
+            params.requesterId,
+            params.depId,
+            params.slot,
+            manager,
+          )
+        : null;
+
+      await this.ensureRequesterRole(params.requesterId, manager);
+
+      const appId = await this.create(
+        {
+          requesterId: params.requesterId,
+          patientPersonId: null,
+          patientDependentId: params.depId,
+          appType: params.appType,
+          appReason: params.appReason,
+          slot: chosenSlot,
+        },
+        manager,
+      );
+
+      await this.recordPolicyAcceptances(
+        appId,
+        params.requesterId,
+        params.depId,
+        true,
+        params.dependentTermsAccepted,
+        params.acceptance ?? WEB_ACCEPTANCE,
+        manager,
+      );
+
+      return {
+        appId,
+        requesterName: record.per_name,
+        requesterEmail: record.per_email,
+        dependentName: record.dep_name,
+      };
+    });
+  }
+
+  /**
    * Counts prior non-cancelled appointments for a consultant or their dependent.
    * Used to determine if the requested appointment is the 1st one or from the 2nd onwards.
    * @param requesterId The requester ID.
@@ -431,10 +854,9 @@ export class AppointmentsRepository {
     const result = await executor.query<{ count: string | number }[]>(
       `SELECT COUNT(1)::int AS count
        FROM appointments
-       WHERE req_id = $1
-         AND (
+       WHERE (
            ($2::int IS NOT NULL AND app_patient_dependent_id = $2)
-           OR ($2::int IS NULL AND app_patient_dependent_id IS NULL)
+           OR ($2::int IS NULL AND req_id = $1 AND app_patient_dependent_id IS NULL)
          )
          AND app_state NOT IN ('descartada', 'cancelada')
          ${excludeFilter}`,
@@ -494,7 +916,11 @@ export class AppointmentsRepository {
 
       if (params.dependent) {
         patientPersonId = null;
-        patientDependentId = await this.upsertDependent(params.dependent, manager);
+        patientDependentId = await this.upsertDependent(
+          params.dependent,
+          requesterId,
+          manager,
+        );
         await this.linkRequesterDependent(
           requesterId,
           patientDependentId,
@@ -503,130 +929,20 @@ export class AppointmentsRepository {
         );
       }
 
-      const activePackage = await manager.query<{ cp_id: number }[]>(
-        `SELECT cp_id
-         FROM care_packages
-         WHERE cp_state = 'activo'
-           AND (
-             ($1::int IS NOT NULL AND cp_patient_person_id = $1)
-             OR ($2::int IS NOT NULL AND cp_patient_dependent_id = $2)
-           )
-         LIMIT 1`,
-        [patientPersonId, patientDependentId],
+      await this.assertPatientEligibleForGeneralValuation(
+        patientPersonId,
+        patientDependentId,
+        manager,
       );
-      if (activePackage.length > 0) {
-        throw new ConflictException({
-          error: 'ACTIVE_CARE_PACKAGE_EXISTS',
-          message: 'El paciente cuenta con un paquete activo. Debe agendar sus citas desde el flujo de paquetes.',
-        });
-      }
 
-      const finalizedPackage = await manager.query<{ cp_id: number; psy_id: number }[]>(
-        `SELECT cp_id, psy_id
-         FROM care_packages
-         WHERE cp_state = 'finalizado'
-           AND (
-             ($1::int IS NOT NULL AND cp_patient_person_id = $1)
-             OR ($2::int IS NOT NULL AND cp_patient_dependent_id = $2)
-           )
-         ORDER BY cp_id DESC
-         LIMIT 1`,
-        [patientPersonId, patientDependentId],
-      );
-      if (finalizedPackage.length > 0) {
-        throw new ConflictException({
-          error: 'FOLLOW_UP_VALUATION_REQUIRED_WITH_TREATING_PSYCHOLOGIST',
-          message: 'El paciente ya finalizó un paquete de atención. Debe solicitar su nueva valoración directamente con su psicólogo tratante desde la sección de paquetes.',
-        });
-      }
-
-      let chosenSlot: { appDate: Date; duration: number; psyId: number } | null = null;
-      if (params.slot) {
-        const priorCount = await this.countPriorAppointments(
-          requesterId,
-          patientDependentId,
-          undefined,
-          manager,
-        );
-
-        if (priorCount > 0) {
-          throw new BadRequestException({
-            error: 'SECRETARY_ASSIGNMENT_REQUIRED',
-            message: 'A partir de la segunda cita, la asignación de horarios debe ser realizada directamente por la secretaría. Por favor registre su solicitud sin horario.',
-          });
-        }
-
-        const { dateStr, timeStr } = toBogotaParts(params.slot.appDate);
-        await manager.query(
-          `SELECT pg_advisory_xact_lock(hashtext('slot_assignment'), hashtext($1::text || $2::text))`,
-          [dateStr, timeStr],
-        );
-
-        const availablePsychologists = await manager.query<{ psy_id: number }[]>(
-          `SELECT p.psy_id
-           FROM psychologist p
-           JOIN person per ON per.per_id = p.psy_id
-           WHERE per.per_state = 'activo'
-             AND (
-               EXISTS (
-                 SELECT 1 FROM schedule b
-                 WHERE b.psy_id = p.psy_id
-                   AND b.sch_date = $1::date
-                   AND b.sch_start_time <= $2::time
-                   AND b.sch_end_time >= ($2::time + ($3 || ' minutes')::interval)::time
-               )
-               OR EXISTS (
-                 SELECT 1 FROM schedule_recurring_blocks r
-                 WHERE r.psy_id = p.psy_id
-                   AND r.srb_active = true
-                   AND r.srb_day_of_week = EXTRACT(ISODOW FROM $1::date)
-                   AND r.srb_valid_from <= $1::date
-                   AND (r.srb_valid_until IS NULL OR r.srb_valid_until >= $1::date)
-                   AND r.srb_start_time <= $2::time
-                   AND r.srb_end_time >= ($2::time + ($3 || ' minutes')::interval)::time
-               )
-             )
-             AND NOT EXISTS (
-               SELECT 1 FROM schedule_occupancy o
-               WHERE o.psy_id = p.psy_id
-                 AND o.occ_date = $1::date
-                 AND o.occ_start_time < ($2::time + ($3 || ' minutes')::interval)::time
-                 AND o.occ_end_time > $2::time
-             )
-             AND NOT EXISTS (
-               SELECT 1 FROM appointments a
-               WHERE a.psy_id = p.psy_id
-                 AND a.app_state IN ('asignada', 'confirmada')
-                 AND a.app_date IS NOT NULL
-                 AND (a.app_date AT TIME ZONE 'America/Bogota')::date = $1::date
-                 AND (a.app_date AT TIME ZONE 'America/Bogota')::time < ($2::time + ($3 || ' minutes')::interval)::time
-                 AND ((a.app_date + (a.app_duration || ' minutes')::interval) AT TIME ZONE 'America/Bogota')::time > $2::time
-             )
-             AND p.psy_id <> $4
-           ORDER BY (
-             SELECT COUNT(1)
-             FROM appointments a2
-             WHERE a2.psy_id = p.psy_id
-               AND a2.app_state IN ('asignada', 'confirmada')
-               AND a2.app_date >= now()
-           ) ASC
-           LIMIT 1`,
-          [dateStr, timeStr, params.slot.duration, requesterId],
-        );
-
-        if (availablePsychologists.length === 0) {
-          throw new ConflictException({
-            error: 'SCHEDULE_SLOT_TAKEN',
-            message: 'La franja horaria seleccionada ya no se encuentra disponible. Por favor seleccione otro horario.',
-          });
-        }
-
-        chosenSlot = {
-          appDate: params.slot.appDate,
-          duration: params.slot.duration,
-          psyId: availablePsychologists[0].psy_id,
-        };
-      }
+      const chosenSlot = params.slot
+        ? await this.resolveFirstValuationSlot(
+            requesterId,
+            patientDependentId,
+            params.slot,
+            manager,
+          )
+        : null;
 
       const appId = await this.create(
         {
@@ -653,6 +969,188 @@ export class AppointmentsRepository {
 
       return appId;
     });
+  }
+
+  /**
+   * Ensures the patient does not have an active, suggested, or finalized care package,
+   * nor an open valuation appointment already in progress.
+   * @param patientPersonId Person ID when the patient is the requester themselves.
+   * @param patientDependentId Dependent ID when the patient is a minor dependent.
+   * @param executor Query executor.
+   */
+  private async assertPatientEligibleForGeneralValuation(
+    patientPersonId: number | null,
+    patientDependentId: number | null,
+    executor: QueryExecutor,
+  ): Promise<void> {
+    const blockingPackages = await executor.query<{
+      cp_id: number;
+      cp_state: 'activo' | 'sugerido' | 'finalizado';
+    }[]>(
+      `SELECT cp_id, cp_state
+       FROM care_packages
+       WHERE cp_state IN ('activo', 'sugerido', 'finalizado')
+         AND (
+           ($1::int IS NOT NULL AND cp_patient_person_id = $1)
+           OR ($2::int IS NOT NULL AND cp_patient_dependent_id = $2)
+         )
+       ORDER BY
+         CASE cp_state
+           WHEN 'activo' THEN 1
+           WHEN 'sugerido' THEN 2
+           WHEN 'finalizado' THEN 3
+           ELSE 4
+         END,
+         cp_id DESC
+       LIMIT 1`,
+      [patientPersonId, patientDependentId],
+    );
+
+    if (blockingPackages.length > 0) {
+      const state = blockingPackages[0].cp_state;
+      if (state === 'activo') {
+        throw new ConflictException({
+          error: 'ACTIVE_CARE_PACKAGE_EXISTS',
+          message:
+            'El paciente cuenta con un paquete activo. Debe agendar sus citas desde el flujo de paquetes.',
+        });
+      }
+      if (state === 'sugerido') {
+        throw new ConflictException({
+          error: 'SUGGESTED_CARE_PACKAGE_PENDING',
+          message:
+            'El paciente ya tiene una sugerencia de paquete pendiente de aprobación por secretaría.',
+        });
+      }
+      throw new ConflictException({
+        error: 'FOLLOW_UP_VALUATION_REQUIRED_WITH_TREATING_PSYCHOLOGIST',
+        message:
+          'El paciente ya finalizó un paquete de atención. Debe solicitar su nueva valoración directamente con su psicólogo tratante desde la sección de paquetes.',
+      });
+    }
+
+    const openValuation = await executor.query<{ app_id: number }[]>(
+      `SELECT app_id
+       FROM appointments
+       WHERE app_kind = 'valoracion'
+         AND app_state IN ('pendiente', 'remitida', 'asignada', 'confirmada')
+         AND (
+           ($1::int IS NOT NULL AND app_patient_person_id = $1)
+           OR ($2::int IS NOT NULL AND app_patient_dependent_id = $2)
+         )
+       LIMIT 1`,
+      [patientPersonId, patientDependentId],
+    );
+
+    if (openValuation.length > 0) {
+      throw new ConflictException({
+        error: 'VALUATION_ALREADY_IN_PROGRESS',
+        message: 'El paciente ya tiene una cita de valoración en curso.',
+      });
+    }
+  }
+
+  /**
+   * Reserves an available psychologist for a patient's first valuation appointment.
+   * Rejects slot selection from the second appointment onwards.
+   * @param requesterId Requester ID (excluded so a psychologist cannot be assigned to their own/dependent's request).
+   * @param patientDependentId Dependent ID when patient is a minor, or null for self.
+   * @param slot Requested appointment date and duration.
+   * @param executor Query executor.
+   * @returns Assigned slot with psychologist ID.
+   */
+  private async resolveFirstValuationSlot(
+    requesterId: number,
+    patientDependentId: number | null,
+    slot: { appDate: Date; duration: number },
+    executor: QueryExecutor,
+  ): Promise<{ appDate: Date; duration: number; psyId: number }> {
+    const priorCount = await this.countPriorAppointments(
+      requesterId,
+      patientDependentId,
+      undefined,
+      executor,
+    );
+
+    if (priorCount > 0) {
+      throw new BadRequestException({
+        error: 'SECRETARY_ASSIGNMENT_REQUIRED',
+        message:
+          'A partir de la segunda cita, la asignación de horarios debe ser realizada directamente por la secretaría. Por favor registre su solicitud sin horario.',
+      });
+    }
+
+    const { dateStr, timeStr } = toBogotaParts(slot.appDate);
+    await executor.query(
+      `SELECT pg_advisory_xact_lock(hashtext('slot_assignment'), hashtext($1::text || $2::text))`,
+      [dateStr, timeStr],
+    );
+
+    const availablePsychologists = await executor.query<{ psy_id: number }[]>(
+      `SELECT p.psy_id
+       FROM psychologist p
+       JOIN person per ON per.per_id = p.psy_id
+       WHERE per.per_state = 'activo'
+         AND (
+           EXISTS (
+             SELECT 1 FROM schedule b
+             WHERE b.psy_id = p.psy_id
+               AND b.sch_date = $1::date
+               AND b.sch_start_time <= $2::time
+               AND b.sch_end_time >= ($2::time + ($3 || ' minutes')::interval)::time
+           )
+           OR EXISTS (
+             SELECT 1 FROM schedule_recurring_blocks r
+             WHERE r.psy_id = p.psy_id
+               AND r.srb_active = true
+               AND r.srb_day_of_week = EXTRACT(ISODOW FROM $1::date)
+               AND r.srb_valid_from <= $1::date
+               AND (r.srb_valid_until IS NULL OR r.srb_valid_until >= $1::date)
+               AND r.srb_start_time <= $2::time
+               AND r.srb_end_time >= ($2::time + ($3 || ' minutes')::interval)::time
+           )
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM schedule_occupancy o
+           WHERE o.psy_id = p.psy_id
+             AND o.occ_date = $1::date
+             AND o.occ_start_time < ($2::time + ($3 || ' minutes')::interval)::time
+             AND o.occ_end_time > $2::time
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM appointments a
+           WHERE a.psy_id = p.psy_id
+             AND a.app_state IN ('asignada', 'confirmada')
+             AND a.app_date IS NOT NULL
+             AND (a.app_date AT TIME ZONE 'America/Bogota')::date = $1::date
+             AND (a.app_date AT TIME ZONE 'America/Bogota')::time < ($2::time + ($3 || ' minutes')::interval)::time
+             AND ((a.app_date + (a.app_duration || ' minutes')::interval) AT TIME ZONE 'America/Bogota')::time > $2::time
+         )
+         AND p.psy_id <> $4
+       ORDER BY (
+         SELECT COUNT(1)
+         FROM appointments a2
+         WHERE a2.psy_id = p.psy_id
+           AND a2.app_state IN ('asignada', 'confirmada')
+           AND a2.app_date >= now()
+       ) ASC
+       LIMIT 1`,
+      [dateStr, timeStr, slot.duration, requesterId],
+    );
+
+    if (availablePsychologists.length === 0) {
+      throw new ConflictException({
+        error: 'SCHEDULE_SLOT_TAKEN',
+        message:
+          'La franja horaria seleccionada ya no se encuentra disponible. Por favor seleccione otro horario.',
+      });
+    }
+
+    return {
+      appDate: slot.appDate,
+      duration: slot.duration,
+      psyId: availablePsychologists[0].psy_id,
+    };
   }
 
   /**
@@ -887,20 +1385,41 @@ export class AppointmentsRepository {
   }
 
   /**
-   * insert or update dependent
-   * @param params contains name, identityDocument, birthdate, gender, contactNumber, termsAccepted
-   * @returns dep_id or null
+   * Inserts a new dependent or reuses an existing one only when owned by the same requester.
+   * Rejects attempts to link a dependent already registered under a different guardian.
+   * @param params Dependent identity fields.
+   * @param requesterId The requester (guardian) person ID.
+   * @param executor Query executor.
+   * @returns The dependent ID (`dep_id`).
    */
   async upsertDependent(
     params: AppointmentDependentParams,
+    requesterId: number,
     executor: QueryExecutor = this.dataSource,
   ): Promise<number> {
-    const existing = await executor.query<{ dep_id: number }[]>(
-      `SELECT dep_id FROM dependents WHERE dep_identity_document = $1`,
+    const existing = await executor.query<{
+      dep_id: number;
+      req_id: number | null;
+    }[]>(
+      `SELECT d.dep_id, rd.req_id
+       FROM dependents d
+       LEFT JOIN requester_dependent rd ON rd.dep_id = d.dep_id
+       WHERE d.dep_identity_document = $1::bigint
+       FOR UPDATE OF d`,
       [params.identityDocument],
     );
 
-    if (existing[0]) {
+    if (existing.length > 0) {
+      const ownedByAnother = existing.some(
+        (row) => row.req_id !== null && Number(row.req_id) !== requesterId,
+      );
+      if (ownedByAnother) {
+        throw new ConflictException({
+          error: 'DEPENDENT_BELONGS_TO_ANOTHER_REQUESTER',
+          message:
+            'Este documento de dependiente ya se encuentra registrado bajo otro acudiente. Si requiere actualizar la representación legal, comuníquese con secretaría.',
+        });
+      }
       return existing[0].dep_id;
     }
 
@@ -908,7 +1427,7 @@ export class AppointmentsRepository {
       `INSERT INTO dependents (
          dep_name, dep_identity_document, dep_birthdate, dep_gender
        )
-       VALUES ($1, $2, $3::date, $4)
+       VALUES ($1, $2::bigint, $3::date, $4)
        RETURNING dep_id`,
       [
         params.name,
@@ -1620,4 +2139,73 @@ export class AppointmentsRepository {
       };
     });
   }
+}
+
+interface RawDependentEligibilityRow {
+  depId: number;
+  name: string;
+  identityDocument: string;
+  birthdate: string;
+  gender: string | null;
+  relationshipId: number | null;
+  relationshipDescription: string | null;
+  assignedAt: Date | string;
+  priorAppointmentsCount: number | string;
+  hasOpenValuation: boolean;
+  carePackageState: 'activo' | 'sugerido' | 'finalizado' | null;
+}
+
+/**
+ * Computes valuation eligibility metadata for a dependent row returned by SQL.
+ * @param row Raw SQL projection for a registered dependent.
+ * @returns Normalized dependent record with authoritative eligibility flags.
+ */
+function mapRequesterDependentRow(
+  row: RawDependentEligibilityRow,
+): RequesterDependentRow {
+  const birthdate = row.birthdate.slice(0, 10);
+  const isMinor = calculateAge(birthdate) < 18;
+  const priorAppointmentsCount = Number(row.priorAppointmentsCount ?? 0);
+  const hasPriorAppointments = priorAppointmentsCount > 0;
+  const hasOpenValuation = Boolean(row.hasOpenValuation);
+  const carePackageState = row.carePackageState ?? null;
+
+  let blockingReason: DependentBlockingReason | null = null;
+  if (!isMinor) {
+    blockingReason = 'DEPENDENT_MUST_BE_MINOR';
+  } else if (carePackageState === 'activo') {
+    blockingReason = 'ACTIVE_CARE_PACKAGE_EXISTS';
+  } else if (carePackageState === 'sugerido') {
+    blockingReason = 'SUGGESTED_CARE_PACKAGE_PENDING';
+  } else if (carePackageState === 'finalizado') {
+    blockingReason = 'FOLLOW_UP_VALUATION_REQUIRED_WITH_TREATING_PSYCHOLOGIST';
+  } else if (hasOpenValuation) {
+    blockingReason = 'VALUATION_ALREADY_IN_PROGRESS';
+  }
+
+  const canRequestValuation = blockingReason === null;
+  const canSelectFirstSlot = canRequestValuation && !hasPriorAppointments;
+
+  return {
+    depId: Number(row.depId),
+    name: row.name,
+    identityDocument: String(row.identityDocument),
+    birthdate,
+    gender: row.gender,
+    relationshipId: row.relationshipId !== null ? Number(row.relationshipId) : null,
+    relationshipDescription: row.relationshipDescription,
+    assignedAt:
+      row.assignedAt instanceof Date
+        ? row.assignedAt.toISOString()
+        : String(row.assignedAt),
+    eligibility: {
+      isMinor,
+      hasPriorAppointments,
+      hasOpenValuation,
+      carePackageState,
+      canRequestValuation,
+      canSelectFirstSlot,
+      blockingReason,
+    },
+  };
 }

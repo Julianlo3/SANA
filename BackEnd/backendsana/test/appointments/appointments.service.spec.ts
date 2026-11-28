@@ -29,6 +29,10 @@ function setup() {
     findReferralCandidatePsychologists: vi.fn().mockResolvedValue([]),
     createReferral: vi.fn(),
     findPendingReferrals: vi.fn().mockResolvedValue([]),
+    findDependentsByRequester: vi.fn().mockResolvedValue([]),
+    findDependentByIdForRequester: vi.fn(),
+    createDependentForRequester: vi.fn(),
+    createRequestForExistingDependent: vi.fn(),
     discard: vi.fn(),
     cancelByRequester: vi.fn().mockResolvedValue(true),
     discardByRequester: vi.fn().mockResolvedValue(true),
@@ -1074,5 +1078,301 @@ describe('AppointmentsService referral flow', () => {
     const res = await service.findPendingReferrals('remitida');
     expect(res).toEqual([{ appId: 43, appState: 'remitida', psychologistId: 9 }]);
     expect(repository.findPendingReferrals).toHaveBeenCalledWith('remitida');
+  });
+});
+
+describe('AppointmentsService dependent management and authenticated dependent requests', () => {
+  it('rejects a public dependent request when dependent document equals requester document', async () => {
+    const { service, repository } = setup();
+
+    await expect(
+      service.requestAppointment(
+        baseRequest({
+          patientType: 'dependent',
+          requesterIdentityDocument: '10212265698',
+          dependentName: 'Menor',
+          dependentIdentityDocument: '10212265698',
+          dependentBirthdate: '2016-05-14',
+          relationshipId: 1,
+          dependentTermsAccepted: true,
+        }) as never,
+      ),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        error: 'DEPENDENT_SAME_DOCUMENT_AS_REQUESTER',
+      }),
+    });
+    expect(repository.createRequest).not.toHaveBeenCalled();
+  });
+
+  it('rejects a public dependent request when dependent birthdate is in the future', async () => {
+    const { service, repository } = setup();
+
+    await expect(
+      service.requestAppointment(
+        baseRequest({
+          patientType: 'dependent',
+          dependentName: 'Menor Futuro',
+          dependentIdentityDocument: '1190001009',
+          dependentBirthdate: '2099-05-14',
+          relationshipId: 1,
+          dependentTermsAccepted: true,
+        }) as never,
+      ),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        error: 'INVALID_DEPENDENT_BIRTHDATE',
+      }),
+    });
+    expect(repository.createRequest).not.toHaveBeenCalled();
+  });
+
+  it('maps Dependent_idocument_uq race condition on requestAppointment to 409 ownership conflict', async () => {
+    const { service, repository } = setup();
+    repository.createRequest.mockRejectedValue(
+      new QueryFailedError('INSERT INTO dependents', [], {
+        ...Object.assign(new Error('duplicate dependent'), {
+          code: '23505',
+          constraint: 'Dependent_idocument_uq',
+        }),
+      }),
+    );
+
+    await expect(
+      service.requestAppointment(
+        baseRequest({
+          patientType: 'dependent',
+          dependentName: 'Menor',
+          dependentIdentityDocument: '1190001001',
+          dependentBirthdate: '2016-05-14',
+          relationshipId: 1,
+          dependentTermsAccepted: true,
+        }) as never,
+      ),
+    ).rejects.toMatchObject({
+      status: 409,
+      response: expect.objectContaining({
+        error: 'DEPENDENT_BELONGS_TO_ANOTHER_REQUESTER',
+      }),
+    });
+  });
+
+  it('lists registered dependents for the authenticated requester', async () => {
+    const { service, repository } = setup();
+    const expected = [{ depId: 1, name: 'Samuel' }];
+    repository.findDependentsByRequester.mockResolvedValue(expected);
+
+    await expect(service.findMyDependents(13)).resolves.toEqual(expected);
+    expect(repository.findDependentsByRequester).toHaveBeenCalledWith(13);
+  });
+
+  it('registers a valid minor dependent for the authenticated requester', async () => {
+    const { service, repository } = setup();
+    repository.createDependentForRequester.mockResolvedValue(9);
+    const createdDependent = {
+      depId: 9,
+      name: 'Samuel Esteban',
+      identityDocument: '1190001009',
+      birthdate: '2016-05-14',
+      gender: 'M',
+      relationshipId: 1,
+      relationshipDescription: 'madre',
+      assignedAt: '2026-11-27T00:00:00.000Z',
+      eligibility: {
+        isMinor: true,
+        hasPriorAppointments: false,
+        hasOpenValuation: false,
+        carePackageState: null,
+        canRequestValuation: true,
+        canSelectFirstSlot: true,
+        blockingReason: null,
+      },
+    };
+    repository.findDependentByIdForRequester.mockResolvedValue(createdDependent);
+
+    const res = await service.registerDependent(
+      {
+        name: '  Samuel Esteban  ',
+        identityDocument: '1190001009',
+        birthdate: '2016-05-14',
+        gender: 'M',
+        relationshipId: 1,
+      },
+      13,
+    );
+
+    expect(res).toEqual(createdDependent);
+    expect(repository.createDependentForRequester).toHaveBeenCalledWith({
+      requesterId: 13,
+      name: 'Samuel Esteban',
+      identityDocument: '1190001009',
+      birthdate: '2016-05-14',
+      gender: 'M',
+      relationshipId: 1,
+    });
+  });
+
+  it('rejects registering an adult as a dependent', async () => {
+    const { service, repository } = setup();
+
+    await expect(
+      service.registerDependent(
+        {
+          name: 'Adulto',
+          identityDocument: '1190001009',
+          birthdate: '1990-01-01',
+          relationshipId: 1,
+        },
+        13,
+      ),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ error: 'DEPENDENT_MUST_BE_MINOR' }),
+    });
+    expect(repository.createDependentForRequester).not.toHaveBeenCalled();
+  });
+
+  it('rejects registering a dependent with an invalid relationshipId', async () => {
+    const { service, repository } = setup();
+    repository.relationshipExists.mockResolvedValue(false);
+
+    await expect(
+      service.registerDependent(
+        {
+          name: 'Menor',
+          identityDocument: '1190001009',
+          birthdate: '2016-05-14',
+          relationshipId: 999,
+        },
+        13,
+      ),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ error: 'INVALID_RELATIONSHIP' }),
+    });
+    expect(repository.createDependentForRequester).not.toHaveBeenCalled();
+  });
+
+  it('rejects authenticated dependent appointment request without dependent consent', async () => {
+    const { service, repository } = setup();
+
+    await expect(
+      service.requestDependentAppointment(
+        5,
+        { appType: 'virtual', dependentTermsAccepted: false },
+        { personId: 13 } as never,
+      ),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ error: 'DEPENDENT_TERMS_NOT_ACCEPTED' }),
+    });
+    expect(repository.createRequestForExistingDependent).not.toHaveBeenCalled();
+  });
+
+  it('rejects authenticated dependent appointment request with a past appDate', async () => {
+    const { service, repository } = setup();
+
+    await expect(
+      service.requestDependentAppointment(
+        5,
+        {
+          appType: 'virtual',
+          appDate: '2020-01-01T10:00:00.000Z',
+          dependentTermsAccepted: true,
+        },
+        { personId: 13 } as never,
+      ),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ error: 'INVALID_APPOINTMENT_DATE' }),
+    });
+    expect(repository.createRequestForExistingDependent).not.toHaveBeenCalled();
+  });
+
+  it('creates a pending dependent valuation without slot and emails the guardian', async () => {
+    const { service, repository, emailService } = setup();
+    repository.createRequestForExistingDependent.mockResolvedValue({
+      appId: 88,
+      requesterName: 'María López',
+      requesterEmail: 'maria@example.com',
+      dependentName: 'Samuel López',
+    });
+
+    const res = await service.requestDependentAppointment(
+      5,
+      {
+        appType: 'virtual',
+        appReason: 'Seguimiento emocional',
+        dependentTermsAccepted: true,
+      },
+      { personId: 13 } as never,
+      '203.0.113.9',
+    );
+
+    expect(res).toEqual({
+      appId: 88,
+      message:
+        'Solicitud de cita registrada con éxito. Un secretario revisará la solicitud y te contactará para confirmar la fecha.',
+    });
+    expect(repository.createRequestForExistingDependent).toHaveBeenCalledWith({
+      requesterId: 13,
+      depId: 5,
+      appType: 'virtual',
+      appReason: 'Seguimiento emocional',
+      dependentTermsAccepted: true,
+      acceptance: { ipAddress: '203.0.113.9', channel: 'web' },
+      slot: null,
+    });
+    expect(emailService.enqueueEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'maria@example.com',
+        subject: 'Recibimos tu solicitud de cita #88',
+      }),
+    );
+    expect(emailService.enqueueEmail.mock.calls[0][0].text).toContain('Samuel López');
+  });
+
+  it('auto-confirms a first dependent valuation with slot and sends confirmation notification', async () => {
+    const { service, repository, emailService } = setup();
+    const futureDate = '2099-05-01T14:00:00.000Z';
+    repository.createRequestForExistingDependent.mockResolvedValue({
+      appId: 89,
+      requesterName: 'María López',
+      requesterEmail: 'maria@example.com',
+      dependentName: 'Samuel López',
+    });
+    repository.findById.mockResolvedValue({
+      appId: 89,
+      appDate: futureDate,
+      requesterName: 'María López',
+      requesterEmail: 'maria@example.com',
+      patientName: 'Samuel López',
+      psychologistName: 'Dra. Laura',
+      psychologistId: 5,
+      appType: 'presencial',
+    });
+
+    const res = await service.requestDependentAppointment(
+      5,
+      {
+        appType: 'presencial',
+        appDate: futureDate,
+        dependentTermsAccepted: true,
+      },
+      { personId: 13 } as never,
+      '203.0.113.9',
+    );
+
+    expect(res).toEqual({
+      appId: 89,
+      message: 'Tu primera cita quedó asignada y confirmada con éxito.',
+    });
+    expect(repository.createRequestForExistingDependent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        slot: { appDate: new Date(futureDate), duration: 60 },
+      }),
+    );
+    expect(emailService.enqueueEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'maria@example.com',
+        subject: 'Confirmación de tu cita psicológica - Fundación Dejando Huellas Felices',
+      }),
+    );
   });
 });

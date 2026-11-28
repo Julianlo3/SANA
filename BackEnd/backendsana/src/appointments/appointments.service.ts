@@ -9,6 +9,8 @@ import {
 } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
 import type { CreateAppointmentDto } from './dto/create-appointment.dto.js';
+import type { CreateDependentDto } from './dto/create-dependent.dto.js';
+import type { CreateDependentAppointmentDto } from './dto/create-dependent-appointment.dto.js';
 import type { ConfirmAppointmentDto } from './dto/confirm-appointment.dto.js';
 import type { AssignAppointmentDto } from './dto/assign-appointment.dto.js';
 import type { DiscardAppointmentDto } from './dto/discard-appointment.dto.js';
@@ -17,10 +19,12 @@ import type { UpdateAppointmentStatusDto } from './dto/update-appointment-status
 import {
   AppointmentsRepository,
   RequesterIdentityConflictError,
+  calculateAge,
   type AppointmentRow,
   type PsychologistHistoryRow,
   type PsychologistOptionRow,
   type RequesterAppointmentRow,
+  type RequesterDependentRow,
   type RelationshipRow,
 } from './appointments.repository.js';
 import { ScheduleService } from '../schedule/schedule.service.js';
@@ -52,23 +56,7 @@ const APPOINTMENT_REQUEST_ROLES = new Set<UserRole>([
   UserRole.Requester,
 ]);
 
-/**
- * Calculates the age of a person based on their birthdate.
- * @param birthdate The birthdate of the person.
- * @param today The date to calculate the age against (default is current date).
- * @returns The age of the person.
- */
-function calculateAge(birthdate: string, today = new Date()): number {
-  const date = new Date(`${birthdate}T00:00:00Z`);
-  let age = today.getUTCFullYear() - date.getUTCFullYear();
-  const hasHadBirthday =
-    today.getUTCMonth() > date.getUTCMonth() ||
-    (today.getUTCMonth() === date.getUTCMonth() &&
-      today.getUTCDate() >= date.getUTCDate());
-
-  if (!hasHadBirthday) age -= 1;
-  return age;
-}
+const DEPENDENT_UNIQUE_CONSTRAINTS = new Set(['Dependent_idocument_uq']);
 
 /**
  * Service for managing appointments
@@ -137,7 +125,7 @@ export class AppointmentsService {
         },
         dependent: dto.patientType === 'dependent'
           ? {
-            name: dto.dependentName!,
+            name: dto.dependentName!.trim(),
             identityDocument: dto.dependentIdentityDocument!,
             birthdate: dto.dependentBirthdate!,
             gender: dto.dependentGender,
@@ -166,6 +154,13 @@ export class AppointmentsService {
           message: REQUESTER_ALREADY_REGISTERED_MESSAGE,
         });
       }
+      if (isDependentUniqueConstraintViolation(error)) {
+        throw new ConflictException({
+          error: 'DEPENDENT_BELONGS_TO_ANOTHER_REQUESTER',
+          message:
+            'Este documento de dependiente ya se encuentra registrado bajo otro acudiente. Si requiere actualizar la representación legal, comuníquese con secretaría.',
+        });
+      }
       throw error;
     }
 
@@ -180,11 +175,164 @@ export class AppointmentsService {
         await this.sendConfirmationNotification(appointment);
       }
     } else {
-      await this.notifyRequesterOfNewRequest(dto, appId);
+      await this.notifyRequesterOfNewRequest({
+        appId,
+        requesterName: dto.requesterName,
+        requesterEmail: dto.requesterEmail,
+        patientName:
+          dto.patientType === 'dependent' ? dto.dependentName : dto.requesterName,
+        appType: dto.appType,
+      });
     }
 
     return {
       appId,
+      message: dto.appDate
+        ? 'Tu primera cita quedó asignada y confirmada con éxito.'
+        : 'Solicitud de cita registrada con éxito. Un secretario revisará la solicitud y te contactará para confirmar la fecha.',
+    };
+  }
+
+  /**
+   * Lists minor dependents registered under the authenticated consultant along
+   * with each dependent's current valuation eligibility.
+   * @param requesterId The authenticated consultant's person ID.
+   * @returns A promise resolving to the list of registered dependents.
+   */
+  async findMyDependents(requesterId: number): Promise<RequesterDependentRow[]> {
+    return this.repo.findDependentsByRequester(requesterId);
+  }
+
+  /**
+   * Registers a new minor dependent under the authenticated consultant's account.
+   * @param dto The dependent registration data.
+   * @param requesterId The authenticated consultant's person ID.
+   * @returns A promise resolving to the newly registered dependent with eligibility details.
+   */
+  async registerDependent(
+    dto: CreateDependentDto,
+    requesterId: number,
+  ): Promise<RequesterDependentRow> {
+    const trimmedName = dto.name.trim();
+    if (!trimmedName) {
+      throw new BadRequestException({
+        error: 'DEPENDENT_DATA_REQUIRED',
+        message: 'Se requieren nombre, documento de identidad y fecha de nacimiento del menor',
+      });
+    }
+
+    this.validateDependentBirthdate(dto.birthdate);
+
+    const relationshipExists = await this.repo.relationshipExists(dto.relationshipId);
+    if (!relationshipExists) {
+      throw new BadRequestException({
+        error: 'INVALID_RELATIONSHIP',
+        message: 'El parentesco indicado no es válido',
+      });
+    }
+
+    let depId: number;
+    try {
+      depId = await this.repo.createDependentForRequester({
+        requesterId,
+        name: trimmedName,
+        identityDocument: dto.identityDocument.trim(),
+        birthdate: dto.birthdate,
+        gender: dto.gender,
+        relationshipId: dto.relationshipId,
+      });
+    } catch (error) {
+      if (isDependentUniqueConstraintViolation(error)) {
+        throw new ConflictException({
+          error: 'DEPENDENT_ALREADY_REGISTERED',
+          message: 'Ya existe un dependiente registrado con ese documento de identidad.',
+        });
+      }
+      throw error;
+    }
+
+    const dependent = await this.repo.findDependentByIdForRequester(requesterId, depId);
+    if (!dependent) {
+      throw new NotFoundException({
+        error: 'DEPENDENT_NOT_FOUND',
+        message: 'No se encontró el dependiente registrado',
+      });
+    }
+
+    this.logger.log(
+      `Module:appointments, Function:registerDependent, result-success: requesterId-${requesterId}, depId-${depId}, relationshipId-${dto.relationshipId}`,
+    );
+    return dependent;
+  }
+
+  /**
+   * Requests a valuation appointment from the authenticated consultant's profile
+   * for one of their registered minor dependents.
+   * @param depId The registered dependent ID.
+   * @param dto The dependent appointment request details.
+   * @param authenticatedUser The authenticated consultant.
+   * @param ipAddress Optional client IP address for policy acceptance logging.
+   * @returns A promise resolving to the created appointment ID and confirmation message.
+   */
+  async requestDependentAppointment(
+    depId: number,
+    dto: CreateDependentAppointmentDto,
+    authenticatedUser: AuthenticatedUser,
+    ipAddress?: string,
+  ): Promise<{ appId: number; message: string }> {
+    if (!dto.dependentTermsAccepted) {
+      throw new BadRequestException({
+        error: 'DEPENDENT_TERMS_NOT_ACCEPTED',
+        message: 'Debe aceptar la política de tratamiento de datos personales de menores de edad',
+      });
+    }
+
+    if (dto.appDate) {
+      const appDateTime = new Date(dto.appDate).getTime();
+      if (Number.isNaN(appDateTime) || appDateTime <= Date.now()) {
+        throw new BadRequestException({
+          error: 'INVALID_APPOINTMENT_DATE',
+          message: 'La fecha de la cita debe ser posterior al momento actual',
+        });
+      }
+    }
+
+    const created = await this.repo.createRequestForExistingDependent({
+      requesterId: authenticatedUser.personId,
+      depId,
+      appType: dto.appType,
+      appReason: dto.appReason?.trim() || null,
+      dependentTermsAccepted: dto.dependentTermsAccepted,
+      acceptance: { ipAddress: ipAddress ?? null, channel: 'web' },
+      slot: dto.appDate
+        ? {
+          appDate: new Date(dto.appDate),
+          duration: 60,
+        }
+        : null,
+    });
+
+    this.logger.log(
+      `Module:appointments, Function:requestDependentAppointment, result-success: appId-${created.appId}, requesterId-${authenticatedUser.personId}, depId-${depId}, type-${dto.appType}`,
+    );
+
+    if (dto.appDate) {
+      const appointment = await this.repo.findById(created.appId);
+      if (appointment) {
+        await this.sendConfirmationNotification(appointment);
+      }
+    } else {
+      await this.notifyRequesterOfNewRequest({
+        appId: created.appId,
+        requesterName: created.requesterName,
+        requesterEmail: created.requesterEmail,
+        patientName: created.dependentName,
+        appType: dto.appType,
+      });
+    }
+
+    return {
+      appId: created.appId,
       message: dto.appDate
         ? 'Tu primera cita quedó asignada y confirmada con éxito.'
         : 'Solicitud de cita registrada con éxito. Un secretario revisará la solicitud y te contactará para confirmar la fecha.',
@@ -253,11 +401,36 @@ export class AppointmentsService {
     }
   }
 
+  private validateDependentBirthdate(birthdate: string): void {
+    const normalized = birthdate.slice(0, 10);
+    const parsed = new Date(`${normalized}T00:00:00Z`);
+    if (Number.isNaN(parsed.getTime()) || parsed.getTime() > Date.now()) {
+      throw new BadRequestException({
+        error: 'INVALID_DEPENDENT_BIRTHDATE',
+        message: 'La fecha de nacimiento del dependiente no puede ser futura',
+      });
+    }
+
+    if (calculateAge(birthdate) >= 18) {
+      throw new BadRequestException({
+        error: 'DEPENDENT_MUST_BE_MINOR',
+        message: 'El dependiente debe ser menor de edad',
+      });
+    }
+  }
+
   private async validateDependent(dto: CreateAppointmentDto): Promise<void> {
-    if (!dto.dependentName || !dto.dependentIdentityDocument || !dto.dependentBirthdate) {
+    if (!dto.dependentName?.trim() || !dto.dependentIdentityDocument || !dto.dependentBirthdate) {
       throw new BadRequestException({
         error: 'DEPENDENT_DATA_REQUIRED',
         message: 'Se requieren nombre, documento de identidad y fecha de nacimiento del menor',
+      });
+    }
+
+    if (dto.requesterIdentityDocument.trim() === dto.dependentIdentityDocument.trim()) {
+      throw new BadRequestException({
+        error: 'DEPENDENT_SAME_DOCUMENT_AS_REQUESTER',
+        message: 'El documento de identidad del dependiente no puede ser igual al del solicitante',
       });
     }
 
@@ -268,12 +441,7 @@ export class AppointmentsService {
       });
     }
 
-    if (calculateAge(dto.dependentBirthdate) >= 18) {
-      throw new BadRequestException({
-        error: 'DEPENDENT_MUST_BE_MINOR',
-        message: 'El dependiente debe ser menor de edad',
-      });
-    }
+    this.validateDependentBirthdate(dto.dependentBirthdate);
 
     const relationshipExists = await this.repo.relationshipExists(dto.relationshipId);
     if (!relationshipExists) {
@@ -1017,36 +1185,38 @@ export class AppointmentsService {
     return this.repo.findPendingReferrals(state);
   }
 
-  private async notifyRequesterOfNewRequest(
-    dto: CreateAppointmentDto,
-    appId: number,
-  ): Promise<void> {
+  private async notifyRequesterOfNewRequest(params: {
+    appId: number;
+    requesterName: string;
+    requesterEmail?: string | null;
+    patientName?: string | null;
+    appType: string;
+  }): Promise<void> {
     try {
-      if (!dto.requesterEmail || this.isPlaceholderEmail(dto.requesterEmail)) {
-        this.logger.warn(`Appointment request confirmation email skipped: requester has no usable email (appId-${appId})`);
+      if (!params.requesterEmail || this.isPlaceholderEmail(params.requesterEmail)) {
+        this.logger.warn(`Appointment request confirmation email skipped: requester has no usable email (appId-${params.appId})`);
         return;
       }
       if (!this.emailService) {
-        this.logger.warn(`Appointment request confirmation email skipped: email service is unavailable (appId-${appId})`);
+        this.logger.warn(`Appointment request confirmation email skipped: email service is unavailable (appId-${params.appId})`);
         return;
       }
 
-      const patientName = dto.patientType === 'dependent' ? dto.dependentName : dto.requesterName;
       const emailTemplate = buildAppointmentRequestedEmail({
-        appId,
-        requesterName: dto.requesterName,
-        patientName,
-        appType: dto.appType,
+        appId: params.appId,
+        requesterName: params.requesterName,
+        patientName: params.patientName ?? params.requesterName,
+        appType: params.appType,
         portalUrl: 'https://fundacionhuellitas.vercel.app/iniciar-sesion',
       });
       await this.emailService.enqueueEmail({
-        to: dto.requesterEmail.trim().toLowerCase(),
+        to: params.requesterEmail.trim().toLowerCase(),
         subject: emailTemplate.subject,
         text: emailTemplate.text,
         html: emailTemplate.html,
       });
     } catch (error) {
-      this.logger.warn(`Appointment request confirmation email could not be prepared (appId-${appId}, code-${this.notificationErrorCode(error)})`);
+      this.logger.warn(`Appointment request confirmation email could not be prepared (appId-${params.appId}, code-${this.notificationErrorCode(error)})`);
     }
   }
 
@@ -1262,4 +1432,19 @@ function isRequesterUniqueConstraintViolation(error: unknown): boolean {
   } | undefined;
   return driverError?.code === '23505'
     && REQUESTER_UNIQUE_CONSTRAINTS.has(driverError.constraint ?? '');
+}
+
+/**
+ * Checks if an error is a unique constraint violation for a dependent's identity document.
+ * @param error The error to check.
+ * @returns A boolean indicating whether the error is a dependent unique constraint violation.
+ */
+function isDependentUniqueConstraintViolation(error: unknown): boolean {
+  if (!(error instanceof QueryFailedError)) return false;
+  const driverError = error.driverError as {
+    code?: string;
+    constraint?: string;
+  } | undefined;
+  return driverError?.code === '23505'
+    && DEPENDENT_UNIQUE_CONSTRAINTS.has(driverError.constraint ?? '');
 }
